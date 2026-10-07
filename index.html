@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#212c42"><meta name="description" content="Wispwood: Merge, heal and explore a cozy magical world."><title>Wispwood — A Magical Rescue</title><style>
-:root{font-family:'Nunito','Trebuchet MS',sans-serif;color:#233547;background:#f2f1f8;font-synthesis:none}*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -30%,#dbdaf8,#f3f2f9 54%,#f6f4f9);min-height:100vh}button{font:inherit;cursor:pointer}button:disabled{opacity:.47;cursor:not-allowed}button:focus-visible{outline:3px solid #947be0;outline-offset:3px}.shell{max-width:1350px;margin:auto;padding:22px 25px 26px}.mast{display:flex;align-items:center;justify-content:space-between;margin:4px 0 20px}.brand{display:flex;align-items:center;gap:12px}.brand-icon{display:grid;place-items:center;background:#7155a6;color:#fff;border-radius:17px;width:47px;height:47px;font-size:27px;box-shadow:0 8px 20px #7155a637}.brand strong{display:block;letter-spacing:2px;font-size:17px;font-weight:900;color:#46365e}.brand small{display:block;color:#81849a;font-size:11px;margin-top:2px;letter-spacing:.6px}.top-meta{display:flex;gap:16px;align-items:center;font-size:13px;font-weight:800;color:#77748b}.reset{background:#fff;border:1px solid #e5e1ee;color:#7d728e;padding:9px 13px;border-radius:13px}.layout{display:grid;grid-template-columns:1.04fr 1.15fr .83fr;gap:18px;align-items:start}.card{background:#fff;border:1px solid #eeecf4;border-radius:24px;overflow:hidden;box-shadow:0 9px 32px rgba(83,66,115,.065)}.scene{height:317px;position:relative;overflow:hidden;background:linear-gradient(180deg,#b9cadf 0%,#d4d4ef 47%,#d9d1df 70%,#8caeab 100%);isolation:isolate}.sky-light{position:absolute;top:24px;left:31px;width:96px;height:96px;background:#fff8e0;border-radius:50%;opacity:.72;filter:blur(14px);box-shadow:0 0 70px 30px #f5ecdf}.hill{position:absolute;width:130%;left:-15%;border-radius:55% 55% 0 0}.hill-back{height:190px;top:188px;background:#91b7a9;transform:rotate(-5deg)}.hill-front{height:128px;top:245px;background:#6d9a92;transform:rotate(6deg)}.stars i{position:absolute;font-style:normal;color:#fff9ed;opacity:.88;font-size:18px}.stars i:nth-child(1){left:15%;top:26%}.stars i:nth-child(2){left:71%;top:22%}.stars i:nth-child(3){left:85%;top:47%}.stars i:nth-child(4){left:26%;top:55%}.stars i:nth-child(5){left:58%;top:14%}.stars i:nth-child(6){left:48%;top:48%}.mush{position:absolute;font-size:35px;bottom:23px;z-index:2}.mushroom-left{left:18%}.mushroom-right{right:17%;font-size:22px}.creature{position:absolute;width:220px;height:220px;bottom:14px;left:50%;transform:translateX(-50%);z-index:3;animation:bob 3.1s ease-in-out infinite}.creature svg{width:100%;height:100%;filter:drop-shadow(0 8px 9px #37596636)}.creature.happy{animation:bob-happy 1.5s ease-in-out infinite}.mist-path{position:absolute;right:14px;bottom:25px;color:white;font-size:20px;opacity:.15;transition:opacity .4s}.scene.rescued .mist-path{opacity:1}.scene-label{position:absolute;top:18px;left:19px;background:#ffffffe3;border-radius:99px;font-size:10px;letter-spacing:1.4px;padding:9px 11px;color:#777a90;font-weight:900}.story-content{padding:22px}.story-heading{display:flex;align-items:center;justify-content:space-between;gap:5px}.chapter,.eyebrow{font-size:10px;color:#a386c6;letter-spacing:1.5px;font-weight:900;text-transform:uppercase}.pill{font-size:10px;background:#fff0f3;color:#c16f9c;padding:7px 9px;border-radius:11px;font-weight:900}.story h1{margin:8px 0 1px;font-size:30px;color:#38445b;letter-spacing:-1px}.status{margin:0 0 15px;color:#9a87b5;font-weight:800;font-size:13px}.bubble{background:#f6f3fb;border-radius:17px;padding:16px;color:#6f6a85;font-size:14px;line-height:1.6;margin-bottom:20px;min-height:95px}.explore{width:100%;border:0;padding:15px 8px;border-radius:14px;background:#7157b1;color:#fff;font-weight:900}.play{padding:23px 21px 16px}.play-head,.side-heading{display:flex;justify-content:space-between;align-items:center;gap:10px}.play-head h2,.side-heading h2{margin:5px 0 0;font-size:24px;letter-spacing:-.5px;color:#3d425b}.moves{background:#f1eff7;border-radius:50px;font-size:11px;font-weight:800;color:#827698;padding:7px 11px;white-space:nowrap}.instruction{color:#85829a;font-size:13px;line-height:1.55;margin:10px 0 17px}.board{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;background:#ded3ed;border:7px solid #ded3ed;border-radius:19px;touch-action:manipulation;box-shadow:inset 0 2px 4px #654c8c26}.tile{width:100%;aspect-ratio:1/1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:10px;border:2px solid transparent;padding:1px;min-width:0;min-height:0;background:#eee8f3;transition:transform .09s ease,border-color .1s}.tile.filled{background:linear-gradient(155deg,#fff,#f7f6fb);box-shadow:0 2px 3px #86689c22}.tile.filled:active{transform:scale(.93)}.tile.selected{border:2px solid #9a65de;box-shadow:0 0 0 2px #d3b5ff}.tile.leaf{background:linear-gradient(155deg,#f3ffef,#deefdb)}.tile.dew{background:linear-gradient(155deg,#f1fcff,#dceef8)}.tile.glow{background:linear-gradient(155deg,#fff9e8,#f2e2fd)}.tile.tier2{box-shadow:inset 0 0 0 1px #b8a3d0}.item-icon{font-size:clamp(20px,2.65vw,32px);line-height:1.1}.item-name{color:#6d6e7c;font-size:clamp(7px,.8vw,10px);font-weight:900;white-space:nowrap}.selected-row{text-align:center;margin:14px 0 10px;color:#88839c;font-weight:800;font-size:12px;min-height:18px}.actions{display:flex;gap:8px}.actions button,.end-modal button{border-radius:13px;padding:13px 7px;border:0;font-weight:900;font-size:13px}.actions .primary,.end-modal .primary{flex:1.5;color:white;background:#8d6bc4;box-shadow:0 5px 10px #8d6bc42a}.actions .primary small{font-size:8px;color:#e8dafa;margin-left:3px}.secondary{flex:1;background:#fce9f3;color:#b775a5}.tertiary{width:39px;background:#f0eef5;color:#897fa0}.footnote{text-align:center;color:#b1aabe;font-size:10px;margin:15px 0 0;line-height:1.5}.sidebar{padding:23px 19px}.side-heading h2{font-size:20px}.progress-count{background:#f0eaf8;border-radius:11px;padding:9px;color:#8a6caf;font-weight:900;font-size:12px}.progress{height:8px;background:#f1e9f8;border-radius:9px;margin:17px 0 12px;overflow:hidden}.progress>div{background:linear-gradient(90deg,#c69bda,#8f70cf);height:100%;width:0;transition:width .25s;border-radius:9px}.side-sub{font-size:12px;line-height:1.55;color:#9691a3;margin-bottom:16px}.task{display:flex;gap:10px;align-items:center;border:1px solid #f0ecf3;padding:12px 9px;border-radius:13px;margin-bottom:9px;background:#fff}.task.done{background:#f0faef;border-color:#dcefd7}.task-emblem{background:#f4eff9;border-radius:10px;padding:8px;min-width:37px;text-align:center;font-size:19px}.task.done .task-emblem{background:#d9efd8;color:#4e9568}.task-copy{min-width:0;flex:1}.task-copy strong{display:block;color:#596278;font-size:11px;white-space:nowrap}.task-copy small{display:block;font-size:9px;color:#a29aab;margin-top:3px}.task-status{font-size:9px;font-weight:900;color:#a891bf}.task.done .task-status{color:#57966f}.tip{display:flex;gap:9px;background:#fff7e5;border-radius:13px;padding:14px 10px;margin-top:21px}.tip span{font-size:23px}.tip strong{font-size:11px;color:#a3875c}.tip p{color:#a99a81;font-size:10px;line-height:1.55;margin:4px 0}.fair{margin-top:22px;font-size:10px;color:#b2abc2;text-align:center;line-height:1.7}.fair span{color:#a792d5}footer{text-align:center;color:#aaa1b7;font-size:11px;margin-top:22px}.toast{position:fixed;z-index:5;bottom:25px;left:50%;transform:translate(-50%,20px);background:#3b3959;color:white;padding:15px 24px;border-radius:18px;box-shadow:0 6px 30px #302f4655;opacity:0;pointer-events:none;transition:.2s;max-width:90vw;text-align:center;font-size:13px;font-weight:800}.toast.show{opacity:1;transform:translate(-50%,0)}.end-overlay{position:fixed;inset:0;background:#222039a8;display:grid;place-items:center;z-index:9;padding:20px}.end-overlay[hidden]{display:none}.end-modal{background:#fff;max-width:385px;padding:30px;border-radius:25px;text-align:center;box-shadow:0 25px 90px #16132940}.end-icon{font-size:55px}.end-modal h2{color:#52466c;font-size:26px;margin-bottom:7px}.end-modal p{color:#877e99;line-height:1.6}.end-modal .primary{width:100%;margin-top:12px}@keyframes bob{0%,100%{transform:translate(-50%,0) rotate(-1deg)}50%{transform:translate(-50%,-8px) rotate(1deg)}}@keyframes bob-happy{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,-15px) rotate(2deg)}}@media(max-width:1100px){.layout{grid-template-columns:1fr 1fr}.sidebar{grid-column:1/-1}.sidebar #tasks{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.sidebar .task{margin:0}}@media(max-width:670px){.shell{padding:12px}.mast{margin:3px 0 13px}.brand strong{font-size:14px}.brand-icon{height:39px;width:39px}.top-meta>span{display:none}.layout{grid-template-columns:1fr;gap:13px}.story .scene{height:190px}.story-content{padding:17px}.story h1{font-size:24px}.bubble{min-height:0;padding:12px;font-size:12px;margin:11px 0}.explore{padding:12px}.creature{height:165px;width:165px;bottom:-7px}.scene-label{font-size:8px}.play{padding:18px 16px}.board{gap:4px;border-width:6px}.tile{border-radius:8px}.item-icon{font-size:clamp(20px,7vw,34px)}.item-name{font-size:clamp(7px,2vw,10px)}.sidebar{grid-column:auto}.sidebar #tasks{display:block}.sidebar .task{margin-bottom:8px}.side-heading h2{font-size:20px}footer{font-size:9px}}
+:root{font-family:'Nunito','Trebuchet MS',sans-serif;color:#233547;background:#f2f1f8;font-synthesis:none}*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -30%,#dbdaf8,#f3f2f9 54%,#f6f4f9);min-height:100vh}button{font:inherit;cursor:pointer}button:disabled{opacity:.47;cursor:not-allowed}button:focus-visible{outline:3px solid #947be0;outline-offset:3px}.shell{max-width:1350px;margin:auto;padding:22px 25px 26px}.mast{display:flex;align-items:center;justify-content:space-between;margin:4px 0 20px}.brand{display:flex;align-items:center;gap:12px}.brand-icon{display:grid;place-items:center;background:#7155a6;color:#fff;border-radius:17px;width:47px;height:47px;font-size:27px;box-shadow:0 8px 20px #7155a637}.brand strong{display:block;letter-spacing:2px;font-size:17px;font-weight:900;color:#46365e}.brand small{display:block;color:#81849a;font-size:11px;margin-top:2px;letter-spacing:.6px}.top-meta{display:flex;gap:16px;align-items:center;font-size:13px;font-weight:800;color:#77748b}.reset{background:#fff;border:1px solid #e5e1ee;color:#7d728e;padding:9px 13px;border-radius:13px}.layout{display:grid;grid-template-columns:1.04fr 1.15fr .83fr;gap:18px;align-items:start}.card{background:#fff;border:1px solid #eeecf4;border-radius:24px;overflow:hidden;box-shadow:0 9px 32px rgba(83,66,115,.065)}.scene{height:317px;position:relative;overflow:hidden;background:linear-gradient(180deg,#b9cadf 0%,#d4d4ef 47%,#d9d1df 70%,#8caeab 100%);isolation:isolate}.sky-light{position:absolute;top:24px;left:31px;width:96px;height:96px;background:#fff8e0;border-radius:50%;opacity:.72;filter:blur(14px);box-shadow:0 0 70px 30px #f5ecdf}.hill{position:absolute;width:130%;left:-15%;border-radius:55% 55% 0 0}.hill-back{height:190px;top:188px;background:#91b7a9;transform:rotate(-5deg)}.hill-front{height:128px;top:245px;background:#6d9a92;transform:rotate(6deg)}.stars i{position:absolute;font-style:normal;color:#fff9ed;opacity:.88;font-size:18px}.stars i:nth-child(1){left:15%;top:26%}.stars i:nth-child(2){left:71%;top:22%}.stars i:nth-child(3){left:85%;top:47%}.stars i:nth-child(4){left:26%;top:55%}.stars i:nth-child(5){left:58%;top:14%}.stars i:nth-child(6){left:48%;top:48%}.mush{position:absolute;font-size:35px;bottom:23px;z-index:2}.mushroom-left{left:18%}.mushroom-right{right:17%;font-size:22px}.creature{position:absolute;width:220px;height:220px;bottom:14px;left:50%;transform:translateX(-50%);z-index:3;animation:bob 3.1s ease-in-out infinite}.creature svg{width:100%;height:100%;filter:drop-shadow(0 8px 9px #37596636)}.creature.happy{animation:bob-happy 1.5s ease-in-out infinite}.mist-path{position:absolute;right:14px;bottom:25px;color:white;font-size:20px;opacity:.15;transition:opacity .4s}.scene.rescued .mist-path{opacity:1}.scene-label{position:absolute;top:18px;left:19px;background:#ffffffe3;border-radius:99px;font-size:10px;letter-spacing:1.4px;padding:9px 11px;color:#777a90;font-weight:900}.story-content{padding:22px}.story-heading{display:flex;align-items:center;justify-content:space-between;gap:5px}.chapter,.eyebrow{font-size:10px;color:#a386c6;letter-spacing:1.5px;font-weight:900;text-transform:uppercase}.pill{font-size:10px;background:#fff0f3;color:#c16f9c;padding:7px 9px;border-radius:11px;font-weight:900}.story h1{margin:8px 0 1px;font-size:30px;color:#38445b;letter-spacing:-1px}.status{margin:0 0 15px;color:#9a87b5;font-weight:800;font-size:13px}.bubble{background:#f6f3fb;border-radius:17px;padding:16px;color:#6f6a85;font-size:14px;line-height:1.6;margin-bottom:20px;min-height:95px}.explore{width:100%;border:0;padding:15px 8px;border-radius:14px;background:#7157b1;color:#fff;font-weight:900}.play{padding:23px 21px 16px}.play-head,.side-heading{display:flex;justify-content:space-between;align-items:center;gap:10px}.play-head h2,.side-heading h2{margin:5px 0 0;font-size:24px;letter-spacing:-.5px;color:#3d425b}.moves{background:#f1eff7;border-radius:50px;font-size:11px;font-weight:800;color:#827698;padding:7px 11px;white-space:nowrap}.instruction{color:#85829a;font-size:13px;line-height:1.55;margin:10px 0 17px}.board{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:5px;background:#ded3ed;border:7px solid #ded3ed;border-radius:19px;touch-action:manipulation;box-shadow:inset 0 2px 4px #654c8c26}.tile{width:100%;aspect-ratio:1/1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:10px;border:2px solid transparent;padding:1px;min-width:0;min-height:0;background:#eee8f3;transition:transform .09s ease,border-color .1s}.tile.filled{background:linear-gradient(155deg,#fff,#f7f6fb);box-shadow:0 2px 3px #86689c22}.tile.filled:active{transform:scale(.93)}.tile.selected{border:2px solid #9a65de;box-shadow:0 0 0 2px #d3b5ff}.tile.leaf{background:linear-gradient(155deg,#f3ffef,#deefdb)}.tile.dew{background:linear-gradient(155deg,#f1fcff,#dceef8)}.tile.glow{background:linear-gradient(155deg,#fff9e8,#f2e2fd)}.tile.tier2{box-shadow:inset 0 0 0 1px #b8a3d0}.item-icon{font-size:clamp(20px,2.65vw,32px);line-height:1.1}.item-name{color:#6d6e7c;font-size:clamp(7px,.8vw,10px);font-weight:900;white-space:nowrap}.selected-row{text-align:center;margin:14px 0 10px;color:#88839c;font-weight:800;font-size:12px;min-height:18px}.actions{display:flex;gap:8px}.actions button,.end-modal button{border-radius:13px;padding:13px 7px;border:0;font-weight:900;font-size:13px}.actions .primary,.end-modal .primary{flex:1.5;color:white;background:#8d6bc4;box-shadow:0 5px 10px #8d6bc42a}.actions .primary small{font-size:8px;color:#e8dafa;margin-left:3px}.secondary{flex:1;background:#fce9f3;color:#b775a5}.tertiary{width:39px;background:#f0eef5;color:#897fa0}.footnote{text-align:center;color:#b1aabe;font-size:10px;margin:15px 0 0;line-height:1.5}.sidebar{padding:23px 19px}.side-heading h2{font-size:20px}.progress-count{background:#f0eaf8;border-radius:11px;padding:9px;color:#8a6caf;font-weight:900;font-size:12px}.progress{height:8px;background:#f1e9f8;border-radius:9px;margin:17px 0 12px;overflow:hidden}.progress>div{background:linear-gradient(90deg,#c69bda,#8f70cf);height:100%;width:0;transition:width .25s;border-radius:9px}.side-sub{font-size:12px;line-height:1.55;color:#9691a3;margin-bottom:16px}.task{display:flex;gap:10px;align-items:center;border:1px solid #f0ecf3;padding:12px 9px;border-radius:13px;margin-bottom:9px;background:#fff}.task.done{background:#f0faef;border-color:#dcefd7}.task-emblem{background:#f4eff9;border-radius:10px;padding:8px;min-width:37px;text-align:center;font-size:19px}.task.done .task-emblem{background:#d9efd8;color:#4e9568}.task-copy{min-width:0;flex:1}.task-copy strong{display:block;color:#596278;font-size:11px;white-space:nowrap}.task-copy small{display:block;font-size:9px;color:#a29aab;margin-top:3px}.task-status{font-size:9px;font-weight:900;color:#a891bf}.task.done .task-status{color:#57966f}.tip{display:flex;gap:9px;background:#fff7e5;border-radius:13px;padding:14px 10px;margin-top:21px}.tip span{font-size:23px}.tip strong{font-size:11px;color:#a3875c}.tip p{color:#a99a81;font-size:10px;line-height:1.55;margin:4px 0}.fair{margin-top:22px;font-size:10px;color:#b2abc2;text-align:center;line-height:1.7}.fair span{color:#a792d5}footer{text-align:center;color:#aaa1b7;font-size:11px;margin-top:22px}.toast{position:fixed;z-index:5;bottom:25px;left:50%;transform:translate(-50%,20px);background:#3b3959;color:white;padding:15px 24px;border-radius:18px;box-shadow:0 6px 30px #302f4655;opacity:0;pointer-events:none;transition:.2s;max-width:90vw;text-align:center;font-size:13px;font-weight:800}.toast.show{opacity:1;transform:translate(-50%,0)}.end-overlay{position:fixed;inset:0;background:#222039a8;display:grid;place-items:center;z-index:9;padding:20px}.end-overlay[hidden]{display:none}.end-modal{background:#fff;max-width:385px;padding:30px;border-radius:25px;text-align:center;box-shadow:0 25px 90px #16132940}.end-icon{font-size:55px}.end-modal h2{color:#52466c;font-size:26px;margin-bottom:7px}.end-modal p{color:#877e99;line-height:1.6}.end-modal .primary{width:100%;margin-top:12px}@keyframes bob{0%,100%{transform:translate(-50%,0) rotate(-1deg)}50%{transform:translate(-50%,-8px) rotate(1deg)}}@keyframes bob-happy{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,-15px) rotate(2deg)}}@media(max-width:1100px){.layout{grid-template-columns:1fr 1fr}.sidebar{grid-column:1/-1}.sidebar #tasks{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.sidebar .task{margin:0}}@media(max-width:670px){.shell{padding:12px}.mast{margin:3px 0 13px}.brand strong{font-size:14px}.brand-icon{height:39px;width:39px}.top-meta>span{display:none}.layout{grid-template-columns:1fr;gap:13px}.story .scene{height:190px}.story-content{padding:17px}.story h1{font-size:24px}.bubble{min-height:0;padding:12px;font-size:12px;margin:11px 0}.explore{padding:12px}.creature{height:165px;width:165px;bottom:-7px}.scene-label{font-size:8px}.play{padding:18px 16px}.board{gap:4px;border-width:6px}.tile{border-radius:8px}.item-icon{font-size:clamp(20px,7vw,34px)}.item-name{font-size:clamp(7px,2vw,10px)}.sidebar{grid-column:auto}.sidebar #tasks{display:block}.sidebar .task{margin-bottom:8px}.side-heading h2{font-size:20px}footer{font-size:9px}}
 
 .tile.fx-spawn{animation:tileSpawn .35s ease-out both}.tile.fx-merge{animation:tileMerge .5s ease-out both;z-index:2;position:relative}
 .tile.fx-merge:after{content:'✦';position:absolute;top:-10px;right:-4px;color:#ffc84d;font-size:25px;animation:sparkle .6s ease-out both}
@@ -140,6 +140,13 @@
 @keyframes wildPulse{50%{transform:scale(1.12) rotate(7deg)}}
 @media(max-width:670px){.generators button{padding:8px 3px}.generators button b{font-size:18px}.generators button span{font-size:9px}.generator-head{align-items:flex-start}.generator-panel{padding:10px}}
 @media(prefers-reduced-motion:reduce){.tile.wild .item-icon{animation:none!important}}
+
+.resource-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}.resource-bar>div{background:linear-gradient(145deg,#fff,#f4eef9);border:1px solid #e2d7ed;border-radius:13px;padding:9px 10px;text-align:center}.resource-bar span{display:block;font-size:9px;color:#91829d;font-weight:900}.resource-bar strong{font-size:14px;color:#5b4771}.board-guide{font-size:10px;color:#8c8197;line-height:1.45;margin:4px 0 11px}
+.tile.locked{background:linear-gradient(145deg,#827993,#625a74);border-color:#544d64;color:#fff;box-shadow:inset 0 0 15px #2d29394d;cursor:not-allowed}.tile.locked.frontier{cursor:pointer;background:linear-gradient(145deg,#8d80a1,#6e6482);box-shadow:inset 0 0 15px #2d29394d,0 0 0 2px #d7c3f044}.tile.locked .lock-icon{font-size:20px}.tile.locked small{font-size:8px;color:#f7e9ff;font-weight:900}
+.tile.generator{background:radial-gradient(circle at 50% 35%,#fff8cc,#daf1d4 55%,#b8ddb0);border:2px solid #85af7e;box-shadow:0 3px 8px #47664035}.tile.generator .generator-icon{font-size:clamp(22px,3vw,34px)}.tile.generator .item-name{color:#44674b}.tile.generator .tier-pips{font-size:8px;color:#739276}
+.tile.webbed{position:relative;overflow:hidden}.tile.webbed:after{content:'🕸';position:absolute;inset:0;display:grid;place-items:center;font-size:clamp(24px,3vw,38px);opacity:.7;pointer-events:none}
+.tile.webbed .item-icon,.tile.webbed .item-name{opacity:.65}.tile.empty{background:linear-gradient(145deg,#eff7e9,#ddebd7);border-color:#d1e2c8}.board{background:#c7d9bd;border-color:#c7d9bd}.board-frame{background:linear-gradient(145deg,#eff5e8,#e5eee0)}
+@media(max-width:670px){.resource-bar>div{padding:7px 5px}.resource-bar strong{font-size:12px}.tile{border-radius:7px}.item-icon{font-size:clamp(17px,5vw,25px)}.item-name{font-size:6px}.board{gap:3px;border-width:5px}}
 </style></head>
 <body>
  <div class="shell">
@@ -178,22 +185,19 @@
    <section class="play card" aria-label="Merge puzzle game"><div class="play-head"><div><span class="eyebrow">MAGIC WORKSHOP</span><h2>Merge to help</h2></div><span class="moves">↔ <b id="moves">0</b> moves</span></div>
     <p class="instruction">Tap two identical items to merge them into a stronger one. On desktop, you can also drag items together.</p>
     <div class="merge-legend" aria-label="Magical item types"><span class="legend-leaf">🌿 Nature</span><span class="legend-dew">💧 Water</span><span class="legend-glow">✨ Starlight</span><span>🌀 Wild</span></div>
-    <div id="v2GeneratorPanel" class="generator-panel" hidden>
-      <div class="generator-head"><div><span>MERGE BOARD v2</span><strong>Choose what to generate</strong></div><span id="movesLeft">24 moves</span></div>
-      <div class="generators">
-        <button type="button" data-generator="leaf"><b>🌳</b><span>Ancient Tree<small>Seed</small></span></button>
-        <button type="button" data-generator="dew"><b>💧</b><span>Moon Spring<small>Dewdrop</small></span></button>
-        <button type="button" data-generator="glow"><b>⭐</b><span>Star Nest<small>Spark</small></span></button>
-      </div>
-      <p>Tap 3 matching items, or hold out for 5 to gain <b>two upgrades + a Wild Wisp</b>.</p>
+    <div id="resourceBar" class="resource-bar">
+      <div><span>⚡ Energy</span><strong id="energyLabel">24/30</strong></div>
+      <div><span>✨ Magic</span><strong id="magicLabel">0</strong></div>
+      <div><span>🧩 Open tiles</span><strong id="openLabel">9/64</strong></div>
     </div>
+    <p class="board-guide">Tap a generator on the board to create items. Merge matching pairs to earn Magic, then unlock tiles beside your clearing.</p>
     <div id="puzzleHud" class="puzzle-hud" hidden>
       <div><span class="puzzle-label">REGION PUZZLE</span><strong id="puzzleName">Whispering Bridge</strong><small id="puzzleHint">Clear blockers to unlock delivery.</small></div>
       <div class="puzzle-stats"><span id="blockerCount">0 blockers</span><span id="comboLabel">Combo ×0</span><span id="skillLabel">Skill 0/5</span></div>
     </div>
-    <div class="board-frame"><div class="board-caption"><span>✦ ENCHANTED MERGE GARDEN</span><span>6 × 6</span></div><div id="board" class="board" role="group" aria-label="6 by 6 merge board"></div></div>
+    <div class="board-frame"><div class="board-caption"><span>✦ WISPWOOOD CLEARING</span><span>8 × 8</span></div><div id="board" class="board" role="group" aria-label="8 by 8 merge board"></div></div>
     <div class="selected-row"><span id="selected">Select matching tiles to merge</span></div>
-    <div class="actions"><button id="spawnBtn" class="primary">✦ Gather magic <small>FREE</small></button><button id="mergeGroupBtn" hidden disabled class="merge-v2">Merge selected <small>0/3</small></button><button id="skillBtn" hidden disabled class="skill-action">✨ Companion Skill <small>0/5</small></button><button id="deliverBtn" disabled class="secondary">♡ Deliver</button><button id="recycleBtn" disabled class="tertiary" aria-label="Recycle selected item">♻</button></div>
+    <div class="actions"><button id="spawnBtn" hidden class="primary">✦ Gather magic <small>FREE</small></button><button id="mergeGroupBtn" hidden disabled class="merge-v2">Merge selected <small>0/3</small></button><button id="skillBtn" hidden disabled class="skill-action">✨ Companion Skill <small>0/5</small></button><button id="deliverBtn" disabled class="secondary">♡ Deliver</button><button id="recycleBtn" disabled class="tertiary" aria-label="Recycle selected item">♻</button></div>
     <p class="footnote">Prototype mode: unlimited gathering, no timers, no ads, no account.</p>
    </section>
    <aside class="sidebar card" aria-label="Rescue objectives"><div class="side-heading"><div><span class="eyebrow">TODAY'S ADVENTURE</span><h2 id="tasksTitle">Help Mivra heal</h2></div><span id="tasksCount" class="progress-count">0/3</span></div><div class="progress"><div id="progressFill"></div></div><p class="side-sub">Craft these magical items, select one on the board, then tap Deliver.</p><div id="tasks"></div><div id="orruPanel" class="orru-panel" hidden>
@@ -217,9 +221,23 @@
  <div id="endOverlay" class="end-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="overlayTitle"><div class="end-modal"><span class="end-icon">🌙✨</span><h2 id="overlayTitle">Moonlit Grove is open!</h2><p id="overlayText">Mivra found a new friend in the forest.</p><button id="endClose" class="primary">Continue</button></div></div>
  <script>// Copyright (c) 2026 Magical Creature Rescue project. Original prototype.
 // Dependency-free game rules: no runtime AI service or network requests.
-const SIZE = 6;
+const SIZE = 8;
 const KINDS = ['leaf', 'dew', 'glow'];
-const MAX_TIER = 3;
+const MAX_TIER = 5;
+const INITIAL_OPEN=[18,19,20,26,27,28,34,35,36];
+const INITIAL_ENERGY=24;
+const MAX_ENERGY=30;
+const CELL_REVEALS={
+ 17:{type:'web',item:{kind:'leaf',tier:1}},
+ 21:{type:'generator',kind:'dew'},
+ 25:{type:'blocker',blocker:'fog'},
+ 29:{type:'blocker',blocker:'vine'},
+ 33:{type:'web',item:{kind:'leaf',tier:0}},
+ 37:{type:'generator',kind:'glow'},
+ 42:{type:'web',item:{kind:'dew',tier:0}},
+ 43:{type:'blocker',blocker:'fog'},
+ 44:{type:'blocker',blocker:'vine'}
+};
 const SKILL_MAX = 5;
 const V2_MOVES = 24;
 const GENERATORS={
@@ -230,7 +248,7 @@ const GENERATORS={
 function isWild(item){return Boolean(item&&item.special==='wild');}
 function normalItem(item){return item&&!isWild(item);}
 function itemLabel(item){return isWild(item)?'Wild Wisp':ITEMS[item.kind][item.tier].name;}
-function v2Active(state){return true;}
+function v2Active(state){return false;}
 function v2Limited(state){return isTrail(state)&&state.trailIndex<TRAIL.length;}
 const PUZZLES=[
  {name:'Whispering Bridge',blocker:'vine',count:5,icon:'🌿',hint:'Clear the vines before the bridge can accept restoration magic.'},
@@ -239,9 +257,9 @@ const PUZZLES=[
 ];
 const BLOCKER_ICON={vine:'🌿',fog:'🌫️'};
 const ITEMS = {
-  leaf: [{name:'Seed', emoji:'🌰'}, {name:'Sprout', emoji:'🌱'}, {name:'Herb', emoji:'🌿'}, {name:'Bloom', emoji:'🌸'}],
-  dew: [{name:'Dewdrop', emoji:'💧'}, {name:'Water', emoji:'🫧'}, {name:'Elixir', emoji:'🧪'}, {name:'Moonwell', emoji:'💎'}],
-  glow: [{name:'Spark', emoji:'✨'}, {name:'Wisp', emoji:'🌟'}, {name:'Crystal', emoji:'🔮'}, {name:'Aurora', emoji:'💫'}],
+  leaf: [{name:'Seed',emoji:'🌰'},{name:'Sprout',emoji:'🌱'},{name:'Herb',emoji:'🌿'},{name:'Bloom',emoji:'🌸'},{name:'Moon Flower',emoji:'🌺'},{name:'Ancient Blossom',emoji:'🪷'}],
+  dew: [{name:'Dewdrop',emoji:'💧'},{name:'Water',emoji:'🫧'},{name:'Elixir',emoji:'🧪'},{name:'Moon Drop',emoji:'🔹'},{name:'Moonwell',emoji:'💎'},{name:'Celestial Water',emoji:'🩵'}],
+  glow: [{name:'Spark',emoji:'✨'},{name:'Wisp',emoji:'🌟'},{name:'Crystal',emoji:'🔮'},{name:'Star Shard',emoji:'💠'},{name:'Aurora',emoji:'💫'},{name:'Star Core',emoji:'🌠'}],
 };
 const TASKS = [
  {id:'heal',label:'Healing herbs',kind:'leaf',tier:2,help:'Soothe her wounded wing'},
@@ -250,21 +268,21 @@ const TASKS = [
 ];
 const GROVE_TASKS=[
  {id:'grove-bloom',label:'Moonlit Bloom',kind:'leaf',tier:3,help:'Untangle Orru’s forest vines'},
- {id:'grove-well',label:'Moonwell Water',kind:'dew',tier:3,help:'Restore Orru’s energy'},
- {id:'grove-aurora',label:'Aurora Light',kind:'glow',tier:3,help:'Light the way to safety'}
+ {id:'grove-well',label:'Moonwell Water',kind:'dew',tier:4,help:'Restore Orru’s energy'},
+ {id:'grove-aurora',label:'Aurora Light',kind:'glow',tier:4,help:'Light the way to safety'}
 ];
 const TRAIL=[
  {name:'Whispering Bridge',icon:'🌉',description:'Restore a passage through the woods',tasks:[
   {id:'bridge-herb',label:'Soothing Herb',kind:'leaf',tier:2,help:'Comfort the bridge guardian'},
   {id:'bridge-crystal',label:'Shining Crystal',kind:'glow',tier:2,help:'Reveal the hidden crossing'},
-  {id:'bridge-moonwell',label:'Moonwell Seal',kind:'dew',tier:3,help:'Restore the ancient river seal'}]},
+  {id:'bridge-moonwell',label:'Moonwell Seal',kind:'dew',tier:4,help:'Restore the ancient river seal'}]},
  {name:'Starlit Garden',icon:'🌼',description:'Bring colour back to the sleeping flowers',tasks:[
   {id:'garden-bloom',label:'Star Bloom',kind:'leaf',tier:3,help:'Wake the enchanted flowers'},
   {id:'garden-elixir',label:'Garden Elixir',kind:'dew',tier:2,help:'Water the sleeping roots'},
-  {id:'garden-aurora',label:'Aurora Lantern',kind:'glow',tier:3,help:'Brighten the garden'}]},
+  {id:'garden-aurora',label:'Aurora Lantern',kind:'glow',tier:4,help:'Brighten the garden'}]},
  {name:'Celestial Gate',icon:'🌌',description:'Open the final constellation',tasks:[
-  {id:'gate-moonwell',label:'Moonwell Key',kind:'dew',tier:3,help:'Charge the moonstone lock'},
-  {id:'gate-aurora',label:'Aurora Beacon',kind:'glow',tier:3,help:'Align the stars'},
+  {id:'gate-moonwell',label:'Moonwell Key',kind:'dew',tier:4,help:'Charge the moonstone lock'},
+  {id:'gate-aurora',label:'Aurora Beacon',kind:'glow',tier:4,help:'Align the stars'},
   {id:'gate-bloom',label:'Eternal Bloom',kind:'leaf',tier:3,help:'Awaken the guardian tree'}]}
 ];
 function isTrail(state){return Boolean(state.orruRescued);}
@@ -274,6 +292,57 @@ function activeTasks(state){
 }
 function gainXP(state,points){state.xp+=points;state.level=Math.floor(state.xp/75)+1;}
 function trailInfo(state){return TRAIL[state.trailIndex]||null;}
+function isOpen(state,index){return Array.isArray(state.openCells)&&state.openCells.includes(index);}
+function isGenerator(item){return Boolean(item&&item.special==='generator'&&KINDS.includes(item.kind));}
+function isWebbed(state,index){return Array.isArray(state.webbed)&&state.webbed.includes(index);}
+function neighbors(index){
+ const r=Math.floor(index/SIZE),c=index%SIZE,out=[];
+ if(r>0)out.push(index-SIZE);if(r<SIZE-1)out.push(index+SIZE);
+ if(c>0)out.push(index-1);if(c<SIZE-1)out.push(index+1);
+ return out;
+}
+function isFrontierCell(state,index){return !isOpen(state,index)&&neighbors(index).some(i=>isOpen(state,i));}
+function unlockCost(state,index){
+ if(!isFrontierCell(state,index))return null;
+ const extra=Math.max(0,state.openCells.length-INITIAL_OPEN.length);
+ return 4+Math.floor(extra/4)*2;
+}
+function openEmptyIndices(state){
+ const blockers=new Set((state.blockers||[]).map(b=>b.index));
+ return state.openCells.filter(i=>state.board[i]===null&&!blockers.has(i));
+}
+function ensureStarterGenerator(state){
+ if(state.board.some(isGenerator))return;
+ const index=isOpen(state,27)&&state.board[27]===null?27:state.openCells.find(i=>state.board[i]===null);
+ if(Number.isInteger(index))state.board[index]={special:'generator',kind:'leaf',level:1};
+}
+function revealUnlockedCell(state,index){
+ const reveal=CELL_REVEALS[index];
+ if(!reveal)return {type:'empty'};
+ if(reveal.type==='generator'){state.board[index]={special:'generator',kind:reveal.kind,level:1};return reveal;}
+ if(reveal.type==='web'){state.board[index]={...reveal.item};if(!state.webbed.includes(index))state.webbed.push(index);return reveal;}
+ if(reveal.type==='blocker'){if(!state.blockers.some(b=>b.index===index))state.blockers.push({index,type:reveal.blocker});return reveal;}
+ return {type:'empty'};
+}
+function unlockCell(state,index){
+ const cost=unlockCost(state,index);
+ if(cost===null)return {ok:false,why:'Unlock a tile beside your clearing first.'};
+ if(state.magic<cost)return {ok:false,why:'You need '+(cost-state.magic)+' more Magic.'};
+ state.magic-=cost;state.openCells.push(index);state.openCells.sort((a,b)=>a-b);
+ const reveal=revealUnlockedCell(state,index);gainXP(state,5);
+ return {ok:true,index,cost,reveal};
+}
+function activateGenerator(state,index,random=Math.random){
+ const source=state.board[index];
+ if(!isOpen(state,index)||!isGenerator(source))return {ok:false,why:'That is not an active generator.'};
+ if(state.energy<=0)return {ok:false,why:'No energy left. Merge items to recover energy.'};
+ const free=openEmptyIndices(state);
+ if(!free.length)return {ok:false,why:'Your open clearing is full. Merge items or unlock more space.'};
+ const target=free[Math.min(free.length-1,Math.floor(random()*free.length))];
+ state.board[target]={kind:source.kind,tier:0};state.energy--;state.spawns++;
+ return {ok:true,index:target,kind:source.kind,generator:index};
+}
+
 function puzzleInfo(state){return PUZZLES[state.trailIndex]||null;}
 function puzzleReady(state){return !isTrail(state)||state.trailIndex>=TRAIL.length||state.blockers.length===0;}
 function seedPuzzle(state){
@@ -285,7 +354,7 @@ function seedPuzzle(state){
  state.skillCharge=0;
  if(!info)return;
  const preferred=[5,10,15,20,25,30,4,11,18,27,34,31];
- const free=[...preferred.filter(i=>state.board[i]===null),...state.board.map((v,i)=>v===null&& !preferred.includes(i)?i:null).filter(i=>i!==null)];
+ const free=[...preferred.filter(i=>isOpen(state,i)&&state.board[i]===null),...state.openCells.filter(i=>state.board[i]===null&&!preferred.includes(i))];
  for(let n=0;n<Math.min(info.count,free.length);n++){
   const type=info.blocker==='mixed'?(n%2===0?'vine':'fog'):info.blocker;
   state.blockers.push({index:free[n],type});
@@ -336,12 +405,12 @@ function chooseCompanion(state,id){
 const ORRU_GROW_COST=4;
 const ORRU_QUEST_GOAL=2;
 function orruUnlocked(state){return Boolean(state.orruRescued);}
-function orruCanGrow(state){return currentCompanion(state)==='orru'&&state.orruCharge>=ORRU_GROW_COST&&state.board.some(v=>v===null);}
+function orruCanGrow(state){return currentCompanion(state)==='orru'&&state.orruCharge>=ORRU_GROW_COST&&openEmptyIndices(state).length>0;}
 function orruGrow(state){
  if(currentCompanion(state)!=='orru')return {ok:false,why:'Choose Orru as your active companion first.'};
  if(state.orruCharge<ORRU_GROW_COST)return {ok:false,why:'Merge '+(ORRU_GROW_COST-state.orruCharge)+' more times to charge Grow.'};
- const index=state.board.findIndex(v=>v===null);
- if(index<0)return {ok:false,why:'Board is full. Merge or recycle an item first.'};
+ const index=openEmptyIndices(state)[0];
+ if(!Number.isInteger(index))return {ok:false,why:'Your open clearing is full. Merge or unlock more space.'};
  state.board[index]={kind:'leaf',tier:0};
  state.orruCharge-=ORRU_GROW_COST;
  return {ok:true,index};
@@ -349,8 +418,8 @@ function orruGrow(state){
 function clearVines(state){
  if(currentCompanion(state)!=='orru')return {ok:false,why:'Orru must be your active companion.'};
  if(state.vinesCleared)return {ok:false,why:'The vines are already cleared.'};
- const index=state.board.findIndex(v=>v===null);
- if(index<0)return {ok:false,why:'Make space on the board before clearing the vines.'};
+ const index=openEmptyIndices(state)[0];
+ if(!Number.isInteger(index))return {ok:false,why:'Make space in the open clearing before clearing the vines.'};
  state.vinesCleared=true;gainXP(state,50);
  state.board[index]={kind:'dew',tier:1};
  return {ok:true,index,reward:'Water'};
@@ -371,15 +440,15 @@ function collected(state){return Object.entries(CREATURES).map(([id,info])=>({
 }));}
 function createState() {
  const board=Array(SIZE*SIZE).fill(null);
- const placement=[ [0,'leaf',0],[1,'leaf',0], [6,'dew',0],[7,'dew',0], [12,'glow',0],[13,'glow',0], [19,'leaf',1], [22,'dew',1], [26,'glow',1] ];
- for(const [i,kind,tier] of placement)board[i]={kind,tier};
- return { board,completed:[],groveCompleted:[], rescued:false, explored:false,orruRescued:false,activeCompanion:null,orruCharge:0,orruQuestCount:0,vinesCleared:false,trailIndex:0,trailCompleted:[],puzzleZone:-1,blockers:[],runesFound:0,combo:0,skillCharge:0,v2MovesLeft:V2_MOVES,v2Zone:-1,xp:0,level:1,bonusItems:0,moves:0,spawns:0,message:'Help Mivra recover by crafting three supplies.' };
+ board[27]={special:'generator',kind:'leaf',level:1};
+ board[26]={kind:'leaf',tier:0};board[34]={kind:'leaf',tier:0};
+ return {board,openCells:[...INITIAL_OPEN],webbed:[],magic:0,energy:INITIAL_ENERGY,maxEnergy:MAX_ENERGY,completed:[],groveCompleted:[],rescued:false,explored:false,orruRescued:false,activeCompanion:null,orruCharge:0,orruQuestCount:0,vinesCleared:false,trailIndex:0,trailCompleted:[],puzzleZone:-1,blockers:[],runesFound:0,combo:0,skillCharge:0,v2MovesLeft:V2_MOVES,v2Zone:-1,xp:0,level:1,bonusItems:0,moves:0,spawns:0,message:'Grow your clearing, merge magic, and rescue the creatures of Wispwood.'};
 }
 function generateFrom(state,kind,random=Math.random){
  ensurePuzzle(state);
  if(!GENERATORS[kind])return {ok:false,why:'Unknown generator.'};
  if(v2Limited(state)&&state.v2MovesLeft<=0)return {ok:false,why:'No generator moves left in this region. Merge existing items and use companion skills wisely.'};
- const free=[];for(let i=0;i<state.board.length;i++)if(!state.board[i]&&!isBlocked(state,i))free.push(i);
+ const free=[];for(let i=0;i<state.board.length;i++)if(isOpen(state,i)&&!state.board[i]&&!isBlocked(state,i))free.push(i);
  if(!free.length)return {ok:false,why:'Board is full. Merge or recycle an item first.'};
  const index=free[Math.min(free.length-1,Math.floor(random()*free.length))];
  state.board[index]={kind,tier:0};
@@ -430,16 +499,22 @@ function mergeGroup(state,indices){
 function merge(state,from,to) {
  if(!Number.isInteger(from)||!Number.isInteger(to)||from===to||from<0||to<0||from>=SIZE*SIZE||to>=SIZE*SIZE){state.combo=0;return {ok:false,why:'Choose two different tiles.'};}
  ensurePuzzle(state);
+ if(!isOpen(state,from)||!isOpen(state,to)){state.combo=0;return {ok:false,why:'Unlock those tiles first.'};}
  if(isBlocked(state,from)||isBlocked(state,to)){state.combo=0;return {ok:false,why:'A magical blocker is occupying that tile.'};}
  const a=state.board[from],b=state.board[to];
- if(!a||!b||isWild(a)||isWild(b)||a.kind!==b.kind||a.tier!==b.tier||a.tier===MAX_TIER){state.combo=0;return {ok:false,why:'Merge two matching, non-maxed items.'};}
- state.board[from]=null;
- state.board[to]={kind:b.kind,tier:b.tier+1};
+ if(!a||!b||isGenerator(a)||isGenerator(b)||isWild(a)||isWild(b)||a.kind!==b.kind||a.tier!==b.tier||a.tier===MAX_TIER){state.combo=0;return {ok:false,why:'Merge two matching, non-maxed items.'};}
+ const aWeb=isWebbed(state,from),bWeb=isWebbed(state,to);
+ if(aWeb&&bWeb)return {ok:false,why:'Free one webbed item at a time.'};
+ const target=aWeb?from:to,source=aWeb?to:from;
+ state.board[source]=null;
+ state.board[target]={kind:b.kind,tier:b.tier+1};
+ if(aWeb||bWeb)state.webbed=state.webbed.filter(i=>i!==target);
  state.moves++;state.combo=Math.min(9,(state.combo||0)+1);state.skillCharge=Math.min(SKILL_MAX,(state.skillCharge||0)+1);
- const comboBonus=state.combo>=3?2:0;
- gainXP(state,3+b.tier*2+comboBonus);
+ const magicGain=2+(a.tier||0)+(aWeb||bWeb?2:0);state.magic+=magicGain;
+ state.energy=Math.min(state.maxEnergy,state.energy+1);
+ const comboBonus=state.combo>=3?2:0;gainXP(state,3+b.tier*2+comboBonus);
  if(state.orruRescued)state.orruCharge=Math.min(ORRU_GROW_COST*2,state.orruCharge+1);
- return {ok:true,tile:state.board[to],combo:state.combo,skillReady:state.skillCharge===SKILL_MAX};
+ return {ok:true,tile:state.board[target],target,combo:state.combo,magicGain,webCleared:aWeb||bWeb,skillReady:state.skillCharge===SKILL_MAX};
 }
 function deliver(state,index) {
  const item=state.board[index];if(!item)return {ok:false,why:'Select an item first.'};
@@ -462,7 +537,7 @@ function deliver(state,index) {
 }
 function spawn(state,random=Math.random){
  ensurePuzzle(state);
- const free=[];for(let i=0;i<state.board.length;i++)if(!state.board[i]&&!isBlocked(state,i))free.push(i);
+ const free=[];for(let i=0;i<state.board.length;i++)if(isOpen(state,i)&&!state.board[i]&&!isBlocked(state,i))free.push(i);
  if(!free.length)return {ok:false,why:'Board is full. Merge or recycle an item first.'};
  const kind=KINDS[Math.min(KINDS.length-1,Math.floor(random()*KINDS.length))];
  const index=free[Math.min(free.length-1,Math.floor(random()*free.length))];
@@ -485,37 +560,52 @@ function explore(state){if(!state.rescued||state.explored)return false;state.exp
 function serialize(state){return JSON.stringify(state);}
 function restore(raw){
  try{
-  const s=JSON.parse(raw);
-  if(!s||!Array.isArray(s.board)||s.board.length!==SIZE*SIZE||!Array.isArray(s.completed)||typeof s.rescued!=='boolean')return null;
-  for(const it of s.board){
+  const old=JSON.parse(raw);
+  if(!old||!Array.isArray(old.board)||!Array.isArray(old.completed)||typeof old.rescued!=='boolean')return null;
+  const oldBoard=old.board;
+  const oldSize=oldBoard.length===36?6:oldBoard.length===64?8:null;
+  if(!oldSize)return null;
+  for(const it of oldBoard){
    if(it===null)continue;
-   if(it.special==='wild')continue;
+   if(it.special==='wild'||it.special==='generator')continue;
    if(!KINDS.includes(it.kind)||!Number.isInteger(it.tier)||it.tier<0||it.tier>MAX_TIER)return null;
+  }
+  const s={...old};
+  if(oldSize===6){
+   const next=Array(SIZE*SIZE).fill(null),occupied=oldBoard.filter(Boolean);
+   const order=[26,28,34,35,36,18,19,20,25,29,33,37,42,43,44,17,21,30,31,32,38,39,40,41,45,46,47,49,50,51,52,53,54,55,57,58,59,60,61,62,63];
+   for(let i=0;i<occupied.length&&i<order.length;i++)next[order[i]]=occupied[i];
+   s.board=next;
+   s.openCells=[...new Set([...INITIAL_OPEN,...order.slice(0,occupied.length)])].sort((a,b)=>a-b);
+   s.webbed=[];
+  }else{
+   s.board=oldBoard;
+   s.openCells=Array.isArray(s.openCells)?[...new Set(s.openCells.filter(i=>Number.isInteger(i)&&i>=0&&i<SIZE*SIZE))].sort((a,b)=>a-b):[...INITIAL_OPEN];
+   s.webbed=Array.isArray(s.webbed)?s.webbed.filter(i=>s.openCells.includes(i)&&s.board[i]&&!isGenerator(s.board[i])):[];
   }
   s.completed=TASKS.map(t=>t.id).filter(id=>s.completed.includes(id));
   s.explored=Boolean(s.rescued&&s.explored);
   s.groveCompleted=Array.isArray(s.groveCompleted)?GROVE_TASKS.map(t=>t.id).filter(id=>s.groveCompleted.includes(id)):[];
   s.orruRescued=Boolean(s.explored&&s.groveCompleted.length===GROVE_TASKS.length);
-  // Existing v0.6 saves default to their first rescued companion.
   s.activeCompanion=s.activeCompanion==='orru'&&s.orruRescued?'orru':s.rescued?'mivra':null;
   s.orruCharge=Number.isInteger(s.orruCharge)?Math.max(0,Math.min(ORRU_GROW_COST*2,s.orruCharge)):0;
   s.orruQuestCount=Number.isInteger(s.orruQuestCount)?Math.max(0,Math.min(ORRU_QUEST_GOAL,s.orruQuestCount)):0;
   s.vinesCleared=Boolean(s.vinesCleared);
   s.puzzleZone=Number.isInteger(s.puzzleZone)?s.puzzleZone:-1;
-  s.blockers=Array.isArray(s.blockers)?s.blockers.filter(b=>b&&Number.isInteger(b.index)&&b.index>=0&&b.index<SIZE*SIZE&&(b.type==='vine'||b.type==='fog')&&s.board[b.index]===null):[];
+  s.blockers=Array.isArray(s.blockers)?s.blockers.filter(b=>b&&Number.isInteger(b.index)&&s.openCells.includes(b.index)&&(b.type==='vine'||b.type==='fog')&&s.board[b.index]===null):[];
   s.runesFound=Number.isInteger(s.runesFound)&&s.runesFound>=0?s.runesFound:0;
   s.combo=Number.isInteger(s.combo)&&s.combo>=0?Math.min(9,s.combo):0;
   s.skillCharge=Number.isInteger(s.skillCharge)&&s.skillCharge>=0?Math.min(SKILL_MAX,s.skillCharge):0;
-  s.v2MovesLeft=Number.isInteger(s.v2MovesLeft)?Math.max(0,Math.min(V2_MOVES,s.v2MovesLeft)):V2_MOVES;
-  s.v2Zone=Number.isInteger(s.v2Zone)?s.v2Zone:-1;
-  // Migrate v0.3/v0.4 progress; existing rescued friends and board remain intact.
+  s.magic=Number.isInteger(s.magic)&&s.magic>=0?s.magic:0;
+  s.maxEnergy=MAX_ENERGY;
+  s.energy=Number.isInteger(s.energy)?Math.max(0,Math.min(MAX_ENERGY,s.energy)):INITIAL_ENERGY;
+  s.v2MovesLeft=V2_MOVES;s.v2Zone=-1;
   s.trailIndex=Number.isInteger(s.trailIndex)?Math.max(0,Math.min(TRAIL.length,s.trailIndex)):0;
   s.trailCompleted=Array.isArray(s.trailCompleted)&&s.trailIndex<TRAIL.length?TRAIL[s.trailIndex].tasks.map(t=>t.id).filter(id=>s.trailCompleted.includes(id)):[];
-  s.xp=Number.isInteger(s.xp)&&s.xp>=0?s.xp:0;
-  s.level=Math.floor(s.xp/75)+1;
+  s.xp=Number.isInteger(s.xp)&&s.xp>=0?s.xp:0;s.level=Math.floor(s.xp/75)+1;
   s.bonusItems=Number.isInteger(s.bonusItems)&&s.bonusItems>=0?s.bonusItems:0;
-  s.moves=Number.isInteger(s.moves)&&s.moves>=0?s.moves:0;
-  s.spawns=Number.isInteger(s.spawns)&&s.spawns>=0?s.spawns:0;
+  s.moves=Number.isInteger(s.moves)&&s.moves>=0?s.moves:0;s.spawns=Number.isInteger(s.spawns)&&s.spawns>=0?s.spawns:0;
+  ensureStarterGenerator(s);
   return s;
  }catch{return null;}
 }
@@ -583,18 +673,13 @@ function present(){
   el('comboLabel').textContent=`Combo ×${state.combo||0}`;
   el('skillLabel').textContent=`Skill ${state.skillCharge||0}/${SKILL_MAX}`;
  }
- const v2=v2Active(state);
- const v2ActionIndex=v2&&groupSelected.length===1?groupSelected[0]:selected;
- el('v2GeneratorPanel').hidden=!v2;
- el('spawnBtn').hidden=v2;
- el('mergeGroupBtn').hidden=!v2;
- if(v2){
-  el('movesLeft').textContent=v2Limited(state)?`${state.v2MovesLeft} move${state.v2MovesLeft===1?'':'s'}`:'Unlimited';
-  document.querySelectorAll('[data-generator]').forEach(btn=>btn.disabled=(v2Limited(state)&&state.v2MovesLeft<=0)||!state.board.some((v,i)=>v===null&&!isBlocked(state,i)));
-  const count=groupSelected.length;
-  el('mergeGroupBtn').disabled=!(count===3||count===5);
-  el('mergeGroupBtn').innerHTML=`Merge selected <small>${count}/${count<3?3:count<5?5:5}</small>`;
- }
+ const v2=false;
+ const v2ActionIndex=selected;
+ el('spawnBtn').hidden=true;
+ el('mergeGroupBtn').hidden=true;
+ el('energyLabel').textContent=`${state.energy}/${state.maxEnergy}`;
+ el('magicLabel').textContent=state.magic;
+ el('openLabel').textContent=`${state.openCells.length}/${SIZE*SIZE}`;
  el('skillBtn').hidden=!puzzleActive;
  el('skillBtn').disabled=!puzzleActive||state.skillCharge<SKILL_MAX||state.blockers.length===0||!currentCompanion(state);
  el('skillBtn').innerHTML=`✨ Companion Skill <small>${state.skillCharge||0}/${SKILL_MAX}</small>`;
@@ -605,27 +690,44 @@ function present(){
  const firstGroup=groupSelected.length?state.board[groupSelected[0]]:null;
  const picked=v2?firstGroup:(selected!==null?state.board[selected]:null);
  state.board.forEach((item,i)=>{
-  const blocker=state.blockers.find(b=>b.index===i);
-  const cell=document.createElement('button');cell.type='button';
-  const wild=isWild(item);
-  cell.className='tile '+(blocker?`blocker ${blocker.type==='fog'?'fog-blocker':'vine-blocker'}`:wild?'filled wild':item?`filled ${item.kind} tier${item.tier}`:'empty')+(!v2&&selected===i?' selected':'')+(v2&&groupSelected.includes(i)?' group-selected':'');
-  if(fx&&fx.index===i&&(fx.type==='merge'||fx.type==='spawn'))cell.classList.add('fx-'+fx.type);
-  if(blocker){cell.disabled=true;cell.setAttribute('aria-label',`${blocker.type==='vine'?'Vine':'Fog'} blocker at ${Math.floor(i/SIZE)+1},${i%SIZE+1}`);}
-  if(!blocker&&item&&picked){
-   const compatible=isWild(item)||isWild(picked)||(normalItem(item)&&normalItem(picked)&&item.kind===picked.kind&&item.tier===picked.tier&&item.tier<MAX_TIER);
-   if(compatible&&!groupSelected.includes(i)&&i!==selected)cell.classList.add('merge-match');
+  const open=isOpen(state,i),frontier=!open&&isFrontierCell(state,i),cost=frontier?unlockCost(state,i):null;
+  const blocker=open?state.blockers.find(b=>b.index===i):null;
+  const cell=document.createElement('button');cell.type='button';cell.dataset.index=i;
+  if(!open){
+   cell.className='tile locked'+(frontier?' frontier':'');
+   cell.disabled=!frontier;
+   cell.setAttribute('aria-label',frontier?`Locked tile — unlock for ${cost} Magic`:'Locked tile');
+   cell.innerHTML=`<span class="lock-icon" aria-hidden="true">🔒</span>${frontier?`<small>${cost} ✨</small>`:''}`;
+   if(frontier)cell.addEventListener('click',()=>{
+    const r=unlockCell(state,i);
+    if(r.ok){selected=null;groupSelected=[];message(r.reveal.type==='generator'?'✨ New generator discovered!':r.reveal.type==='web'?'🕸 A trapped item was revealed!':r.reveal.type==='blocker'?'A magical obstacle blocks the new tile.':'✨ New ground opened!');}
+    else message(r.why);
+    present();
+   });
+   board.append(cell);return;
   }
+  const generator=isGenerator(item),webbed=isWebbed(state,i),wild=isWild(item);
+  cell.className='tile '+(blocker?`blocker ${blocker.type==='fog'?'fog-blocker':'vine-blocker'}`:generator?'generator':wild?'filled wild':item?`filled ${item.kind} tier${item.tier}`:'empty')+(webbed?' webbed':'')+(selected===i?' selected':'');
+  if(fx&&fx.index===i&&(fx.type==='merge'||fx.type==='spawn'))cell.classList.add('fx-'+fx.type);
+  if(blocker){cell.disabled=true;cell.setAttribute('aria-label',`${blocker.type==='vine'?'Vine':'Fog'} blocker`);}
+  const picked=selected!==null?state.board[selected]:null;
+  if(!blocker&&!generator&&item&&picked&&!isGenerator(picked)&&i!==selected&&normalItem(item)&&normalItem(picked)&&item.kind===picked.kind&&item.tier===picked.tier&&item.tier<MAX_TIER)cell.classList.add('merge-match');
   if(normalItem(item)&&item.tier===MAX_TIER)cell.classList.add('legendary');
-  if(item)cell.setAttribute('aria-pressed',v2?groupSelected.includes(i)?'true':'false':selected===i?'true':'false');
-  cell.dataset.index=i;
-  if(!blocker)cell.setAttribute('aria-label',item?`${itemLabel(item)} at ${Math.floor(i/SIZE)+1},${i%SIZE+1}`:`Empty tile at ${Math.floor(i/SIZE)+1},${i%SIZE+1}`);
-  if(blocker)cell.innerHTML=`<span class="blocker-icon" aria-hidden="true">${BLOCKER_ICON[blocker.type]}</span><span class="item-name">${blocker.type==='vine'?'Vine':'Fog'}</span>`;
-  else if(wild)cell.innerHTML='<span class="item-icon" aria-hidden="true">🌀</span><span class="item-name">Wild Wisp</span><span class="tier-pips" aria-hidden="true">ANY</span>';
-  else if(item){let def=ITEMS[item.kind][item.tier];cell.innerHTML=`<span class="item-icon" aria-hidden="true">${def.emoji}</span><span class="item-name">${def.name}</span><span class="tier-pips" aria-hidden="true">${"✦".repeat(item.tier+1)}</span>`;}
+  if(generator){
+   const g=GENERATORS[item.kind];cell.setAttribute('aria-label',`${g.name} generator — tap to create ${ITEMS[item.kind][0].name}`);
+   cell.innerHTML=`<span class="generator-icon" aria-hidden="true">${g.icon}</span><span class="item-name">${g.name}</span><span class="tier-pips">TAP · 1⚡</span>`;
+  }else if(blocker){
+   cell.innerHTML=`<span class="blocker-icon" aria-hidden="true">${BLOCKER_ICON[blocker.type]}</span><span class="item-name">${blocker.type==='vine'?'Vine':'Fog'}</span>`;
+  }else if(wild){
+   cell.innerHTML='<span class="item-icon" aria-hidden="true">🌀</span><span class="item-name">Wild Wisp</span>';
+  }else if(item){
+   const def=ITEMS[item.kind][item.tier];cell.setAttribute('aria-label',`${def.name}${webbed?' trapped in a web':''}`);
+   cell.innerHTML=`<span class="item-icon" aria-hidden="true">${def.emoji}</span><span class="item-name">${def.name}</span><span class="tier-pips" aria-hidden="true">${"✦".repeat(item.tier+1)}</span>`;
+  }else cell.setAttribute('aria-label','Open empty tile');
   if(!blocker)cell.addEventListener('click',()=>choose(i));
-  cell.draggable=!!item&&!blocker&&!v2;
-  cell.addEventListener('dragstart',e=>{if(!item){e.preventDefault();return;}e.dataTransfer.setData('text/plain',String(i));e.dataTransfer.effectAllowed='move';});
-  cell.addEventListener('dragover',e=>e.preventDefault());
+  cell.draggable=!!item&&!generator&&!blocker;
+  cell.addEventListener('dragstart',e=>{if(!item||generator){e.preventDefault();return;}e.dataTransfer.setData('text/plain',String(i));});
+  cell.addEventListener('dragover',e=>{if(!blocker)e.preventDefault();});
   cell.addEventListener('drop',e=>{e.preventDefault();const from=Number(e.dataTransfer.getData('text/plain'));if(Number.isInteger(from))doMerge(from,i);});
   board.append(cell);
  });
@@ -690,31 +792,36 @@ function present(){
  if(fx&&fx.type==='rescue'){clearTimeout(rescueTimer);el('character').classList.add('fx-rescue');el('scene').classList.add('fx-rescue');rescueTimer=setTimeout(()=>{el('character').classList.remove('fx-rescue');el('scene').classList.remove('fx-rescue');},1400);}
  el('exploreBtn').disabled=!state.rescued||state.explored;
  el('exploreBtn').textContent=trail?(stage?'✨ Restoration Trail active':'✓ Forest restored'):grove?'🌿 Moonlit Grove':state.rescued?'✨ Enter Moonlit Grove':'🔒 Rescue Mivra first';
- const singleIndex=v2ActionIndex;
+ const singleIndex=selected;
  const singleItem=singleIndex!==null&&singleIndex!==undefined?state.board[singleIndex]:null;
- el('selected').textContent=v2?(groupSelected.length?`${groupSelected.length} selected — choose 3 or 5 matching items`:'Select 3 matching items; 5 gives a Wild Wisp'):singleItem?`${itemLabel(singleItem)} selected`:'Select matching tiles to merge';
+ el('selected').textContent=singleItem?`${itemLabel(singleItem)} selected`:'Tap a generator, merge matching pairs, and expand the clearing';
  el('deliverBtn').disabled=!puzzleReady(state)||!singleItem||isWild(singleItem)||!tasks.some(t=>!done.includes(t.id)&&t.kind===singleItem.kind&&t.tier===singleItem.tier);
  el('recycleBtn').disabled=!singleItem;
  persist();
 }
 function choose(i){
+ if(!isOpen(state,i))return;
  const item=state.board[i];
- if(v2Active(state)){
-  if(!item){groupSelected=[];selected=null;present();return;}
-  const pos=groupSelected.indexOf(i);
-  if(pos>=0){groupSelected.splice(pos,1);present();return;}
-  if(groupSelected.length>=5){message('You can select at most 5 items.');return;}
-  const first=groupSelected.length?state.board[groupSelected[0]]:null;
-  const normalBase=groupSelected.map(x=>state.board[x]).find(normalItem);
-  if(normalBase&&normalItem(item)&&(normalBase.kind!==item.kind||normalBase.tier!==item.tier)){message('Choose matching type and tier, or use one Wild Wisp.');return;}
-  if(isWild(item)&&groupSelected.some(x=>isWild(state.board[x]))){message('Only one Wild Wisp can join a merge.');return;}
-  groupSelected.push(i);selected=null;present();return;
+ if(isGenerator(item)){
+  const r=activateGenerator(state,i);selected=null;groupSelected=[];
+  if(r.ok){effect('spawn',r.index);message(`${GENERATORS[r.kind].name} created ${ITEMS[r.kind][0].name}. ⚡ ${state.energy}/${state.maxEnergy}`);}
+  else message(r.why);
+  present();return;
  }
- if(!item){selected=null;present();return;}
- if(selected!==null&&selected!==i){const r=merge(state,selected,i);if(r.ok){selected=null;effect('merge',i);message(`Beautiful merge! You made ${ITEMS[r.tile.kind][r.tile.tier].name}.`);present();return;}}
+ if(!item||isBlocked(state,i)){selected=null;present();return;}
+ if(selected!==null&&selected!==i){
+  const r=merge(state,selected,i);
+  if(r.ok){selected=null;effect('merge',r.target);message(`✨ ${ITEMS[r.tile.kind][r.tile.tier].name} crafted! +${r.magicGain} Magic${r.webCleared?' · Web cleared!':''}`);present();return;}
+  message(r.why);
+ }
  selected=selected===i?null:i;present();
 }
-function doMerge(from,to){const r=merge(state,from,to);selected=null;if(r.ok){effect('merge',to);message(`✨ ${ITEMS[r.tile.kind][r.tile.tier].name} crafted!`);}else message('Choose two matching items.');present();}
+function doMerge(from,to){
+ const r=merge(state,from,to);selected=null;
+ if(r.ok){effect('merge',r.target);message(`✨ ${ITEMS[r.tile.kind][r.tile.tier].name} crafted! +${r.magicGain} Magic`);}
+ else message(r.why);
+ present();
+}
 document.querySelectorAll('[data-generator]').forEach(btn=>btn.addEventListener('click',()=>{
  const kind=btn.dataset.generator;
  const r=generateFrom(state,kind);
