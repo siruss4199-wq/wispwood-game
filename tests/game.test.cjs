@@ -775,7 +775,9 @@ test('enchanted vines use a dense top hanging-ivy canopy while keeping items rea
  assert.match(html,/\.tile\.vinebound:before,.tile\.vinebound:after/);
  assert.match(html,/radial-gradient\(ellipse at 46% 7%/);
  assert.match(html,/linear-gradient\(94deg/);
- assert.match(html,/\.tile\.vinebound \.item-icon,.tile\.vinebound \.item-name\{opacity:1/);
+ assert.match(html,/\.tile\.vinebound \.item-icon\{opacity:\.62/);
+ assert.match(html,/\.tile\.vinebound \.item-name\{opacity:\.72/);
+ assert.match(html,/saturate\(\.48\)/);
  assert.match(html,/content:'❧\\A/);
  assert.match(html,/merge a matching item to free it/);
 });
