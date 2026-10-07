@@ -792,6 +792,18 @@ test('mobile 8x8 board uses calm crate visuals with subtle variations', () => {
  assert.doesNotThrow(()=>new vm.Script(script));
 });
 
+test('current packed-board schema version is bumped so existing saves reset into the new start', () => {
+ assert.match(html,/const BOARD_SCHEMA=8;/);
+ const old=game.createState();
+ old.boardSchema=7;
+ old.board[18]=null;
+ const loaded=game.restore(JSON.stringify(old));
+ assert.equal(loaded.boardSchema,8);
+ assert.equal(loaded.openCells.filter(i=>loaded.board[i]===null).length,0);
+ assert.equal(loaded.board[26].kind,'leaf');
+ assert.equal(loaded.board[34].kind,'leaf');
+});
+
 test('true full-board start has zero empty playable tiles until the first merge', () => {
  const st=game.createState();
  assert.equal(st.openCells.filter(i=>st.board[i]===null).length,0);
