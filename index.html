@@ -323,8 +323,8 @@ opacity:.92}
 const SIZE = 8;
 const KINDS = ['leaf', 'dew', 'glow'];
 const MAX_TIER = 5;
-const BOARD_SCHEMA=10;
-const INITIAL_OPEN=[18,19,20,21,26,27,28,29,34,35,36,37];
+const BOARD_SCHEMA=11;
+const INITIAL_OPEN=[26,34];
 const INITIAL_ENERGY=24;
 const MAX_ENERGY=30;
 const CELL_REVEALS={
@@ -719,7 +719,6 @@ function merge(state,from,to) {
   state.revealedCells=state.revealedCells.filter(i=>i!==from&&i!==to);
  }
  state.moves++;state.combo=Math.min(9,(state.combo||0)+1);state.skillCharge=Math.min(SKILL_MAX,(state.skillCharge||0)+1);
- ensureStarterGenerator(state);
  const magicGain=2+(a.tier||0)+(aWeb||bWeb?2:0);state.magic+=magicGain;
  state.energy=Math.min(state.maxEnergy,state.energy+1);
  const comboBonus=state.combo>=3?2:0;gainXP(state,3+b.tier*2+comboBonus);
@@ -837,7 +836,6 @@ function restore(raw){
   s.xp=Number.isInteger(s.xp)&&s.xp>=0?s.xp:0;s.level=Math.floor(s.xp/75)+1;
   s.bonusItems=Number.isInteger(s.bonusItems)&&s.bonusItems>=0?s.bonusItems:0;
   s.moves=Number.isInteger(s.moves)&&s.moves>=0?s.moves:0;s.spawns=Number.isInteger(s.spawns)&&s.spawns>=0?s.spawns:0;
-  ensureStarterGenerator(s);
   return s;
  }catch{return null;}
 }
@@ -992,14 +990,14 @@ function present(){
   if(normalItem(item)&&item.tier===MAX_TIER)cell.classList.add('legendary');
   if(generator){
    const g=GENERATORS[item.kind],level=Number.isInteger(item.level)?item.level:1;
-   cell.setAttribute('aria-label',`${g.name} level ${level} producer — tap once to select, tap again to create ${ITEMS[item.kind][Math.min(MAX_TIER-1,level-1)].name}`);
-   cell.innerHTML=`<span class="generator-icon" aria-hidden="true">${g.icon}</span><span class="item-name">${g.name}</span><span class="tier-pips">LV.${level} · TAP×2</span>`;
+   cell.setAttribute('aria-label',`${g.name} level ${level} producer — tap to create ${ITEMS[item.kind][Math.min(MAX_TIER-1,level-1)].name}; drag to move`);
+   cell.innerHTML=`<span class="generator-icon" aria-hidden="true">${g.icon}</span><span class="item-name">${g.name}</span><span class="tier-pips">LV.${level} · TAP</span>`;
   }else if(blocker){
    cell.innerHTML=`<span class="blocker-icon" aria-hidden="true">${BLOCKER_ICON[blocker.type]}</span><span class="item-name">${blocker.type==='vine'?'Vine':'Fog'}</span>`;
   }else if(wild){
    cell.innerHTML='<span class="item-icon" aria-hidden="true">🌀</span><span class="item-name">Wild Wisp</span>';
   }else if(item){
-   const def=ITEMS[item.kind][item.tier];cell.setAttribute('aria-label',`${def.name}${webbed?' wrapped in enchanted vines — merge a matching item to free it':''}`);
+   const def=ITEMS[item.kind][item.tier];cell.setAttribute('aria-label',`${def.name}${webbed?' wrapped in enchanted vines — drag a matching item onto it to free it':' — drag onto a matching item to merge'}`);
    cell.innerHTML=`<span class="item-icon" aria-hidden="true">${def.emoji}</span><span class="item-name">${def.name}</span><span class="tier-pips" aria-hidden="true">${"✦".repeat(item.tier+1)}</span>${webbed?'<span class="vine-seal" aria-hidden="true"></span>':''}`;
   }else cell.setAttribute('aria-label','Open empty tile');
   if(!blocker)cell.addEventListener('click',()=>{if(Date.now()<suppressBoardClickUntil)return;choose(i);});
@@ -1093,44 +1091,14 @@ function choose(i){
  if(!isOpen(state,i))return;
  const item=state.board[i];
  if(isBlocked(state,i)){selected=null;present();return;}
- if(!item&&selected!==null){
-  const moving=state.board[selected];
-  const r=moveItem(state,selected,i);
-  if(r.ok){
-   selected=null;effect('spawn',r.to);
-   message(isGenerator(moving)?`Moved ${GENERATORS[moving.kind].name}.`:`Moved ${ITEMS[r.item.kind][r.item.tier].name}.`);
-   present();return;
-  }
-  message(r.why);present();return;
- }
  if(!item){selected=null;present();return;}
  if(isGenerator(item)){
-  if(selected===i){
-   const r=activateGenerator(state,i);selected=null;groupSelected=[];
-   if(r.ok){effect('spawn',r.index);message(`${GENERATORS[r.kind].name} Lv.${r.level} created ${ITEMS[r.kind][r.tier].name}. ⚡ ${state.energy}/${state.maxEnergy}`);}
-   else message(r.why);
-   present();return;
-  }
-  if(selected!==null&&selected!==i&&isGenerator(state.board[selected])){
-   const r=mergeGenerator(state,selected,i);
-   if(r.ok){selected=null;effect('merge',r.target);message(`✨ ${GENERATORS[r.generator.kind].name} upgraded to Lv.${r.level}!`);present();return;}
-   message(r.why);
-  }
-  selected=i;present();return;
+  const r=activateGenerator(state,i);selected=null;groupSelected=[];
+  if(r.ok){effect('spawn',r.index);message(`${GENERATORS[r.kind].name} Lv.${r.level} created ${ITEMS[r.kind][r.tier].name}. ⚡ ${state.energy}/${state.maxEnergy}`);}
+  else message(r.why);
+  present();return;
  }
- if(selected!==null&&selected!==i){
-  if(isGenerator(state.board[selected])){selected=i;present();return;}
-  const r=merge(state,selected,i);
-  if(r.ok){
-   selected=null;
-   const revealIndices=r.crateResult?.opened?.map(x=>x.index)||[];
-   effect('merge',r.target,null,{revealIndices});
-   message(`✨ ${ITEMS[r.tile.kind][r.tile.tier].name} crafted!${revealIndices.length?' 📦 Hidden item revealed!':''}${r.webCleared?' · Vines cleared!':''}`);
-   present();return;
-  }
-  message(r.why);
- }
- selected=selected===i?null:i;present();
+ selected=i;groupSelected=[];present();
 }
 function clearPointerDrag(){
  document.querySelectorAll('.tile.drag-source,.tile.drag-target').forEach(x=>x.classList.remove('drag-source','drag-target'));
