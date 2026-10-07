@@ -209,6 +209,7 @@ test('merges grant XP and rescued friends give periodic free items', () => {
  const first=game.merge(s,0,1);
  assert.equal(first.ok,true);assert.ok(s.xp>0);
  s.rescued=true;s.orruRescued=true;
+ assert.equal(game.chooseCompanion(s,'orru'),true);
  s.spawns=7;
  const result=game.spawn(s,()=>0);
  assert.equal(result.ok,true);
@@ -287,7 +288,7 @@ test('only rescued creatures can be selected and saved', () => {
  state.rescued=true;
  assert.equal(game.chooseCompanion(state,'mivra'),true);
  assert.equal(game.currentCompanion(state),'mivra');
- state.orruRescued=true;
+ state.explored=true;state.groveCompleted=['grove-bloom','grove-well','grove-aurora'];state.orruRescued=true;
  assert.equal(game.chooseCompanion(state,'orru'),true);
  assert.equal(game.currentCompanion(state),'orru');
  assert.equal(game.restore(game.serialize(state)).activeCompanion,'orru');
