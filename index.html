@@ -32,6 +32,17 @@
 .friend-card small{font-size:10px;color:#897e94;display:block}
 .collection-hint{font-size:11px;line-height:1.4;color:#877b97;margin:10px 0 0}
 @media(prefers-reduced-motion:reduce){.scene.grove-mode .creature{animation:none!important}}
+
+.trail-panel,.level-panel{margin-top:15px;padding:13px;border:1px solid #e1d8ed;background:linear-gradient(150deg,#faf8ff,#f7f8ed);border-radius:13px}
+.trail-top,.level-head{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#65517f}
+.trail-stops{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin:10px 0}
+.trail-stop{padding:7px 2px;text-align:center;border:1px solid #e9e5ed;border-radius:9px;background:white;font-size:10px;line-height:1.25}
+.trail-stop strong{display:block;font-size:20px;font-weight:400}
+.trail-stop.active{border:2px solid #9e83bf;background:#f7eaff}
+.trail-stop.complete{border-color:#9aca9d;background:#edfbef}
+.trail-description,.level-panel p{margin:8px 0 0;font-size:11px;color:#80728c;line-height:1.45}
+.level-track{height:8px;overflow:hidden;background:#e7e2ec;border-radius:6px;margin-top:8px}
+#levelBar{height:100%;width:0;background:linear-gradient(90deg,#9d7bea,#68ba9b);transition:width .3s}
 </style></head>
 <body>
  <div class="shell">
@@ -74,7 +85,13 @@
     <div class="actions"><button id="spawnBtn" class="primary">✦ Gather magic <small>FREE</small></button><button id="deliverBtn" disabled class="secondary">♡ Deliver</button><button id="recycleBtn" disabled class="tertiary" aria-label="Recycle selected item">♻</button></div>
     <p class="footnote">Prototype mode: unlimited gathering, no timers, no ads, no account.</p>
    </section>
-   <aside class="sidebar card" aria-label="Rescue objectives"><div class="side-heading"><div><span class="eyebrow">TODAY'S ADVENTURE</span><h2 id="tasksTitle">Help Mivra heal</h2></div><span id="tasksCount" class="progress-count">0/3</span></div><div class="progress"><div id="progressFill"></div></div><p class="side-sub">Craft these magical items, select one on the board, then tap Deliver.</p><div id="tasks"></div><div class="collection-panel"><div class="collection-heading"><span>✦ YOUR CREATURES</span><strong id="collectionCount">0/2</strong></div><div id="collection" class="collection-grid" aria-label="Your rescued friends"></div><p class="collection-hint" id="worldHint">Save Mivra to find the path ahead.</p></div><div class="tip"><span>💡</span><div><strong>Little tip</strong><p id="tipText">Merge two seeds to make a sprout, then two sprouts to make a healing herb!</p></div></div><div class="fair"><span>✦</span> Crafted as an original, offline-friendly prototype.</div></aside>
+   <aside class="sidebar card" aria-label="Rescue objectives"><div class="side-heading"><div><span class="eyebrow">TODAY'S ADVENTURE</span><h2 id="tasksTitle">Help Mivra heal</h2></div><span id="tasksCount" class="progress-count">0/3</span></div><div class="progress"><div id="progressFill"></div></div><p class="side-sub">Craft these magical items, select one on the board, then tap Deliver.</p><div id="tasks"></div><div id="trailPanel" class="trail-panel" hidden>
+ <div class="trail-top"><strong>🗺️ RESTORATION TRAIL</strong><span id="trailCount">0 / 3</span></div>
+ <div class="trail-stops" id="trailStops"></div>
+ <p id="trailDescription" class="trail-description">Complete quests to restore Wispwood.</p>
+ </div>
+ <div class="level-panel"><div class="level-head"><strong id="levelLabel">⭐ Level 1</strong><span id="xpLabel">0 / 75 XP</span></div><div class="level-track"><div id="levelBar"></div></div><p>Earn XP by merging and completing quests. Rescued friends help gather free items.</p></div>
+ <div class="collection-panel"><div class="collection-heading"><span>✦ YOUR CREATURES</span><strong id="collectionCount">0/2</strong></div><div id="collection" class="collection-grid" aria-label="Your rescued friends"></div><p class="collection-hint" id="worldHint">Save Mivra to find the path ahead.</p></div><div class="tip"><span>💡</span><div><strong>Little tip</strong><p id="tipText">Merge two seeds to make a sprout, then two sprouts to make a healing herb!</p></div></div><div class="fair"><span>✦</span> Crafted as an original, offline-friendly prototype.</div></aside>
   </main>
   <footer>Wispwood prototype · Your progress is saved on this device · No external AI credits</footer>
  </div>
@@ -234,18 +251,19 @@ function present(){
  const fx=pendingEffect;pendingEffect=null;
  const grove=state.explored;
  const tasks=activeTasks(state);
- const done=grove?state.groveCompleted:state.completed;
+ const done=isTrail(state)?state.trailCompleted:grove?state.groveCompleted:state.completed;
+ const trail=isTrail(state),stage=trailInfo(state);
  const rescuedNow=grove?state.orruRescued:state.rescued;
  const creature=el('character');
  const who=grove?'orru':'mivra';
  if(creature.dataset.creature!==who){creature.innerHTML=grove?ORRU_ART:MIVRA_ART;creature.dataset.creature=who;}
  creature.setAttribute('aria-label',grove?'Orru, an original forest creature':'Mivra, an original friendly lavender creature');
  el('scene').classList.toggle('grove-mode',grove);
- el('sceneLabel').textContent=grove?'CHAPTER TWO · MOONLIT GROVE':'CHAPTER ONE · THE LOST WISP';
- el('storyChapter').textContent=grove?'Your forest friend':'Your first friend';
- el('storyTitle').textContent=grove?'Meet Orru':'Meet Mivra';
- el('tasksTitle').textContent=grove?'Rescue Orru':'Help Mivra heal';
- el('tipText').textContent=grove?'Merge to tier 4 to create a Bloom, Moonwell, and Aurora.':'Merge two seeds to make a sprout, then two sprouts to make a healing herb!';
+ el('sceneLabel').textContent=trail?'RESTORATION TRAIL · '+(stage?stage.name.toUpperCase():'COMPLETE'):grove?'CHAPTER TWO · MOONLIT GROVE':'CHAPTER ONE · THE LOST WISP';
+ el('storyChapter').textContent=trail?'Restore the magic':grove?'Your forest friend':'Your first friend';
+ el('storyTitle').textContent=trail?(stage?stage.name:'Wispwood restored!'):grove?'Meet Orru':'Meet Mivra';
+ el('tasksTitle').textContent=trail?(stage?'Restore '+stage.name:'Adventure complete'):grove?'Rescue Orru':'Help Mivra heal';
+ el('tipText').textContent=trail?'Keep merging to create quest items. Every merge gives XP and rescued friends periodically add free items.':grove?'Merge to tier 4 to create a Bloom, Moonwell, and Aurora.':'Merge two seeds to make a sprout, then two sprouts to make a healing herb!';
  const board=el('board');board.innerHTML='';
  state.board.forEach((item,i)=>{
   const cell=document.createElement('button');cell.type='button';cell.className='tile '+(item?`filled ${item.kind} tier${item.tier}`:'empty')+(selected===i?' selected':'');
@@ -268,7 +286,23 @@ function present(){
    taskList.append(d);
  });
  el('tasksCount').textContent=`${done.length}/${tasks.length}`;
- el('progressFill').style.width=`${done.length/tasks.length*100}%`;
+ el('progressFill').style.width=`${tasks.length?done.length/tasks.length*100:100}%`;
+ el('trailPanel').hidden=!trail;
+ const trailStops=el('trailStops');trailStops.innerHTML='';
+ if(trail){
+  TRAIL.forEach((zone,i)=>{
+   const stop=document.createElement('div');
+   stop.className='trail-stop '+(i<state.trailIndex?'complete':i===state.trailIndex?'active':'');
+   const icon=document.createElement('strong');icon.textContent=i<state.trailIndex?'✅':zone.icon;
+   const name=document.createElement('span');name.textContent=zone.name;
+   stop.append(icon,name);trailStops.append(stop);
+  });
+  el('trailCount').textContent=`${state.trailIndex} / ${TRAIL.length} complete`;
+  el('trailDescription').textContent=stage?stage.description:'All three areas restored. Great work!';
+ }
+ el('levelLabel').textContent=`⭐ Level ${state.level}`;
+ el('xpLabel').textContent=`${state.xp%75} / 75 XP`;
+ el('levelBar').style.width=`${state.xp%75/75*100}%`;
  const friends=collected(state),list=el('collection');list.innerHTML='';
  el('collectionCount').textContent=`${friends.filter(f=>f.unlocked).length}/${friends.length}`;
  for(const friend of friends){
@@ -278,15 +312,15 @@ function present(){
   const desc=document.createElement('small');desc.textContent=friend.unlocked?friend.type:'Not rescued';
   card.append(icon,name,desc);list.append(card);
  }
- el('worldHint').textContent=state.orruRescued?'Both creatures rescued! More adventures will follow.':grove?'Deliver Bloom, Moonwell and Aurora to save Orru.':state.rescued?'Mivra is safe. Open Moonlit Grove to find Orru.':'Rescue Mivra to reveal the next area.';
+ el('worldHint').textContent=trail?(stage?'Mivra and Orru are helping restore the forest.':'The Restoration Trail is complete!'):grove?'Deliver Bloom, Moonwell and Aurora to save Orru.':state.rescued?'Mivra is safe. Open Moonlit Grove to find Orru.':'Rescue Mivra to reveal the next area.';
  el('moves').textContent=state.moves;
- el('status').textContent=grove?(state.orruRescued?'Orru is safe!':'Orru needs your help'):state.rescued?'Mivra is safe!':'Mivra needs your help';
- el('dialogue').textContent=grove?(state.orruRescued?'Thank you! The forest can bloom again!':'Mivra found me in the tangled vines. Please bring Bloom, Moonwell, and Aurora!'):state.rescued?'Thank you! My wings feel warm again. Let’s discover what lies beyond the mist.':'It’s a little cold here… could you help me gather some healing magic?';
+ el('status').textContent=trail?(stage?'Restore the magic — quest '+(state.trailIndex+1)+' of 3':'All three areas restored!'):grove?'Orru needs your help':state.rescued?'Mivra is safe!':'Mivra needs your help';
+ el('dialogue').textContent=trail?(stage?stage.description+' Mivra and Orru are cheering you on!':'The bridge, garden and gate are glowing again. Thank you!'):grove?'Mivra found me in the tangled vines. Please bring Bloom, Moonwell, and Aurora!':state.rescued?'Thank you! My wings feel warm again. Let’s discover what lies beyond the mist.':'It’s a little cold here… could you help me gather some healing magic?';
  el('character').classList.toggle('happy',rescuedNow);
  el('scene').classList.toggle('rescued',state.rescued);
  if(fx&&fx.type==='rescue'){clearTimeout(rescueTimer);el('character').classList.add('fx-rescue');el('scene').classList.add('fx-rescue');rescueTimer=setTimeout(()=>{el('character').classList.remove('fx-rescue');el('scene').classList.remove('fx-rescue');},1400);}
  el('exploreBtn').disabled=!state.rescued||state.explored;
- el('exploreBtn').textContent=grove?(state.orruRescued?'✓ Two creatures rescued':'🌿 Moonlit Grove'):state.rescued?'✨ Enter Moonlit Grove':'🔒 Rescue Mivra first';
+ el('exploreBtn').textContent=trail?(stage?'✨ Restoration Trail active':'✓ Forest restored'):grove?'🌿 Moonlit Grove':state.rescued?'✨ Enter Moonlit Grove':'🔒 Rescue Mivra first';
  el('selected').textContent=selected!==null&&state.board[selected]?`${ITEMS[state.board[selected].kind][state.board[selected].tier].name} selected`:'Select matching tiles to merge';
  el('deliverBtn').disabled=selected===null||!state.board[selected]||!tasks.some(t=>!done.includes(t.id)&&t.kind===state.board[selected].kind&&t.tier===state.board[selected].tier);
  el('recycleBtn').disabled=selected===null||!state.board[selected];
@@ -298,9 +332,10 @@ function choose(i){
  selected=selected===i?null:i;present();
 }
 function doMerge(from,to){const r=merge(state,from,to);selected=null;if(r.ok){effect('merge',to);message(`✨ ${ITEMS[r.tile.kind][r.tile.tier].name} crafted!`);}else message('Choose two matching items.');present();}
-el('spawnBtn').onclick=()=>{const r=spawn(state);if(r.ok)effect('spawn',r.index);message(r.ok?`New ${r.kind} item appeared!`:r.why);selected=null;present();};
+el('spawnBtn').onclick=()=>{const r=spawn(state);if(r.ok)effect('spawn',r.index);message(r.ok?(r.helper?`${r.helper} helped! ✨ Free extra item appeared.`:`New ${r.kind} item appeared!`):r.why);selected=null;present();};
 el('deliverBtn').onclick=()=>{if(selected===null)return;const r=deliver(state,selected);selected=null;if(r.ok){effect(r.rescued?'rescue':'deliver',null,r.task.id);message(r.rescued?`${r.friend} is rescued! 🎉`:`Delivered: ${r.task.label}!`);}else message(r.why);present();
- if(r.ok&&r.rescued&&r.friend==='Orru')showChapterModal('Orru is safe! 🍃','Orru joined your collection. Both rescue chapters are complete!','View my collection');
+ if(r.ok&&r.rescued&&r.friend==='Orru')showChapterModal('Restoration Trail unlocked! 🗺️','Orru joined your collection. You can now restore Whispering Bridge, Starlit Garden and Celestial Gate!','Start restoring');
+ if(r.ok&&r.completedStage)showChapterModal(r.allRestored?'Wispwood restored! 🌟':r.stageName+' restored! 🎉',r.allRestored?'All three magical areas are shining again. You completed the Restoration Trail!':'A new area unlocked. Keep merging to restore Wispwood!','Continue adventure');
 };
 el('recycleBtn').onclick=()=>{if(selected!==null){recycle(state,selected);selected=null;message('Item recycled. Space freed!');present();}};
 el('exploreBtn').onclick=()=>{if(explore(state)){selected=null;message('Moonlit Grove unlocked!');present();showChapterModal('Moonlit Grove 🌿','Mivra found Orru among the vines. Craft Bloom, Moonwell and Aurora to rescue your new friend.','Help Orru');}};
