@@ -221,23 +221,23 @@
  <div id="endOverlay" class="end-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="overlayTitle"><div class="end-modal"><span class="end-icon">🌙✨</span><h2 id="overlayTitle">Moonlit Grove is open!</h2><p id="overlayText">Mivra found a new friend in the forest.</p><button id="endClose" class="primary">Continue</button></div></div>
  <script>// Copyright (c) 2026 Magical Creature Rescue project. Original prototype.
 // Dependency-free game rules: no runtime AI service or network requests.
-const SIZE = 8;
+const SIZE = 7;
 const KINDS = ['leaf', 'dew', 'glow'];
 const MAX_TIER = 5;
-const BOARD_SCHEMA=3;
-const INITIAL_OPEN=[18,19,20,26,27,28,34,35,36];
+const BOARD_SCHEMA=4;
+const INITIAL_OPEN=[16,17,18,23,24,25,30,31,32];
 const INITIAL_ENERGY=24;
 const MAX_ENERGY=30;
 const CELL_REVEALS={
- 17:{type:'web',item:{kind:'leaf',tier:1}},
- 21:{type:'generator',kind:'dew'},
- 25:{type:'blocker',blocker:'fog'},
- 29:{type:'blocker',blocker:'vine'},
- 33:{type:'web',item:{kind:'leaf',tier:0}},
- 37:{type:'generator',kind:'glow'},
- 42:{type:'web',item:{kind:'dew',tier:0}},
- 43:{type:'blocker',blocker:'fog'},
- 44:{type:'blocker',blocker:'vine'}
+ 15:{type:'web',item:{kind:'leaf',tier:1}},
+ 19:{type:'generator',kind:'dew'},
+ 9:{type:'blocker',blocker:'fog'},
+ 26:{type:'blocker',blocker:'vine'},
+ 29:{type:'web',item:{kind:'leaf',tier:0}},
+ 33:{type:'generator',kind:'glow'},
+ 38:{type:'web',item:{kind:'dew',tier:0}},
+ 37:{type:'blocker',blocker:'fog'},
+ 39:{type:'blocker',blocker:'vine'}
 };
 const SKILL_MAX = 5;
 const V2_MOVES = 24;
@@ -344,8 +344,8 @@ function openEmptyIndices(state){
 }
 function resetMergeBoardForSchema(state){
  const board=Array(SIZE*SIZE).fill(null);
- board[27]={special:'generator',kind:'leaf',level:1};
- board[26]={kind:'leaf',tier:0};board[34]={kind:'leaf',tier:0};
+ board[24]={special:'generator',kind:'leaf',level:1};
+ board[23]={kind:'leaf',tier:0};board[30]={kind:'leaf',tier:0};
  state.board=board;state.openCells=[...INITIAL_OPEN];state.webbed=[];state.crateDamage={};state.blockers=[];
  state.magic=0;state.energy=INITIAL_ENERGY;state.maxEnergy=MAX_ENERGY;
  state.puzzleZone=-1;state.combo=0;state.skillCharge=0;state.boardSchema=BOARD_SCHEMA;
@@ -353,7 +353,7 @@ function resetMergeBoardForSchema(state){
 }
 function ensureStarterGenerator(state){
  if(state.board.some(isGenerator))return;
- const index=isOpen(state,27)&&state.board[27]===null?27:state.openCells.find(i=>state.board[i]===null);
+ const index=isOpen(state,24)&&state.board[24]===null?24:state.openCells.find(i=>state.board[i]===null);
  if(Number.isInteger(index))state.board[index]={special:'generator',kind:'leaf',level:1};
 }
 function revealUnlockedCell(state,index){
@@ -480,8 +480,8 @@ function collected(state){return Object.entries(CREATURES).map(([id,info])=>({
 }));}
 function createState() {
  const board=Array(SIZE*SIZE).fill(null);
- board[27]={special:'generator',kind:'leaf',level:1};
- board[26]={kind:'leaf',tier:0};board[34]={kind:'leaf',tier:0};
+ board[24]={special:'generator',kind:'leaf',level:1};
+ board[23]={kind:'leaf',tier:0};board[30]={kind:'leaf',tier:0};
  return {board,boardSchema:BOARD_SCHEMA,openCells:[...INITIAL_OPEN],webbed:[],crateDamage:{},magic:0,energy:INITIAL_ENERGY,maxEnergy:MAX_ENERGY,completed:[],groveCompleted:[],rescued:false,explored:false,orruRescued:false,activeCompanion:null,orruCharge:0,orruQuestCount:0,vinesCleared:false,trailIndex:0,trailCompleted:[],puzzleZone:-1,blockers:[],runesFound:0,combo:0,skillCharge:0,v2MovesLeft:V2_MOVES,v2Zone:-1,xp:0,level:1,bonusItems:0,moves:0,spawns:0,message:'Grow your clearing, merge magic, and rescue the creatures of Wispwood.'};
 }
 function generateFrom(state,kind,random=Math.random){
