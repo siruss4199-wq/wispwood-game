@@ -25,15 +25,15 @@ test('MVP markup contains game controls and accessible board', () => {
   for (const id of ['board', 'spawnBtn', 'deliverBtn', 'recycleBtn', 'exploreBtn', 'endOverlay', 'resetBtn']) {
     assert.match(html, new RegExp('id="' + id + '"'));
   }
-  assert.match(html, /aria-label="8 by 8 merge board"/);
+  assert.match(html, /aria-label="7 by 7 merge board"/);
 });
 
-test('a new game starts on an 8×8 board with one small clearing', () => {
+test('a new game starts on a 7×7 board with one small clearing', () => {
   const s = game.createState();
-  assert.equal(s.board.length,64);
+  assert.equal(s.board.length,49);
   assert.equal(s.openCells.length,9);
   assert.equal(s.board.filter(Boolean).length,3);
-  assert.equal(game.isGenerator(s.board[27]),true);
+  assert.equal(game.isGenerator(s.board[24]),true);
   assert.equal(game.TASKS.length, 3);
   assert.equal(s.rescued, false);
   assert.equal(s.explored, false);
@@ -41,10 +41,10 @@ test('a new game starts on an 8×8 board with one small clearing', () => {
 
 test('two identical items merge and advance the move counter', () => {
   const s = game.createState();
-  assert.equal(game.merge(s,26,34).ok,true);
-  assert.equal(s.board[26],null);
-  assert.equal(s.board[34].kind,'leaf');
-  assert.equal(s.board[34].tier,1);
+  assert.equal(game.merge(s,23,30).ok,true);
+  assert.equal(s.board[23],null);
+  assert.equal(s.board[30].kind,'leaf');
+  assert.equal(s.board[30].tier,1);
   assert.equal(s.magic,2);
   assert.equal(s.energy,25);
   assert.equal(s.moves, 1);
@@ -106,7 +106,7 @@ test('saved progress can be restored and malformed saves are rejected', () => {
   s.moves = 11;
   const copy = game.restore(game.serialize(s));
   assert.equal(copy.moves, 11);
-  assert.equal(copy.board.length,64);
+  assert.equal(copy.board.length,49);
   assert.equal(game.restore('{not-json'), null);
   assert.equal(game.restore('{"board":[]}'), null);
   const bad = JSON.parse(game.serialize(s));
@@ -116,9 +116,9 @@ test('saved progress can be restored and malformed saves are rejected', () => {
 
 test('recycling makes an unlocked item tile empty', () => {
   const s=game.createState();
-  assert.equal(game.recycle(s,26),true);
-  assert.equal(s.board[26],null);
-  assert.equal(game.recycle(s,26),false);
+  assert.equal(game.recycle(s,23),true);
+  assert.equal(s.board[23],null);
+  assert.equal(game.recycle(s,23),false);
 });
 
 test('rescue animation targets existing character element and respects reduced motion', () => {
@@ -170,7 +170,7 @@ test('legacy v0.3 saves migrate without deleting items or progress', () => {
  assert.equal(loaded.rescued,true);
  assert.equal(loaded.explored,true);
  assert.equal(loaded.orruRescued,false);
- assert.equal(loaded.board.length,64);
+ assert.equal(loaded.board.length,49);
  assert.equal(loaded.groveCompleted.length,0);
 });
 
@@ -215,7 +215,7 @@ test('restoration quests advance through all 3 zones exactly once', () => {
 
 test('merges grant XP and build companion skill charge', () => {
  const s=game.createState();
- const first=game.merge(s,26,34);
+ const first=game.merge(s,23,30);
  assert.equal(first.ok,true);assert.ok(s.xp>0);
  assert.equal(s.skillCharge,1);assert.equal(s.magic,2);
 });
@@ -239,7 +239,7 @@ test('old v0.4 saves migrate to restoration progression without resetting board'
  assert.ok(loaded);assert.equal(loaded.rescued,true);
  assert.equal(loaded.orruRescued,true);
  assert.equal(loaded.trailIndex,0);
- assert.equal(loaded.board.length,64);
+ assert.equal(loaded.board.length,49);
  assert.equal(loaded.level,1);
 });
 
@@ -305,9 +305,9 @@ test('rescued companions remain selectable on the redesigned board', () => {
 
 test('generator rejects a full open clearing without touching locked cells', () => {
  const state=game.createState();
- for(const i of state.openCells)if(i!==27)state.board[i]={kind:'leaf',tier:0};
+ for(const i of state.openCells)if(i!==24)state.board[i]={kind:'leaf',tier:0};
  const before=state.energy;
- const result=game.activateGenerator(state,27,()=>0);
+ const result=game.activateGenerator(state,24,()=>0);
  assert.equal(result.ok,false);assert.equal(state.energy,before);
  assert.equal(state.board[0],null);
 });
@@ -339,7 +339,7 @@ test('Orru Grow must be active, charge by merging and create a free Seed', () =>
  assert.equal(game.chooseCompanion(st,'orru'),true);
  assert.equal(game.orruGrow(st).ok,false);
  st.orruCharge=3;
- assert.equal(game.merge(st,26,34).ok,true);
+ assert.equal(game.merge(st,23,30).ok,true);
  assert.equal(st.orruCharge,4);
  const r=game.orruGrow(st);assert.equal(r.ok,true);
  assert.equal(st.board[r.index].kind,'leaf');assert.equal(st.board[r.index].tier,0);
@@ -419,7 +419,7 @@ test('quest delivery is locked until region blockers are cleared', () => {
 
 test('five successful merges charge companion skill and invalid merge breaks combo', () => {
  const st=game.createState();st.rescued=true;st.explored=true;st.orruRescued=true;
- st.puzzleZone=0;st.blockers=[];st.openCells=Array.from({length:64},(_,i)=>i);st.board.fill(null);
+ st.puzzleZone=0;st.blockers=[];st.openCells=Array.from({length:49},(_,i)=>i);st.board.fill(null);
  for(let n=0;n<5;n++){
   st.board[n*2]={kind:'leaf',tier:0};st.board[n*2+1]={kind:'leaf',tier:0};
   const r=game.merge(st,n*2,n*2+1);assert.equal(r.ok,true);
@@ -479,7 +479,7 @@ test('v1 puzzle HUD, blockers and companion skill controls exist', () => {
 
 test('embedded Spirit Tree spends energy and creates a Seed in the open clearing', () => {
  const st=game.createState();
- const r=game.activateGenerator(st,27,()=>0);
+ const r=game.activateGenerator(st,24,()=>0);
  assert.equal(r.ok,true);
  assert.equal(st.board[r.index].kind,'leaf');assert.equal(st.board[r.index].tier,0);
  assert.equal(st.energy,game.INITIAL_ENERGY-1);
@@ -488,41 +488,41 @@ test('embedded Spirit Tree spends energy and creates a Seed in the open clearing
 
 test('frontier crates open from adjacent merge hits instead of direct clicks', () => {
  const st=game.createState();
- assert.equal(game.isFrontierCell(st,17),true);
- assert.equal(game.crateHitsNeeded(st,17),1);
- st.board[18]={kind:'leaf',tier:0};st.board[26]={kind:'leaf',tier:0};
- const r=game.merge(st,26,18);
+ assert.equal(game.isFrontierCell(st,15),true);
+ assert.equal(game.crateHitsNeeded(st,15),1);
+ st.board[16]={kind:'leaf',tier:0};st.board[23]={kind:'leaf',tier:0};
+ const r=game.merge(st,23,16);
  assert.equal(r.ok,true);
- assert.ok(r.crateResult.opened.some(x=>x.index===17));
- assert.equal(game.isOpen(st,17),true);
- assert.equal(game.isWebbed(st,17),true);
+ assert.ok(r.crateResult.opened.some(x=>x.index===15));
+ assert.equal(game.isOpen(st,15),true);
+ assert.equal(game.isWebbed(st,15),true);
 });
 
 test('pair merges earn Magic and recover one energy', () => {
  const st=game.createState();st.energy=10;
- const r=game.merge(st,26,34);
+ const r=game.merge(st,23,30);
  assert.equal(r.ok,true);assert.equal(r.magicGain,2);
  assert.equal(st.magic,2);assert.equal(st.energy,11);
  assert.equal(st.board[r.target].tier,1);
 });
 
 test('webbed item is freed by merging it with a matching item', () => {
- const st=game.createState();st.magic=4;game.unlockCell(st,17);
- assert.equal(game.isWebbed(st,17),true);
- st.board[18]={kind:'leaf',tier:1};
- const r=game.merge(st,18,17);
+ const st=game.createState();st.magic=4;game.unlockCell(st,15);
+ assert.equal(game.isWebbed(st,15),true);
+ st.board[16]={kind:'leaf',tier:1};
+ const r=game.merge(st,16,15);
  assert.equal(r.ok,true);assert.equal(r.webCleared,true);
- assert.equal(game.isWebbed(st,17),false);
- assert.equal(st.board[17].tier,2);
+ assert.equal(game.isWebbed(st,15),false);
+ assert.equal(st.board[15].tier,2);
 });
 
 test('breaking crates can reveal generators and blockers', () => {
  const st=game.createState();
  // Directly simulate crate break reveal results for deterministic coverage.
- st.openCells.push(21);let r=game.revealUnlockedCell(st,21);
- assert.equal(r.type,'generator');assert.equal(game.isGenerator(st.board[21]),true);
- st.openCells.push(25);r=game.revealUnlockedCell(st,25);
- assert.equal(r.type,'blocker');assert.ok(st.blockers.some(b=>b.index===25&&b.type==='fog'));
+ st.openCells.push(19);let r=game.revealUnlockedCell(st,19);
+ assert.equal(r.type,'generator');assert.equal(game.isGenerator(st.board[19]),true);
+ st.openCells.push(9);r=game.revealUnlockedCell(st,9);
+ assert.equal(r.type,'blocker');assert.ok(st.blockers.some(b=>b.index===9&&b.type==='fog'));
 });
 
 test('locked cells cannot be merged or used as generator output', () => {
@@ -530,15 +530,15 @@ test('locked cells cannot be merged or used as generator output', () => {
  st.board[0]={kind:'leaf',tier:0};
  assert.equal(game.merge(st,0,26).ok,false);
  for(let i=0;i<20;i++){
-  const r=game.activateGenerator(st,27,()=>0);
+  const r=game.activateGenerator(st,24,()=>0);
   if(!r.ok)break;
   assert.equal(game.isOpen(st,r.index),true);
  }
 });
 
 test('six-tier chains include meaningful late-game items', () => {
- assert.equal(game.SIZE,8);
- assert.equal(game.CELL_REVEALS[17].type,'web');
+ assert.equal(game.SIZE,7);
+ assert.equal(game.CELL_REVEALS[15].type,'web');
  assert.equal(game.GENERATORS.leaf.kind,'leaf');
  assert.match(html,/Ancient Blossom/);
  assert.match(html,/Celestial Water/);
@@ -551,10 +551,10 @@ test('legacy or pre-schema save keeps progression but restarts Merge Board 2.0 f
  old.boardSchema=2;old.openCells=Array.from({length:18},(_,i)=>i);old.magic=99;
  old.board[10]={kind:'dew',tier:4};
  const loaded=game.restore(JSON.stringify(old));
- assert.ok(loaded);assert.equal(loaded.board.length,64);
+ assert.ok(loaded);assert.equal(loaded.board.length,49);
  assert.equal(loaded.openCells.length,9);
  assert.equal(loaded.board.filter(Boolean).length,3);
- assert.equal(game.isGenerator(loaded.board[27]),true);
+ assert.equal(game.isGenerator(loaded.board[24]),true);
  assert.equal(loaded.magic,0);assert.equal(loaded.energy,game.INITIAL_ENERGY);
  assert.equal(loaded.rescued,true);assert.equal(loaded.xp,210);
 });
@@ -562,15 +562,15 @@ test('legacy or pre-schema save keeps progression but restarts Merge Board 2.0 f
 test('Merge Board 2.0 interface exposes resources, locked 8x8 board and parses fully', () => {
  for(const id of ['resourceBar','energyLabel','magicLabel','openLabel','board'])
   assert.match(html,new RegExp('id="'+id+'"'));
- assert.match(html,/8 × 8/);assert.match(html,/tile locked/);assert.match(html,/📦/);assert.match(html,/crate-help/);assert.match(html,/webbed/);assert.match(html,/generator/);
+ assert.match(html,/7 × 7/);assert.match(html,/tile locked/);assert.match(html,/📦/);assert.match(html,/crate-help/);assert.match(html,/webbed/);assert.match(html,/generator/);
  assert.doesNotThrow(()=>new vm.Script(script));
 });
 
 
 test('later crates require multiple adjacent merge hits', () => {
  const st=game.createState();
- st.openCells=[...Array.from({length:20},(_,i)=>i),26,27,28,34,35,36];
- const idx=21;
+ st.openCells=[...Array.from({length:20},(_,i)=>i),23,24,25,30,31,32];
+ const idx=20;
  assert.equal(game.isFrontierCell(st,idx),true);
  assert.ok(game.crateHitsNeeded(st,idx)>=2);
  st.crateDamage[idx]=1;
