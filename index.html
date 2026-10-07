@@ -292,7 +292,7 @@
 const SIZE = 8;
 const KINDS = ['leaf', 'dew', 'glow'];
 const MAX_TIER = 5;
-const BOARD_SCHEMA=6;
+const BOARD_SCHEMA=7;
 const INITIAL_OPEN=[18,19,20,21,26,27,28,29,34,35,36,37];
 const INITIAL_ENERGY=24;
 const MAX_ENERGY=30;
@@ -432,13 +432,20 @@ function openEmptyIndices(state){
 }
 function seedFullBoardStart(state){
  const board=Array(SIZE*SIZE).fill(null);
- board[27]={special:'generator',kind:'leaf',level:1};
- board[26]={kind:'leaf',tier:0};
- board[34]={kind:'leaf',tier:0};
+ // True full-board opening: every playable tile is occupied.
+ // The first merge of the two starter Seeds creates the first free space.
+ board[18]={kind:'dew',tier:0};
+ board[19]={kind:'glow',tier:0};
  board[20]={kind:'dew',tier:0};
- board[29]={kind:'dew',tier:0};
- board[21]={kind:'glow',tier:0};
+ board[21]={kind:'glow',tier:1};
+ board[26]={kind:'leaf',tier:0};
+ board[27]={special:'generator',kind:'leaf',level:1};
+ board[28]={kind:'leaf',tier:1};
+ board[29]={kind:'dew',tier:1};
+ board[34]={kind:'leaf',tier:0};
+ board[35]={kind:'glow',tier:1};
  board[36]={kind:'glow',tier:0};
+ board[37]={kind:'leaf',tier:1};
  state.board=board;
  state.openCells=[...INITIAL_OPEN];
  state.webbed=[20,36];
@@ -613,7 +620,7 @@ function collected(state){return Object.entries(CREATURES).map(([id,info])=>({
  active:currentCompanion(state)===id
 }));}
 function createState() {
- const state={board:Array(SIZE*SIZE).fill(null),boardSchema:BOARD_SCHEMA,openCells:[...INITIAL_OPEN],webbed:[],revealedCells:[],crateDamage:{},cratesOpened:0,websCleared:0,revealedMerges:0,magic:0,energy:INITIAL_ENERGY,maxEnergy:MAX_ENERGY,completed:[],groveCompleted:[],rescued:false,explored:false,orruRescued:false,activeCompanion:null,orruCharge:0,orruQuestCount:0,vinesCleared:false,trailIndex:0,trailCompleted:[],puzzleZone:-1,blockers:[],runesFound:0,combo:0,skillCharge:0,v2MovesLeft:V2_MOVES,v2Zone:-1,xp:0,level:1,bonusItems:0,moves:0,spawns:0,message:'Uncover the buried board, clear enchanted vines, and rescue the creatures of Wispwood.'};
+ const state={board:Array(SIZE*SIZE).fill(null),boardSchema:BOARD_SCHEMA,openCells:[...INITIAL_OPEN],webbed:[],revealedCells:[],crateDamage:{},cratesOpened:0,websCleared:0,revealedMerges:0,magic:0,energy:INITIAL_ENERGY,maxEnergy:MAX_ENERGY,completed:[],groveCompleted:[],rescued:false,explored:false,orruRescued:false,activeCompanion:null,orruCharge:0,orruQuestCount:0,vinesCleared:false,trailIndex:0,trailCompleted:[],puzzleZone:-1,blockers:[],runesFound:0,combo:0,skillCharge:0,v2MovesLeft:V2_MOVES,v2Zone:-1,xp:0,level:1,bonusItems:0,moves:0,spawns:0,message:'The board is packed. Merge the two matching Seeds to make your first free space.'};
  seedFullBoardStart(state);
  return state;
 }
