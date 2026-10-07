@@ -609,3 +609,18 @@ test('mobile board always renders visible quest chips above the board', () => {
  assert.doesNotMatch(html,/mobileQuestProgress/);
  assert.doesNotThrow(()=>new vm.Script(script));
 });
+
+test('mobile board fits fully above navigation and hides disabled actions', () => {
+ assert.match(html,/\.board\{height:100%;width:auto;max-height:calc\(100dvh - 315px\)/);
+ assert.match(html,/\.actions #deliverBtn:disabled,.actions #recycleBtn:disabled\{display:none\}/);
+});
+
+test('completed adventures still show quest history in the mobile quest sheet', () => {
+ assert.match(html,/COMPLETED QUESTS/);
+ assert.match(html,/No quest history yet/);
+ assert.match(html,/const history=\[\]/);
+ assert.match(html,/TASKS\.forEach/);
+ assert.match(html,/GROVE_TASKS\.forEach/);
+ assert.match(html,/TRAIL\.forEach/);
+ assert.doesNotThrow(()=>new vm.Script(script));
+});
