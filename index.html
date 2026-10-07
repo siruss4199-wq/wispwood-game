@@ -385,7 +385,17 @@ function generateFrom(state,kind,random=Math.random){
  state.spawns++;
  if(v2Active(state))state.v2MovesLeft--;
  state.combo=0;
- return {ok:true,index,kind,movesLeft:state.v2MovesLeft};
+ let helper=null,bonusIndex=null;
+ const active=currentCompanion(state);
+ if(active&&state.spawns%8===0){
+  const bonusFree=free.filter(i=>i!==index);
+  if(bonusFree.length){
+   bonusIndex=bonusFree[Math.min(bonusFree.length-1,Math.floor(random()*bonusFree.length))];
+   state.board[bonusIndex]={kind:CREATURES[active].bonus,tier:0};
+   state.bonusItems++;helper=CREATURES[active].name;
+  }
+ }
+ return {ok:true,index,kind,movesLeft:state.v2MovesLeft,helper,bonusIndex};
 }
 function mergeGroup(state,indices){
  ensurePuzzle(state);
@@ -407,6 +417,7 @@ function mergeGroup(state,indices){
  if(unique.length===5){
    secondIndex=freed.shift();state.board[secondIndex]={kind:base.kind,tier:base.tier+1};
    if(freed.length){wildIndex=freed.shift();state.board[wildIndex]={special:'wild'};}
+   if(v2Active(state))state.v2MovesLeft=Math.min(V2_MOVES,state.v2MovesLeft+1);
  }
  state.moves++;state.combo=Math.min(9,(state.combo||0)+1);
  state.skillCharge=Math.min(SKILL_MAX,(state.skillCharge||0)+(unique.length===5?2:1));
@@ -702,8 +713,28 @@ function choose(i){
  selected=selected===i?null:i;present();
 }
 function doMerge(from,to){const r=merge(state,from,to);selected=null;if(r.ok){effect('merge',to);message(`✨ ${ITEMS[r.tile.kind][r.tile.tier].name} crafted!`);}else message('Choose two matching items.');present();}
+document.querySelectorAll('[data-generator]').forEach(btn=>btn.addEventListener('click',()=>{
+ const kind=btn.dataset.generator;
+ const r=generateFrom(state,kind);
+ groupSelected=[];selected=null;
+ if(r.ok){
+  effect('spawn',r.index);
+  const source=GENERATORS[kind];
+  message(r.helper?`${source.name} created ${ITEMS[kind][0].name}. ${r.helper} also helped with a bonus item! ✨`:`${source.name} created ${ITEMS[kind][0].name}. ${r.movesLeft} moves left.`);
+  if(r.helper)triggerSceneEffect('🌟');
+ }else message(r.why);
+ present();
+}));
+el('mergeGroupBtn').onclick=()=>{
+ const r=mergeGroup(state,groupSelected);
+ if(r.ok){
+  groupSelected=[];selected=null;effect('merge',r.target);
+  message(r.count===5?`🌟 Perfect 5-merge! Two ${ITEMS[r.tile.kind][r.tile.tier].name}s + Wild Wisp + 1 move refunded.`:`✨ 3-merge created ${ITEMS[r.tile.kind][r.tile.tier].name}. Combo ×${r.combo}.`);
+ }else message(r.why);
+ present();
+};
 el('skillBtn').onclick=()=>{
- const r=useCompanionSkill(state);selected=null;
+ const r=useCompanionSkill(state);selected=null;groupSelected=[];
  if(r.ok){
   message(r.cleared?`✨ ${CREATURES[r.companion].name} cleared the last blocker — delivery is unlocked!`:`✨ ${CREATURES[r.companion].name} cleared ${r.count} blockers!`);
   triggerSceneEffect(r.companion==='orru'?'🌿':'🌫️');
@@ -716,7 +747,7 @@ el('spawnBtn').onclick=()=>{
  selected=null;present();
  if(r.ok&&r.helper)triggerSceneEffect('🌟');
 };
-el('deliverBtn').onclick=()=>{if(selected===null)return;const r=deliver(state,selected);selected=null;if(r.ok){effect(r.rescued?'rescue':'deliver',null,r.task.id);message(r.rescued?`${r.friend} is rescued! 🎉`:`Delivered: ${r.task.label}!`);}else message(r.why);present();
+el('deliverBtn').onclick=()=>{const actionIndex=v2Active(state)&&groupSelected.length===1?groupSelected[0]:selected;if(actionIndex===null||actionIndex===undefined)return;const r=deliver(state,actionIndex);selected=null;groupSelected=[];if(r.ok){effect(r.rescued?'rescue':'deliver',null,r.task.id);message(r.rescued?`${r.friend} is rescued! 🎉`:`Delivered: ${r.task.label}!`);}else message(r.why);present();
  if(r.ok&&r.friend&&!isTrail(state)){
   triggerSceneEffect(r.rescued?'💖':'✨');
   if(r.rescued&&r.friend==='Mivra')showChapterModal('Mivra rescued! 💜','Your first magical friend is safe. Meet Mivra in your Sanctuary, choose her as a companion, then explore Moonlit Grove.','Meet Mivra');
@@ -725,27 +756,28 @@ el('deliverBtn').onclick=()=>{if(selected===null)return;const r=deliver(state,se
  if(r.ok&&r.completedStage)showChapterModal(r.allRestored?'Wispwood restored! 🌟':r.stageName+' restored! 🎉',r.allRestored?'All three magical areas are shining again. You completed the Restoration Trail!':'A new area unlocked. Keep merging to restore Wispwood!','Continue adventure');
 };
 el('growBtn').onclick=()=>{
- const r=orruGrow(state);selected=null;
+ const r=orruGrow(state);selected=null;groupSelected=[];
  if(r.ok){effect('spawn',r.index);message('🌱 Orru grew a free Seed!');triggerSceneEffect('🌱');}
  else message(r.why);
  present();
 };
 el('vinesBtn').onclick=()=>{
- const r=clearVines(state);selected=null;
+ const r=clearVines(state);selected=null;groupSelected=[];
  if(r.ok){effect('spawn',r.index);message('🌿 Hidden Glade opened! Orru found Water and 50 XP.');triggerSceneEffect('🌿');}
  else message(r.why);
  present();
 };
 el('orruQuestBtn').onclick=()=>{
- if(selected===null)return;
- const r=deliverOrruQuest(state,selected);selected=null;
+ const actionIndex=v2Active(state)&&groupSelected.length===1?groupSelected[0]:selected;
+ if(actionIndex===null||actionIndex===undefined)return;
+ const r=deliverOrruQuest(state,actionIndex);selected=null;groupSelected=[];
  if(r.ok){if(r.completed)effect('spawn',r.index);message(r.completed?'🌸 Forest Remedy complete! Bloom and 75 XP earned.':'🌿 Orru received a Herb. One more to go!');triggerSceneEffect(r.completed?'🌸':'💚');}
  else message(r.why);
  present();
 };
-el('recycleBtn').onclick=()=>{if(selected!==null){recycle(state,selected);selected=null;message('Item recycled. Space freed!');present();}};
+el('recycleBtn').onclick=()=>{const actionIndex=v2Active(state)&&groupSelected.length===1?groupSelected[0]:selected;if(actionIndex!==null&&actionIndex!==undefined){recycle(state,actionIndex);selected=null;groupSelected=[];message('Item recycled. Space freed!');present();}};
 el('exploreBtn').onclick=()=>{if(explore(state)){selected=null;message('Moonlit Grove unlocked!');present();showChapterModal('Moonlit Grove 🌿','Mivra found Orru among the vines. Craft Bloom, Moonwell and Aurora to rescue your new friend.','Help Orru');}};
-el('resetBtn').onclick=()=>{if(confirm('Restart your rescue story?')){state=createState();selected=null;el('endOverlay').hidden=true;el('creatureOverlay').hidden=true;present();message('A fresh adventure begins!');}};
+el('resetBtn').onclick=()=>{if(confirm('Restart your rescue story?')){state=createState();selected=null;groupSelected=[];el('endOverlay').hidden=true;el('creatureOverlay').hidden=true;present();message('A fresh adventure begins!');}};
 el('endClose').onclick=()=>{el('endOverlay').hidden=true;el('spawnBtn').focus();};
 function triggerSceneEffect(symbol){
  const fx=el('sceneEffect');fx.textContent=symbol;fx.classList.remove('fx-animate');
@@ -774,7 +806,7 @@ el('companionSelect').onclick=()=>{
 };
 el('creatureClose').onclick=()=>{el('creatureOverlay').hidden=true;viewedCreature=null;};
 
-window.addEventListener('storage',e=>{if(e.key===KEY){state=restore(e.newValue)||createState();selected=null;el('endOverlay').hidden=true;el('creatureOverlay').hidden=true;present();}});
+window.addEventListener('storage',e=>{if(e.key===KEY){state=restore(e.newValue)||createState();selected=null;groupSelected=[];el('endOverlay').hidden=true;el('creatureOverlay').hidden=true;present();}});
 present();
 </script>
 </body></html>
