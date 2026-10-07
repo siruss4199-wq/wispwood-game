@@ -217,9 +217,23 @@
  <div id="endOverlay" class="end-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="overlayTitle"><div class="end-modal"><span class="end-icon">🌙✨</span><h2 id="overlayTitle">Moonlit Grove is open!</h2><p id="overlayText">Mivra found a new friend in the forest.</p><button id="endClose" class="primary">Continue</button></div></div>
  <script>// Copyright (c) 2026 Magical Creature Rescue project. Original prototype.
 // Dependency-free game rules: no runtime AI service or network requests.
-const SIZE = 6;
+const SIZE = 8;
 const KINDS = ['leaf', 'dew', 'glow'];
-const MAX_TIER = 3;
+const MAX_TIER = 5;
+const INITIAL_OPEN=[18,19,20,26,27,28,34,35,36];
+const INITIAL_ENERGY=24;
+const MAX_ENERGY=30;
+const CELL_REVEALS={
+ 17:{type:'web',item:{kind:'leaf',tier:1}},
+ 21:{type:'generator',kind:'dew'},
+ 25:{type:'blocker',blocker:'fog'},
+ 29:{type:'blocker',blocker:'vine'},
+ 33:{type:'web',item:{kind:'leaf',tier:0}},
+ 37:{type:'generator',kind:'glow'},
+ 42:{type:'web',item:{kind:'dew',tier:0}},
+ 43:{type:'blocker',blocker:'fog'},
+ 44:{type:'blocker',blocker:'vine'}
+};
 const SKILL_MAX = 5;
 const V2_MOVES = 24;
 const GENERATORS={
@@ -230,7 +244,7 @@ const GENERATORS={
 function isWild(item){return Boolean(item&&item.special==='wild');}
 function normalItem(item){return item&&!isWild(item);}
 function itemLabel(item){return isWild(item)?'Wild Wisp':ITEMS[item.kind][item.tier].name;}
-function v2Active(state){return true;}
+function v2Active(state){return false;}
 function v2Limited(state){return isTrail(state)&&state.trailIndex<TRAIL.length;}
 const PUZZLES=[
  {name:'Whispering Bridge',blocker:'vine',count:5,icon:'🌿',hint:'Clear the vines before the bridge can accept restoration magic.'},
@@ -239,9 +253,9 @@ const PUZZLES=[
 ];
 const BLOCKER_ICON={vine:'🌿',fog:'🌫️'};
 const ITEMS = {
-  leaf: [{name:'Seed', emoji:'🌰'}, {name:'Sprout', emoji:'🌱'}, {name:'Herb', emoji:'🌿'}, {name:'Bloom', emoji:'🌸'}],
-  dew: [{name:'Dewdrop', emoji:'💧'}, {name:'Water', emoji:'🫧'}, {name:'Elixir', emoji:'🧪'}, {name:'Moonwell', emoji:'💎'}],
-  glow: [{name:'Spark', emoji:'✨'}, {name:'Wisp', emoji:'🌟'}, {name:'Crystal', emoji:'🔮'}, {name:'Aurora', emoji:'💫'}],
+  leaf: [{name:'Seed',emoji:'🌰'},{name:'Sprout',emoji:'🌱'},{name:'Herb',emoji:'🌿'},{name:'Bloom',emoji:'🌸'},{name:'Moon Flower',emoji:'🌺'},{name:'Ancient Blossom',emoji:'🪷'}],
+  dew: [{name:'Dewdrop',emoji:'💧'},{name:'Water',emoji:'🫧'},{name:'Elixir',emoji:'🧪'},{name:'Moon Drop',emoji:'🔹'},{name:'Moonwell',emoji:'💎'},{name:'Celestial Water',emoji:'🩵'}],
+  glow: [{name:'Spark',emoji:'✨'},{name:'Wisp',emoji:'🌟'},{name:'Crystal',emoji:'🔮'},{name:'Star Shard',emoji:'💠'},{name:'Aurora',emoji:'💫'},{name:'Star Core',emoji:'🌠'}],
 };
 const TASKS = [
  {id:'heal',label:'Healing herbs',kind:'leaf',tier:2,help:'Soothe her wounded wing'},
@@ -274,6 +288,57 @@ function activeTasks(state){
 }
 function gainXP(state,points){state.xp+=points;state.level=Math.floor(state.xp/75)+1;}
 function trailInfo(state){return TRAIL[state.trailIndex]||null;}
+function isOpen(state,index){return Array.isArray(state.openCells)&&state.openCells.includes(index);}
+function isGenerator(item){return Boolean(item&&item.special==='generator'&&KINDS.includes(item.kind));}
+function isWebbed(state,index){return Array.isArray(state.webbed)&&state.webbed.includes(index);}
+function neighbors(index){
+ const r=Math.floor(index/SIZE),c=index%SIZE,out=[];
+ if(r>0)out.push(index-SIZE);if(r<SIZE-1)out.push(index+SIZE);
+ if(c>0)out.push(index-1);if(c<SIZE-1)out.push(index+1);
+ return out;
+}
+function isFrontierCell(state,index){return !isOpen(state,index)&&neighbors(index).some(i=>isOpen(state,i));}
+function unlockCost(state,index){
+ if(!isFrontierCell(state,index))return null;
+ const extra=Math.max(0,state.openCells.length-INITIAL_OPEN.length);
+ return 4+Math.floor(extra/4)*2;
+}
+function openEmptyIndices(state){
+ const blockers=new Set((state.blockers||[]).map(b=>b.index));
+ return state.openCells.filter(i=>state.board[i]===null&&!blockers.has(i));
+}
+function ensureStarterGenerator(state){
+ if(state.board.some(isGenerator))return;
+ const index=isOpen(state,27)&&state.board[27]===null?27:state.openCells.find(i=>state.board[i]===null);
+ if(Number.isInteger(index))state.board[index]={special:'generator',kind:'leaf',level:1};
+}
+function revealUnlockedCell(state,index){
+ const reveal=CELL_REVEALS[index];
+ if(!reveal)return {type:'empty'};
+ if(reveal.type==='generator'){state.board[index]={special:'generator',kind:reveal.kind,level:1};return reveal;}
+ if(reveal.type==='web'){state.board[index]={...reveal.item};if(!state.webbed.includes(index))state.webbed.push(index);return reveal;}
+ if(reveal.type==='blocker'){if(!state.blockers.some(b=>b.index===index))state.blockers.push({index,type:reveal.blocker});return reveal;}
+ return {type:'empty'};
+}
+function unlockCell(state,index){
+ const cost=unlockCost(state,index);
+ if(cost===null)return {ok:false,why:'Unlock a tile beside your clearing first.'};
+ if(state.magic<cost)return {ok:false,why:'You need '+(cost-state.magic)+' more Magic.'};
+ state.magic-=cost;state.openCells.push(index);state.openCells.sort((a,b)=>a-b);
+ const reveal=revealUnlockedCell(state,index);gainXP(state,5);
+ return {ok:true,index,cost,reveal};
+}
+function activateGenerator(state,index,random=Math.random){
+ const source=state.board[index];
+ if(!isOpen(state,index)||!isGenerator(source))return {ok:false,why:'That is not an active generator.'};
+ if(state.energy<=0)return {ok:false,why:'No energy left. Merge items to recover energy.'};
+ const free=openEmptyIndices(state);
+ if(!free.length)return {ok:false,why:'Your open clearing is full. Merge items or unlock more space.'};
+ const target=free[Math.min(free.length-1,Math.floor(random()*free.length))];
+ state.board[target]={kind:source.kind,tier:0};state.energy--;state.spawns++;
+ return {ok:true,index:target,kind:source.kind,generator:index};
+}
+
 function puzzleInfo(state){return PUZZLES[state.trailIndex]||null;}
 function puzzleReady(state){return !isTrail(state)||state.trailIndex>=TRAIL.length||state.blockers.length===0;}
 function seedPuzzle(state){
@@ -371,9 +436,9 @@ function collected(state){return Object.entries(CREATURES).map(([id,info])=>({
 }));}
 function createState() {
  const board=Array(SIZE*SIZE).fill(null);
- const placement=[ [0,'leaf',0],[1,'leaf',0], [6,'dew',0],[7,'dew',0], [12,'glow',0],[13,'glow',0], [19,'leaf',1], [22,'dew',1], [26,'glow',1] ];
- for(const [i,kind,tier] of placement)board[i]={kind,tier};
- return { board,completed:[],groveCompleted:[], rescued:false, explored:false,orruRescued:false,activeCompanion:null,orruCharge:0,orruQuestCount:0,vinesCleared:false,trailIndex:0,trailCompleted:[],puzzleZone:-1,blockers:[],runesFound:0,combo:0,skillCharge:0,v2MovesLeft:V2_MOVES,v2Zone:-1,xp:0,level:1,bonusItems:0,moves:0,spawns:0,message:'Help Mivra recover by crafting three supplies.' };
+ board[27]={special:'generator',kind:'leaf',level:1};
+ board[26]={kind:'leaf',tier:0};board[34]={kind:'leaf',tier:0};
+ return {board,openCells:[...INITIAL_OPEN],webbed:[],magic:0,energy:INITIAL_ENERGY,maxEnergy:MAX_ENERGY,completed:[],groveCompleted:[],rescued:false,explored:false,orruRescued:false,activeCompanion:null,orruCharge:0,orruQuestCount:0,vinesCleared:false,trailIndex:0,trailCompleted:[],puzzleZone:-1,blockers:[],runesFound:0,combo:0,skillCharge:0,v2MovesLeft:V2_MOVES,v2Zone:-1,xp:0,level:1,bonusItems:0,moves:0,spawns:0,message:'Grow your clearing, merge magic, and rescue the creatures of Wispwood.'};
 }
 function generateFrom(state,kind,random=Math.random){
  ensurePuzzle(state);
@@ -430,16 +495,22 @@ function mergeGroup(state,indices){
 function merge(state,from,to) {
  if(!Number.isInteger(from)||!Number.isInteger(to)||from===to||from<0||to<0||from>=SIZE*SIZE||to>=SIZE*SIZE){state.combo=0;return {ok:false,why:'Choose two different tiles.'};}
  ensurePuzzle(state);
+ if(!isOpen(state,from)||!isOpen(state,to)){state.combo=0;return {ok:false,why:'Unlock those tiles first.'};}
  if(isBlocked(state,from)||isBlocked(state,to)){state.combo=0;return {ok:false,why:'A magical blocker is occupying that tile.'};}
  const a=state.board[from],b=state.board[to];
- if(!a||!b||isWild(a)||isWild(b)||a.kind!==b.kind||a.tier!==b.tier||a.tier===MAX_TIER){state.combo=0;return {ok:false,why:'Merge two matching, non-maxed items.'};}
- state.board[from]=null;
- state.board[to]={kind:b.kind,tier:b.tier+1};
+ if(!a||!b||isGenerator(a)||isGenerator(b)||isWild(a)||isWild(b)||a.kind!==b.kind||a.tier!==b.tier||a.tier===MAX_TIER){state.combo=0;return {ok:false,why:'Merge two matching, non-maxed items.'};}
+ const aWeb=isWebbed(state,from),bWeb=isWebbed(state,to);
+ if(aWeb&&bWeb)return {ok:false,why:'Free one webbed item at a time.'};
+ const target=aWeb?from:to,source=aWeb?to:from;
+ state.board[source]=null;
+ state.board[target]={kind:b.kind,tier:b.tier+1};
+ if(aWeb||bWeb)state.webbed=state.webbed.filter(i=>i!==target);
  state.moves++;state.combo=Math.min(9,(state.combo||0)+1);state.skillCharge=Math.min(SKILL_MAX,(state.skillCharge||0)+1);
- const comboBonus=state.combo>=3?2:0;
- gainXP(state,3+b.tier*2+comboBonus);
+ const magicGain=2+(a.tier||0)+(aWeb||bWeb?2:0);state.magic+=magicGain;
+ state.energy=Math.min(state.maxEnergy,state.energy+1);
+ const comboBonus=state.combo>=3?2:0;gainXP(state,3+b.tier*2+comboBonus);
  if(state.orruRescued)state.orruCharge=Math.min(ORRU_GROW_COST*2,state.orruCharge+1);
- return {ok:true,tile:state.board[to],combo:state.combo,skillReady:state.skillCharge===SKILL_MAX};
+ return {ok:true,tile:state.board[target],target,combo:state.combo,magicGain,webCleared:aWeb||bWeb,skillReady:state.skillCharge===SKILL_MAX};
 }
 function deliver(state,index) {
  const item=state.board[index];if(!item)return {ok:false,why:'Select an item first.'};
