@@ -346,12 +346,12 @@ function present(){
  const rescuedNow=grove?state.orruRescued:state.rescued;
  const creature=el('character');
  const who=grove?'orru':'mivra';
- const stage=grove?rescueStage(state,'orru'):rescueStage(state,'mivra');
+ const rescueProgress=grove?rescueStage(state,'orru'):rescueStage(state,'mivra');
  if(creature.dataset.creature!==who){creature.innerHTML=grove?ORRU_ART:MIVRA_ART;creature.dataset.creature=who;}
  creature.setAttribute('aria-label',grove?'Orru, an original forest creature':'Mivra, an original friendly lavender creature');
  el('scene').classList.toggle('grove-mode',grove);
- for(let i=0;i<=3;i++)el('scene').classList.toggle('stage-'+i,Math.min(3,stage)===i);
- el('rescueVeilIcon').textContent=grove?stage===0?'🌿':stage===1?'🍃':stage===2?'✨':'🌸':stage===0?'☁️':stage===1?'💗':stage===2?'✨':'💫';
+ for(let i=0;i<=3;i++)el('scene').classList.toggle('stage-'+i,Math.min(3,rescueProgress)===i);
+ el('rescueVeilIcon').textContent=grove?rescueProgress===0?'🌿':rescueProgress===1?'🍃':rescueProgress===2?'✨':'🌸':rescueProgress===0?'☁️':rescueProgress===1?'💗':rescueProgress===2?'✨':'💫';
  el('sceneLabel').textContent=trail?'RESTORATION TRAIL · '+(stage?stage.name.toUpperCase():'COMPLETE'):grove?'CHAPTER TWO · MOONLIT GROVE':'CHAPTER ONE · THE LOST WISP';
  el('storyChapter').textContent=trail?'Restore the magic':grove?'Your forest friend':'Your first friend';
  el('storyTitle').textContent=trail?(stage?stage.name:'Wispwood restored!'):grove?'Meet Orru':'Meet Mivra';

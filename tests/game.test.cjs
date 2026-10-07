@@ -10,6 +10,10 @@ const vm = require('node:vm');
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const script = html.match(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/i)?.[1];
 assert.ok(script, 'Inline game script must exist');
+// Compile the FULL inline script, not just game rules: catches duplicate const / syntax errors in UI code.
+test('complete browser game JavaScript compiles without syntax errors', () => {
+  assert.doesNotThrow(() => new vm.Script(script, { filename: 'index.html:inline.js' }));
+});
 const uiStart = script.indexOf("const KEY='wispwood-prototype-v1'");
 assert.ok(uiStart > 0, 'Could not find boundary between game rules and browser UI');
 const context = vm.createContext({});
