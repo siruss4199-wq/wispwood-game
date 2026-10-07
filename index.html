@@ -786,7 +786,7 @@ let state=restore(storage.getItem(KEY))||createState();
 let selected=null;let groupSelected=[];let confettiTimer;
 let viewedCreature=null,stageTimer;
 let pendingEffect=null,rescueTimer;
-function effect(type,index=null,taskId=null){pendingEffect={type,index,taskId};}
+function effect(type,index=null,taskId=null,extra={}){pendingEffect={type,index,taskId,...extra};}
 const message=txt=>{el('toast').textContent=txt;el('toast').classList.add('show');clearTimeout(confettiTimer);confettiTimer=setTimeout(()=>el('toast').classList.remove('show'),3200);};
 function persist(){storage.setItem(KEY,serialize(state));}
 function mobileSheetContent(kind){
@@ -890,9 +890,10 @@ function present(){
    }
    board.append(cell);return;
   }
-  const generator=isGenerator(item),webbed=isWebbed(state,i),wild=isWild(item);
-  cell.className='tile '+(blocker?`blocker ${blocker.type==='fog'?'fog-blocker':'vine-blocker'}`:generator?'generator':wild?'filled wild':item?`filled ${item.kind} tier${item.tier}`:'empty')+(webbed?' webbed':'')+(selected===i?' selected':'');
+  const generator=isGenerator(item),webbed=isWebbed(state,i),wild=isWild(item),revealed=Array.isArray(state.revealedCells)&&state.revealedCells.includes(i);
+  cell.className='tile '+(blocker?`blocker ${blocker.type==='fog'?'fog-blocker':'vine-blocker'}`:generator?'generator':wild?'filled wild':item?`filled ${item.kind} tier${item.tier}`:'empty')+(webbed?' webbed':'')+(revealed?' revealed':'')+(selected===i?' selected':'');
   if(fx&&fx.index===i&&(fx.type==='merge'||fx.type==='spawn'))cell.classList.add('fx-'+fx.type);
+  if(fx&&Array.isArray(fx.revealIndices)&&fx.revealIndices.includes(i))cell.classList.add('fx-reveal');
   if(blocker){cell.disabled=true;cell.setAttribute('aria-label',`${blocker.type==='vine'?'Vine':'Fog'} blocker`);}
   const picked=selected!==null?state.board[selected]:null;
   if(!blocker&&!generator&&item&&picked&&!isGenerator(picked)&&i!==selected&&normalItem(item)&&normalItem(picked)&&item.kind===picked.kind&&item.tier===picked.tier&&item.tier<MAX_TIER)cell.classList.add('merge-match');
@@ -1003,17 +1004,33 @@ function choose(i){
   else message(r.why);
   present();return;
  }
- if(!item||isBlocked(state,i)){selected=null;present();return;}
+ if(isBlocked(state,i)){selected=null;present();return;}
+ if(!item&&selected!==null){
+  const r=moveItem(state,selected,i);
+  if(r.ok){selected=null;effect('spawn',r.to);message(`Moved ${ITEMS[r.item.kind][r.item.tier].name}.`);present();return;}
+  message(r.why);present();return;
+ }
+ if(!item){selected=null;present();return;}
  if(selected!==null&&selected!==i){
   const r=merge(state,selected,i);
-  if(r.ok){selected=null;effect('merge',r.target);message(`✨ ${ITEMS[r.tile.kind][r.tile.tier].name} crafted!${r.crateResult?.opened?.length?' 📦 Crate opened!':''}${r.webCleared?' · Web cleared!':''}`);present();return;}
+  if(r.ok){
+   selected=null;
+   const revealIndices=r.crateResult?.opened?.map(x=>x.index)||[];
+   effect('merge',r.target,null,{revealIndices});
+   message(`✨ ${ITEMS[r.tile.kind][r.tile.tier].name} crafted!${revealIndices.length?' 📦 Hidden item revealed!':''}${r.webCleared?' · Web cleared!':''}`);
+   present();return;
+  }
   message(r.why);
  }
  selected=selected===i?null:i;present();
 }
 function doMerge(from,to){
- const r=merge(state,from,to);selected=null;
- if(r.ok){effect('merge',r.target);message(`✨ ${ITEMS[r.tile.kind][r.tile.tier].name} crafted!${r.crateResult?.opened?.length?' 📦 Crate opened!':''}`);}
+ const r=state.board[to]?merge(state,from,to):moveItem(state,from,to);selected=null;
+ if(r.ok&&r.tile){
+  const revealIndices=r.crateResult?.opened?.map(x=>x.index)||[];
+  effect('merge',r.target,null,{revealIndices});
+  message(`✨ ${ITEMS[r.tile.kind][r.tile.tier].name} crafted!${revealIndices.length?' 📦 Hidden item revealed!':''}${r.webCleared?' · Web cleared!':''}`);
+ }else if(r.ok&&r.item){effect('spawn',r.to);message(`Moved ${ITEMS[r.item.kind][r.item.tier].name}.`);}
  else message(r.why);
  present();
 }
