@@ -686,7 +686,7 @@ test('board discovery goals expose crate, web and revealed-merge progress', () =
  assert.doesNotThrow(()=>new vm.Script(script));
 });
 
-test('schema 6 saves reset only the board into true-full schema 7', () => {
+test('schema 6 saves reset only the board into current packed schema 8', () => {
  const old=game.createState();
  old.boardSchema=6;
  old.openCells=[...Array.from({length:25},(_,i)=>i)];
@@ -694,7 +694,7 @@ test('schema 6 saves reset only the board into true-full schema 7', () => {
  old.rescued=true;old.completed=['heal','drink','light'];old.xp=300;
  const loaded=game.restore(JSON.stringify(old));
  assert.ok(loaded);
- assert.equal(loaded.boardSchema,7);
+ assert.equal(loaded.boardSchema,8);
  assert.equal(loaded.openCells.length,12);
  assert.equal(loaded.board.filter(Boolean).length,12);
  assert.equal(loaded.cratesOpened,0);
@@ -790,6 +790,18 @@ test('mobile 8x8 board uses calm crate visuals with subtle variations', () => {
  assert.match(html,/max-width:calc\(100vw - 8px\)/);
  assert.match(html,/gap:3px;padding:4px/);
  assert.doesNotThrow(()=>new vm.Script(script));
+});
+
+test('current packed-board schema version is bumped so existing saves reset into the new start', () => {
+ assert.match(html,/const BOARD_SCHEMA=8;/);
+ const old=game.createState();
+ old.boardSchema=7;
+ old.board[18]=null;
+ const loaded=game.restore(JSON.stringify(old));
+ assert.equal(loaded.boardSchema,8);
+ assert.equal(loaded.openCells.filter(i=>loaded.board[i]===null).length,0);
+ assert.equal(loaded.board[26].kind,'leaf');
+ assert.equal(loaded.board[34].kind,'leaf');
 });
 
 test('true full-board start has zero empty playable tiles until the first merge', () => {
