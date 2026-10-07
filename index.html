@@ -77,6 +77,38 @@
 @keyframes matchPulse{0%,100%{filter:brightness(1);box-shadow:0 0 0 2px #eefff5,0 0 8px #59d59a88}50%{filter:brightness(1.1);box-shadow:0 0 0 3px #e4ffef,0 0 16px #4ddaa8bb}}
 @media(max-width:670px){.play{padding:16px 13px}.board-frame{padding:6px;border-radius:16px}.board{gap:3px;border-width:3px;border-radius:11px}.tile{border-radius:8px}.item-icon{font-size:clamp(18px,6vw,30px)}.item-name{font-size:clamp(7px,2.15vw,10px)}.tier-pips{font-size:6px;bottom:1px}.merge-legend span{font-size:9px;padding:6px 3px}.board-caption{padding:3px 7px 7px;font-size:8px}}
 @media(prefers-reduced-motion:reduce){.tile.merge-match,.tile.merge-match .item-icon,.tile.selected{animation:none!important;transition:none!important}}
+
+/* v0.7 — Living Creatures and Sanctuary */
+.scene .rescue-veil{position:absolute;inset:0;z-index:4;pointer-events:none;display:flex;justify-content:end;align-items:start;padding:52px 34px;background:linear-gradient(150deg,#e7e7ffa3,#f8f8ff0c);transition:opacity .45s,background .45s}
+.scene .rescue-veil span{font-size:38px;filter:drop-shadow(0 2px 4px #5a4773aa)}
+.scene.stage-1 .rescue-veil{background:linear-gradient(150deg,#d5ecfa8a,#ffffff0c)}
+.scene.stage-2 .rescue-veil{background:linear-gradient(150deg,#eafff35a,#ffffff00);opacity:.6}
+.scene.stage-3 .rescue-veil{opacity:0}
+.scene.grove-mode.stage-0 .rescue-veil{background:linear-gradient(130deg,#4b79657a,#7c8b6850)}
+.scene.grove-mode.stage-1 .rescue-veil{background:linear-gradient(130deg,#72ac7c55,transparent)}
+.scene.grove-mode.stage-2 .rescue-veil{background:linear-gradient(130deg,#a5d79f24,transparent)}
+.scene .creature{transition:filter .4s}
+.scene.stage-0 .creature{filter:grayscale(.35) brightness(.85)}
+.scene.stage-1 .creature{filter:saturate(.8)}
+.scene.stage-2 .creature{filter:saturate(1.15) drop-shadow(0 0 10px #fff7ac55)}
+.scene.stage-3 .creature{filter:drop-shadow(0 0 13px #ffe8aa9f)}
+.scene-effect{position:absolute;left:49%;top:17%;font-size:32px;z-index:6;opacity:0;pointer-events:none}
+.scene-effect.play{animation:rescueSpark 1.2s ease-out}
+@keyframes rescueSpark{0%{opacity:0;transform:translateY(20px) scale(.5)}35%{opacity:1}100%{opacity:0;transform:translateY(-44px) scale(1.45)}}
+.collection-grid{gap:10px}.friend-card{border-radius:15px;padding:8px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;text-align:center;background:linear-gradient(135deg,#f2ebff,#f7fef2);transition:transform .16s;min-height:132px}
+.friend-card:not(.locked):active{transform:scale(.96)}.friend-card.active{border:2px solid #7cae8f;box-shadow:0 0 0 2px #ddf7e3}
+.friend-card.locked{cursor:not-allowed;opacity:.65}.friend-card .friend-icon{display:block;width:100%;height:69px;overflow:hidden}
+.friend-icon svg{width:100%;height:115px;margin-top:-22px;filter:drop-shadow(0 3px 3px #78658444);animation:sanctuaryFloat 3.2s ease-in-out infinite}
+.friend-card strong{font-size:13px}.friend-card small{font-size:10px}.friend-card .active-label{font-size:9px;color:#428661;font-weight:900}
+.sanctuary-help{font-size:10px;color:#8c7a9d;line-height:1.4}
+.creature-modal{max-width:390px}.creature-portrait{height:160px;background:radial-gradient(circle,#f7edff,#e1f5e6);border-radius:18px;overflow:hidden}
+.creature-portrait svg{height:175px;width:175px}.creature-modal #creatureRole{font-weight:800;color:#8661a8;margin:4px}
+.creature-modal #creatureAbility{background:#f1f8ef;border-radius:12px;padding:12px;color:#4a865a;font-weight:700}
+.creature-modal #companionSelect{border:0;border-radius:13px;padding:12px 15px;width:100%;background:#8063b8;color:#fff;font-weight:900}
+.creature-modal #companionSelect:disabled{background:#d7cce8;color:#665677}
+.creature-close{margin-top:10px;padding:10px 20px;border:0;background:#f2eef9;border-radius:10px;color:#6e5c86;font-weight:800}
+@keyframes sanctuaryFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@media(prefers-reduced-motion:reduce){.scene-effect.play,.friend-icon svg{animation:none!important}.scene .rescue-veil,.scene .creature{transition:none!important}}
 </style></head>
 <body>
  <div class="shell">
@@ -107,7 +139,7 @@
         <circle cx="149" cy="37" r="8" fill="#fee3a2"/>
        </svg>
       </div>
-      <div class="mist-path"><span>✧</span><span>✧</span></div>
+      <div id="rescueVeil" class="rescue-veil" aria-hidden="true"><span id="rescueVeilIcon">☁️</span></div><div class="mist-path"><span>✧</span><span>✧</span></div><div id="sceneEffect" class="scene-effect" aria-hidden="true">✨</div>
       <div class="scene-label" id="sceneLabel">CHAPTER ONE · THE LOST WISP</div>
     </div>
     <div class="story-content"><div class="story-heading"><span class="chapter" id="storyChapter">Your first friend</span><span class="pill">❤️ Rescue quest</span></div><h1 id="storyTitle">Meet Mivra</h1><p class="status" id="status">Mivra needs your help</p><p class="bubble" id="dialogue">It’s a little cold here… could you help me gather some healing magic?</p><button id="exploreBtn" class="explore" disabled>🔒 Rescue Mivra first</button></div>
@@ -126,11 +158,12 @@
  <p id="trailDescription" class="trail-description">Complete quests to restore Wispwood.</p>
  </div>
  <div class="level-panel"><div class="level-head"><strong id="levelLabel">⭐ Level 1</strong><span id="xpLabel">0 / 75 XP</span></div><div class="level-track"><div id="levelBar"></div></div><p>Earn XP by merging and completing quests. Rescued friends help gather free items.</p></div>
- <div class="collection-panel"><div class="collection-heading"><span>✦ YOUR CREATURES</span><strong id="collectionCount">0/2</strong></div><div id="collection" class="collection-grid" aria-label="Your rescued friends"></div><p class="collection-hint" id="worldHint">Save Mivra to find the path ahead.</p></div><div class="tip"><span>💡</span><div><strong>Little tip</strong><p id="tipText">Merge two seeds to make a sprout, then two sprouts to make a healing herb!</p></div></div><div class="fair"><span>✦</span> Crafted as an original, offline-friendly prototype.</div></aside>
+ <div class="collection-panel"><div class="collection-heading"><span>✦ CREATURE SANCTUARY</span><strong id="collectionCount">0/2</strong></div><div id="collection" class="collection-grid" aria-label="Creature Sanctuary"></div><p class="sanctuary-help">Tap a creature to view its abilities and select your companion.</p><p class="collection-hint" id="worldHint">Save Mivra to find the path ahead.</p></div><div class="tip"><span>💡</span><div><strong>Little tip</strong><p id="tipText">Merge two seeds to make a sprout, then two sprouts to make a healing herb!</p></div></div><div class="fair"><span>✦</span> Crafted as an original, offline-friendly prototype.</div></aside>
   </main>
   <footer>Wispwood prototype · Your progress is saved on this device · No external AI credits</footer>
  </div>
  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+ <div id="creatureOverlay" class="end-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="creatureTitle"><div class="end-modal creature-modal"><div id="creaturePortrait" class="creature-portrait" aria-hidden="true"></div><h2 id="creatureTitle">Your friend</h2><p id="creatureRole"></p><p id="creatureDescription"></p><p id="creatureAbility"></p><button id="companionSelect" class="primary">Set as Companion</button><button id="creatureClose" class="creature-close">Close</button></div></div>
  <div id="endOverlay" class="end-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="overlayTitle"><div class="end-modal"><span class="end-icon">🌙✨</span><h2 id="overlayTitle">Moonlit Grove is open!</h2><p id="overlayText">Mivra found a new friend in the forest.</p><button id="endClose" class="primary">Continue</button></div></div>
  <script>// Copyright (c) 2026 Magical Creature Rescue project. Original prototype.
 // Dependency-free game rules: no runtime AI service or network requests.
