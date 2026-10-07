@@ -93,7 +93,7 @@
 .scene.stage-2 .creature{filter:saturate(1.15) drop-shadow(0 0 10px #fff7ac55)}
 .scene.stage-3 .creature{filter:drop-shadow(0 0 13px #ffe8aa9f)}
 .scene-effect{position:absolute;left:49%;top:17%;font-size:32px;z-index:6;opacity:0;pointer-events:none}
-.scene-effect.play{animation:rescueSpark 1.2s ease-out}
+.scene-effect.fx-animate{animation:rescueSpark 1.2s ease-out}
 @keyframes rescueSpark{0%{opacity:0;transform:translateY(20px) scale(.5)}35%{opacity:1}100%{opacity:0;transform:translateY(-44px) scale(1.45)}}
 .collection-grid{gap:10px}.friend-card{border-radius:15px;padding:8px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;text-align:center;background:linear-gradient(135deg,#f2ebff,#f7fef2);transition:transform .16s;min-height:132px}
 .friend-card:not(.locked):active{transform:scale(.96)}.friend-card.active{border:2px solid #7cae8f;box-shadow:0 0 0 2px #ddf7e3}
@@ -108,7 +108,7 @@
 .creature-modal #companionSelect:disabled{background:#d7cce8;color:#665677}
 .creature-close{margin-top:10px;padding:10px 20px;border:0;background:#f2eef9;border-radius:10px;color:#6e5c86;font-weight:800}
 @keyframes sanctuaryFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
-@media(prefers-reduced-motion:reduce){.scene-effect.play,.friend-icon svg{animation:none!important}.scene .rescue-veil,.scene .creature{transition:none!important}}
+@media(prefers-reduced-motion:reduce){.scene-effect.fx-animate,.friend-icon svg{animation:none!important}.scene .rescue-veil,.scene .creature{transition:none!important}}
 </style></head>
 <body>
  <div class="shell">
@@ -454,9 +454,9 @@ el('exploreBtn').onclick=()=>{if(explore(state)){selected=null;message('Moonlit 
 el('resetBtn').onclick=()=>{if(confirm('Restart your rescue story?')){state=createState();selected=null;el('endOverlay').hidden=true;el('creatureOverlay').hidden=true;present();message('A fresh adventure begins!');}};
 el('endClose').onclick=()=>{el('endOverlay').hidden=true;el('spawnBtn').focus();};
 function triggerSceneEffect(symbol){
- const fx=el('sceneEffect');fx.textContent=symbol;fx.classList.remove('play');
- void fx.offsetWidth;fx.classList.add('play');clearTimeout(stageTimer);
- stageTimer=setTimeout(()=>fx.classList.remove('play'),1400);
+ const fx=el('sceneEffect');fx.textContent=symbol;fx.classList.remove('fx-animate');
+ void fx.offsetWidth;fx.classList.add('fx-animate');clearTimeout(stageTimer);
+ stageTimer=setTimeout(()=>fx.classList.remove('fx-animate'),1400);
 }
 function openCreature(id){
  const data=CREATURES[id];if(!data)return;
