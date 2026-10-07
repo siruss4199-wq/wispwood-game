@@ -28,12 +28,16 @@ test('MVP markup contains game controls and accessible board', () => {
   assert.match(html, /aria-label="8 by 8 merge board"/);
 });
 
-test('a new game starts on a dense 8×8 buried board', () => {
+test('a new game starts with only two matching Seeds visible', () => {
   const s = game.createState();
   assert.equal(s.board.length,64);
   assert.equal(s.openCells.length,12);
-  assert.equal(s.board.filter(Boolean).length,12);
-  assert.equal(game.isGenerator(s.board[27]),true);
+  assert.equal(s.board.filter(Boolean).length,2);
+  assert.equal(s.board[26].kind,'leaf');
+  assert.equal(s.board[34].kind,'leaf');
+  assert.equal(s.board[26].tier,0);
+  assert.equal(s.board[34].tier,0);
+  assert.equal(s.board.some(game.isGenerator),false);
   assert.equal(game.TASKS.length, 3);
   assert.equal(s.rescued, false);
   assert.equal(s.explored, false);
@@ -686,7 +690,7 @@ test('board discovery goals expose crate, web and revealed-merge progress', () =
  assert.doesNotThrow(()=>new vm.Script(script));
 });
 
-test('schema 6 saves reset only the board into current packed schema 8', () => {
+test('schema 6 saves reset only the board into current two-seed schema 9', () => {
  const old=game.createState();
  old.boardSchema=6;
  old.openCells=[...Array.from({length:25},(_,i)=>i)];
@@ -694,9 +698,9 @@ test('schema 6 saves reset only the board into current packed schema 8', () => {
  old.rescued=true;old.completed=['heal','drink','light'];old.xp=300;
  const loaded=game.restore(JSON.stringify(old));
  assert.ok(loaded);
- assert.equal(loaded.boardSchema,8);
+ assert.equal(loaded.boardSchema,9);
  assert.equal(loaded.openCells.length,12);
- assert.equal(loaded.board.filter(Boolean).length,12);
+ assert.equal(loaded.board.filter(Boolean).length,2);
  assert.equal(loaded.cratesOpened,0);
  assert.equal(loaded.websCleared,0);
  assert.equal(loaded.revealedMerges,0);
@@ -706,6 +710,7 @@ test('schema 6 saves reset only the board into current packed schema 8', () => {
 
 test('producer can move to an empty open tile', () => {
  const st=game.createState();
+ st.board[27]={special:'generator',kind:'leaf',level:1};
  st.board[18]=null;
  const r=game.moveItem(st,27,18);
  assert.equal(r.ok,true);
@@ -716,6 +721,7 @@ test('producer can move to an empty open tile', () => {
 test('matching producers merge and level up', () => {
  const st=game.createState();
  st.board[19]={special:'generator',kind:'leaf',level:1};
+ st.board[27]={special:'generator',kind:'leaf',level:1};
  const r=game.mergeGenerator(st,19,27);
  assert.equal(r.ok,true);
  assert.equal(st.board[19],null);
@@ -792,28 +798,29 @@ test('mobile 8x8 board uses calm crate visuals with subtle variations', () => {
  assert.doesNotThrow(()=>new vm.Script(script));
 });
 
-test('current packed-board schema version is bumped so existing saves reset into the new start', () => {
- assert.match(html,/const BOARD_SCHEMA=8;/);
+test('current two-seed schema version resets existing saves into the calm start', () => {
+ assert.match(html,/const BOARD_SCHEMA=9;/);
  const old=game.createState();
- old.boardSchema=7;
- old.board[18]=null;
+ old.boardSchema=8;
+ old.board[18]={kind:'glow',tier:2};
  const loaded=game.restore(JSON.stringify(old));
- assert.equal(loaded.boardSchema,8);
- assert.equal(loaded.openCells.filter(i=>loaded.board[i]===null).length,0);
+ assert.equal(loaded.boardSchema,9);
+ assert.equal(loaded.board.filter(Boolean).length,2);
  assert.equal(loaded.board[26].kind,'leaf');
  assert.equal(loaded.board[34].kind,'leaf');
+ assert.equal(loaded.board.some(game.isGenerator),false);
 });
 
-test('true full-board start has zero empty playable tiles until the first merge', () => {
+test('first Seed merge starts the loop and creates the starter producer', () => {
  const st=game.createState();
- assert.equal(st.openCells.filter(i=>st.board[i]===null).length,0);
- assert.equal(game.openEmptyIndices(st).length,0);
- const producerBlocked=game.activateGenerator(st,27,()=>0);
- assert.equal(producerBlocked.ok,false);
+ assert.equal(st.board.filter(Boolean).length,2);
+ assert.equal(game.openEmptyIndices(st).length,10);
  const merged=game.merge(st,26,34);
  assert.equal(merged.ok,true);
- assert.equal(st.openCells.filter(i=>st.board[i]===null).length,1);
- const producerWorks=game.activateGenerator(st,27,()=>0);
- assert.equal(producerWorks.ok,true);
- assert.equal(st.openCells.filter(i=>st.board[i]===null).length,0);
+ assert.equal(st.board[26],null);
+ assert.equal(st.board[34].kind,'leaf');
+ assert.equal(st.board[34].tier,1);
+ assert.equal(game.isGenerator(st.board[27]),true);
+ const produced=game.activateGenerator(st,27,()=>0);
+ assert.equal(produced.ok,true);
 });
