@@ -592,7 +592,7 @@ test('mobile app shell has fixed navigation, compact quest strip and bottom shee
 
 test('mobile board is designed to fit the viewport without page scrolling', () => {
  assert.match(html,/\.play\{height:100%;padding:8px 10px 76px/);
- assert.match(html,/\.board\{width:min\(calc\(100vw - 20px\),calc\(100dvh - 230px\)\)/);
+ assert.match(html,/\.board\{height:100%;width:auto;max-height:calc\(100dvh - 315px\)/);
  assert.match(html,/\.story,.sidebar,footer\{display:none!important\}/);
  assert.match(html,/\.mobile-sheet-body\{overflow:auto/);
 });
@@ -607,5 +607,20 @@ test('mobile board always renders visible quest chips above the board', () => {
  assert.doesNotMatch(html,/mobileQuestIcon/);
  assert.doesNotMatch(html,/mobileQuestName/);
  assert.doesNotMatch(html,/mobileQuestProgress/);
+ assert.doesNotThrow(()=>new vm.Script(script));
+});
+
+test('mobile board fits fully above navigation and hides disabled actions', () => {
+ assert.match(html,/\.board\{height:100%;width:auto;max-height:calc\(100dvh - 315px\)/);
+ assert.match(html,/\.actions #deliverBtn:disabled,.actions #recycleBtn:disabled\{display:none\}/);
+});
+
+test('completed adventures still show quest history in the mobile quest sheet', () => {
+ assert.match(html,/COMPLETED QUESTS/);
+ assert.match(html,/No quest history yet/);
+ assert.match(html,/const history=\[\]/);
+ assert.match(html,/TASKS\.forEach/);
+ assert.match(html,/GROVE_TASKS\.forEach/);
+ assert.match(html,/TRAIL\.forEach/);
  assert.doesNotThrow(()=>new vm.Script(script));
 });

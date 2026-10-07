@@ -166,9 +166,9 @@
  .mobile-quest-chips{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}.mobile-quest-chip{min-width:0;border:0;border-radius:11px;background:#f7f4fa;padding:6px 4px;display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:4px;text-align:left}.mobile-quest-chip>span{grid-row:1/3;font-size:17px;align-self:center}.mobile-quest-chip small{font-size:7px;font-weight:900;color:#5f5468;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mobile-quest-chip b{font-size:7px;color:#8f7ca0}.mobile-quest-chip.done{background:#eef7eb}.mobile-quest-chip.done b{color:#57966f}
  .puzzle-hud{margin:0 0 6px;padding:7px;border-radius:11px;flex:0 0 auto}.puzzle-hud small,.puzzle-label{font-size:7px}.puzzle-hud strong{font-size:10px}.puzzle-stats{font-size:7px}
  .board-frame{flex:1;min-height:0;display:grid;place-items:center;background:transparent;border:0;padding:0;overflow:hidden}
- .board{width:min(calc(100vw - 20px),calc(100dvh - 230px));max-width:100%;aspect-ratio:1/1;gap:5px;padding:7px;border-radius:22px;margin:auto}
+ .board{height:100%;width:auto;max-height:calc(100dvh - 315px);max-width:calc(100vw - 20px);aspect-ratio:1/1;gap:5px;padding:7px;border-radius:22px;margin:auto}
  .tile{border-radius:13px}.item-icon{font-size:clamp(24px,7.5vw,38px)}.tile.generator .generator-icon{font-size:clamp(30px,9vw,48px)}.tile.locked.frontier .terrain-icon{font-size:clamp(32px,9vw,48px)}
- .actions{height:45px;min-height:45px;margin-top:7px;gap:7px;flex:0 0 auto}.actions button{padding:8px 7px;border-radius:12px;font-size:11px}.tertiary{width:42px}
+ .actions{height:auto;min-height:0;margin-top:4px;gap:7px;flex:0 0 auto}.actions button{padding:8px 7px;border-radius:12px;font-size:11px}.actions #deliverBtn:disabled,.actions #recycleBtn:disabled{display:none}.tertiary{width:42px}
  .mobile-nav{display:grid;position:fixed;z-index:20;left:8px;right:8px;bottom:max(8px,env(safe-area-inset-bottom));height:58px;grid-template-columns:repeat(4,1fr);background:#ffffffef;backdrop-filter:blur(18px);border:1px solid #e8e0ef;border-radius:20px;box-shadow:0 10px 35px #40344e35;padding:5px}
  .mobile-nav button{border:0;background:transparent;border-radius:15px;color:#8c8094;font-weight:800;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}.mobile-nav button span{font-size:18px;line-height:1}.mobile-nav button small{font-size:8px}.mobile-nav button.active{background:#efe8f8;color:#684c8f}
  .mobile-sheet-backdrop{display:block;position:fixed;inset:0;z-index:29;background:#30283e66;backdrop-filter:blur(2px)}
@@ -177,7 +177,7 @@
  .mobile-sheet-handle{width:42px;height:4px;border-radius:999px;background:#ddd5e3;margin:0 auto 8px}
  .mobile-sheet-head{display:flex;align-items:center;justify-content:space-between}.mobile-sheet-head small{font-size:8px;letter-spacing:1.2px;color:#a18bb4;font-weight:900}.mobile-sheet-head h2{font-size:19px;margin:2px 0 8px;color:#43394e}.mobile-sheet-head button{width:34px;height:34px;border:0;border-radius:50%;background:#f1edf4;color:#73667c;font-size:21px}
  .mobile-sheet-body{overflow:auto;max-height:calc(62dvh - 70px);overscroll-behavior:contain;padding-bottom:4px}
- .mobile-sheet-task{display:flex;align-items:center;gap:10px;background:#f8f6fa;border-radius:14px;padding:10px;margin-bottom:7px}.mobile-sheet-task.done{background:#edf7eb}.mobile-sheet-task .ico{font-size:22px}.mobile-sheet-task .copy{flex:1;min-width:0}.mobile-sheet-task strong{display:block;font-size:11px;color:#544b5e}.mobile-sheet-task small{font-size:9px;color:#968a9f}.mobile-sheet-task b{font-size:9px;color:#826aa0}
+ .mobile-sheet-section{margin:4px 0 12px}.mobile-sheet-section>h3{font-size:9px;letter-spacing:1px;color:#907ca2;margin:7px 2px}.mobile-sheet-task{display:flex;align-items:center;gap:10px;background:#f8f6fa;border-radius:14px;padding:10px;margin-bottom:7px}.mobile-sheet-task.done{background:#edf7eb}.mobile-sheet-task .ico{font-size:22px}.mobile-sheet-task .copy{flex:1;min-width:0}.mobile-sheet-task strong{display:block;font-size:11px;color:#544b5e}.mobile-sheet-task small{font-size:9px;color:#968a9f}.mobile-sheet-task b{font-size:9px;color:#826aa0}
  .mobile-story-card{background:#f6f1fa;border-radius:16px;padding:13px}.mobile-story-card strong{display:block;font-size:15px;color:#53435f;margin-bottom:5px}.mobile-story-card p{font-size:11px;line-height:1.55;color:#776c7e;margin:0 0 10px}
  .mobile-friends{display:grid;grid-template-columns:1fr 1fr;gap:8px}.mobile-friend{border:0;border-radius:16px;background:#f5f2f7;padding:12px;text-align:center}.mobile-friend.locked{opacity:.55}.mobile-friend .art{display:block;font-size:28px}.mobile-friend strong{display:block;font-size:11px;color:#51465c}.mobile-friend small{font-size:8px;color:#93869b}
  .toast{bottom:82px;font-size:11px;padding:11px 15px}
@@ -750,7 +750,15 @@ function mobileSheetContent(kind){
  const tasks=activeTasks(state);
  const done=isTrail(state)?state.trailCompleted:state.explored?state.groveCompleted:state.completed;
  if(kind==='quests'){
-  return tasks.map(t=>`<div class="mobile-sheet-task ${done.includes(t.id)?'done':''}"><span class="ico">${done.includes(t.id)?'✅':ITEMS[t.kind][t.tier].emoji}</span><span class="copy"><strong>${t.label}</strong><small>${done.includes(t.id)?'Completed':t.help}</small></span><b>${done.includes(t.id)?'Done':'Needed'}</b></div>`).join('');
+  const taskRow=(t,finished)=>`<div class="mobile-sheet-task ${finished?'done':''}"><span class="ico">${finished?'✅':ITEMS[t.kind][t.tier].emoji}</span><span class="copy"><strong>${t.label}</strong><small>${finished?'Completed':t.help}</small></span><b>${finished?'Done':'Needed'}</b></div>`;
+  if(tasks.length)return `<div class="mobile-sheet-section"><h3>CURRENT GOALS</h3>${tasks.map(t=>taskRow(t,done.includes(t.id))).join('')}</div>`;
+  const history=[];
+  TASKS.forEach(t=>history.push({task:t,finished:state.completed.includes(t.id),chapter:'Mivra'}));
+  GROVE_TASKS.forEach(t=>history.push({task:t,finished:state.groveCompleted.includes(t.id),chapter:'Orru'}));
+  TRAIL.forEach(zone=>zone.tasks.forEach(t=>history.push({task:t,finished:state.trailIndex>=TRAIL.length||state.trailIndex>TRAIL.indexOf(zone)||state.trailCompleted.includes(t.id),chapter:zone.name})));
+  const finished=history.filter(x=>x.finished);
+  if(!finished.length)return '<div class="mobile-story-card"><strong>No quest history yet</strong><p>Merge items and rescue Mivra to start your adventure.</p></div>';
+  return `<div class="mobile-sheet-section"><h3>COMPLETED QUESTS</h3>${finished.map(x=>taskRow(x.task,true)).join('')}</div>`;
  }
  if(kind==='story'){
   const title=el('storyTitle').textContent,dialogue=el('dialogue').textContent,status=el('status').textContent;
