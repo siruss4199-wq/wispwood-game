@@ -354,7 +354,7 @@ test('Orru Grow never charges against or replaces board items on full board', ()
  assert.equal(st.orruCharge,4);
 });
 test('Clear Vines grants one-time Water and XP only with active Orru', () => {
- const st=game.createState();st.rescued=true;st.orruRescued=true;
+ const st=game.createState();st.rescued=true;st.orruRescued=true;st.board[18]=null;
  assert.equal(game.clearVines(st).ok,false);
  game.chooseCompanion(st,'orru');
  const r=game.clearVines(st);assert.equal(r.ok,true);
@@ -379,7 +379,7 @@ test('Forest Remedy accepts exactly two Herbs and gives one Bloom', () => {
  assert.equal(game.deliverOrruQuest(st,0).ok,false);
 });
 test('v0.7 save migration preserves existing board, XP and rescued companions', () => {
- const st=game.createState();st.rescued=true;st.explored=true;
+ const st=game.createState();st.rescued=true;st.explored=true;st.board.fill(null);
  st.groveCompleted=['grove-bloom','grove-well','grove-aurora'];st.orruRescued=true;
  st.activeCompanion='orru';st.xp=210;st.trailIndex=2;
  delete st.orruCharge;delete st.vinesCleared;delete st.orruQuestCount;
@@ -396,7 +396,7 @@ test('Orru controls and complete inline JavaScript render with no parse failure'
 });
 
 test('v1 restoration region seeds real blockers on empty board cells', () => {
- const st=game.createState();st.rescued=true;st.explored=true;st.orruRescued=true;
+ const st=game.createState();st.rescued=true;st.explored=true;st.orruRescued=true;st.board.fill(null);
  game.ensurePuzzle(st);
  assert.equal(st.puzzleZone,0);
  assert.equal(st.blockers.length,5);
@@ -419,7 +419,7 @@ test('quest delivery is locked until region blockers are cleared', () => {
 });
 
 test('five successful merges charge companion skill and invalid merge breaks combo', () => {
- const st=game.createState();st.rescued=true;st.explored=true;st.orruRescued=true;
+ const st=game.createState();st.rescued=true;st.explored=true;st.orruRescued=true;st.board.fill(null);
  st.puzzleZone=0;st.blockers=[];st.openCells=Array.from({length:49},(_,i)=>i);st.board.fill(null);
  for(let n=0;n<5;n++){
   st.board[n*2]={kind:'leaf',tier:0};st.board[n*2+1]={kind:'leaf',tier:0};
@@ -431,7 +431,7 @@ test('five successful merges charge companion skill and invalid merge breaks com
 });
 
 test('Orru clears vines while Mivra clears fog and mixed gate needs both', () => {
- const st=game.createState();st.rescued=true;st.explored=true;st.orruRescued=true;
+ const st=game.createState();st.rescued=true;st.explored=true;st.orruRescued=true;st.board.fill(null);
  st.trailIndex=2;game.seedPuzzle(st);
  assert.ok(st.blockers.some(b=>b.type==='vine'));
  assert.ok(st.blockers.some(b=>b.type==='fog'));
@@ -478,8 +478,9 @@ test('v1 puzzle HUD, blockers and companion skill controls exist', () => {
  assert.doesNotThrow(()=>new vm.Script(script));
 });
 
-test('embedded Spirit Tree spends energy and creates a Seed in the open clearing', () => {
+test('embedded Spirit Tree spends energy and creates a Seed after a merge frees space', () => {
  const st=game.createState();
+ game.merge(st,26,34);
  const r=game.activateGenerator(st,27,()=>0);
  assert.equal(r.ok,true);
  assert.equal(st.board[r.index].kind,'leaf');assert.equal(st.board[r.index].tier,0);
@@ -724,6 +725,7 @@ test('matching producers merge and level up', () => {
 
 test('higher-level producers create higher-tier items', () => {
  const st=game.createState();
+ st.board[18]=null;
  st.board[27]={special:'generator',kind:'leaf',level:2};
  const r=game.activateGenerator(st,27,()=>0);
  assert.equal(r.ok,true);
