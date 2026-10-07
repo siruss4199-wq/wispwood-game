@@ -747,12 +747,14 @@ test('producer markup communicates movable two-tap interaction', () => {
  assert.doesNotThrow(()=>new vm.Script(script));
 });
 
-test('dense 8x8 start visually fills every closed tile with buried crates', () => {
+test('8x8 start keeps closed tiles buried while only two starter Seeds are visible', () => {
  const st=game.createState();
  assert.equal(st.board.length,64);
  assert.equal(st.openCells.length,12);
- assert.equal(st.board.filter(Boolean).length,12);
- assert.equal(st.webbed.length,2);
+ assert.equal(st.board.filter(Boolean).length,2);
+ assert.equal(st.webbed.length,0);
+ assert.equal(st.board[26].kind,'leaf');
+ assert.equal(st.board[34].kind,'leaf');
  assert.match(html,/crate-tier-/);
  assert.match(html,/Buried crate/);
  assert.match(html,/crate-seal/);
