@@ -17,12 +17,12 @@ test('complete browser game JavaScript compiles without syntax errors', () => {
 const uiStart = script.indexOf("const KEY='wispwood-prototype-v1'");
 assert.ok(uiStart > 0, 'Could not find boundary between game rules and browser UI');
 const context = vm.createContext({});
-const names = ['SIZE','KINDS','INITIAL_OPEN','INITIAL_ENERGY','MAX_ENERGY','CELL_REVEALS','GENERATORS','BOARD_GOALS','boardGoalProgress','isOpen','isGenerator','isWebbed','neighbors','isFrontierCell','unlockCost','openEmptyIndices','ensureStarterGenerator','revealUnlockedCell','crateRevealFor','crateHitsNeeded','crateDamage','openCellFromCrate','damageAdjacentCrates','unlockCell','moveItem','mergeGenerator','activateGenerator','V2_MOVES','isWild','normalItem','itemLabel','v2Active','v2Limited','generateFrom','mergeGroup','TASKS', 'GROVE_TASKS', 'TRAIL', 'PUZZLES', 'SKILL_MAX', 'BLOCKER_ICON', 'puzzleInfo', 'puzzleReady', 'seedPuzzle', 'ensurePuzzle', 'isBlocked', 'useCompanionSkill', 'CREATURES', 'ORRU_GROW_COST', 'ORRU_QUEST_GOAL', 'orruGrow', 'orruCanGrow', 'clearVines', 'deliverOrruQuest', 'rescueStage', 'currentCompanion', 'chooseCompanion', 'activeTasks', 'gainXP', 'trailInfo', 'isTrail', 'collected', 'createState', 'merge', 'deliver', 'spawn', 'recycle', 'explore', 'serialize', 'restore'];
+const names = ['SIZE','KINDS','INITIAL_OPEN','INITIAL_ENERGY','MAX_ENERGY','CELL_REVEALS','GENERATORS','BOARD_GOALS','boardGoalProgress','isOpen','isGenerator','isWebbed','neighbors','isFrontierCell','unlockCost','openEmptyIndices','ensureStarterGenerator','revealUnlockedCell','crateRevealFor','crateHitsNeeded','crateDamage','openCellFromCrate','damageAdjacentCrates','unlockCell','moveItem','mergeGenerator','activateGenerator','V2_MOVES','isWild','normalItem','itemLabel','v2Active','v2Limited','generateFrom','mergeGroup','TASKS', 'GROVE_TASKS', 'TRAIL', 'PUZZLES', 'SKILL_MAX', 'BLOCKER_ICON', 'puzzleInfo', 'puzzleReady', 'seedPuzzle', 'ensurePuzzle', 'isBlocked', 'useCompanionSkill', 'CREATURES', 'ORRU_GROW_COST', 'ORRU_QUEST_GOAL', 'orruGrow', 'orruCanGrow', 'clearVines', 'deliverOrruQuest', 'rescueStage', 'currentCompanion', 'chooseCompanion', 'activeTasks', 'gainXP', 'trailInfo', 'isTrail', 'collected', 'createState', 'merge', 'deliver', 'spawn', 'recycle', 'breakDown', 'explore', 'serialize', 'restore'];
 vm.runInContext(script.slice(0, uiStart) + '\nglobalThis.game = {' + names.join(',') + '};', context, { timeout: 1000 });
 const game = context.game;
 
 test('MVP markup contains game controls and accessible board', () => {
-  for (const id of ['board', 'spawnBtn', 'deliverBtn', 'recycleBtn', 'exploreBtn', 'endOverlay', 'resetBtn']) {
+  for (const id of ['board', 'spawnBtn', 'deliverBtn', 'splitBtn', 'recycleBtn', 'exploreBtn', 'endOverlay', 'resetBtn']) {
     assert.match(html, new RegExp('id="' + id + '"'));
   }
   assert.match(html, /aria-label="8 by 8 merge board"/);
@@ -125,6 +125,20 @@ test('recycling makes an unlocked item tile empty', () => {
   assert.equal(game.recycle(s,26),true);
   assert.equal(s.board[26],null);
   assert.equal(game.recycle(s,23),false);
+});
+
+test('breakdown tool lowers a merge item by one tier to escape deadlocks', () => {
+  const s=game.createState();
+  s.board[34]={kind:'leaf',tier:1};
+  const r=game.breakDown(s,34);
+  assert.equal(r.ok,true);
+  assert.equal(r.fromTier,1);
+  assert.equal(r.toTier,0);
+  assert.equal(s.board[34].kind,'leaf');
+  assert.equal(s.board[34].tier,0);
+  assert.equal(game.breakDown(s,34).ok,false);
+  s.board[34]={special:'generator',kind:'leaf',level:1};
+  assert.equal(game.breakDown(s,34).ok,false);
 });
 
 test('rescue animation targets existing character element and respects reduced motion', () => {
@@ -624,7 +638,7 @@ test('mobile board always renders visible quest chips above the board', () => {
 
 test('mobile board fits fully above navigation and hides disabled actions', () => {
  assert.match(html,/\.board\{height:100%;width:auto;max-height:calc\(100dvh - 245px\)/);
- assert.match(html,/\.actions #deliverBtn:disabled,.actions #recycleBtn:disabled\{display:none\}/);
+ assert.match(html,/\.actions #deliverBtn:disabled,.actions #splitBtn:disabled,.actions #recycleBtn:disabled\{display:none\}/);
 });
 
 test('completed adventures still show story history alongside board goals in the mobile quest sheet', () => {
