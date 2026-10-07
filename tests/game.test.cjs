@@ -594,7 +594,7 @@ test('mobile app shell has fixed navigation, compact quest strip and bottom shee
 
 test('mobile board is designed to fit the viewport without page scrolling', () => {
  assert.match(html,/\.play\{height:100%;padding:8px 10px 76px/);
- assert.match(html,/\.board\{height:100%;width:auto;max-height:calc\(100dvh - 315px\)/);
+ assert.match(html,/\.board\{height:100%;width:auto;max-height:calc\(100dvh - 245px\)/);
  assert.match(html,/\.story,.sidebar,footer\{display:none!important\}/);
  assert.match(html,/\.mobile-sheet-body\{overflow:auto/);
 });
@@ -613,7 +613,7 @@ test('mobile board always renders visible quest chips above the board', () => {
 });
 
 test('mobile board fits fully above navigation and hides disabled actions', () => {
- assert.match(html,/\.board\{height:100%;width:auto;max-height:calc\(100dvh - 315px\)/);
+ assert.match(html,/\.board\{height:100%;width:auto;max-height:calc\(100dvh - 245px\)/);
  assert.match(html,/\.actions #deliverBtn:disabled,.actions #recycleBtn:disabled\{display:none\}/);
 });
 
@@ -767,22 +767,25 @@ test('mobile board restores touch drag interactions with Pointer Events', () => 
  assert.doesNotThrow(()=>new vm.Script(script));
 });
 
-test('enchanted vines visibly communicate a locked merge state', () => {
+test('enchanted vines use an edge-frame treatment while keeping items readable', () => {
  assert.match(html,/class="vine-seal"/);
  assert.doesNotMatch(html,/class="vine-lock"/);
  assert.doesNotMatch(html,/>MERGE</);
  assert.doesNotMatch(html,/content:'🔒'/);
- assert.match(html,/content:'✦'/);
- assert.match(html,/border-color:#9ab98b/);
+ assert.match(html,/\.tile\.vinebound:before,.tile\.vinebound:after/);
+ assert.match(html,/radial-gradient\(ellipse at 8% 12%/);
+ assert.match(html,/\.tile\.vinebound \.item-icon,.tile\.vinebound \.item-name\{opacity:1/);
+ assert.match(html,/content:'❧'/);
  assert.match(html,/merge a matching item to free it/);
 });
 
-test('mobile 8x8 board uses calm unified crate visuals', () => {
+test('mobile 8x8 board uses calm crate visuals with subtle variations', () => {
  assert.match(html,/const crateIcon='📦'/);
+ assert.match(html,/crate-variant-/);
  assert.match(html,/\.crate-help,.crate-seal\{display:none!important\}/);
  assert.match(html,/\.board \.tier-pips,.tile\.generator \.item-name\{display:none!important\}/);
- assert.match(html,/max-width:calc\(100vw - 12px\)/);
- assert.match(html,/gap:3px;padding:5px/);
+ assert.match(html,/max-width:calc\(100vw - 8px\)/);
+ assert.match(html,/gap:3px;padding:4px/);
  assert.doesNotThrow(()=>new vm.Script(script));
 });
 
