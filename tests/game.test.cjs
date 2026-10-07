@@ -747,3 +747,27 @@ test('dense 8x8 start visually fills every closed tile with buried crates', () =
  assert.match(html,/crate-seal/);
  assert.match(html,/enchanted vines/);
 });
+
+test('mobile board restores touch drag interactions with Pointer Events', () => {
+ assert.match(html,/function pointerDragStart/);
+ assert.match(html,/function pointerDragMove/);
+ assert.match(html,/function pointerDragEnd/);
+ assert.match(html,/pointerdown/);
+ assert.match(html,/pointermove/);
+ assert.match(html,/pointerup/);
+ assert.match(html,/pointercancel/);
+ assert.match(html,/touch-action:none/);
+ assert.match(html,/drag-source/);
+ assert.match(html,/drag-target/);
+ assert.doesNotThrow(()=>new vm.Script(script));
+});
+
+test('enchanted vines visibly communicate a locked merge state', () => {
+ assert.match(html,/class="vine-lock"/);
+ assert.match(html,/class="vine-hint"/);
+ assert.match(html,/>MERGE</);
+ assert.match(html,/content:'🔒'/);
+ assert.match(html,/rotate\(35deg\)/);
+ assert.match(html,/rotate\(-35deg\)/);
+ assert.match(html,/merge a matching item to free it/);
+});
