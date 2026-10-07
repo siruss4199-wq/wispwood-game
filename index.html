@@ -720,6 +720,7 @@ function restore(raw){
    s.openCells=Array.isArray(s.openCells)?[...new Set(s.openCells.filter(i=>Number.isInteger(i)&&i>=0&&i<SIZE*SIZE))].sort((a,b)=>a-b):[...INITIAL_OPEN];
    if(!s.openCells.length)s.openCells=[...INITIAL_OPEN];
    s.webbed=Array.isArray(s.webbed)?s.webbed.filter(i=>s.openCells.includes(i)&&s.board[i]&&!isGenerator(s.board[i])):[];
+   s.revealedCells=Array.isArray(s.revealedCells)?s.revealedCells.filter(i=>s.openCells.includes(i)&&s.board[i]&&!isGenerator(s.board[i])):[];
    s.blockers=Array.isArray(s.blockers)?s.blockers.filter(b=>b&&Number.isInteger(b.index)&&b.index>=0&&b.index<SIZE*SIZE&&s.openCells.includes(b.index)&&(b.type==='vine'||b.type==='fog')&&s.board[b.index]===null):[];
   }
 
@@ -738,6 +739,10 @@ function restore(raw){
   s.skillCharge=Number.isInteger(s.skillCharge)&&s.skillCharge>=0?Math.min(SKILL_MAX,s.skillCharge):0;
   s.boardSchema=BOARD_SCHEMA;
   s.crateDamage=s.crateDamage&&typeof s.crateDamage==='object'?Object.fromEntries(Object.entries(s.crateDamage).filter(([k,v])=>Number.isInteger(Number(k))&&Number(k)>=0&&Number(k)<SIZE*SIZE&&Number.isInteger(v)&&v>=0)):{};
+  s.revealedCells=Array.isArray(s.revealedCells)?s.revealedCells.filter(i=>Number.isInteger(i)&&i>=0&&i<SIZE*SIZE&&s.openCells.includes(i)&&s.board[i]&&!isGenerator(s.board[i])):[];
+  s.cratesOpened=Number.isInteger(s.cratesOpened)&&s.cratesOpened>=0?s.cratesOpened:0;
+  s.websCleared=Number.isInteger(s.websCleared)&&s.websCleared>=0?s.websCleared:0;
+  s.revealedMerges=Number.isInteger(s.revealedMerges)&&s.revealedMerges>=0?s.revealedMerges:0;
   s.magic=Number.isInteger(s.magic)&&s.magic>=0?s.magic:0;
   s.maxEnergy=MAX_ENERGY;
   s.energy=Number.isInteger(s.energy)?Math.max(0,Math.min(MAX_ENERGY,s.energy)):INITIAL_ENERGY;
