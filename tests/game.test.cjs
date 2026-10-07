@@ -17,7 +17,7 @@ test('complete browser game JavaScript compiles without syntax errors', () => {
 const uiStart = script.indexOf("const KEY='wispwood-prototype-v1'");
 assert.ok(uiStart > 0, 'Could not find boundary between game rules and browser UI');
 const context = vm.createContext({});
-const names = ['SIZE','KINDS','INITIAL_OPEN','INITIAL_ENERGY','MAX_ENERGY','CELL_REVEALS','GENERATORS','isOpen','isGenerator','isWebbed','neighbors','isFrontierCell','unlockCost','openEmptyIndices','ensureStarterGenerator','revealUnlockedCell','crateHitsNeeded','crateDamage','openCellFromCrate','damageAdjacentCrates','unlockCell','activateGenerator','V2_MOVES','isWild','normalItem','itemLabel','v2Active','v2Limited','generateFrom','mergeGroup','TASKS', 'GROVE_TASKS', 'TRAIL', 'PUZZLES', 'SKILL_MAX', 'BLOCKER_ICON', 'puzzleInfo', 'puzzleReady', 'seedPuzzle', 'ensurePuzzle', 'isBlocked', 'useCompanionSkill', 'CREATURES', 'ORRU_GROW_COST', 'ORRU_QUEST_GOAL', 'orruGrow', 'orruCanGrow', 'clearVines', 'deliverOrruQuest', 'rescueStage', 'currentCompanion', 'chooseCompanion', 'activeTasks', 'gainXP', 'trailInfo', 'isTrail', 'collected', 'createState', 'merge', 'deliver', 'spawn', 'recycle', 'explore', 'serialize', 'restore'];
+const names = ['SIZE','KINDS','INITIAL_OPEN','INITIAL_ENERGY','MAX_ENERGY','CELL_REVEALS','GENERATORS','BOARD_GOALS','boardGoalProgress','isOpen','isGenerator','isWebbed','neighbors','isFrontierCell','unlockCost','openEmptyIndices','ensureStarterGenerator','revealUnlockedCell','crateRevealFor','crateHitsNeeded','crateDamage','openCellFromCrate','damageAdjacentCrates','unlockCell','moveItem','activateGenerator','V2_MOVES','isWild','normalItem','itemLabel','v2Active','v2Limited','generateFrom','mergeGroup','TASKS', 'GROVE_TASKS', 'TRAIL', 'PUZZLES', 'SKILL_MAX', 'BLOCKER_ICON', 'puzzleInfo', 'puzzleReady', 'seedPuzzle', 'ensurePuzzle', 'isBlocked', 'useCompanionSkill', 'CREATURES', 'ORRU_GROW_COST', 'ORRU_QUEST_GOAL', 'orruGrow', 'orruCanGrow', 'clearVines', 'deliverOrruQuest', 'rescueStage', 'currentCompanion', 'chooseCompanion', 'activeTasks', 'gainXP', 'trailInfo', 'isTrail', 'collected', 'createState', 'merge', 'deliver', 'spawn', 'recycle', 'explore', 'serialize', 'restore'];
 vm.runInContext(script.slice(0, uiStart) + '\nglobalThis.game = {' + names.join(',') + '};', context, { timeout: 1000 });
 const game = context.game;
 
@@ -622,5 +622,63 @@ test('completed adventures still show quest history in the mobile quest sheet', 
  assert.match(html,/TASKS\.forEach/);
  assert.match(html,/GROVE_TASKS\.forEach/);
  assert.match(html,/TRAIL\.forEach/);
+ assert.doesNotThrow(()=>new vm.Script(script));
+});
+
+test('ordinary frontier crates reveal a real movable item instead of an empty tile', () => {
+ const st=game.createState();
+ assert.equal(game.isFrontierCell(st,10),true);
+ const r=game.openCellFromCrate(st,10);
+ assert.ok(r);
+ assert.equal(r.reveal.type,'item');
+ assert.ok(st.board[10]);
+ assert.equal(st.revealedCells.includes(10),true);
+ assert.equal(st.cratesOpened,1);
+ const moved=game.moveItem(st,10,18);
+ assert.equal(moved.ok,true);
+ assert.equal(st.board[10],null);
+ assert.ok(st.board[18]);
+ assert.equal(st.revealedCells.includes(18),true);
+});
+
+test('web-covered crate rewards stay pinned until a matching merge clears them', () => {
+ const st=game.createState();
+ const r=game.openCellFromCrate(st,15);
+ assert.equal(r.reveal.type,'web');
+ assert.equal(game.isWebbed(st,15),true);
+ assert.equal(game.moveItem(st,15,18).ok,false);
+ assert.equal(game.recycle(st,15),false);
+ st.board[16]={kind:'leaf',tier:1};
+ const merged=game.merge(st,16,15);
+ assert.equal(merged.ok,true);
+ assert.equal(merged.webCleared,true);
+ assert.equal(game.isWebbed(st,15),false);
+ assert.equal(st.websCleared,1);
+});
+
+test('merging a crate-revealed item advances the revealed-item goal', () => {
+ const st=game.createState();
+ const r=game.openCellFromCrate(st,10);
+ assert.equal(r.reveal.type,'item');
+ const item=st.board[10];
+ st.board[17]={kind:item.kind,tier:item.tier};
+ const merged=game.merge(st,17,10);
+ assert.equal(merged.ok,true);
+ assert.equal(merged.revealedMerge,true);
+ assert.equal(st.revealedMerges,1);
+ assert.equal(st.revealedCells.includes(10),false);
+});
+
+test('board discovery goals expose crate, web and revealed-merge progress', () => {
+ const st=game.createState();
+ assert.equal(game.BOARD_GOALS.length,3);
+ assert.equal(game.boardGoalProgress(st,game.BOARD_GOALS[0]),0);
+ st.cratesOpened=99;
+ assert.equal(game.boardGoalProgress(st,game.BOARD_GOALS[0]),game.BOARD_GOALS[0].goal);
+ assert.match(html,/BOARD GOALS/);
+ assert.match(html,/Open hidden crates/);
+ assert.match(html,/Clear webbed items/);
+ assert.match(html,/Merge revealed items/);
+ assert.match(html,/fx-reveal/);
  assert.doesNotThrow(()=>new vm.Script(script));
 });
