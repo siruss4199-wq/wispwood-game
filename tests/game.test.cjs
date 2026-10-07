@@ -546,22 +546,24 @@ test('six-tier chains include meaningful late-game items', () => {
  assert.match(html,/Star Core/);
 });
 
-test('legacy 6x6 save migrates to 8x8 without dropping its existing items', () => {
+test('legacy or pre-schema save keeps progression but restarts Merge Board 2.0 from one clearing', () => {
  const old=game.createState();
- const legacyBoard=Array(36).fill(null);
- legacyBoard[0]={kind:'leaf',tier:1};legacyBoard[8]={kind:'dew',tier:2};legacyBoard[20]={kind:'glow',tier:3};
- old.board=legacyBoard;delete old.openCells;delete old.webbed;delete old.magic;delete old.energy;delete old.maxEnergy;
+ old.rescued=true;old.completed=['heal','drink','light'];old.xp=210;old.level=3;
+ old.boardSchema=2;old.openCells=Array.from({length:18},(_,i)=>i);old.magic=99;
+ old.board[10]={kind:'dew',tier:4};
  const loaded=game.restore(JSON.stringify(old));
  assert.ok(loaded);assert.equal(loaded.board.length,64);
- assert.equal(loaded.board.filter(Boolean).length,4);
- assert.ok(loaded.openCells.length>=9);
- assert.equal(loaded.energy,game.INITIAL_ENERGY);assert.equal(loaded.magic,0);
+ assert.equal(loaded.openCells.length,9);
+ assert.equal(loaded.board.filter(Boolean).length,3);
+ assert.equal(game.isGenerator(loaded.board[27]),true);
+ assert.equal(loaded.magic,0);assert.equal(loaded.energy,game.INITIAL_ENERGY);
+ assert.equal(loaded.rescued,true);assert.equal(loaded.xp,210);
 });
 
 test('Merge Board 2.0 interface exposes resources, locked 8x8 board and parses fully', () => {
  for(const id of ['resourceBar','energyLabel','magicLabel','openLabel','board'])
   assert.match(html,new RegExp('id="'+id+'"'));
- assert.match(html,/8 × 8/);assert.match(html,/tile locked/);assert.match(html,/webbed/);assert.match(html,/generator/);
+ assert.match(html,/8 × 8/);assert.match(html,/tile locked/);assert.match(html,/terrain-icon/);assert.match(html,/webbed/);assert.match(html,/generator/);
  assert.doesNotThrow(()=>new vm.Script(script));
 });
 
