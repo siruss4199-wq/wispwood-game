@@ -171,8 +171,15 @@
  .mobile-quest-chips{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}.mobile-quest-chip{min-width:0;border:0;border-radius:11px;background:#f7f4fa;padding:6px 4px;display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:4px;text-align:left}.mobile-quest-chip>span{grid-row:1/3;font-size:17px;align-self:center}.mobile-quest-chip small{font-size:7px;font-weight:900;color:#5f5468;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mobile-quest-chip b{font-size:7px;color:#8f7ca0}.mobile-quest-chip.done{background:#eef7eb}.mobile-quest-chip.done b{color:#57966f}
  .puzzle-hud{margin:0 0 6px;padding:7px;border-radius:11px;flex:0 0 auto}.puzzle-hud small,.puzzle-label{font-size:7px}.puzzle-hud strong{font-size:10px}.puzzle-stats{font-size:7px}
  .board-frame{flex:1;min-height:0;display:grid;place-items:center;background:transparent;border:0;padding:0;overflow:hidden}
- .board{height:100%;width:auto;max-height:calc(100dvh - 315px);max-width:calc(100vw - 20px);aspect-ratio:1/1;gap:5px;padding:7px;border-radius:22px;margin:auto;touch-action:none}
- .tile{border-radius:13px}.item-icon{font-size:clamp(24px,7.5vw,38px)}.tile.generator .generator-icon{font-size:clamp(30px,9vw,48px)}.tile.locked.frontier .terrain-icon{font-size:clamp(32px,9vw,48px)}
+ .board{height:100%;width:auto;max-height:calc(100dvh - 315px);max-width:calc(100vw - 12px);aspect-ratio:1/1;gap:3px;padding:5px;border-radius:20px;margin:auto;touch-action:none}
+ .tile{border-radius:10px}.item-icon{font-size:clamp(26px,8vw,40px)}.tile.generator .generator-icon{font-size:clamp(32px,9.5vw,48px)}
+ .tile.locked,.tile.locked.buried,.crate-tier-1,.crate-tier-2{background:linear-gradient(145deg,#c8b796,#b3a383);filter:none;opacity:.78}
+ .tile.locked.frontier{background:linear-gradient(145deg,#d8c39f,#bea77f);box-shadow:inset 0 0 0 2px #eadbbf,0 2px 5px #65513c18;opacity:1}
+ .tile.locked .terrain-icon,.tile.locked.frontier .terrain-icon{font-size:clamp(25px,7vw,34px);opacity:.8;filter:saturate(.65) drop-shadow(0 2px 2px #51331f16)}
+ .crate-help,.crate-seal{display:none!important}.crate-cracks{font-size:15px;color:#fff4c7}
+ .board .tier-pips,.tile.generator .item-name{display:none!important}
+ .tile.filled{box-shadow:0 2px 5px #53644b12,inset 0 1px 0 #fff}.tile.empty{background:#edf5e8}
+ .tile.vinebound{box-shadow:inset 0 0 0 2px #8aa67f!important}
  .actions{height:auto;min-height:0;margin-top:4px;gap:7px;flex:0 0 auto}.actions button{padding:8px 7px;border-radius:12px;font-size:11px}.actions #deliverBtn:disabled,.actions #recycleBtn:disabled{display:none}.tertiary{width:42px}
  .mobile-nav{display:grid;position:fixed;z-index:20;left:8px;right:8px;bottom:max(8px,env(safe-area-inset-bottom));height:58px;grid-template-columns:repeat(4,1fr);background:#ffffffef;backdrop-filter:blur(18px);border:1px solid #e8e0ef;border-radius:20px;box-shadow:0 10px 35px #40344e35;padding:5px}
  .mobile-nav button{border:0;background:transparent;border-radius:15px;color:#8c8094;font-weight:800;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}.mobile-nav button span{font-size:18px;line-height:1}.mobile-nav button small{font-size:8px}.mobile-nav button.active{background:#efe8f8;color:#684c8f}
@@ -934,12 +941,12 @@ function present(){
    if(frontier){
     const need=crateHitsNeeded(state,i),damage=crateDamage(state,i),left=Math.max(0,need-damage);
     cell.setAttribute('aria-label',`Buried crate — ${left} adjacent merge hit${left===1?'':'s'} remaining`);
-    const crateIcon=tier===0?'📦':tier===1?'🧰':'🪵';
-    cell.innerHTML=`<span class="terrain-icon" aria-hidden="true">${crateIcon}</span>${damage?'<span class="crate-cracks" aria-hidden="true">💥</span>':''}<span class="crate-help">${left} hit${left===1?'':'s'}</span>`;
+    const crateIcon='📦';
+    cell.innerHTML=`<span class="terrain-icon" aria-hidden="true">${crateIcon}</span>${damage?'<span class="crate-cracks" aria-hidden="true">✦</span>':''}<span class="crate-help">${left} hit${left===1?'':'s'}</span>`;
    }else{
-    const crateIcon=tier===0?'📦':tier===1?'🧰':'🪵';
+    const crateIcon='📦';
     cell.setAttribute('aria-label','Buried crate — open the path to reach it');
-    cell.innerHTML=`<span class="terrain-icon" aria-hidden="true">${crateIcon}</span><span class="crate-seal" aria-hidden="true">🌿</span>`;
+    cell.innerHTML=`<span class="terrain-icon" aria-hidden="true">${crateIcon}</span>`;
    }
    board.append(cell);return;
   }
