@@ -576,3 +576,23 @@ test('later crates require multiple adjacent merge hits', () => {
  st.crateDamage[idx]=1;
  assert.equal(game.crateDamage(st,idx),1);
 });
+
+test('mobile app shell has fixed navigation, compact quest strip and bottom sheet', () => {
+ for(const id of ['mobileNav','mobileQuestStrip','mobileSheet','mobileSheetBody','mobileSheetClose','mobileSheetBackdrop'])
+  assert.match(html,new RegExp('id="'+id+'"'));
+ assert.match(html,/height:100dvh/);
+ assert.match(html,/overflow:hidden/);
+ assert.match(html,/data-mobile-sheet="quests"/);
+ assert.match(html,/data-mobile-sheet="board"/);
+ assert.match(html,/data-mobile-sheet="friends"/);
+ assert.match(html,/data-mobile-sheet="story"/);
+ assert.match(html,/function openMobileSheet/);
+ assert.match(html,/function closeMobileSheet/);
+});
+
+test('mobile board is designed to fit the viewport without page scrolling', () => {
+ assert.match(html,/\.play\{height:100%;padding:8px 10px 76px/);
+ assert.match(html,/\.board\{width:min\(calc\(100vw - 20px\),calc\(100dvh - 230px\)\)/);
+ assert.match(html,/\.story,.sidebar,footer\{display:none!important\}/);
+ assert.match(html,/\.mobile-sheet-body\{overflow:auto/);
+});

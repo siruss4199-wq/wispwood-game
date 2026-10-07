@@ -147,6 +147,43 @@
 .tile.webbed{position:relative;overflow:hidden}.tile.webbed:after{content:'🕸';position:absolute;inset:0;display:grid;place-items:center;font-size:clamp(24px,3vw,38px);opacity:.7;pointer-events:none}
 .tile.webbed .item-icon,.tile.webbed .item-name{opacity:.65}.tile.empty{background:linear-gradient(145deg,#eff7e9,#ddebd7);border-color:#d1e2c8}.board{background:#c7d9bd;border-color:#c7d9bd}.board-frame{background:linear-gradient(145deg,#eff5e8,#e5eee0)}
 @media(max-width:670px){.resource-bar>div{padding:7px 5px}.resource-bar strong{font-size:12px}.tile{border-radius:7px}.item-icon{font-size:clamp(17px,5vw,25px)}.item-name{font-size:6px}.board{gap:3px;border-width:5px}}
+
+.mobile-quest-strip,.mobile-nav,.mobile-sheet,.mobile-sheet-backdrop{display:none}
+@media(max-width:670px){
+ html,body{height:100%;height:100dvh;overflow:hidden;overscroll-behavior:none}
+ body{background:linear-gradient(180deg,#f4f1f9,#e9f0e5)}
+ .shell{height:100dvh;max-width:none;padding:0;display:flex;flex-direction:column;overflow:hidden}
+ .mast{height:50px;min-height:50px;margin:0;padding:7px 12px;background:#ffffffeb;border-bottom:1px solid #ece6f1;z-index:3}
+ .brand{gap:8px}.brand-icon{width:34px;height:34px;border-radius:12px;font-size:20px}.brand strong{font-size:13px;letter-spacing:1.5px}.brand small{display:none}
+ .top-meta>span{display:none}.reset{padding:7px 10px;border-radius:11px;font-size:11px}
+ .layout{display:block;flex:1;min-height:0;overflow:hidden}
+ .story,.sidebar,footer{display:none!important}
+ .play{height:100%;padding:8px 10px 76px;border:0;border-radius:0;box-shadow:none;overflow:hidden;display:flex;flex-direction:column;background:linear-gradient(180deg,#fbfafc 0%,#f0f5eb 100%)}
+ .play-head,.instruction,.merge-legend,.board-guide,.footnote,.board-caption,.selected-row{display:none!important}
+ .resource-bar{margin:0 0 7px;gap:6px;flex:0 0 auto}.resource-bar>div{padding:6px 5px;border-radius:12px}.resource-bar span{font-size:8px}.resource-bar strong{font-size:12px}
+ .mobile-quest-strip{display:flex;width:100%;min-height:42px;align-items:center;gap:9px;border:0;border-radius:14px;background:#fff;padding:6px 9px;margin:0 0 7px;box-shadow:0 5px 14px #5f53691a;text-align:left;flex:0 0 auto}
+ .mobile-quest-icon{width:30px;height:30px;display:grid;place-items:center;border-radius:10px;background:#f3eef8;font-size:18px}
+ .mobile-quest-copy{min-width:0;flex:1}.mobile-quest-copy small{display:block;font-size:7px;letter-spacing:1px;color:#9a89aa;font-weight:900}.mobile-quest-copy strong{display:block;font-size:11px;color:#4f4659;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .mobile-quest-progress{font-size:9px;font-weight:900;color:#765aa2;background:#f2ebfa;border-radius:999px;padding:5px 7px}.mobile-quest-arrow{font-size:22px;color:#9d91a8}
+ .puzzle-hud{margin:0 0 6px;padding:7px;border-radius:11px;flex:0 0 auto}.puzzle-hud small,.puzzle-label{font-size:7px}.puzzle-hud strong{font-size:10px}.puzzle-stats{font-size:7px}
+ .board-frame{flex:1;min-height:0;display:grid;place-items:center;background:transparent;border:0;padding:0;overflow:hidden}
+ .board{width:min(calc(100vw - 20px),calc(100dvh - 230px));max-width:100%;aspect-ratio:1/1;gap:5px;padding:7px;border-radius:22px;margin:auto}
+ .tile{border-radius:13px}.item-icon{font-size:clamp(24px,7.5vw,38px)}.tile.generator .generator-icon{font-size:clamp(30px,9vw,48px)}.tile.locked.frontier .terrain-icon{font-size:clamp(32px,9vw,48px)}
+ .actions{height:45px;min-height:45px;margin-top:7px;gap:7px;flex:0 0 auto}.actions button{padding:8px 7px;border-radius:12px;font-size:11px}.tertiary{width:42px}
+ .mobile-nav{display:grid;position:fixed;z-index:20;left:8px;right:8px;bottom:max(8px,env(safe-area-inset-bottom));height:58px;grid-template-columns:repeat(4,1fr);background:#ffffffef;backdrop-filter:blur(18px);border:1px solid #e8e0ef;border-radius:20px;box-shadow:0 10px 35px #40344e35;padding:5px}
+ .mobile-nav button{border:0;background:transparent;border-radius:15px;color:#8c8094;font-weight:800;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}.mobile-nav button span{font-size:18px;line-height:1}.mobile-nav button small{font-size:8px}.mobile-nav button.active{background:#efe8f8;color:#684c8f}
+ .mobile-sheet-backdrop{display:block;position:fixed;inset:0;z-index:29;background:#30283e66;backdrop-filter:blur(2px)}
+ .mobile-sheet{display:block;position:fixed;z-index:30;left:8px;right:8px;bottom:max(8px,env(safe-area-inset-bottom));max-height:62dvh;background:#fff;border-radius:24px;padding:8px 12px 16px;box-shadow:0 22px 70px #2b243a66;overflow:hidden}
+ .mobile-sheet[hidden],.mobile-sheet-backdrop[hidden]{display:none}
+ .mobile-sheet-handle{width:42px;height:4px;border-radius:999px;background:#ddd5e3;margin:0 auto 8px}
+ .mobile-sheet-head{display:flex;align-items:center;justify-content:space-between}.mobile-sheet-head small{font-size:8px;letter-spacing:1.2px;color:#a18bb4;font-weight:900}.mobile-sheet-head h2{font-size:19px;margin:2px 0 8px;color:#43394e}.mobile-sheet-head button{width:34px;height:34px;border:0;border-radius:50%;background:#f1edf4;color:#73667c;font-size:21px}
+ .mobile-sheet-body{overflow:auto;max-height:calc(62dvh - 70px);overscroll-behavior:contain;padding-bottom:4px}
+ .mobile-sheet-task{display:flex;align-items:center;gap:10px;background:#f8f6fa;border-radius:14px;padding:10px;margin-bottom:7px}.mobile-sheet-task.done{background:#edf7eb}.mobile-sheet-task .ico{font-size:22px}.mobile-sheet-task .copy{flex:1;min-width:0}.mobile-sheet-task strong{display:block;font-size:11px;color:#544b5e}.mobile-sheet-task small{font-size:9px;color:#968a9f}.mobile-sheet-task b{font-size:9px;color:#826aa0}
+ .mobile-story-card{background:#f6f1fa;border-radius:16px;padding:13px}.mobile-story-card strong{display:block;font-size:15px;color:#53435f;margin-bottom:5px}.mobile-story-card p{font-size:11px;line-height:1.55;color:#776c7e;margin:0 0 10px}
+ .mobile-friends{display:grid;grid-template-columns:1fr 1fr;gap:8px}.mobile-friend{border:0;border-radius:16px;background:#f5f2f7;padding:12px;text-align:center}.mobile-friend.locked{opacity:.55}.mobile-friend .art{display:block;font-size:28px}.mobile-friend strong{display:block;font-size:11px;color:#51465c}.mobile-friend small{font-size:8px;color:#93869b}
+ .toast{bottom:82px;font-size:11px;padding:11px 15px}
+}
+
 </style></head>
 <body>
  <div class="shell">
@@ -188,8 +225,14 @@
     <div id="resourceBar" class="resource-bar">
       <div><span>⚡ Energy</span><strong id="energyLabel">24/30</strong></div>
       <div><span>✨ Magic</span><strong id="magicLabel">0</strong></div>
-      <div><span>🧩 Open tiles</span><strong id="openLabel">9/64</strong></div>
+      <div><span>🧩 Open tiles</span><strong id="openLabel">9/49</strong></div>
     </div>
+    <button type="button" id="mobileQuestStrip" class="mobile-quest-strip" aria-label="Open quests">
+      <span id="mobileQuestIcon" class="mobile-quest-icon">🌿</span>
+      <span class="mobile-quest-copy"><small>CURRENT QUEST</small><strong id="mobileQuestName">Healing herbs</strong></span>
+      <span id="mobileQuestProgress" class="mobile-quest-progress">0/3</span>
+      <span class="mobile-quest-arrow">›</span>
+    </button>
     <p class="board-guide">Tap a generator on the board to create items. Merge matching pairs to earn Magic, then unlock tiles beside your clearing.</p>
     <div id="puzzleHud" class="puzzle-hud" hidden>
       <div><span class="puzzle-label">REGION PUZZLE</span><strong id="puzzleName">Whispering Bridge</strong><small id="puzzleHint">Clear blockers to unlock delivery.</small></div>
@@ -216,6 +259,18 @@
   </main>
   <footer>Wispwood prototype · Your progress is saved on this device · No external AI credits</footer>
  </div>
+ <nav id="mobileNav" class="mobile-nav" aria-label="Wispwood navigation">
+   <button type="button" data-mobile-sheet="quests"><span>📜</span><small>Quests</small></button>
+   <button type="button" class="active" data-mobile-sheet="board"><span>✦</span><small>Board</small></button>
+   <button type="button" data-mobile-sheet="friends"><span>💜</span><small>Friends</small></button>
+   <button type="button" data-mobile-sheet="story"><span>🌙</span><small>Story</small></button>
+ </nav>
+ <div id="mobileSheetBackdrop" class="mobile-sheet-backdrop" hidden></div>
+ <section id="mobileSheet" class="mobile-sheet" hidden aria-modal="true" role="dialog" aria-labelledby="mobileSheetTitle">
+   <div class="mobile-sheet-handle"></div>
+   <div class="mobile-sheet-head"><div><small>WISPWOOD</small><h2 id="mobileSheetTitle">Quests</h2></div><button type="button" id="mobileSheetClose" aria-label="Close">×</button></div>
+   <div id="mobileSheetBody" class="mobile-sheet-body"></div>
+ </section>
  <div id="toast" class="toast" role="status" aria-live="polite"></div>
  <div id="creatureOverlay" class="end-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="creatureTitle"><div class="end-modal creature-modal"><div id="creaturePortrait" class="creature-portrait" aria-hidden="true"></div><h2 id="creatureTitle">Your friend</h2><p id="creatureRole"></p><p id="creatureDescription"></p><p id="creatureAbility"></p><button id="companionSelect" class="primary">Set as Companion</button><button id="creatureClose" class="creature-close">Close</button></div></div>
  <div id="endOverlay" class="end-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="overlayTitle"><div class="end-modal"><span class="end-icon">🌙✨</span><h2 id="overlayTitle">Moonlit Grove is open!</h2><p id="overlayText">Mivra found a new friend in the forest.</p><button id="endClose" class="primary">Continue</button></div></div>
@@ -690,6 +745,34 @@ let pendingEffect=null,rescueTimer;
 function effect(type,index=null,taskId=null){pendingEffect={type,index,taskId};}
 const message=txt=>{el('toast').textContent=txt;el('toast').classList.add('show');clearTimeout(confettiTimer);confettiTimer=setTimeout(()=>el('toast').classList.remove('show'),3200);};
 function persist(){storage.setItem(KEY,serialize(state));}
+function mobileSheetContent(kind){
+ const tasks=activeTasks(state);
+ const done=isTrail(state)?state.trailCompleted:state.explored?state.groveCompleted:state.completed;
+ if(kind==='quests'){
+  return tasks.map(t=>`<div class="mobile-sheet-task ${done.includes(t.id)?'done':''}"><span class="ico">${done.includes(t.id)?'✅':ITEMS[t.kind][t.tier].emoji}</span><span class="copy"><strong>${t.label}</strong><small>${done.includes(t.id)?'Completed':t.help}</small></span><b>${done.includes(t.id)?'Done':'Needed'}</b></div>`).join('');
+ }
+ if(kind==='story'){
+  const title=el('storyTitle').textContent,dialogue=el('dialogue').textContent,status=el('status').textContent;
+  return `<div class="mobile-story-card"><strong>${title}</strong><p>${dialogue}</p><small>${status}</small></div>`;
+ }
+ if(kind==='friends'){
+  return collected(state).map(f=>`<button type="button" class="mobile-friend ${f.unlocked?'':'locked'}" data-friend="${f.id}" ${f.unlocked?'':'disabled'}><span class="art">${f.unlocked?(f.id==='mivra'?'💜':'🍃'):'🔒'}</span><strong>${f.name}</strong><small>${f.unlocked?f.type:'Not rescued'}</small></button>`).join('');
+ }
+ return '';
+}
+function openMobileSheet(kind){
+ if(kind==='board'){closeMobileSheet();return;}
+ const titles={quests:'Quests',story:'Story',friends:'Friends'};
+ el('mobileSheetTitle').textContent=titles[kind]||'Wispwood';
+ el('mobileSheetBody').innerHTML=mobileSheetContent(kind);
+ el('mobileSheet').hidden=false;el('mobileSheetBackdrop').hidden=false;
+ document.querySelectorAll('[data-mobile-sheet]').forEach(b=>b.classList.toggle('active',b.dataset.mobileSheet===kind));
+ el('mobileSheetBody').querySelectorAll('[data-friend]').forEach(btn=>btn.addEventListener('click',()=>{closeMobileSheet();openCreature(btn.dataset.friend);}));
+}
+function closeMobileSheet(){
+ el('mobileSheet').hidden=true;el('mobileSheetBackdrop').hidden=true;
+ document.querySelectorAll('[data-mobile-sheet]').forEach(b=>b.classList.toggle('active',b.dataset.mobileSheet==='board'));
+}
 function present(){
  const fx=pendingEffect;pendingEffect=null;
  ensurePuzzle(state);
@@ -790,6 +873,14 @@ function present(){
  });
  el('tasksCount').textContent=`${done.length}/${tasks.length}`;
  el('progressFill').style.width=`${tasks.length?done.length/tasks.length*100:100}%`;
+ const currentTask=tasks.find(t=>!done.includes(t.id))||tasks[tasks.length-1];
+ if(currentTask){
+  el('mobileQuestIcon').textContent=ITEMS[currentTask.kind][currentTask.tier].emoji;
+  el('mobileQuestName').textContent=done.length===tasks.length?'All quests complete':currentTask.label;
+ }else{
+  el('mobileQuestIcon').textContent='✨';el('mobileQuestName').textContent='Adventure complete';
+ }
+ el('mobileQuestProgress').textContent=`${done.length}/${tasks.length}`;
  const orruActive=currentCompanion(state)==='orru';
  el('orruPanel').hidden=!state.orruRescued;
  el('orruCharge').textContent=`${state.orruCharge}/${ORRU_GROW_COST} ✨`;
@@ -964,7 +1055,12 @@ el('companionSelect').onclick=()=>{
 };
 el('creatureClose').onclick=()=>{el('creatureOverlay').hidden=true;viewedCreature=null;};
 
-window.addEventListener('storage',e=>{if(e.key===KEY){state=restore(e.newValue)||createState();selected=null;groupSelected=[];el('endOverlay').hidden=true;el('creatureOverlay').hidden=true;present();}});
+document.querySelectorAll('[data-mobile-sheet]').forEach(btn=>btn.addEventListener('click',()=>openMobileSheet(btn.dataset.mobileSheet)));
+el('mobileQuestStrip').onclick=()=>openMobileSheet('quests');
+el('mobileSheetClose').onclick=closeMobileSheet;
+el('mobileSheetBackdrop').onclick=closeMobileSheet;
+window.addEventListener('keydown',e=>{if(e.key==='Escape'&&!el('mobileSheet').hidden)closeMobileSheet();});
+window.addEventListener('storage',e=>{if(e.key===KEY){state=restore(e.newValue)||createState();selected=null;groupSelected=[];el('endOverlay').hidden=true;el('creatureOverlay').hidden=true;closeMobileSheet();present();}});
 present();
 </script>
 </body></html>
