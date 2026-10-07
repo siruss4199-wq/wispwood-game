@@ -682,3 +682,21 @@ test('board discovery goals expose crate, web and revealed-merge progress', () =
  assert.match(html,/fx-reveal/);
  assert.doesNotThrow(()=>new vm.Script(script));
 });
+
+test('schema 4 saves reset only the board into crate-reveal schema 5', () => {
+ const old=game.createState();
+ old.boardSchema=4;
+ old.openCells=[...Array.from({length:25},(_,i)=>i)];
+ old.cratesOpened=7;old.websCleared=3;old.revealedMerges=2;
+ old.rescued=true;old.completed=['heal','drink','light'];old.xp=300;
+ const loaded=game.restore(JSON.stringify(old));
+ assert.ok(loaded);
+ assert.equal(loaded.boardSchema,5);
+ assert.equal(loaded.openCells.length,9);
+ assert.equal(loaded.board.filter(Boolean).length,3);
+ assert.equal(loaded.cratesOpened,0);
+ assert.equal(loaded.websCleared,0);
+ assert.equal(loaded.revealedMerges,0);
+ assert.equal(loaded.rescued,true);
+ assert.equal(loaded.xp,300);
+});
