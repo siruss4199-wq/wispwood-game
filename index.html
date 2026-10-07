@@ -43,6 +43,40 @@
 .trail-description,.level-panel p{margin:8px 0 0;font-size:11px;color:#80728c;line-height:1.45}
 .level-track{height:8px;overflow:hidden;background:#e7e2ec;border-radius:6px;margin-top:8px}
 #levelBar{height:100%;width:0;background:linear-gradient(90deg,#9d7bea,#68ba9b);transition:width .3s}
+
+/* Enchanted Merge Garden — original offline-ready fantasy UI */
+.play{background:linear-gradient(165deg,#fffefa,#fbf7ff 61%,#f5f4ff);border-color:#e6dced}
+.play-head h2{color:#49345f}.instruction{color:#84728e}
+.merge-legend{display:flex;gap:5px;justify-content:space-between;margin:-2px 0 10px}
+.merge-legend span{display:inline-flex;align-items:center;justify-content:center;flex:1;padding:7px 3px;border-radius:99px;font-size:10px;font-weight:900;border:1px solid}
+.legend-leaf{background:#e7f5e8;color:#407950;border-color:#c6e6c6!important}
+.legend-dew{background:#e5f3fc;color:#40739d;border-color:#c5dfef!important}
+.legend-glow{background:#f8e9ff;color:#825b9c;border-color:#e6d0f0!important}
+.board-frame{padding:9px;background:linear-gradient(145deg,#b9a1d0,#b2c9c3 70%,#d3b0cd);border:1px solid #a993be;border-radius:23px;box-shadow:0 10px 23px #65528425,inset 0 2px 2px #ffffffb8}
+.board-caption{display:flex;justify-content:space-between;gap:6px;padding:2px 9px 9px;color:#fffefb;text-shadow:0 1px 2px #715889;font-size:9px;letter-spacing:1px;font-weight:900}
+.board{background:#c8c1d2;border:4px solid #c8c1d2;border-radius:15px;gap:5px;box-shadow:inset 0 3px 12px #665a7b42}
+.tile{position:relative;overflow:hidden;border-radius:12px;border:1px solid #ffffffa3;box-shadow:inset 0 2px 1px #fff9;touch-action:manipulation}
+.tile.empty{background:linear-gradient(145deg,#e9e4ed,#e1dde8);border-color:#d7d0df;box-shadow:inset 0 3px 6px #83738e22}
+.tile.filled{box-shadow:0 3px 0 #60526b2a,inset 0 2px 0 #fff9;border:1px solid #ffffffbd}
+.tile.leaf{background:linear-gradient(150deg,#f4ffe7 3%,#cceec1 70%,#a7d9b0);color:#37714d}
+.tile.dew{background:linear-gradient(150deg,#f3ffff 3%,#cceefe 70%,#a6cdeb);color:#376e95}
+.tile.glow{background:linear-gradient(150deg,#fff8e4 0%,#f4d9ff 67%,#cbb9eb);color:#8254a0}
+.tile.tier2{border-color:#fff9d8;box-shadow:0 3px 0 #9476b54a,inset 0 0 0 1.5px #fef6bc}
+.tile.tier3,.tile.legendary{border:2px solid #ffe7a5;box-shadow:inset 0 0 0 1px #fff7dd,0 0 10px #ffdc8352,0 3px 0 #9781a7}
+.tile.tier3:before{content:'✧';position:absolute;top:1px;right:3px;font-size:9px;color:#cb9e48}
+.item-icon{font-size:clamp(19px,2.6vw,34px);line-height:1.05;filter:drop-shadow(0 2px 2px #78648744);transition:transform .17s}
+.item-name{font-size:clamp(7px,.8vw,10px);font-weight:900;color:#54485c;text-shadow:0 1px #ffffffaa;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.tier-pips{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font-size:7px;color:#a18bab;text-shadow:0 1px #fff}
+.tile.selected{z-index:2;border:2px solid #7656ba;box-shadow:0 0 0 2px #fff,0 0 0 4px #9072c8,0 4px 12px #7f5dae4a;transform:scale(1.05)}
+.tile.merge-match{z-index:1;border:2px solid #58b68d;box-shadow:0 0 0 2px #eefff5,0 0 11px #59d59a99;animation:matchPulse 1.3s ease-in-out infinite}
+.tile.merge-match .item-icon{transform:translateY(-2px) scale(1.07)}
+.tile.filled:active{transform:scale(.95)}
+.selected-row{color:#7b6694}
+.actions .primary{background:linear-gradient(135deg,#9671cf,#694bad);box-shadow:0 5px 12px #7d5cb148}
+.actions .secondary{background:linear-gradient(135deg,#ffeaf2,#f9d7e9)}
+@keyframes matchPulse{0%,100%{filter:brightness(1);box-shadow:0 0 0 2px #eefff5,0 0 8px #59d59a88}50%{filter:brightness(1.1);box-shadow:0 0 0 3px #e4ffef,0 0 16px #4ddaa8bb}}
+@media(max-width:670px){.play{padding:16px 13px}.board-frame{padding:6px;border-radius:16px}.board{gap:3px;border-width:3px;border-radius:11px}.tile{border-radius:8px}.item-icon{font-size:clamp(18px,6vw,30px)}.item-name{font-size:clamp(7px,2.15vw,10px)}.tier-pips{font-size:6px;bottom:1px}.merge-legend span{font-size:9px;padding:6px 3px}.board-caption{padding:3px 7px 7px;font-size:8px}}
+@media(prefers-reduced-motion:reduce){.tile.merge-match,.tile.merge-match .item-icon,.tile.selected{animation:none!important;transition:none!important}}
 </style></head>
 <body>
  <div class="shell">
@@ -80,7 +114,8 @@
    </section>
    <section class="play card" aria-label="Merge puzzle game"><div class="play-head"><div><span class="eyebrow">MAGIC WORKSHOP</span><h2>Merge to help</h2></div><span class="moves">↔ <b id="moves">0</b> moves</span></div>
     <p class="instruction">Tap two identical items to merge them into a stronger one. On desktop, you can also drag items together.</p>
-    <div id="board" class="board" role="group" aria-label="6 by 6 merge board"></div>
+    <div class="merge-legend" aria-label="Magical item types"><span class="legend-leaf">🌿 Nature</span><span class="legend-dew">💧 Water</span><span class="legend-glow">✨ Starlight</span></div>
+    <div class="board-frame"><div class="board-caption"><span>✦ ENCHANTED MERGE GARDEN</span><span>6 × 6</span></div><div id="board" class="board" role="group" aria-label="6 by 6 merge board"></div></div>
     <div class="selected-row"><span id="selected">Select matching tiles to merge</span></div>
     <div class="actions"><button id="spawnBtn" class="primary">✦ Gather magic <small>FREE</small></button><button id="deliverBtn" disabled class="secondary">♡ Deliver</button><button id="recycleBtn" disabled class="tertiary" aria-label="Recycle selected item">♻</button></div>
     <p class="footnote">Prototype mode: unlimited gathering, no timers, no ads, no account.</p>
@@ -265,11 +300,15 @@ function present(){
  el('tasksTitle').textContent=trail?(stage?'Restore '+stage.name:'Adventure complete'):grove?'Rescue Orru':'Help Mivra heal';
  el('tipText').textContent=trail?'Keep merging to create quest items. Every merge gives XP and rescued friends periodically add free items.':grove?'Merge to tier 4 to create a Bloom, Moonwell, and Aurora.':'Merge two seeds to make a sprout, then two sprouts to make a healing herb!';
  const board=el('board');board.innerHTML='';
+ const picked=selected!==null?state.board[selected]:null;
  state.board.forEach((item,i)=>{
   const cell=document.createElement('button');cell.type='button';cell.className='tile '+(item?`filled ${item.kind} tier${item.tier}`:'empty')+(selected===i?' selected':'');
   if(fx&&fx.index===i&&(fx.type==='merge'||fx.type==='spawn'))cell.classList.add('fx-'+fx.type);
+  if(item&&picked&&i!==selected&&item.kind===picked.kind&&item.tier===picked.tier&&item.tier<MAX_TIER)cell.classList.add('merge-match');
+  if(item&&item.tier===MAX_TIER)cell.classList.add('legendary');
+  if(item)cell.setAttribute('aria-pressed',selected===i?'true':'false');
   cell.dataset.index=i;cell.setAttribute('aria-label',item?`${ITEMS[item.kind][item.tier].name} at ${Math.floor(i/SIZE)+1},${i%SIZE+1}`:`Empty tile at ${Math.floor(i/SIZE)+1},${i%SIZE+1}`);
-  if(item){let def=ITEMS[item.kind][item.tier];cell.innerHTML=`<span class="item-icon">${def.emoji}</span><span class="item-name">${def.name}</span>`;}
+  if(item){let def=ITEMS[item.kind][item.tier];cell.innerHTML=`<span class="item-icon" aria-hidden="true">${def.emoji}</span><span class="item-name">${def.name}</span><span class="tier-pips" aria-hidden="true">${"✦".repeat(item.tier+1)}</span>`;}
   cell.addEventListener('click',()=>choose(i));
   cell.draggable=!!item;
   cell.addEventListener('dragstart',e=>{if(!item){e.preventDefault();return;}e.dataTransfer.setData('text/plain',String(i));e.dataTransfer.effectAllowed='move';});

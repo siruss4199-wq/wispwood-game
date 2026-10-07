@@ -247,3 +247,18 @@ test('level, restoration map and creature collection UI exist', () => {
  assert.match(html,/r\.completedStage/);
  assert.match(html,/r\.helper/);
 });
+
+test('merge garden uses semantic item colours and a clear legend', () => {
+ for(const cls of ['legend-leaf','legend-dew','legend-glow','board-frame','board-caption','tier-pips'])
+  assert.match(html,new RegExp(cls));
+ assert.match(html,/\.tile\.leaf\{/);
+ assert.match(html,/\.tile\.dew\{/);
+ assert.match(html,/\.tile\.glow\{/);
+});
+
+test('matching item highlighting excludes selected and maximum-tier items', () => {
+ assert.match(html,/i!==selected&&item\.kind===picked\.kind&&item\.tier===picked\.tier&&item\.tier<MAX_TIER/);
+ assert.match(html,/cell\.classList\.add\('merge-match'\)/);
+ assert.match(html,/aria-pressed/);
+ assert.match(html,/prefers-reduced-motion:reduce/);
+});
