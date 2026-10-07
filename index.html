@@ -604,26 +604,31 @@ function restore(raw){
   const old=JSON.parse(raw);
   if(!old||!Array.isArray(old.board)||!Array.isArray(old.completed)||typeof old.rescued!=='boolean')return null;
   const oldBoard=old.board;
-  const oldSize=oldBoard.length===36?6:oldBoard.length===64?8:oldBoard.length===49?7:null;
-  if(!oldSize)return null;
+  const recognizedLength=oldBoard.length===36||oldBoard.length===49||oldBoard.length===64;
+  if(!recognizedLength)return null;
+
+  // Validate item payloads without trusting legacy board coordinates.
   for(const it of oldBoard){
    if(it===null)continue;
    if(it.special==='wild'||it.special==='generator')continue;
    if(!KINDS.includes(it.kind)||!Number.isInteger(it.tier)||it.tier<0||it.tier>MAX_TIER)return null;
   }
+
   const s={...old};
-  if(oldSize===6){
-   const next=Array(SIZE*SIZE).fill(null),occupied=oldBoard.filter(Boolean);
-   const order=[26,28,34,35,36,18,19,20,25,29,33,37,42,43,44,17,21,30,31,32,38,39,40,41,45,46,47,49,50,51,52,53,54,55,57,58,59,60,61,62,63];
-   for(let i=0;i<occupied.length&&i<order.length;i++)next[order[i]]=occupied[i];
-   s.board=next;
-   s.openCells=[...new Set([...INITIAL_OPEN,...order.slice(0,occupied.length)])].sort((a,b)=>a-b);
-   s.webbed=[];
+
+  // Progression survives every board redesign. The board itself is allowed to
+  // self-heal whenever the stored geometry/schema no longer matches 7x7.
+  const boardNeedsReset=oldBoard.length!==SIZE*SIZE||s.boardSchema!==BOARD_SCHEMA;
+  if(boardNeedsReset){
+   resetMergeBoardForSchema(s);
   }else{
-   s.board=oldBoard;
+   s.board=[...oldBoard];
    s.openCells=Array.isArray(s.openCells)?[...new Set(s.openCells.filter(i=>Number.isInteger(i)&&i>=0&&i<SIZE*SIZE))].sort((a,b)=>a-b):[...INITIAL_OPEN];
+   if(!s.openCells.length)s.openCells=[...INITIAL_OPEN];
    s.webbed=Array.isArray(s.webbed)?s.webbed.filter(i=>s.openCells.includes(i)&&s.board[i]&&!isGenerator(s.board[i])):[];
+   s.blockers=Array.isArray(s.blockers)?s.blockers.filter(b=>b&&Number.isInteger(b.index)&&b.index>=0&&b.index<SIZE*SIZE&&s.openCells.includes(b.index)&&(b.type==='vine'||b.type==='fog')&&s.board[b.index]===null):[];
   }
+
   s.completed=TASKS.map(t=>t.id).filter(id=>s.completed.includes(id));
   s.explored=Boolean(s.rescued&&s.explored);
   s.groveCompleted=Array.isArray(s.groveCompleted)?GROVE_TASKS.map(t=>t.id).filter(id=>s.groveCompleted.includes(id)):[];
@@ -633,11 +638,10 @@ function restore(raw){
   s.orruQuestCount=Number.isInteger(s.orruQuestCount)?Math.max(0,Math.min(ORRU_QUEST_GOAL,s.orruQuestCount)):0;
   s.vinesCleared=Boolean(s.vinesCleared);
   s.puzzleZone=Number.isInteger(s.puzzleZone)?s.puzzleZone:-1;
-  s.blockers=Array.isArray(s.blockers)?s.blockers.filter(b=>b&&Number.isInteger(b.index)&&s.openCells.includes(b.index)&&(b.type==='vine'||b.type==='fog')&&s.board[b.index]===null):[];
+  s.blockers=Array.isArray(s.blockers)?s.blockers.filter(b=>b&&Number.isInteger(b.index)&&b.index>=0&&b.index<SIZE*SIZE&&s.openCells.includes(b.index)&&(b.type==='vine'||b.type==='fog')&&s.board[b.index]===null):[];
   s.runesFound=Number.isInteger(s.runesFound)&&s.runesFound>=0?s.runesFound:0;
   s.combo=Number.isInteger(s.combo)&&s.combo>=0?Math.min(9,s.combo):0;
   s.skillCharge=Number.isInteger(s.skillCharge)&&s.skillCharge>=0?Math.min(SKILL_MAX,s.skillCharge):0;
-  if(s.boardSchema!==BOARD_SCHEMA)resetMergeBoardForSchema(s);
   s.boardSchema=BOARD_SCHEMA;
   s.crateDamage=s.crateDamage&&typeof s.crateDamage==='object'?Object.fromEntries(Object.entries(s.crateDamage).filter(([k,v])=>Number.isInteger(Number(k))&&Number(k)>=0&&Number(k)<SIZE*SIZE&&Number.isInteger(v)&&v>=0)):{};
   s.magic=Number.isInteger(s.magic)&&s.magic>=0?s.magic:0;
