@@ -114,11 +114,11 @@ test('saved progress can be restored and malformed saves are rejected', () => {
   assert.equal(game.restore(JSON.stringify(bad)), null);
 });
 
-test('recycling makes a tile empty', () => {
-  const s = game.createState();
-  assert.equal(game.recycle(s, 0), true);
-  assert.equal(s.board[0], null);
-  assert.equal(game.recycle(s, 0), false);
+test('recycling makes an unlocked item tile empty', () => {
+  const s=game.createState();
+  assert.equal(game.recycle(s,26),true);
+  assert.equal(s.board[26],null);
+  assert.equal(game.recycle(s,26),false);
 });
 
 test('rescue animation targets existing character element and respects reduced motion', () => {
@@ -213,19 +213,11 @@ test('restoration quests advance through all 3 zones exactly once', () => {
  assert.ok(s.xp>=300);
 });
 
-test('merges grant XP and rescued friends give periodic free items', () => {
+test('merges grant XP and build companion skill charge', () => {
  const s=game.createState();
- const first=game.merge(s,0,1);
+ const first=game.merge(s,26,34);
  assert.equal(first.ok,true);assert.ok(s.xp>0);
- s.rescued=true;s.orruRescued=true;
- assert.equal(game.chooseCompanion(s,'orru'),true);
- s.spawns=7;
- const result=game.spawn(s,()=>0);
- assert.equal(result.ok,true);
- assert.equal(result.helper,'Orru');
- assert.equal(s.bonusItems,1);
- assert.equal(s.spawns,8);
- assert.equal(s.board.filter(Boolean).length,10); // initial 9, merged 2->1, then 2 spawned
+ assert.equal(s.skillCharge,1);assert.equal(s.magic,2);
 });
 
 test('XP levels advance at 75 points with no level gaps', () => {
@@ -266,11 +258,10 @@ test('merge garden uses semantic item colours and a clear legend', () => {
  assert.match(html,/\.tile\.glow\{/);
 });
 
-test('matching item highlighting supports group selection and Wild Wisps', () => {
- assert.match(html,/compatible=isWild\(item\)\|\|isWild\(picked\)/);
+test('matching item highlighting uses pair-merge compatibility', () => {
+ assert.match(html,/normalItem\(item\)&&normalItem\(picked\)/);
  assert.match(html,/cell\.classList\.add\('merge-match'\)/);
- assert.match(html,/groupSelected\.includes\(i\)/);
- assert.match(html,/aria-pressed/);
+ assert.match(html,/item\.kind===picked\.kind/);
  assert.match(html,/prefers-reduced-motion:reduce/);
 });
 
@@ -304,31 +295,21 @@ test('only rescued creatures can be selected and saved', () => {
  assert.equal(game.restore(game.serialize(state)).activeCompanion,'orru');
 });
 
-test('selected Mivra gives Spark and selected Orru gives Seed every eighth gather', () => {
+test('rescued companions remain selectable on the redesigned board', () => {
  const state=game.createState();state.rescued=true;state.orruRescued=true;
  assert.equal(game.chooseCompanion(state,'mivra'),true);
- state.spawns=7;
- let result=game.spawn(state,()=>0);
- assert.equal(result.helper,'Mivra');
- assert.equal(state.board[result.bonusIndex].kind,'glow');
+ assert.equal(game.currentCompanion(state),'mivra');
  assert.equal(game.chooseCompanion(state,'orru'),true);
- state.spawns=15;
- result=game.spawn(state,()=>0);
- assert.equal(result.helper,'Orru');
- assert.equal(state.board[result.bonusIndex].kind,'leaf');
- assert.equal(state.bonusItems,2);
+ assert.equal(game.currentCompanion(state),'orru');
 });
 
-test('bonus is skipped transparently if only one free tile remains', () => {
- const state=game.createState();state.rescued=true;
- assert.equal(game.chooseCompanion(state,'mivra'),true);
- state.board.fill({kind:'leaf',tier:0});
- state.board[0]=null;state.spawns=7;
- const result=game.spawn(state,()=>0);
- assert.equal(result.ok,true);
- assert.equal(result.bonusSkipped,true);
- assert.equal(result.helper,null);
- assert.equal(state.bonusItems,0);
+test('generator rejects a full open clearing without touching locked cells', () => {
+ const state=game.createState();
+ for(const i of state.openCells)if(i!==27)state.board[i]={kind:'leaf',tier:0};
+ const before=state.energy;
+ const result=game.activateGenerator(state,27,()=>0);
+ assert.equal(result.ok,false);assert.equal(state.energy,before);
+ assert.equal(state.board[0],null);
 });
 
 test('v0.6 save migration keeps existing progress and assigns a rescued companion', () => {
@@ -353,16 +334,15 @@ test('Sanctuary profiles and visual rescue stages are in the interface', () => {
 });
 
 test('Orru Grow must be active, charge by merging and create a free Seed', () => {
- const st=game.createState();st.rescued=true;st.explored=true;st.orruRescued=true;
+ const st=game.createState();st.rescued=true;st.explored=true;st.orruRescued=true;st.puzzleZone=0;st.blockers=[];
  assert.equal(game.orruGrow(st).ok,false);
  assert.equal(game.chooseCompanion(st,'orru'),true);
  assert.equal(game.orruGrow(st).ok,false);
  st.orruCharge=3;
- assert.equal(game.merge(st,0,1).ok,true);
+ assert.equal(game.merge(st,26,34).ok,true);
  assert.equal(st.orruCharge,4);
  const r=game.orruGrow(st);assert.equal(r.ok,true);
- assert.equal(st.board[r.index].kind,'leaf');
- assert.equal(st.board[r.index].tier,0);
+ assert.equal(st.board[r.index].kind,'leaf');assert.equal(st.board[r.index].tier,0);
  assert.equal(st.orruCharge,0);
 });
 test('Orru Grow never charges against or replaces board items on full board', () => {
@@ -439,18 +419,14 @@ test('quest delivery is locked until region blockers are cleared', () => {
 
 test('five successful merges charge companion skill and invalid merge breaks combo', () => {
  const st=game.createState();st.rescued=true;st.explored=true;st.orruRescued=true;
- st.puzzleZone=0;st.blockers=[];
+ st.puzzleZone=0;st.blockers=[];st.openCells=Array.from({length:64},(_,i)=>i);st.board.fill(null);
  for(let n=0;n<5;n++){
   st.board[n*2]={kind:'leaf',tier:0};st.board[n*2+1]={kind:'leaf',tier:0};
-  const r=game.merge(st,n*2,n*2+1);
-  assert.equal(r.ok,true);
+  const r=game.merge(st,n*2,n*2+1);assert.equal(r.ok,true);
  }
- assert.equal(st.skillCharge,game.SKILL_MAX);
- assert.equal(st.combo,5);
- const bad=game.merge(st,0,2);
- assert.equal(bad.ok,false);
- assert.equal(st.combo,0);
- assert.equal(st.skillCharge,game.SKILL_MAX);
+ assert.equal(st.skillCharge,game.SKILL_MAX);assert.equal(st.combo,5);
+ const bad=game.merge(st,0,2);assert.equal(bad.ok,false);
+ assert.equal(st.combo,0);assert.equal(st.skillCharge,game.SKILL_MAX);
 });
 
 test('Orru clears vines while Mivra clears fog and mixed gate needs both', () => {
