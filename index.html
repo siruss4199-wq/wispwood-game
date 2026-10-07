@@ -303,6 +303,36 @@ function neighbors(index){
  return out;
 }
 function isFrontierCell(state,index){return !isOpen(state,index)&&neighbors(index).some(i=>isOpen(state,i));}
+function crateHitsNeeded(state,index){
+ if(!isFrontierCell(state,index))return 0;
+ const expanded=Math.max(0,state.openCells.length-INITIAL_OPEN.length);
+ return expanded<8?1:expanded<20?2:3;
+}
+function crateDamage(state,index){return Number(state.crateDamage?.[index]||0);}
+function openCellFromCrate(state,index){
+ if(!isFrontierCell(state,index))return null;
+ if(!Array.isArray(state.openCells))state.openCells=[];
+ if(!state.openCells.includes(index))state.openCells.push(index);
+ state.openCells.sort((a,b)=>a-b);
+ if(state.crateDamage)delete state.crateDamage[index];
+ const reveal=revealUnlockedCell(state,index);gainXP(state,5);
+ return {index,reveal};
+}
+function damageAdjacentCrates(state,center){
+ if(!state.crateDamage||typeof state.crateDamage!=='object')state.crateDamage={};
+ const hit=[],opened=[];
+ for(const index of neighbors(center)){
+  if(!isFrontierCell(state,index))continue;
+  const need=crateHitsNeeded(state,index);
+  state.crateDamage[index]=(state.crateDamage[index]||0)+1;
+  hit.push({index,damage:state.crateDamage[index],need});
+  if(state.crateDamage[index]>=need){
+   const result=openCellFromCrate(state,index);
+   if(result)opened.push(result);
+  }
+ }
+ return {hit,opened};
+}
 function unlockCost(state,index){
  if(!isFrontierCell(state,index))return null;
  const extra=Math.max(0,state.openCells.length-INITIAL_OPEN.length);
@@ -316,7 +346,7 @@ function resetMergeBoardForSchema(state){
  const board=Array(SIZE*SIZE).fill(null);
  board[27]={special:'generator',kind:'leaf',level:1};
  board[26]={kind:'leaf',tier:0};board[34]={kind:'leaf',tier:0};
- state.board=board;state.openCells=[...INITIAL_OPEN];state.webbed=[];state.blockers=[];
+ state.board=board;state.openCells=[...INITIAL_OPEN];state.webbed=[];state.crateDamage={};state.blockers=[];
  state.magic=0;state.energy=INITIAL_ENERGY;state.maxEnergy=MAX_ENERGY;
  state.puzzleZone=-1;state.combo=0;state.skillCharge=0;state.boardSchema=BOARD_SCHEMA;
  state.boardResetNotice=true;
@@ -452,7 +482,7 @@ function createState() {
  const board=Array(SIZE*SIZE).fill(null);
  board[27]={special:'generator',kind:'leaf',level:1};
  board[26]={kind:'leaf',tier:0};board[34]={kind:'leaf',tier:0};
- return {board,boardSchema:BOARD_SCHEMA,openCells:[...INITIAL_OPEN],webbed:[],magic:0,energy:INITIAL_ENERGY,maxEnergy:MAX_ENERGY,completed:[],groveCompleted:[],rescued:false,explored:false,orruRescued:false,activeCompanion:null,orruCharge:0,orruQuestCount:0,vinesCleared:false,trailIndex:0,trailCompleted:[],puzzleZone:-1,blockers:[],runesFound:0,combo:0,skillCharge:0,v2MovesLeft:V2_MOVES,v2Zone:-1,xp:0,level:1,bonusItems:0,moves:0,spawns:0,message:'Grow your clearing, merge magic, and rescue the creatures of Wispwood.'};
+ return {board,boardSchema:BOARD_SCHEMA,openCells:[...INITIAL_OPEN],webbed:[],crateDamage:{},magic:0,energy:INITIAL_ENERGY,maxEnergy:MAX_ENERGY,completed:[],groveCompleted:[],rescued:false,explored:false,orruRescued:false,activeCompanion:null,orruCharge:0,orruQuestCount:0,vinesCleared:false,trailIndex:0,trailCompleted:[],puzzleZone:-1,blockers:[],runesFound:0,combo:0,skillCharge:0,v2MovesLeft:V2_MOVES,v2Zone:-1,xp:0,level:1,bonusItems:0,moves:0,spawns:0,message:'Grow your clearing, merge magic, and rescue the creatures of Wispwood.'};
 }
 function generateFrom(state,kind,random=Math.random){
  ensurePuzzle(state);
@@ -523,8 +553,9 @@ function merge(state,from,to) {
  const magicGain=2+(a.tier||0)+(aWeb||bWeb?2:0);state.magic+=magicGain;
  state.energy=Math.min(state.maxEnergy,state.energy+1);
  const comboBonus=state.combo>=3?2:0;gainXP(state,3+b.tier*2+comboBonus);
+ const crateResult=damageAdjacentCrates(state,target);
  if(state.orruRescued)state.orruCharge=Math.min(ORRU_GROW_COST*2,state.orruCharge+1);
- return {ok:true,tile:state.board[target],target,combo:state.combo,magicGain,webCleared:aWeb||bWeb,skillReady:state.skillCharge===SKILL_MAX};
+ return {ok:true,tile:state.board[target],target,combo:state.combo,magicGain,webCleared:aWeb||bWeb,crateResult,skillReady:state.skillCharge===SKILL_MAX};
 }
 function deliver(state,index) {
  const item=state.board[index];if(!item)return {ok:false,why:'Select an item first.'};
@@ -608,6 +639,7 @@ function restore(raw){
   s.skillCharge=Number.isInteger(s.skillCharge)&&s.skillCharge>=0?Math.min(SKILL_MAX,s.skillCharge):0;
   if(s.boardSchema!==BOARD_SCHEMA)resetMergeBoardForSchema(s);
   s.boardSchema=BOARD_SCHEMA;
+  s.crateDamage=s.crateDamage&&typeof s.crateDamage==='object'?Object.fromEntries(Object.entries(s.crateDamage).filter(([k,v])=>Number.isInteger(Number(k))&&Number(k)>=0&&Number(k)<SIZE*SIZE&&Number.isInteger(v)&&v>=0)):{};
   s.magic=Number.isInteger(s.magic)&&s.magic>=0?s.magic:0;
   s.maxEnergy=MAX_ENERGY;
   s.energy=Number.isInteger(s.energy)?Math.max(0,Math.min(MAX_ENERGY,s.energy)):INITIAL_ENERGY;
