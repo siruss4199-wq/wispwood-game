@@ -750,7 +750,15 @@ function mobileSheetContent(kind){
  const tasks=activeTasks(state);
  const done=isTrail(state)?state.trailCompleted:state.explored?state.groveCompleted:state.completed;
  if(kind==='quests'){
-  return tasks.map(t=>`<div class="mobile-sheet-task ${done.includes(t.id)?'done':''}"><span class="ico">${done.includes(t.id)?'✅':ITEMS[t.kind][t.tier].emoji}</span><span class="copy"><strong>${t.label}</strong><small>${done.includes(t.id)?'Completed':t.help}</small></span><b>${done.includes(t.id)?'Done':'Needed'}</b></div>`).join('');
+  const taskRow=(t,finished)=>`<div class="mobile-sheet-task ${finished?'done':''}"><span class="ico">${finished?'✅':ITEMS[t.kind][t.tier].emoji}</span><span class="copy"><strong>${t.label}</strong><small>${finished?'Completed':t.help}</small></span><b>${finished?'Done':'Needed'}</b></div>`;
+  if(tasks.length)return `<div class="mobile-sheet-section"><h3>CURRENT GOALS</h3>${tasks.map(t=>taskRow(t,done.includes(t.id))).join('')}</div>`;
+  const history=[];
+  TASKS.forEach(t=>history.push({task:t,finished:state.completed.includes(t.id),chapter:'Mivra'}));
+  GROVE_TASKS.forEach(t=>history.push({task:t,finished:state.groveCompleted.includes(t.id),chapter:'Orru'}));
+  TRAIL.forEach(zone=>zone.tasks.forEach(t=>history.push({task:t,finished:state.trailIndex>=TRAIL.length||state.trailIndex>TRAIL.indexOf(zone)||state.trailCompleted.includes(t.id),chapter:zone.name})));
+  const finished=history.filter(x=>x.finished);
+  if(!finished.length)return '<div class="mobile-story-card"><strong>No quest history yet</strong><p>Merge items and rescue Mivra to start your adventure.</p></div>';
+  return `<div class="mobile-sheet-section"><h3>COMPLETED QUESTS</h3>${finished.map(x=>taskRow(x.task,true)).join('')}</div>`;
  }
  if(kind==='story'){
   const title=el('storyTitle').textContent,dialogue=el('dialogue').textContent,status=el('status').textContent;
