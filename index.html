@@ -719,7 +719,6 @@ function merge(state,from,to) {
   state.revealedCells=state.revealedCells.filter(i=>i!==from&&i!==to);
  }
  state.moves++;state.combo=Math.min(9,(state.combo||0)+1);state.skillCharge=Math.min(SKILL_MAX,(state.skillCharge||0)+1);
- ensureStarterGenerator(state);
  const magicGain=2+(a.tier||0)+(aWeb||bWeb?2:0);state.magic+=magicGain;
  state.energy=Math.min(state.maxEnergy,state.energy+1);
  const comboBonus=state.combo>=3?2:0;gainXP(state,3+b.tier*2+comboBonus);
@@ -837,7 +836,6 @@ function restore(raw){
   s.xp=Number.isInteger(s.xp)&&s.xp>=0?s.xp:0;s.level=Math.floor(s.xp/75)+1;
   s.bonusItems=Number.isInteger(s.bonusItems)&&s.bonusItems>=0?s.bonusItems:0;
   s.moves=Number.isInteger(s.moves)&&s.moves>=0?s.moves:0;s.spawns=Number.isInteger(s.spawns)&&s.spawns>=0?s.spawns:0;
-  ensureStarterGenerator(s);
   return s;
  }catch{return null;}
 }
