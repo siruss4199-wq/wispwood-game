@@ -32,7 +32,7 @@ test('a new game starts on a dense 8×8 buried board', () => {
   const s = game.createState();
   assert.equal(s.board.length,64);
   assert.equal(s.openCells.length,12);
-  assert.equal(s.board.filter(Boolean).length,7);
+  assert.equal(s.board.filter(Boolean).length,12);
   assert.equal(game.isGenerator(s.board[27]),true);
   assert.equal(game.TASKS.length, 3);
   assert.equal(s.rescued, false);
@@ -553,7 +553,7 @@ test('legacy or pre-schema save keeps progression but restarts Merge Board 2.0 f
  const loaded=game.restore(JSON.stringify(old));
  assert.ok(loaded);assert.equal(loaded.board.length,64);
  assert.equal(loaded.openCells.length,12);
- assert.equal(loaded.board.filter(Boolean).length,7);
+ assert.equal(loaded.board.filter(Boolean).length,12);
  assert.equal(game.isGenerator(loaded.board[27]),true);
  assert.equal(loaded.magic,0);assert.equal(loaded.energy,game.INITIAL_ENERGY);
  assert.equal(loaded.rescued,true);assert.equal(loaded.xp,210);
@@ -683,15 +683,15 @@ test('board discovery goals expose crate, web and revealed-merge progress', () =
  assert.doesNotThrow(()=>new vm.Script(script));
 });
 
-test('schema 5 saves reset only the board into dense 8x8 schema 6', () => {
+test('schema 6 saves reset only the board into true-full schema 7', () => {
  const old=game.createState();
- old.boardSchema=5;
+ old.boardSchema=6;
  old.openCells=[...Array.from({length:25},(_,i)=>i)];
  old.cratesOpened=7;old.websCleared=3;old.revealedMerges=2;
  old.rescued=true;old.completed=['heal','drink','light'];old.xp=300;
  const loaded=game.restore(JSON.stringify(old));
  assert.ok(loaded);
- assert.equal(loaded.boardSchema,6);
+ assert.equal(loaded.boardSchema,7);
  assert.equal(loaded.openCells.length,12);
  assert.equal(loaded.board.filter(Boolean).length,7);
  assert.equal(loaded.cratesOpened,0);
@@ -703,6 +703,7 @@ test('schema 5 saves reset only the board into dense 8x8 schema 6', () => {
 
 test('producer can move to an empty open tile', () => {
  const st=game.createState();
+ st.board[18]=null;
  const r=game.moveItem(st,27,18);
  assert.equal(r.ok,true);
  assert.equal(game.isGenerator(st.board[18]),true);
@@ -740,7 +741,7 @@ test('dense 8x8 start visually fills every closed tile with buried crates', () =
  const st=game.createState();
  assert.equal(st.board.length,64);
  assert.equal(st.openCells.length,12);
- assert.equal(st.board.filter(Boolean).length,7);
+ assert.equal(st.board.filter(Boolean).length,12);
  assert.equal(st.webbed.length,2);
  assert.match(html,/crate-tier-/);
  assert.match(html,/Buried crate/);
@@ -779,4 +780,18 @@ test('mobile 8x8 board uses calm unified crate visuals', () => {
  assert.match(html,/max-width:calc\(100vw - 12px\)/);
  assert.match(html,/gap:3px;padding:5px/);
  assert.doesNotThrow(()=>new vm.Script(script));
+});
+
+test('true full-board start has zero empty playable tiles until the first merge', () => {
+ const st=game.createState();
+ assert.equal(st.openCells.filter(i=>st.board[i]===null).length,0);
+ assert.equal(game.openEmptyIndices(st).length,0);
+ const producerBlocked=game.activateGenerator(st,27,()=>0);
+ assert.equal(producerBlocked.ok,false);
+ const merged=game.merge(st,26,34);
+ assert.equal(merged.ok,true);
+ assert.equal(st.openCells.filter(i=>st.board[i]===null).length,1);
+ const producerWorks=game.activateGenerator(st,27,()=>0);
+ assert.equal(producerWorks.ok,true);
+ assert.equal(st.openCells.filter(i=>st.board[i]===null).length,0);
 });
