@@ -82,11 +82,21 @@ const TASKS = [
  {id:'drink',label:'Gentle elixir',kind:'dew',tier:2,help:'Give her strength again'},
  {id:'light',label:'Guiding crystal',kind:'glow',tier:2,help:'Help her find the way home'},
 ];
+const GROVE_TASKS=[
+ {id:'grove-bloom',label:'Moonlit Bloom',kind:'leaf',tier:3,help:'Untangle Orru’s forest vines'},
+ {id:'grove-well',label:'Moonwell Water',kind:'dew',tier:3,help:'Restore Orru’s energy'},
+ {id:'grove-aurora',label:'Aurora Light',kind:'glow',tier:3,help:'Light the way to safety'}
+];
+function activeTasks(state){return state.explored?GROVE_TASKS:TASKS;}
+function collected(state){return [
+ {name:'Mivra',type:'Mist guide',icon:'🪻',unlocked:state.rescued},
+ {name:'Orru',type:'Forest keeper',icon:'🍃',unlocked:state.orruRescued}
+];}
 function createState() {
  const board=Array(SIZE*SIZE).fill(null);
  const placement=[ [0,'leaf',0],[1,'leaf',0], [6,'dew',0],[7,'dew',0], [12,'glow',0],[13,'glow',0], [19,'leaf',1], [22,'dew',1], [26,'glow',1] ];
  for(const [i,kind,tier] of placement)board[i]={kind,tier};
- return { board,completed:[], rescued:false, explored:false, moves:0, spawns:0, message:'Help Mivra recover by crafting three supplies.' };
+ return { board,completed:[],groveCompleted:[], rescued:false, explored:false,orruRescued:false,moves:0,spawns:0,message:'Help Mivra recover by crafting three supplies.' };
 }
 function merge(state,from,to) {
  if(!Number.isInteger(from)||!Number.isInteger(to)||from===to||from<0||to<0||from>=SIZE*SIZE||to>=SIZE*SIZE)return {ok:false,why:'Choose two different tiles.'};
@@ -98,13 +108,15 @@ function merge(state,from,to) {
  return {ok:true,tile:state.board[to]};
 }
 function deliver(state,index) {
- const item=state.board[index]; if(!item)return {ok:false,why:'Select an item first.'};
- const task=TASKS.find(t=>!state.completed.includes(t.id)&&t.kind===item.kind&&t.tier===item.tier);
- if(!task)return {ok:false,why:'That item is not needed for an open rescue task.'};
- state.board[index]=null;
- state.completed.push(task.id);
- if(state.completed.length===TASKS.length)state.rescued=true;
- return {ok:true,task,rescued:state.rescued};
+ const item=state.board[index];if(!item)return {ok:false,why:'Select an item first.'};
+ if(state.explored&&state.orruRescued)return {ok:false,why:'Orru has already been rescued.'};
+ const tasks=activeTasks(state),done=state.explored?state.groveCompleted:state.completed;
+ const task=tasks.find(t=>!done.includes(t.id)&&t.kind===item.kind&&t.tier===item.tier);
+ if(!task)return {ok:false,why:'This item is not needed for a current rescue task.'};
+ state.board[index]=null;done.push(task.id);
+ if(state.explored){if(done.length===GROVE_TASKS.length)state.orruRescued=true;}
+ else if(done.length===TASKS.length)state.rescued=true;
+ return {ok:true,task,rescued:state.explored?state.orruRescued:state.rescued,friend:state.explored?'Orru':'Mivra'};
 }
 function spawn(state,random=Math.random){
  const free=[]; for(let i=0;i<state.board.length;i++)if(!state.board[i])free.push(i);
@@ -115,11 +127,19 @@ function spawn(state,random=Math.random){
  return {ok:true,index,kind};
 }
 function recycle(state,index){if(!state.board[index])return false;state.board[index]=null;return true;}
-function explore(state){if(!state.rescued)return false;state.explored=true;return true;}
+function explore(state){if(!state.rescued||state.explored)return false;state.explored=true;return true;}
 function serialize(state){return JSON.stringify(state);}
 function restore(raw){
- try {const s=JSON.parse(raw);if(!s||!Array.isArray(s.board)||s.board.length!==SIZE*SIZE||!Array.isArray(s.completed)||typeof s.rescued!=='boolean')return null;
+ try{
+  const s=JSON.parse(raw);
+  if(!s||!Array.isArray(s.board)||s.board.length!==SIZE*SIZE||!Array.isArray(s.completed)||typeof s.rescued!=='boolean')return null;
   for(const it of s.board){if(it!==null&&(!KINDS.includes(it.kind)||!Number.isInteger(it.tier)||it.tier<0||it.tier>MAX_TIER))return null;}
+  s.completed=TASKS.map(t=>t.id).filter(id=>s.completed.includes(id));
+  s.explored=Boolean(s.rescued&&s.explored);
+  s.groveCompleted=Array.isArray(s.groveCompleted)?GROVE_TASKS.map(t=>t.id).filter(id=>s.groveCompleted.includes(id)):[];
+  s.orruRescued=Boolean(s.explored&&s.groveCompleted.length===GROVE_TASKS.length);
+  s.moves=Number.isInteger(s.moves)&&s.moves>=0?s.moves:0;
+  s.spawns=Number.isInteger(s.spawns)&&s.spawns>=0?s.spawns:0;
   return s;
  }catch{return null;}
 }
