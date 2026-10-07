@@ -13,7 +13,7 @@ assert.ok(script, 'Inline game script must exist');
 const uiStart = script.indexOf("const KEY='wispwood-prototype-v1'");
 assert.ok(uiStart > 0, 'Could not find boundary between game rules and browser UI');
 const context = vm.createContext({});
-const names = ['SIZE', 'KINDS', 'TASKS', 'createState', 'merge', 'deliver', 'spawn', 'recycle', 'explore', 'serialize', 'restore'];
+const names = ['SIZE', 'KINDS', 'TASKS', 'GROVE_TASKS', 'activeTasks', 'collected', 'createState', 'merge', 'deliver', 'spawn', 'recycle', 'explore', 'serialize', 'restore'];
 vm.runInContext(script.slice(0, uiStart) + '\nglobalThis.game = {' + names.join(',') + '};', context, { timeout: 1000 });
 const game = context.game;
 
@@ -121,4 +121,55 @@ test('rescue animation targets existing character element and respects reduced m
   assert.match(html, /\.creature\.happy\.fx-rescue/);
   assert.match(html, /prefers-reduced-motion:reduce/);
   assert.match(html, /class="mivra-eye"/);
+});
+
+test('Mivra rescue unlocks Moonlit Grove and changes the active tasks', () => {
+ const state=game.createState();
+ assert.equal(game.explore(state),false);
+ for(let i=0;i<game.TASKS.length;i++){
+  const t=game.TASKS[i];state.board[i]={kind:t.kind,tier:t.tier};
+  assert.equal(game.deliver(state,i).ok,true);
+ }
+ assert.equal(state.rescued,true);
+ assert.equal(game.explore(state),true);
+ assert.equal(game.explore(state),false);
+ assert.equal(game.activeTasks(state).length,3);
+ assert.equal(game.activeTasks(state)[0].tier,3);
+});
+
+test('Bloom, Moonwell, and Aurora rescue Orru exactly once', () => {
+ const state=game.createState();state.rescued=true;
+ assert.equal(game.explore(state),true);
+ for(let i=0;i<game.GROVE_TASKS.length;i++){
+  const t=game.GROVE_TASKS[i];state.board[i]={kind:t.kind,tier:t.tier};
+  const result=game.deliver(state,i);
+  assert.equal(result.ok,true);
+  assert.equal(result.friend,'Orru');
+ }
+ assert.equal(state.orruRescued,true);
+ assert.equal(state.groveCompleted.length,3);
+ assert.equal(game.collected(state).filter(x=>x.unlocked).length,2);
+ state.board[0]={kind:'leaf',tier:3};
+ assert.equal(game.deliver(state,0).ok,false);
+});
+
+test('legacy v0.3 saves migrate without deleting items or progress', () => {
+ const legacy=game.createState();
+ delete legacy.groveCompleted;delete legacy.orruRescued;
+ legacy.rescued=true;legacy.completed=['heal','drink','light'];
+ legacy.explored=true;
+ const loaded=game.restore(JSON.stringify(legacy));
+ assert.ok(loaded);
+ assert.equal(loaded.rescued,true);
+ assert.equal(loaded.explored,true);
+ assert.equal(loaded.orruRescued,false);
+ assert.equal(loaded.board.length,36);
+ assert.equal(loaded.groveCompleted.length,0);
+});
+
+test('new chapter 2 interface and modal are present and dismissible', () => {
+ for(const id of ['collection','collectionCount','worldHint','sceneLabel','tasksTitle','overlayTitle','overlayText'])
+  assert.match(html,new RegExp('id="'+id+'"'));
+ assert.match(html,/el\('endOverlay'\)\.hidden=true/);
+ assert.doesNotMatch(html,/if\(state\.explored\)el\('endOverlay'\)\.hidden=false/);
 });
