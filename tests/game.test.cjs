@@ -490,7 +490,7 @@ test('embedded Spirit Tree spends energy and creates a Seed when a producer has 
  const r=game.activateGenerator(st,26,()=>0);
  assert.equal(r.ok,true);
  assert.equal(st.board[r.index].kind,'leaf');assert.equal(st.board[r.index].tier,0);
- assert.equal(st.energy,game.INITIAL_ENERGY);
+ assert.equal(st.energy,game.INITIAL_ENERGY-1);
  assert.equal(game.isOpen(st,r.index),true);
 });
 
