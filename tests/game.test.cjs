@@ -17,7 +17,7 @@ test('complete browser game JavaScript compiles without syntax errors', () => {
 const uiStart = script.indexOf("const KEY='wispwood-prototype-v1'");
 assert.ok(uiStart > 0, 'Could not find boundary between game rules and browser UI');
 const context = vm.createContext({});
-const names = ['SIZE','KINDS','INITIAL_OPEN','INITIAL_ENERGY','MAX_ENERGY','CELL_REVEALS','GENERATORS','BOARD_GOALS','boardGoalProgress','isOpen','isGenerator','isWebbed','neighbors','isFrontierCell','unlockCost','openEmptyIndices','ensureStarterGenerator','revealUnlockedCell','crateRevealFor','crateHitsNeeded','crateDamage','openCellFromCrate','damageAdjacentCrates','unlockCell','moveItem','activateGenerator','V2_MOVES','isWild','normalItem','itemLabel','v2Active','v2Limited','generateFrom','mergeGroup','TASKS', 'GROVE_TASKS', 'TRAIL', 'PUZZLES', 'SKILL_MAX', 'BLOCKER_ICON', 'puzzleInfo', 'puzzleReady', 'seedPuzzle', 'ensurePuzzle', 'isBlocked', 'useCompanionSkill', 'CREATURES', 'ORRU_GROW_COST', 'ORRU_QUEST_GOAL', 'orruGrow', 'orruCanGrow', 'clearVines', 'deliverOrruQuest', 'rescueStage', 'currentCompanion', 'chooseCompanion', 'activeTasks', 'gainXP', 'trailInfo', 'isTrail', 'collected', 'createState', 'merge', 'deliver', 'spawn', 'recycle', 'explore', 'serialize', 'restore'];
+const names = ['SIZE','KINDS','INITIAL_OPEN','INITIAL_ENERGY','MAX_ENERGY','CELL_REVEALS','GENERATORS','BOARD_GOALS','boardGoalProgress','isOpen','isGenerator','isWebbed','neighbors','isFrontierCell','unlockCost','openEmptyIndices','ensureStarterGenerator','revealUnlockedCell','crateRevealFor','crateHitsNeeded','crateDamage','openCellFromCrate','damageAdjacentCrates','unlockCell','moveItem','mergeGenerator','activateGenerator','V2_MOVES','isWild','normalItem','itemLabel','v2Active','v2Limited','generateFrom','mergeGroup','TASKS', 'GROVE_TASKS', 'TRAIL', 'PUZZLES', 'SKILL_MAX', 'BLOCKER_ICON', 'puzzleInfo', 'puzzleReady', 'seedPuzzle', 'ensurePuzzle', 'isBlocked', 'useCompanionSkill', 'CREATURES', 'ORRU_GROW_COST', 'ORRU_QUEST_GOAL', 'orruGrow', 'orruCanGrow', 'clearVines', 'deliverOrruQuest', 'rescueStage', 'currentCompanion', 'chooseCompanion', 'activeTasks', 'gainXP', 'trailInfo', 'isTrail', 'collected', 'createState', 'merge', 'deliver', 'spawn', 'recycle', 'explore', 'serialize', 'restore'];
 vm.runInContext(script.slice(0, uiStart) + '\nglobalThis.game = {' + names.join(',') + '};', context, { timeout: 1000 });
 const game = context.game;
 
@@ -699,4 +699,39 @@ test('schema 4 saves reset only the board into crate-reveal schema 5', () => {
  assert.equal(loaded.revealedMerges,0);
  assert.equal(loaded.rescued,true);
  assert.equal(loaded.xp,300);
+});
+
+test('producer can move to an empty open tile', () => {
+ const st=game.createState();
+ const r=game.moveItem(st,24,18);
+ assert.equal(r.ok,true);
+ assert.equal(game.isGenerator(st.board[18]),true);
+ assert.equal(st.board[24],null);
+});
+
+test('matching producers merge and level up', () => {
+ const st=game.createState();
+ st.board[17]={special:'generator',kind:'leaf',level:1};
+ const r=game.mergeGenerator(st,17,24);
+ assert.equal(r.ok,true);
+ assert.equal(st.board[17],null);
+ assert.equal(game.isGenerator(st.board[24]),true);
+ assert.equal(st.board[24].level,2);
+});
+
+test('higher-level producers create higher-tier items', () => {
+ const st=game.createState();
+ st.board[24]={special:'generator',kind:'leaf',level:2};
+ const r=game.activateGenerator(st,24,()=>0);
+ assert.equal(r.ok,true);
+ assert.equal(r.level,2);
+ assert.equal(r.tier,1);
+ assert.equal(st.board[r.index].tier,1);
+});
+
+test('producer markup communicates movable two-tap interaction', () => {
+ assert.match(html,/LV\.\$\{level\} · TAP×2/);
+ assert.match(html,/tap once to select, tap again to create/);
+ assert.match(html,/cell\.draggable=!!item&&!blocker&&!webbed/);
+ assert.doesNotThrow(()=>new vm.Script(script));
 });

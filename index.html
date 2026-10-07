@@ -374,6 +374,10 @@ function boardGoalProgress(state,goal){return Math.min(goal.goal,Number(state[go
 function crateRevealFor(state,index){
  const fixed=CELL_REVEALS[index];
  if(fixed)return fixed;
+ if(index>0&&index%12===0){
+  const generatorKind=KINDS[Math.floor(index/12)%KINDS.length];
+  return {type:'generator',kind:generatorKind,fromCrate:true};
+ }
  const kind=KINDS[(index+Math.floor(index/SIZE))%KINDS.length];
  const tier=state.openCells.length>24&&index%5===0?1:0;
  const webbed=index%4===0||index%7===1;
@@ -453,7 +457,7 @@ function moveItem(state,from,to){
  if(!Number.isInteger(from)||!Number.isInteger(to)||from===to||!isOpen(state,from)||!isOpen(state,to))return {ok:false,why:'Move between open tiles.'};
  if(isBlocked(state,from)||isBlocked(state,to))return {ok:false,why:'A blocker is in the way.'};
  const item=state.board[from];
- if(!item||isGenerator(item)||isWild(item))return {ok:false,why:'Choose a movable item.'};
+ if(!item||isWild(item))return {ok:false,why:'Choose a movable item.'};
  if(isWebbed(state,from))return {ok:false,why:'This item is web-covered. Merge a matching item into it to free it.'};
  if(state.board[to])return {ok:false,why:'Move onto an empty tile.'};
  state.board[to]=item;state.board[from]=null;
@@ -464,6 +468,18 @@ function moveItem(state,from,to){
  state.combo=0;
  return {ok:true,from,to,item};
 }
+function mergeGenerator(state,from,to){
+ ensurePuzzle(state);
+ if(!Number.isInteger(from)||!Number.isInteger(to)||from===to||!isOpen(state,from)||!isOpen(state,to))return {ok:false,why:'Choose two producers.'};
+ const a=state.board[from],b=state.board[to];
+ if(!isGenerator(a)||!isGenerator(b)||a.kind!==b.kind)return {ok:false,why:'Only matching producers can merge.'};
+ const levelA=Number.isInteger(a.level)?a.level:1,levelB=Number.isInteger(b.level)?b.level:1;
+ if(levelA!==levelB)return {ok:false,why:'Producer levels must match.'};
+ if(levelA>=3)return {ok:false,why:'This producer is already max level.'};
+ state.board[from]=null;state.board[to]={special:'generator',kind:b.kind,level:levelB+1};
+ state.moves++;gainXP(state,12*levelA);
+ return {ok:true,target:to,generator:state.board[to],level:levelB+1};
+}
 function activateGenerator(state,index,random=Math.random){
  const source=state.board[index];
  if(!isOpen(state,index)||!isGenerator(source))return {ok:false,why:'That is not an active generator.'};
@@ -471,8 +487,10 @@ function activateGenerator(state,index,random=Math.random){
  const free=openEmptyIndices(state);
  if(!free.length)return {ok:false,why:'Your open clearing is full. Merge items or unlock more space.'};
  const target=free[Math.min(free.length-1,Math.floor(random()*free.length))];
- state.board[target]={kind:source.kind,tier:0};state.energy--;state.spawns++;
- return {ok:true,index:target,kind:source.kind,generator:index};
+ const level=Number.isInteger(source.level)?source.level:1;
+ const tier=Math.min(MAX_TIER-1,Math.max(0,level-1));
+ state.board[target]={kind:source.kind,tier};state.energy--;state.spawns++;
+ return {ok:true,index:target,kind:source.kind,tier,generator:index,level};
 }
 
 function puzzleInfo(state){return PUZZLES[state.trailIndex]||null;}
@@ -915,8 +933,9 @@ function present(){
   if(!blocker&&!generator&&item&&picked&&!isGenerator(picked)&&i!==selected&&normalItem(item)&&normalItem(picked)&&item.kind===picked.kind&&item.tier===picked.tier&&item.tier<MAX_TIER)cell.classList.add('merge-match');
   if(normalItem(item)&&item.tier===MAX_TIER)cell.classList.add('legendary');
   if(generator){
-   const g=GENERATORS[item.kind];cell.setAttribute('aria-label',`${g.name} generator — tap to create ${ITEMS[item.kind][0].name}`);
-   cell.innerHTML=`<span class="generator-icon" aria-hidden="true">${g.icon}</span><span class="item-name">${g.name}</span><span class="tier-pips">TAP · 1⚡</span>`;
+   const g=GENERATORS[item.kind],level=Number.isInteger(item.level)?item.level:1;
+   cell.setAttribute('aria-label',`${g.name} level ${level} producer — tap once to select, tap again to create ${ITEMS[item.kind][Math.min(MAX_TIER-1,level-1)].name}`);
+   cell.innerHTML=`<span class="generator-icon" aria-hidden="true">${g.icon}</span><span class="item-name">${g.name}</span><span class="tier-pips">LV.${level} · TAP×2</span>`;
   }else if(blocker){
    cell.innerHTML=`<span class="blocker-icon" aria-hidden="true">${BLOCKER_ICON[blocker.type]}</span><span class="item-name">${blocker.type==='vine'?'Vine':'Fog'}</span>`;
   }else if(wild){
@@ -926,8 +945,8 @@ function present(){
    cell.innerHTML=`<span class="item-icon" aria-hidden="true">${def.emoji}</span><span class="item-name">${def.name}</span><span class="tier-pips" aria-hidden="true">${"✦".repeat(item.tier+1)}</span>`;
   }else cell.setAttribute('aria-label','Open empty tile');
   if(!blocker)cell.addEventListener('click',()=>choose(i));
-  cell.draggable=!!item&&!generator&&!blocker;
-  cell.addEventListener('dragstart',e=>{if(!item||generator){e.preventDefault();return;}e.dataTransfer.setData('text/plain',String(i));});
+  cell.draggable=!!item&&!blocker&&!webbed;
+  cell.addEventListener('dragstart',e=>{if(!item||webbed){e.preventDefault();return;}e.dataTransfer.setData('text/plain',String(i));});
   cell.addEventListener('dragover',e=>{if(!blocker)e.preventDefault();});
   cell.addEventListener('drop',e=>{e.preventDefault();const from=Number(e.dataTransfer.getData('text/plain'));if(Number.isInteger(from))doMerge(from,i);});
   board.append(cell);
@@ -1011,20 +1030,34 @@ function present(){
 function choose(i){
  if(!isOpen(state,i))return;
  const item=state.board[i];
- if(isGenerator(item)){
-  const r=activateGenerator(state,i);selected=null;groupSelected=[];
-  if(r.ok){effect('spawn',r.index);message(`${GENERATORS[r.kind].name} created ${ITEMS[r.kind][0].name}. ⚡ ${state.energy}/${state.maxEnergy}`);}
-  else message(r.why);
-  present();return;
- }
  if(isBlocked(state,i)){selected=null;present();return;}
  if(!item&&selected!==null){
+  const moving=state.board[selected];
   const r=moveItem(state,selected,i);
-  if(r.ok){selected=null;effect('spawn',r.to);message(`Moved ${ITEMS[r.item.kind][r.item.tier].name}.`);present();return;}
+  if(r.ok){
+   selected=null;effect('spawn',r.to);
+   message(isGenerator(moving)?`Moved ${GENERATORS[moving.kind].name}.`:`Moved ${ITEMS[r.item.kind][r.item.tier].name}.`);
+   present();return;
+  }
   message(r.why);present();return;
  }
  if(!item){selected=null;present();return;}
+ if(isGenerator(item)){
+  if(selected===i){
+   const r=activateGenerator(state,i);selected=null;groupSelected=[];
+   if(r.ok){effect('spawn',r.index);message(`${GENERATORS[r.kind].name} Lv.${r.level} created ${ITEMS[r.kind][r.tier].name}. ⚡ ${state.energy}/${state.maxEnergy}`);}
+   else message(r.why);
+   present();return;
+  }
+  if(selected!==null&&selected!==i&&isGenerator(state.board[selected])){
+   const r=mergeGenerator(state,selected,i);
+   if(r.ok){selected=null;effect('merge',r.target);message(`✨ ${GENERATORS[r.generator.kind].name} upgraded to Lv.${r.level}!`);present();return;}
+   message(r.why);
+  }
+  selected=i;present();return;
+ }
  if(selected!==null&&selected!==i){
+  if(isGenerator(state.board[selected])){selected=i;present();return;}
   const r=merge(state,selected,i);
   if(r.ok){
    selected=null;
@@ -1038,12 +1071,14 @@ function choose(i){
  selected=selected===i?null:i;present();
 }
 function doMerge(from,to){
- const r=state.board[to]?merge(state,from,to):moveItem(state,from,to);selected=null;
+ const fromItem=state.board[from],toItem=state.board[to];
+ const r=toItem?(isGenerator(fromItem)&&isGenerator(toItem)?mergeGenerator(state,from,to):merge(state,from,to)):moveItem(state,from,to);selected=null;
  if(r.ok&&r.tile){
   const revealIndices=r.crateResult?.opened?.map(x=>x.index)||[];
   effect('merge',r.target,null,{revealIndices});
   message(`✨ ${ITEMS[r.tile.kind][r.tile.tier].name} crafted!${revealIndices.length?' 📦 Hidden item revealed!':''}${r.webCleared?' · Web cleared!':''}`);
- }else if(r.ok&&r.item){effect('spawn',r.to);message(`Moved ${ITEMS[r.item.kind][r.item.tier].name}.`);}
+ }else if(r.ok&&r.generator){effect('merge',r.target);message(`✨ ${GENERATORS[r.generator.kind].name} upgraded to Lv.${r.level}!`);}
+ else if(r.ok&&r.item){effect('spawn',r.to);message(isGenerator(r.item)?`Moved ${GENERATORS[r.item.kind].name}.`:`Moved ${ITEMS[r.item.kind][r.item.tier].name}.`);}
  else message(r.why);
  present();
 }
