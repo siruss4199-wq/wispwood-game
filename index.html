@@ -370,6 +370,7 @@ function crateHitsNeeded(state,index){
  return expanded<8?1:expanded<20?2:3;
 }
 function crateDamage(state,index){return Number(state.crateDamage?.[index]||0);}
+function boardGoalProgress(state,goal){return Math.min(goal.goal,Number(state[goal.key]||0));}
 function crateRevealFor(state,index){
  const fixed=CELL_REVEALS[index];
  if(fixed)return fixed;
@@ -443,6 +444,22 @@ function unlockCell(state,index){
  state.magic-=cost;state.openCells.push(index);state.openCells.sort((a,b)=>a-b);
  const reveal=revealUnlockedCell(state,index);gainXP(state,5);
  return {ok:true,index,cost,reveal};
+}
+function moveItem(state,from,to){
+ ensurePuzzle(state);
+ if(!Number.isInteger(from)||!Number.isInteger(to)||from===to||!isOpen(state,from)||!isOpen(state,to))return {ok:false,why:'Move between open tiles.'};
+ if(isBlocked(state,from)||isBlocked(state,to))return {ok:false,why:'A blocker is in the way.'};
+ const item=state.board[from];
+ if(!item||isGenerator(item)||isWild(item))return {ok:false,why:'Choose a movable item.'};
+ if(isWebbed(state,from))return {ok:false,why:'This item is web-covered. Merge a matching item into it to free it.'};
+ if(state.board[to])return {ok:false,why:'Move onto an empty tile.'};
+ state.board[to]=item;state.board[from]=null;
+ if(Array.isArray(state.revealedCells)&&state.revealedCells.includes(from)){
+  state.revealedCells=state.revealedCells.filter(i=>i!==from);
+  if(!state.revealedCells.includes(to))state.revealedCells.push(to);
+ }
+ state.combo=0;
+ return {ok:true,from,to,item};
 }
 function activateGenerator(state,index,random=Math.random){
  const source=state.board[index];
@@ -618,16 +635,21 @@ function merge(state,from,to) {
  const aWeb=isWebbed(state,from),bWeb=isWebbed(state,to);
  if(aWeb&&bWeb)return {ok:false,why:'Free one webbed item at a time.'};
  const target=aWeb?from:to,source=aWeb?to:from;
+ const revealedMerge=Array.isArray(state.revealedCells)&&(state.revealedCells.includes(from)||state.revealedCells.includes(to));
  state.board[source]=null;
  state.board[target]={kind:b.kind,tier:b.tier+1};
- if(aWeb||bWeb)state.webbed=state.webbed.filter(i=>i!==target);
+ if(aWeb||bWeb){state.webbed=state.webbed.filter(i=>i!==target);state.websCleared=(state.websCleared||0)+1;}
+ if(revealedMerge){
+  state.revealedMerges=(state.revealedMerges||0)+1;
+  state.revealedCells=state.revealedCells.filter(i=>i!==from&&i!==to);
+ }
  state.moves++;state.combo=Math.min(9,(state.combo||0)+1);state.skillCharge=Math.min(SKILL_MAX,(state.skillCharge||0)+1);
  const magicGain=2+(a.tier||0)+(aWeb||bWeb?2:0);state.magic+=magicGain;
  state.energy=Math.min(state.maxEnergy,state.energy+1);
  const comboBonus=state.combo>=3?2:0;gainXP(state,3+b.tier*2+comboBonus);
  const crateResult=damageAdjacentCrates(state,target);
  if(state.orruRescued)state.orruCharge=Math.min(ORRU_GROW_COST*2,state.orruCharge+1);
- return {ok:true,tile:state.board[target],target,combo:state.combo,magicGain,webCleared:aWeb||bWeb,crateResult,skillReady:state.skillCharge===SKILL_MAX};
+ return {ok:true,tile:state.board[target],target,combo:state.combo,magicGain,webCleared:aWeb||bWeb,revealedMerge,crateResult,skillReady:state.skillCharge===SKILL_MAX};
 }
 function deliver(state,index) {
  const item=state.board[index];if(!item)return {ok:false,why:'Select an item first.'};
