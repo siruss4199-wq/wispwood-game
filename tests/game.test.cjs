@@ -17,7 +17,7 @@ test('complete browser game JavaScript compiles without syntax errors', () => {
 const uiStart = script.indexOf("const KEY='wispwood-prototype-v1'");
 assert.ok(uiStart > 0, 'Could not find boundary between game rules and browser UI');
 const context = vm.createContext({});
-const names = ['SIZE', 'KINDS', 'TASKS', 'GROVE_TASKS', 'TRAIL', 'CREATURES', 'ORRU_GROW_COST', 'ORRU_QUEST_GOAL', 'orruGrow', 'orruCanGrow', 'clearVines', 'deliverOrruQuest', 'rescueStage', 'currentCompanion', 'chooseCompanion', 'activeTasks', 'gainXP', 'trailInfo', 'isTrail', 'collected', 'createState', 'merge', 'deliver', 'spawn', 'recycle', 'explore', 'serialize', 'restore'];
+const names = ['SIZE', 'KINDS', 'TASKS', 'GROVE_TASKS', 'TRAIL', 'PUZZLES', 'SKILL_MAX', 'BLOCKER_ICON', 'puzzleInfo', 'puzzleReady', 'seedPuzzle', 'ensurePuzzle', 'isBlocked', 'useCompanionSkill', 'CREATURES', 'ORRU_GROW_COST', 'ORRU_QUEST_GOAL', 'orruGrow', 'orruCanGrow', 'clearVines', 'deliverOrruQuest', 'rescueStage', 'currentCompanion', 'chooseCompanion', 'activeTasks', 'gainXP', 'trailInfo', 'isTrail', 'collected', 'createState', 'merge', 'deliver', 'spawn', 'recycle', 'explore', 'serialize', 'restore'];
 vm.runInContext(script.slice(0, uiStart) + '\nglobalThis.game = {' + names.join(',') + '};', context, { timeout: 1000 });
 const game = context.game;
 
@@ -190,6 +190,8 @@ test('restoration trail unlocks only after rescuing Orru', () => {
 test('restoration quests advance through all 3 zones exactly once', () => {
  const s=game.createState();s.rescued=true;s.explored=true;s.orruRescued=true;
  for(let zone=0;zone<3;zone++){
+  // This test focuses on quest-stage progression; puzzle clearing is covered separately below.
+  s.puzzleZone=zone;s.blockers=[];
   for(let i=0;i<3;i++){
    const task=game.TRAIL[zone].tasks[i];
    s.board[i]={kind:task.kind,tier:task.tier};
@@ -405,5 +407,92 @@ test('v0.7 save migration preserves existing board, XP and rescued companions', 
 test('Orru controls and complete inline JavaScript render with no parse failure', () => {
  for(const id of ['growBtn','vinesBtn','orruQuestBtn','orruQuestStatus','orruPanel'])
   assert.match(html,new RegExp('id="'+id+'"'));
+ assert.doesNotThrow(()=>new vm.Script(script));
+});
+
+test('v1 restoration region seeds real blockers on empty board cells', () => {
+ const st=game.createState();st.rescued=true;st.explored=true;st.orruRescued=true;
+ game.ensurePuzzle(st);
+ assert.equal(st.puzzleZone,0);
+ assert.equal(st.blockers.length,5);
+ assert.ok(st.blockers.every(b=>b.type==='vine'));
+ assert.ok(st.blockers.every(b=>st.board[b.index]===null));
+ assert.equal(game.puzzleReady(st),false);
+});
+
+test('quest delivery is locked until region blockers are cleared', () => {
+ const st=game.createState();st.rescued=true;st.explored=true;st.orruRescued=true;
+ game.ensurePuzzle(st);
+ const task=game.TRAIL[0].tasks[0];
+ const index=st.board.findIndex((v,i)=>v===null&&!game.isBlocked(st,i));
+ st.board[index]={kind:task.kind,tier:task.tier};
+ const blocked=game.deliver(st,index);
+ assert.equal(blocked.ok,false);
+ assert.match(blocked.why,/blockers/i);
+ st.blockers=[];
+ assert.equal(game.deliver(st,index).ok,true);
+});
+
+test('five successful merges charge companion skill and invalid merge breaks combo', () => {
+ const st=game.createState();st.rescued=true;st.explored=true;st.orruRescued=true;
+ st.puzzleZone=0;st.blockers=[];
+ for(let n=0;n<5;n++){
+  st.board[n*2]={kind:'leaf',tier:0};st.board[n*2+1]={kind:'leaf',tier:0};
+  const r=game.merge(st,n*2,n*2+1);
+  assert.equal(r.ok,true);
+ }
+ assert.equal(st.skillCharge,game.SKILL_MAX);
+ assert.equal(st.combo,5);
+ const bad=game.merge(st,0,2);
+ assert.equal(bad.ok,false);
+ assert.equal(st.combo,0);
+ assert.equal(st.skillCharge,game.SKILL_MAX);
+});
+
+test('Orru clears vines while Mivra clears fog and mixed gate needs both', () => {
+ const st=game.createState();st.rescued=true;st.explored=true;st.orruRescued=true;
+ st.trailIndex=2;game.seedPuzzle(st);
+ assert.ok(st.blockers.some(b=>b.type==='vine'));
+ assert.ok(st.blockers.some(b=>b.type==='fog'));
+ game.chooseCompanion(st,'orru');st.skillCharge=game.SKILL_MAX;
+ let r=game.useCompanionSkill(st);assert.equal(r.ok,true);assert.equal(r.companion,'orru');
+ assert.ok(st.blockers.every(b=>b.type==='fog'));
+ st.skillCharge=game.SKILL_MAX;
+ r=game.useCompanionSkill(st);assert.equal(r.ok,false);assert.match(r.why,/Mivra/);
+ game.chooseCompanion(st,'mivra');st.skillCharge=game.SKILL_MAX;
+ r=game.useCompanionSkill(st);assert.equal(r.ok,true);
+ assert.equal(st.blockers.length,0);assert.equal(r.cleared,true);
+});
+
+test('zone completion seeds the next region puzzle', () => {
+ const st=game.createState();st.rescued=true;st.explored=true;st.orruRescued=true;
+ st.puzzleZone=0;st.blockers=[];
+ for(let i=0;i<3;i++){
+  const t=game.TRAIL[0].tasks[i];st.board[i]={kind:t.kind,tier:t.tier};
+  assert.equal(game.deliver(st,i).ok,true);
+ }
+ assert.equal(st.trailIndex,1);
+ assert.equal(st.puzzleZone,1);
+ assert.equal(st.blockers.length,5);
+ assert.ok(st.blockers.every(b=>b.type==='fog'));
+});
+
+test('v0.8 saves migrate into v1 puzzle fields without losing progress', () => {
+ const st=game.createState();st.rescued=true;st.explored=true;
+ st.groveCompleted=['grove-bloom','grove-well','grove-aurora'];st.orruRescued=true;
+ st.trailIndex=1;st.xp=234;delete st.puzzleZone;delete st.blockers;delete st.runesFound;delete st.combo;delete st.skillCharge;
+ const loaded=game.restore(JSON.stringify(st));
+ assert.equal(loaded.trailIndex,1);assert.equal(loaded.xp,234);
+ assert.equal(loaded.puzzleZone,-1);assert.deepEqual(loaded.blockers,[]);
+ assert.equal(loaded.combo,0);assert.equal(loaded.skillCharge,0);
+ game.ensurePuzzle(loaded);
+ assert.equal(loaded.puzzleZone,1);assert.equal(loaded.blockers.length,5);
+});
+
+test('v1 puzzle HUD, blockers and companion skill controls exist', () => {
+ for(const id of ['puzzleHud','puzzleName','puzzleHint','blockerCount','comboLabel','skillLabel','skillBtn'])
+  assert.match(html,new RegExp('id="'+id+'"'));
+ assert.match(html,/fog-blocker/);assert.match(html,/vine-blocker/);
+ assert.match(html,/puzzle-locked/);assert.match(html,/puzzle-ready/);
  assert.doesNotThrow(()=>new vm.Script(script));
 });
