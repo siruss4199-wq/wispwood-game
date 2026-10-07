@@ -122,6 +122,15 @@
 .orru-quest button{width:100%;margin-top:3px}
 .scene.vines-open .hill-front{background:linear-gradient(160deg,#89b983,#67b59b)}
 @media(max-width:670px){.orru-panel{padding:11px}.orru-ability-row button{min-height:43px}}
+
+.puzzle-hud{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:12px 0;padding:12px 14px;border:1px solid #cfc2e6;border-radius:16px;background:linear-gradient(135deg,#f4efff,#eef8f1)}
+.puzzle-hud[hidden]{display:none}.puzzle-hud>div:first-child{display:flex;flex-direction:column;gap:2px}.puzzle-label{font-size:9px;letter-spacing:.12em;font-weight:900;color:#8b72a8}.puzzle-hud strong{font-size:14px;color:#564069}.puzzle-hud small{font-size:10px;color:#796d84}
+.puzzle-stats{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.puzzle-stats span{font-size:10px;font-weight:900;padding:6px 8px;background:#fff;border-radius:999px;color:#6b5980;border:1px solid #e0d7eb}
+.tile.blocker{cursor:not-allowed;background:linear-gradient(145deg,#dbe9d3,#b9d0b1);border:2px solid #7b9a70;box-shadow:inset 0 0 18px #4c6b4055}
+.tile.blocker.fog-blocker{background:linear-gradient(145deg,#dee1ee,#bfc3d9);border-color:#888ca5;box-shadow:inset 0 0 18px #62677b66}.tile.blocker .blocker-icon{font-size:28px;filter:drop-shadow(0 2px 2px #344)}
+.tile.blocker .item-name{font-size:9px}.skill-action{background:linear-gradient(135deg,#6d58aa,#8870c3);color:#fff;border:0;border-radius:12px;padding:10px 12px;font-weight:900}.skill-action small{display:block;font-size:9px;opacity:.8}.skill-action:disabled{opacity:.45}
+.board-frame.puzzle-locked{box-shadow:0 0 0 3px #d9c6e744,0 12px 28px #59476e19}.board-frame.puzzle-ready{box-shadow:0 0 0 3px #bce4c955,0 12px 28px #41634b19}
+@media(max-width:670px){.puzzle-hud{align-items:flex-start;flex-direction:column}.puzzle-stats{justify-content:flex-start}.actions{flex-wrap:wrap}.skill-action{flex:1 1 45%}}
 </style></head>
 <body>
  <div class="shell">
@@ -160,9 +169,13 @@
    <section class="play card" aria-label="Merge puzzle game"><div class="play-head"><div><span class="eyebrow">MAGIC WORKSHOP</span><h2>Merge to help</h2></div><span class="moves">↔ <b id="moves">0</b> moves</span></div>
     <p class="instruction">Tap two identical items to merge them into a stronger one. On desktop, you can also drag items together.</p>
     <div class="merge-legend" aria-label="Magical item types"><span class="legend-leaf">🌿 Nature</span><span class="legend-dew">💧 Water</span><span class="legend-glow">✨ Starlight</span></div>
+    <div id="puzzleHud" class="puzzle-hud" hidden>
+      <div><span class="puzzle-label">REGION PUZZLE</span><strong id="puzzleName">Whispering Bridge</strong><small id="puzzleHint">Clear blockers to unlock delivery.</small></div>
+      <div class="puzzle-stats"><span id="blockerCount">0 blockers</span><span id="comboLabel">Combo ×0</span><span id="skillLabel">Skill 0/5</span></div>
+    </div>
     <div class="board-frame"><div class="board-caption"><span>✦ ENCHANTED MERGE GARDEN</span><span>6 × 6</span></div><div id="board" class="board" role="group" aria-label="6 by 6 merge board"></div></div>
     <div class="selected-row"><span id="selected">Select matching tiles to merge</span></div>
-    <div class="actions"><button id="spawnBtn" class="primary">✦ Gather magic <small>FREE</small></button><button id="deliverBtn" disabled class="secondary">♡ Deliver</button><button id="recycleBtn" disabled class="tertiary" aria-label="Recycle selected item">♻</button></div>
+    <div class="actions"><button id="spawnBtn" class="primary">✦ Gather magic <small>FREE</small></button><button id="skillBtn" hidden disabled class="skill-action">✨ Companion Skill <small>0/5</small></button><button id="deliverBtn" disabled class="secondary">♡ Deliver</button><button id="recycleBtn" disabled class="tertiary" aria-label="Recycle selected item">♻</button></div>
     <p class="footnote">Prototype mode: unlimited gathering, no timers, no ads, no account.</p>
    </section>
    <aside class="sidebar card" aria-label="Rescue objectives"><div class="side-heading"><div><span class="eyebrow">TODAY'S ADVENTURE</span><h2 id="tasksTitle">Help Mivra heal</h2></div><span id="tasksCount" class="progress-count">0/3</span></div><div class="progress"><div id="progressFill"></div></div><p class="side-sub">Craft these magical items, select one on the board, then tap Deliver.</p><div id="tasks"></div><div id="orruPanel" class="orru-panel" hidden>
@@ -243,7 +256,7 @@ function seedPuzzle(state){
  state.skillCharge=0;
  if(!info)return;
  const preferred=[5,10,15,20,25,30,4,11,18,27,34,31];
- const free=preferred.filter(i=>state.board[i]===null);
+ const free=[...preferred.filter(i=>state.board[i]===null),...state.board.map((v,i)=>v===null&& !preferred.includes(i)?i:null).filter(i=>i!==null)];
  for(let n=0;n<Math.min(info.count,free.length);n++){
   const type=info.blocker==='mixed'?(n%2===0?'vine':'fog'):info.blocker;
   state.blockers.push({index:free[n],type});
@@ -262,7 +275,8 @@ function useCompanionSkill(state){
  if(!state.blockers.length)return {ok:false,why:'No blockers remain in this region.'};
  const preferred=active==='orru'?'vine':'fog';
  const matching=state.blockers.filter(b=>b.type===preferred);
- const targets=(matching.length?matching:state.blockers).slice(0,matching.length?3:1);
+ if(!matching.length)return {ok:false,why:active==='orru'?'No vines here. Switch to Mivra to dispel fog.':'No fog here. Switch to Orru to clear vines.'};
+ const targets=matching.slice(0,3);
  const ids=new Set(targets.map(b=>b.index));
  state.blockers=state.blockers.filter(b=>!ids.has(b.index));
  state.runesFound+=targets.length;
@@ -401,6 +415,11 @@ function restore(raw){
   s.orruCharge=Number.isInteger(s.orruCharge)?Math.max(0,Math.min(ORRU_GROW_COST*2,s.orruCharge)):0;
   s.orruQuestCount=Number.isInteger(s.orruQuestCount)?Math.max(0,Math.min(ORRU_QUEST_GOAL,s.orruQuestCount)):0;
   s.vinesCleared=Boolean(s.vinesCleared);
+  s.puzzleZone=Number.isInteger(s.puzzleZone)?s.puzzleZone:-1;
+  s.blockers=Array.isArray(s.blockers)?s.blockers.filter(b=>b&&Number.isInteger(b.index)&&b.index>=0&&b.index<SIZE*SIZE&&(b.type==='vine'||b.type==='fog')&&s.board[b.index]===null):[];
+  s.runesFound=Number.isInteger(s.runesFound)&&s.runesFound>=0?s.runesFound:0;
+  s.combo=Number.isInteger(s.combo)&&s.combo>=0?Math.min(9,s.combo):0;
+  s.skillCharge=Number.isInteger(s.skillCharge)&&s.skillCharge>=0?Math.min(SKILL_MAX,s.skillCharge):0;
   // Migrate v0.3/v0.4 progress; existing rescued friends and board remain intact.
   s.trailIndex=Number.isInteger(s.trailIndex)?Math.max(0,Math.min(TRAIL.length,s.trailIndex)):0;
   s.trailCompleted=Array.isArray(s.trailCompleted)&&s.trailIndex<TRAIL.length?TRAIL[s.trailIndex].tasks.map(t=>t.id).filter(id=>s.trailCompleted.includes(id)):[];
