@@ -583,6 +583,7 @@ function present(){
   el('skillLabel').textContent=`Skill ${state.skillCharge||0}/${SKILL_MAX}`;
  }
  const v2=v2Active(state);
+ const v2ActionIndex=v2&&groupSelected.length===1?groupSelected[0]:selected;
  el('v2GeneratorPanel').hidden=!v2;
  el('spawnBtn').hidden=v2;
  el('mergeGroupBtn').hidden=!v2;
@@ -646,7 +647,7 @@ function present(){
  el('vinesBtn').disabled=!orruActive||state.vinesCleared;
  el('vinesBtn').textContent=state.vinesCleared?'✓ Vines cleared':'🌿 Clear Vines';
  el('orruQuestStatus').textContent=state.orruQuestCount>=ORRU_QUEST_GOAL?'Completed! Bloom reward collected.':`Give Orru 2 Herbs (${state.orruQuestCount}/${ORRU_QUEST_GOAL}) to earn a Bloom.`;
- el('orruQuestBtn').disabled=state.orruQuestCount>=ORRU_QUEST_GOAL||selected===null||!state.board[selected]||state.board[selected].kind!=='leaf'||state.board[selected].tier!==2;
+ el('orruQuestBtn').disabled=state.orruQuestCount>=ORRU_QUEST_GOAL||v2ActionIndex===null||v2ActionIndex===undefined||!state.board[v2ActionIndex]||isWild(state.board[v2ActionIndex])||state.board[v2ActionIndex].kind!=='leaf'||state.board[v2ActionIndex].tier!==2;
  el('scene').classList.toggle('vines-open',state.vinesCleared);
  el('trailPanel').hidden=!trail;
  const trailStops=el('trailStops');trailStops.innerHTML='';
@@ -688,7 +689,7 @@ function present(){
  if(fx&&fx.type==='rescue'){clearTimeout(rescueTimer);el('character').classList.add('fx-rescue');el('scene').classList.add('fx-rescue');rescueTimer=setTimeout(()=>{el('character').classList.remove('fx-rescue');el('scene').classList.remove('fx-rescue');},1400);}
  el('exploreBtn').disabled=!state.rescued||state.explored;
  el('exploreBtn').textContent=trail?(stage?'✨ Restoration Trail active':'✓ Forest restored'):grove?'🌿 Moonlit Grove':state.rescued?'✨ Enter Moonlit Grove':'🔒 Rescue Mivra first';
- const singleIndex=v2&&groupSelected.length===1?groupSelected[0]:selected;
+ const singleIndex=v2ActionIndex;
  const singleItem=singleIndex!==null&&singleIndex!==undefined?state.board[singleIndex]:null;
  el('selected').textContent=v2?(groupSelected.length?`${groupSelected.length} selected — choose 3 or 5 matching items`:'Select 3 matching items; 5 gives a Wild Wisp'):singleItem?`${itemLabel(singleItem)} selected`:'Select matching tiles to merge';
  el('deliverBtn').disabled=!puzzleReady(state)||!singleItem||isWild(singleItem)||!tasks.some(t=>!done.includes(t.id)&&t.kind===singleItem.kind&&t.tier===singleItem.tier);
