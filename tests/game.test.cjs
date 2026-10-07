@@ -17,7 +17,7 @@ test('complete browser game JavaScript compiles without syntax errors', () => {
 const uiStart = script.indexOf("const KEY='wispwood-prototype-v1'");
 assert.ok(uiStart > 0, 'Could not find boundary between game rules and browser UI');
 const context = vm.createContext({});
-const names = ['SIZE', 'KINDS', 'TASKS', 'GROVE_TASKS', 'TRAIL', 'CREATURES', 'rescueStage', 'currentCompanion', 'chooseCompanion', 'activeTasks', 'gainXP', 'trailInfo', 'isTrail', 'collected', 'createState', 'merge', 'deliver', 'spawn', 'recycle', 'explore', 'serialize', 'restore'];
+const names = ['SIZE', 'KINDS', 'TASKS', 'GROVE_TASKS', 'TRAIL', 'CREATURES', 'ORRU_GROW_COST', 'ORRU_QUEST_GOAL', 'orruGrow', 'orruCanGrow', 'clearVines', 'deliverOrruQuest', 'rescueStage', 'currentCompanion', 'chooseCompanion', 'activeTasks', 'gainXP', 'trailInfo', 'isTrail', 'collected', 'createState', 'merge', 'deliver', 'spawn', 'recycle', 'explore', 'serialize', 'restore'];
 vm.runInContext(script.slice(0, uiStart) + '\nglobalThis.game = {' + names.join(',') + '};', context, { timeout: 1000 });
 const game = context.game;
 
@@ -344,4 +344,66 @@ test('Sanctuary profiles and visual rescue stages are in the interface', () => {
  assert.match(html,/CREATURE SANCTUARY/);
  assert.match(html,/MIVRA_ART:ORRU_ART/);
  assert.match(html,/prefers-reduced-motion:reduce/);
+});
+
+test('Orru Grow must be active, charge by merging and create a free Seed', () => {
+ const st=game.createState();st.rescued=true;st.explored=true;st.orruRescued=true;
+ assert.equal(game.orruGrow(st).ok,false);
+ assert.equal(game.chooseCompanion(st,'orru'),true);
+ assert.equal(game.orruGrow(st).ok,false);
+ st.orruCharge=3;
+ assert.equal(game.merge(st,0,1).ok,true);
+ assert.equal(st.orruCharge,4);
+ const r=game.orruGrow(st);assert.equal(r.ok,true);
+ assert.equal(st.board[r.index].kind,'leaf');
+ assert.equal(st.board[r.index].tier,0);
+ assert.equal(st.orruCharge,0);
+});
+test('Orru Grow never charges against or replaces board items on full board', () => {
+ const st=game.createState();st.rescued=true;st.orruRescued=true;st.orruCharge=4;
+ game.chooseCompanion(st,'orru');
+ st.board.fill({kind:'leaf',tier:0});
+ assert.equal(game.orruGrow(st).ok,false);
+ assert.equal(st.orruCharge,4);
+});
+test('Clear Vines grants one-time Water and XP only with active Orru', () => {
+ const st=game.createState();st.rescued=true;st.orruRescued=true;
+ assert.equal(game.clearVines(st).ok,false);
+ game.chooseCompanion(st,'orru');
+ const r=game.clearVines(st);assert.equal(r.ok,true);
+ assert.equal(st.vinesCleared,true);
+ assert.equal(st.board[r.index].kind,'dew');
+ assert.equal(st.board[r.index].tier,1);
+ assert.equal(st.xp,50);
+ assert.equal(game.clearVines(st).ok,false);
+ assert.equal(st.xp,50);
+});
+test('Forest Remedy accepts exactly two Herbs and gives one Bloom', () => {
+ const st=game.createState();st.rescued=true;st.orruRescued=true;
+ st.board[0]={kind:'dew',tier:2};
+ assert.equal(game.deliverOrruQuest(st,0).ok,false);
+ st.board[0]={kind:'leaf',tier:2};
+ assert.equal(game.deliverOrruQuest(st,0).ok,true);
+ assert.equal(st.orruQuestCount,1);assert.equal(st.board[0],null);
+ st.board[0]={kind:'leaf',tier:2};
+ const r=game.deliverOrruQuest(st,0);
+ assert.equal(r.ok,true);assert.equal(r.completed,true);
+ assert.equal(st.board[0].tier,3);assert.equal(st.orruQuestCount,2);
+ assert.equal(game.deliverOrruQuest(st,0).ok,false);
+});
+test('v0.7 save migration preserves existing board, XP and rescued companions', () => {
+ const st=game.createState();st.rescued=true;st.explored=true;
+ st.groveCompleted=['grove-bloom','grove-well','grove-aurora'];st.orruRescued=true;
+ st.activeCompanion='orru';st.xp=210;st.trailIndex=2;
+ delete st.orruCharge;delete st.vinesCleared;delete st.orruQuestCount;
+ const restored=game.restore(JSON.stringify(st));
+ assert.equal(restored.activeCompanion,'orru');
+ assert.equal(restored.xp,210);assert.equal(restored.trailIndex,2);
+ assert.equal(restored.orruCharge,0);assert.equal(restored.orruQuestCount,0);
+ assert.equal(restored.vinesCleared,false);
+});
+test('Orru controls and complete inline JavaScript render with no parse failure', () => {
+ for(const id of ['growBtn','vinesBtn','orruQuestBtn','orruQuestStatus','orruPanel'])
+  assert.match(html,new RegExp('id="'+id+'"'));
+ assert.doesNotThrow(()=>new vm.Script(script));
 });
