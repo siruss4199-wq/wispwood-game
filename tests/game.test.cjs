@@ -17,7 +17,7 @@ test('complete browser game JavaScript compiles without syntax errors', () => {
 const uiStart = script.indexOf("const KEY='wispwood-prototype-v1'");
 assert.ok(uiStart > 0, 'Could not find boundary between game rules and browser UI');
 const context = vm.createContext({});
-const names = ['SIZE', 'KINDS', 'V2_MOVES', 'GENERATORS', 'isWild', 'normalItem', 'itemLabel', 'v2Active', 'v2Limited', 'generateFrom', 'mergeGroup', 'TASKS', 'GROVE_TASKS', 'TRAIL', 'PUZZLES', 'SKILL_MAX', 'BLOCKER_ICON', 'puzzleInfo', 'puzzleReady', 'seedPuzzle', 'ensurePuzzle', 'isBlocked', 'useCompanionSkill', 'CREATURES', 'ORRU_GROW_COST', 'ORRU_QUEST_GOAL', 'orruGrow', 'orruCanGrow', 'clearVines', 'deliverOrruQuest', 'rescueStage', 'currentCompanion', 'chooseCompanion', 'activeTasks', 'gainXP', 'trailInfo', 'isTrail', 'collected', 'createState', 'merge', 'deliver', 'spawn', 'recycle', 'explore', 'serialize', 'restore'];
+const names = ['SIZE','KINDS','INITIAL_OPEN','INITIAL_ENERGY','MAX_ENERGY','CELL_REVEALS','GENERATORS','isOpen','isGenerator','isWebbed','neighbors','isFrontierCell','unlockCost','openEmptyIndices','ensureStarterGenerator','revealUnlockedCell','unlockCell','activateGenerator','V2_MOVES','isWild','normalItem','itemLabel','v2Active','v2Limited','generateFrom','mergeGroup','TASKS', 'GROVE_TASKS', 'TRAIL', 'PUZZLES', 'SKILL_MAX', 'BLOCKER_ICON', 'puzzleInfo', 'puzzleReady', 'seedPuzzle', 'ensurePuzzle', 'isBlocked', 'useCompanionSkill', 'CREATURES', 'ORRU_GROW_COST', 'ORRU_QUEST_GOAL', 'orruGrow', 'orruCanGrow', 'clearVines', 'deliverOrruQuest', 'rescueStage', 'currentCompanion', 'chooseCompanion', 'activeTasks', 'gainXP', 'trailInfo', 'isTrail', 'collected', 'createState', 'merge', 'deliver', 'spawn', 'recycle', 'explore', 'serialize', 'restore'];
 vm.runInContext(script.slice(0, uiStart) + '\nglobalThis.game = {' + names.join(',') + '};', context, { timeout: 1000 });
 const game = context.game;
 
@@ -25,13 +25,15 @@ test('MVP markup contains game controls and accessible board', () => {
   for (const id of ['board', 'spawnBtn', 'deliverBtn', 'recycleBtn', 'exploreBtn', 'endOverlay', 'resetBtn']) {
     assert.match(html, new RegExp('id="' + id + '"'));
   }
-  assert.match(html, /aria-label="6 by 6 merge board"/);
+  assert.match(html, /aria-label="8 by 8 merge board"/);
 });
 
-test('a new game has a 6×6 grid, 3 tasks, and no rescue progress', () => {
+test('a new game starts on an 8×8 board with one small clearing', () => {
   const s = game.createState();
-  assert.equal(s.board.length, 36);
-  assert.equal(s.board.filter(Boolean).length, 9);
+  assert.equal(s.board.length,64);
+  assert.equal(s.openCells.length,9);
+  assert.equal(s.board.filter(Boolean).length,3);
+  assert.equal(game.isGenerator(s.board[27]),true);
   assert.equal(game.TASKS.length, 3);
   assert.equal(s.rescued, false);
   assert.equal(s.explored, false);
@@ -39,22 +41,23 @@ test('a new game has a 6×6 grid, 3 tasks, and no rescue progress', () => {
 
 test('two identical items merge and advance the move counter', () => {
   const s = game.createState();
-  assert.equal(game.merge(s, 0, 1).ok, true);
-  assert.equal(s.board[0], null);
-  assert.equal(s.board[1].kind, 'leaf');
-  assert.equal(s.board[1].tier, 1);
+  assert.equal(game.merge(s,26,34).ok,true);
+  assert.equal(s.board[26],null);
+  assert.equal(s.board[34].kind,'leaf');
+  assert.equal(s.board[34].tier,1);
+  assert.equal(s.magic,2);
+  assert.equal(s.energy,25);
   assert.equal(s.moves, 1);
 });
 
 test('illegal merges do not change items or moves', () => {
   const s = game.createState();
-  assert.equal(game.merge(s, 0, 6).ok, false); // Different kind
-  assert.equal(game.merge(s, 0, 0).ok, false); // Same cell
-  assert.equal(game.merge(s, -1, 1).ok, false); // Out of bounds
-  s.board[2] = { kind: 'leaf', tier: 3 };
-  s.board[3] = { kind: 'leaf', tier: 3 };
-  assert.equal(game.merge(s, 2, 3).ok, false); // Maximum tier
-  assert.equal(s.board[2].tier, 3);
+  assert.equal(game.merge(s,18,26).ok,false); // Empty vs item
+  assert.equal(game.merge(s,26,26).ok,false); // Same cell
+  assert.equal(game.merge(s,-1,26).ok,false); // Out of bounds
+  s.board[18]={kind:'leaf',tier:5};s.board[19]={kind:'leaf',tier:5};
+  assert.equal(game.merge(s,18,19).ok,false); // Maximum tier
+  assert.equal(s.board[18].tier,5);
   assert.equal(s.moves, 0);
 });
 
@@ -103,7 +106,7 @@ test('saved progress can be restored and malformed saves are rejected', () => {
   s.moves = 11;
   const copy = game.restore(game.serialize(s));
   assert.equal(copy.moves, 11);
-  assert.equal(copy.board.length, 36);
+  assert.equal(copy.board.length,64);
   assert.equal(game.restore('{not-json'), null);
   assert.equal(game.restore('{"board":[]}'), null);
   const bad = JSON.parse(game.serialize(s));
@@ -167,7 +170,7 @@ test('legacy v0.3 saves migrate without deleting items or progress', () => {
  assert.equal(loaded.rescued,true);
  assert.equal(loaded.explored,true);
  assert.equal(loaded.orruRescued,false);
- assert.equal(loaded.board.length,36);
+ assert.equal(loaded.board.length,64);
  assert.equal(loaded.groveCompleted.length,0);
 });
 
@@ -244,7 +247,7 @@ test('old v0.4 saves migrate to restoration progression without resetting board'
  assert.ok(loaded);assert.equal(loaded.rescued,true);
  assert.equal(loaded.orruRescued,true);
  assert.equal(loaded.trailIndex,0);
- assert.equal(loaded.board.length,36);
+ assert.equal(loaded.board.length,64);
  assert.equal(loaded.level,1);
 });
 
@@ -498,100 +501,91 @@ test('v1 puzzle HUD, blockers and companion skill controls exist', () => {
  assert.doesNotThrow(()=>new vm.Script(script));
 });
 
-test('Merge Board v2 generator spends one move and creates the chosen chain', () => {
- const st=game.createState();st.rescued=true;st.explored=true;st.orruRescued=true;
- st.puzzleZone=0;st.blockers=[];st.v2Zone=0;st.v2MovesLeft=2;
- const r=game.generateFrom(st,'dew',()=>0);
- assert.equal(r.ok,true);assert.equal(r.kind,'dew');
- assert.equal(st.board[r.index].kind,'dew');assert.equal(st.board[r.index].tier,0);
- assert.equal(st.v2MovesLeft,1);
- game.generateFrom(st,'glow',()=>0);
- assert.equal(st.v2MovesLeft,0);
- assert.equal(game.generateFrom(st,'leaf',()=>0).ok,false);
-});
-
-test('three matching items create exactly one upgraded item', () => {
- const st=game.createState();st.orruRescued=true;st.puzzleZone=0;st.blockers=[];st.v2Zone=0;
- st.board.fill(null);
- st.board[0]={kind:'leaf',tier:0};st.board[1]={kind:'leaf',tier:0};st.board[2]={kind:'leaf',tier:0};
- const r=game.mergeGroup(st,[0,1,2]);
- assert.equal(r.ok,true);assert.equal(r.count,3);
- assert.equal(st.board[0].kind,'leaf');assert.equal(st.board[0].tier,1);
- assert.equal(st.board[1],null);assert.equal(st.board[2],null);
- assert.equal(st.skillCharge,1);
-});
-
-test('five matching items create two upgrades, a Wild Wisp and refund one move', () => {
- const st=game.createState();st.orruRescued=true;st.puzzleZone=0;st.blockers=[];st.v2Zone=0;st.v2MovesLeft=10;
- st.board.fill(null);
- for(let i=0;i<5;i++)st.board[i]={kind:'dew',tier:0};
- const r=game.mergeGroup(st,[0,1,2,3,4]);
- assert.equal(r.ok,true);assert.equal(r.count,5);
- assert.equal(st.board[r.target].tier,1);
- assert.equal(st.board[r.secondIndex].tier,1);
- assert.equal(game.isWild(st.board[r.wildIndex]),true);
- assert.equal(st.v2MovesLeft,11);
- assert.equal(st.skillCharge,2);
-});
-
-test('one Wild Wisp can substitute for one matching item in a group merge', () => {
- const st=game.createState();st.orruRescued=true;st.puzzleZone=0;st.blockers=[];st.v2Zone=0;
- st.board.fill(null);
- st.board[0]={special:'wild'};st.board[1]={kind:'glow',tier:1};st.board[2]={kind:'glow',tier:1};
- const r=game.mergeGroup(st,[0,1,2]);
+test('embedded Spirit Tree spends energy and creates a Seed in the open clearing', () => {
+ const st=game.createState();
+ const r=game.activateGenerator(st,27,()=>0);
  assert.equal(r.ok,true);
- assert.equal(st.board[0].kind,'glow');assert.equal(st.board[0].tier,2);
+ assert.equal(st.board[r.index].kind,'leaf');assert.equal(st.board[r.index].tier,0);
+ assert.equal(st.energy,game.INITIAL_ENERGY-1);
+ assert.equal(game.isOpen(st,r.index),true);
 });
 
-test('group merge rejects mixed items, two Wild Wisps and blocked cells', () => {
- const st=game.createState();st.orruRescued=true;st.puzzleZone=0;st.blockers=[];st.v2Zone=0;
- st.board.fill(null);
- st.board[0]={kind:'leaf',tier:0};st.board[1]={kind:'dew',tier:0};st.board[2]={kind:'leaf',tier:0};
- assert.equal(game.mergeGroup(st,[0,1,2]).ok,false);
- st.board[0]={special:'wild'};st.board[1]={special:'wild'};st.board[2]={kind:'leaf',tier:0};
- assert.equal(game.mergeGroup(st,[0,1,2]).ok,false);
- st.board[0]={kind:'leaf',tier:0};st.board[1]={kind:'leaf',tier:0};st.board[2]={kind:'leaf',tier:0};st.blockers=[{index:2,type:'vine'}];
- assert.equal(game.mergeGroup(st,[0,1,2]).ok,false);
+test('locked frontier costs Magic and opens one tile at a time', () => {
+ const st=game.createState();
+ assert.equal(game.isFrontierCell(st,17),true);
+ const cost=game.unlockCost(st,17);assert.equal(cost,4);
+ assert.equal(game.unlockCell(st,17).ok,false);
+ st.magic=cost;
+ const r=game.unlockCell(st,17);
+ assert.equal(r.ok,true);assert.equal(st.magic,0);assert.equal(game.isOpen(st,17),true);
+ assert.equal(r.reveal.type,'web');assert.equal(game.isWebbed(st,17),true);
 });
 
-test('v2 generators preserve the active companion periodic bonus', () => {
- const st=game.createState();st.rescued=true;st.orruRescued=true;st.activeCompanion='orru';
- st.puzzleZone=0;st.blockers=[];st.v2Zone=0;st.v2MovesLeft=5;st.spawns=7;
- const r=game.generateFrom(st,'dew',()=>0);
- assert.equal(r.ok,true);assert.equal(r.helper,'Orru');
- assert.ok(Number.isInteger(r.bonusIndex));
- assert.equal(st.board[r.bonusIndex].kind,'leaf');
- assert.equal(st.bonusItems,1);
+test('pair merges earn Magic and recover one energy', () => {
+ const st=game.createState();st.energy=10;
+ const r=game.merge(st,26,34);
+ assert.equal(r.ok,true);assert.equal(r.magicGain,2);
+ assert.equal(st.magic,2);assert.equal(st.energy,11);
+ assert.equal(st.board[r.target].tier,1);
 });
 
-test('v1 saves migrate to v2 move fields and Wild Wisp saves restore safely', () => {
- const st=game.createState();st.rescued=true;st.explored=true;st.orruRescued=true;
- delete st.v2MovesLeft;delete st.v2Zone;
- st.board[8]={special:'wild'};
- const loaded=game.restore(JSON.stringify(st));
- assert.ok(loaded);assert.equal(loaded.v2MovesLeft,game.V2_MOVES);
- assert.equal(loaded.v2Zone,-1);assert.equal(game.isWild(loaded.board[8]),true);
+test('webbed item is freed by merging it with a matching item', () => {
+ const st=game.createState();st.magic=4;game.unlockCell(st,17);
+ assert.equal(game.isWebbed(st,17),true);
+ st.board[18]={kind:'leaf',tier:1};
+ const r=game.merge(st,18,17);
+ assert.equal(r.ok,true);assert.equal(r.webCleared,true);
+ assert.equal(game.isWebbed(st,17),false);
+ assert.equal(st.board[17].tier,2);
 });
 
-test('Merge Board v2 controls are present and full browser JavaScript still parses', () => {
- for(const id of ['v2GeneratorPanel','movesLeft','mergeGroupBtn'])
+test('unlocking special frontier tiles can reveal generators and blockers', () => {
+ const st=game.createState();
+ st.magic=20;
+ let r=game.unlockCell(st,21);
+ assert.equal(r.ok,true);assert.equal(r.reveal.type,'generator');
+ assert.equal(game.isGenerator(st.board[21]),true);assert.equal(st.board[21].kind,'dew');
+ st.magic=20;r=game.unlockCell(st,25);
+ assert.equal(r.ok,true);assert.equal(r.reveal.type,'blocker');
+ assert.ok(st.blockers.some(b=>b.index===25&&b.type==='fog'));
+});
+
+test('locked cells cannot be merged or used as generator output', () => {
+ const st=game.createState();
+ st.board[0]={kind:'leaf',tier:0};
+ assert.equal(game.merge(st,0,26).ok,false);
+ for(let i=0;i<20;i++){
+  const r=game.activateGenerator(st,27,()=>0);
+  if(!r.ok)break;
+  assert.equal(game.isOpen(st,r.index),true);
+ }
+});
+
+test('six-tier chains include meaningful late-game items', () => {
+ assert.equal(game.SIZE,8);
+ assert.equal(game.CELL_REVEALS[17].type,'web');
+ assert.equal(game.GENERATORS.leaf.kind,'leaf');
+ assert.match(html,/Ancient Blossom/);
+ assert.match(html,/Celestial Water/);
+ assert.match(html,/Star Core/);
+});
+
+test('legacy 6x6 save migrates to 8x8 without dropping its existing items', () => {
+ const old=game.createState();
+ const legacyBoard=Array(36).fill(null);
+ legacyBoard[0]={kind:'leaf',tier:1};legacyBoard[8]={kind:'dew',tier:2};legacyBoard[20]={kind:'glow',tier:3};
+ old.board=legacyBoard;delete old.openCells;delete old.webbed;delete old.magic;delete old.energy;delete old.maxEnergy;
+ const loaded=game.restore(JSON.stringify(old));
+ assert.ok(loaded);assert.equal(loaded.board.length,64);
+ assert.equal(loaded.board.filter(Boolean).length,4);
+ assert.ok(loaded.openCells.length>=9);
+ assert.equal(loaded.energy,game.INITIAL_ENERGY);assert.equal(loaded.magic,0);
+});
+
+test('Merge Board 2.0 interface exposes resources, locked 8x8 board and parses fully', () => {
+ for(const id of ['resourceBar','energyLabel','magicLabel','openLabel','board'])
   assert.match(html,new RegExp('id="'+id+'"'));
- for(const kind of ['leaf','dew','glow'])
-  assert.match(html,new RegExp('data-generator="'+kind+'"'));
- assert.match(html,/Wild Wisp/);assert.match(html,/group-selected/);
+ assert.match(html,/8 × 8/);assert.match(html,/tile locked/);assert.match(html,/webbed/);assert.match(html,/generator/);
  assert.doesNotThrow(()=>new vm.Script(script));
 });
 
-test('Merge Board v2 is active from the beginning without consuming generator moves before Restoration Trail', () => {
- const st=game.createState();
- assert.equal(game.v2Active(st),true);assert.equal(game.v2Limited(st),false);
- const before=st.v2MovesLeft;
- const r=game.generateFrom(st,'leaf',()=>0);
- assert.equal(r.ok,true);assert.equal(st.v2MovesLeft,before);
- st.rescued=true;st.explored=true;st.orruRescued=true;
- game.ensurePuzzle(st);
- assert.equal(game.v2Limited(st),true);
- const beforeTrail=st.v2MovesLeft;
- assert.equal(game.generateFrom(st,'dew',()=>0).ok,true);
- assert.equal(st.v2MovesLeft,beforeTrail-1);
-});
