@@ -190,6 +190,20 @@ const message=txt=>{el('toast').textContent=txt;el('toast').classList.add('show'
 function persist(){storage.setItem(KEY,serialize(state));}
 function present(){
  const fx=pendingEffect;pendingEffect=null;
+ const grove=state.explored;
+ const tasks=activeTasks(state);
+ const done=grove?state.groveCompleted:state.completed;
+ const rescuedNow=grove?state.orruRescued:state.rescued;
+ const creature=el('character');
+ const who=grove?'orru':'mivra';
+ if(creature.dataset.creature!==who){creature.innerHTML=grove?ORRU_ART:MIVRA_ART;creature.dataset.creature=who;}
+ creature.setAttribute('aria-label',grove?'Orru, an original forest creature':'Mivra, an original friendly lavender creature');
+ el('scene').classList.toggle('grove-mode',grove);
+ el('sceneLabel').textContent=grove?'CHAPTER TWO · MOONLIT GROVE':'CHAPTER ONE · THE LOST WISP';
+ el('storyChapter').textContent=grove?'Your forest friend':'Your first friend';
+ el('storyTitle').textContent=grove?'Meet Orru':'Meet Mivra';
+ el('tasksTitle').textContent=grove?'Rescue Orru':'Help Mivra heal';
+ el('tipText').textContent=grove?'Merge to tier 4 to create a Bloom, Moonwell, and Aurora.':'Merge two seeds to make a sprout, then two sprouts to make a healing herb!';
  const board=el('board');board.innerHTML='';
  state.board.forEach((item,i)=>{
   const cell=document.createElement('button');cell.type='button';cell.className='tile '+(item?`filled ${item.kind} tier${item.tier}`:'empty')+(selected===i?' selected':'');
@@ -204,27 +218,36 @@ function present(){
   board.append(cell);
  });
  const taskList=el('tasks');taskList.innerHTML='';
- TASKS.forEach(t=>{
-   const done=state.completed.includes(t.id);
-   const d=document.createElement('div');d.className='task '+(done?'done':'');
+ tasks.forEach(t=>{
+   const finished=done.includes(t.id);
+   const d=document.createElement('div');d.className='task '+(finished?'done':'');
    if(fx&&fx.type==='deliver'&&fx.taskId===t.id)d.classList.add('fx-deliver');
-   d.innerHTML=`<div class="task-emblem">${done?'✓':ITEMS[t.kind][t.tier].emoji}</div><div class="task-copy"><strong>${t.label}</strong><small>${done?'Delivered!':t.help}</small></div><span class="task-status">${done?'Done':'Needed'}</span>`;
+   d.innerHTML=`<div class="task-emblem">${finished?'✓':ITEMS[t.kind][t.tier].emoji}</div><div class="task-copy"><strong>${t.label}</strong><small>${finished?'Delivered!':t.help}</small></div><span class="task-status">${finished?'Done':'Needed'}</span>`;
    taskList.append(d);
  });
- el('tasksCount').textContent=`${state.completed.length}/3`;
- el('progressFill').style.width=`${state.completed.length/3*100}%`;
+ el('tasksCount').textContent=`${done.length}/${tasks.length}`;
+ el('progressFill').style.width=`${done.length/tasks.length*100}%`;
+ const friends=collected(state),list=el('collection');list.innerHTML='';
+ el('collectionCount').textContent=`${friends.filter(f=>f.unlocked).length}/${friends.length}`;
+ for(const friend of friends){
+  const card=document.createElement('div');card.className='friend-card'+(friend.unlocked?'':' locked');
+  const icon=document.createElement('span');icon.className='friend-icon';icon.textContent=friend.unlocked?friend.icon:'🔒';
+  const name=document.createElement('strong');name.textContent=friend.name;
+  const desc=document.createElement('small');desc.textContent=friend.unlocked?friend.type:'Not rescued';
+  card.append(icon,name,desc);list.append(card);
+ }
+ el('worldHint').textContent=state.orruRescued?'Both creatures rescued! More adventures will follow.':grove?'Deliver Bloom, Moonwell and Aurora to save Orru.':state.rescued?'Mivra is safe. Open Moonlit Grove to find Orru.':'Rescue Mivra to reveal the next area.';
  el('moves').textContent=state.moves;
- el('status').textContent=state.explored?'A new chapter awaits':state.rescued?'Mivra is safe!':'Mivra needs your help';
- el('dialogue').textContent=state.explored?'You restored the passage to the Moonlit Grove!':state.rescued?'Thank you! My wings feel warm again. Let’s discover what lies beyond the mist.':'It’s a little cold here… could you help me gather some healing magic?';
- el('character').classList.toggle('happy',state.rescued);
+ el('status').textContent=grove?(state.orruRescued?'Orru is safe!':'Orru needs your help'):state.rescued?'Mivra is safe!':'Mivra needs your help';
+ el('dialogue').textContent=grove?(state.orruRescued?'Thank you! The forest can bloom again!':'Mivra found me in the tangled vines. Please bring Bloom, Moonwell, and Aurora!'):state.rescued?'Thank you! My wings feel warm again. Let’s discover what lies beyond the mist.':'It’s a little cold here… could you help me gather some healing magic?';
+ el('character').classList.toggle('happy',rescuedNow);
  el('scene').classList.toggle('rescued',state.rescued);
  if(fx&&fx.type==='rescue'){clearTimeout(rescueTimer);el('character').classList.add('fx-rescue');el('scene').classList.add('fx-rescue');rescueTimer=setTimeout(()=>{el('character').classList.remove('fx-rescue');el('scene').classList.remove('fx-rescue');},1400);}
  el('exploreBtn').disabled=!state.rescued||state.explored;
- el('exploreBtn').textContent=state.explored?'✓ Grove unlocked':state.rescued?'✨ Open the misty path':'🔒 Rescue Mivra first';
+ el('exploreBtn').textContent=grove?(state.orruRescued?'✓ Two creatures rescued':'🌿 Moonlit Grove'):state.rescued?'✨ Enter Moonlit Grove':'🔒 Rescue Mivra first';
  el('selected').textContent=selected!==null&&state.board[selected]?`${ITEMS[state.board[selected].kind][state.board[selected].tier].name} selected`:'Select matching tiles to merge';
- el('deliverBtn').disabled=selected===null||!state.board[selected]||!TASKS.some(t=>!state.completed.includes(t.id)&&t.kind===state.board[selected].kind&&t.tier===state.board[selected].tier);
+ el('deliverBtn').disabled=selected===null||!state.board[selected]||!tasks.some(t=>!done.includes(t.id)&&t.kind===state.board[selected].kind&&t.tier===state.board[selected].tier);
  el('recycleBtn').disabled=selected===null||!state.board[selected];
- if(state.explored)el('endOverlay').hidden=false;else el('endOverlay').hidden=true;
  persist();
 }
 function choose(i){
@@ -234,12 +257,14 @@ function choose(i){
 }
 function doMerge(from,to){const r=merge(state,from,to);selected=null;if(r.ok){effect('merge',to);message(`✨ ${ITEMS[r.tile.kind][r.tile.tier].name} crafted!`);}else message('Choose two matching items.');present();}
 el('spawnBtn').onclick=()=>{const r=spawn(state);if(r.ok)effect('spawn',r.index);message(r.ok?`New ${r.kind} item appeared!`:r.why);selected=null;present();};
-el('deliverBtn').onclick=()=>{if(selected===null)return;const r=deliver(state,selected);selected=null;if(r.ok){effect(r.rescued?'rescue':'deliver',null,r.task.id);message(r.rescued?'Mivra is rescued! 🎉':`Delivered: ${r.task.label}!`);}else message(r.why);present();};
+el('deliverBtn').onclick=()=>{if(selected===null)return;const r=deliver(state,selected);selected=null;if(r.ok){effect(r.rescued?'rescue':'deliver',null,r.task.id);message(r.rescued?`${r.friend} is rescued! 🎉`:`Delivered: ${r.task.label}!`);}else message(r.why);present();
+ if(r.ok&&r.rescued&&r.friend==='Orru')showChapterModal('Orru is safe! 🍃','Orru joined your collection. Both rescue chapters are complete!','View my collection');
+};
 el('recycleBtn').onclick=()=>{if(selected!==null){recycle(state,selected);selected=null;message('Item recycled. Space freed!');present();}};
-el('exploreBtn').onclick=()=>{if(explore(state)){message('Moonlit Grove unlocked!');present();}};
-el('resetBtn').onclick=()=>{if(confirm('Restart your rescue story?')){state=createState();selected=null;present();message('A fresh adventure begins!');}};
-el('endClose').onclick=()=>{el('endOverlay').hidden=true;};
-window.addEventListener('storage',e=>{if(e.key===KEY){state=restore(e.newValue)||createState();selected=null;present();}});
+el('exploreBtn').onclick=()=>{if(explore(state)){selected=null;message('Moonlit Grove unlocked!');present();showChapterModal('Moonlit Grove 🌿','Mivra found Orru among the vines. Craft Bloom, Moonwell and Aurora to rescue your new friend.','Help Orru');}};
+el('resetBtn').onclick=()=>{if(confirm('Restart your rescue story?')){state=createState();selected=null;el('endOverlay').hidden=true;present();message('A fresh adventure begins!');}};
+el('endClose').onclick=()=>{el('endOverlay').hidden=true;el('spawnBtn').focus();};
+window.addEventListener('storage',e=>{if(e.key===KEY){state=restore(e.newValue)||createState();selected=null;el('endOverlay').hidden=true;present();}});
 present();
 </script>
 </body></html>
