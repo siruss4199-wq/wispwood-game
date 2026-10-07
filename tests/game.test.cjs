@@ -17,7 +17,7 @@ test('complete browser game JavaScript compiles without syntax errors', () => {
 const uiStart = script.indexOf("const KEY='wispwood-prototype-v1'");
 assert.ok(uiStart > 0, 'Could not find boundary between game rules and browser UI');
 const context = vm.createContext({});
-const names = ['SIZE', 'KINDS', 'V2_MOVES', 'GENERATORS', 'isWild', 'normalItem', 'itemLabel', 'v2Active', 'generateFrom', 'mergeGroup', 'TASKS', 'GROVE_TASKS', 'TRAIL', 'PUZZLES', 'SKILL_MAX', 'BLOCKER_ICON', 'puzzleInfo', 'puzzleReady', 'seedPuzzle', 'ensurePuzzle', 'isBlocked', 'useCompanionSkill', 'CREATURES', 'ORRU_GROW_COST', 'ORRU_QUEST_GOAL', 'orruGrow', 'orruCanGrow', 'clearVines', 'deliverOrruQuest', 'rescueStage', 'currentCompanion', 'chooseCompanion', 'activeTasks', 'gainXP', 'trailInfo', 'isTrail', 'collected', 'createState', 'merge', 'deliver', 'spawn', 'recycle', 'explore', 'serialize', 'restore'];
+const names = ['SIZE', 'KINDS', 'V2_MOVES', 'GENERATORS', 'isWild', 'normalItem', 'itemLabel', 'v2Active', 'v2Limited', 'generateFrom', 'mergeGroup', 'TASKS', 'GROVE_TASKS', 'TRAIL', 'PUZZLES', 'SKILL_MAX', 'BLOCKER_ICON', 'puzzleInfo', 'puzzleReady', 'seedPuzzle', 'ensurePuzzle', 'isBlocked', 'useCompanionSkill', 'CREATURES', 'ORRU_GROW_COST', 'ORRU_QUEST_GOAL', 'orruGrow', 'orruCanGrow', 'clearVines', 'deliverOrruQuest', 'rescueStage', 'currentCompanion', 'chooseCompanion', 'activeTasks', 'gainXP', 'trailInfo', 'isTrail', 'collected', 'createState', 'merge', 'deliver', 'spawn', 'recycle', 'explore', 'serialize', 'restore'];
 vm.runInContext(script.slice(0, uiStart) + '\nglobalThis.game = {' + names.join(',') + '};', context, { timeout: 1000 });
 const game = context.game;
 
@@ -580,4 +580,18 @@ test('Merge Board v2 controls are present and full browser JavaScript still pars
   assert.match(html,new RegExp('data-generator="'+kind+'"'));
  assert.match(html,/Wild Wisp/);assert.match(html,/group-selected/);
  assert.doesNotThrow(()=>new vm.Script(script));
+});
+
+test('Merge Board v2 is active from the beginning without consuming generator moves before Restoration Trail', () => {
+ const st=game.createState();
+ assert.equal(game.v2Active(st),true);assert.equal(game.v2Limited(st),false);
+ const before=st.v2MovesLeft;
+ const r=game.generateFrom(st,'leaf',()=>0);
+ assert.equal(r.ok,true);assert.equal(st.v2MovesLeft,before);
+ st.rescued=true;st.explored=true;st.orruRescued=true;
+ game.ensurePuzzle(st);
+ assert.equal(game.v2Limited(st),true);
+ const beforeTrail=st.v2MovesLeft;
+ assert.equal(game.generateFrom(st,'dew',()=>0).ok,true);
+ assert.equal(st.v2MovesLeft,beforeTrail-1);
 });
