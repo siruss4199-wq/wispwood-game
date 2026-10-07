@@ -113,3 +113,12 @@ test('recycling makes a tile empty', () => {
   assert.equal(s.board[0], null);
   assert.equal(game.recycle(s, 0), false);
 });
+
+test('rescue animation targets existing character element and respects reduced motion', () => {
+  assert.match(html, /id="character"/);
+  assert.doesNotMatch(html, /el\('creature'\)/);
+  assert.match(html, /el\('character'\)\.classList\.add\('fx-rescue'\)/);
+  assert.match(html, /\.creature\.happy\.fx-rescue/);
+  assert.match(html, /prefers-reduced-motion:reduce/);
+  assert.match(html, /class="mivra-eye"/);
+});
