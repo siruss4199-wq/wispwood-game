@@ -410,7 +410,7 @@ function orruGrow(state){
  if(currentCompanion(state)!=='orru')return {ok:false,why:'Choose Orru as your active companion first.'};
  if(state.orruCharge<ORRU_GROW_COST)return {ok:false,why:'Merge '+(ORRU_GROW_COST-state.orruCharge)+' more times to charge Grow.'};
  const index=openEmptyIndices(state)[0];
- if(index<0)return {ok:false,why:'Board is full. Merge or recycle an item first.'};
+ if(!Number.isInteger(index))return {ok:false,why:'Your open clearing is full. Merge or unlock more space.'};
  state.board[index]={kind:'leaf',tier:0};
  state.orruCharge-=ORRU_GROW_COST;
  return {ok:true,index};
@@ -419,7 +419,7 @@ function clearVines(state){
  if(currentCompanion(state)!=='orru')return {ok:false,why:'Orru must be your active companion.'};
  if(state.vinesCleared)return {ok:false,why:'The vines are already cleared.'};
  const index=openEmptyIndices(state)[0];
- if(index<0)return {ok:false,why:'Make space on the board before clearing the vines.'};
+ if(!Number.isInteger(index))return {ok:false,why:'Make space in the open clearing before clearing the vines.'};
  state.vinesCleared=true;gainXP(state,50);
  state.board[index]={kind:'dew',tier:1};
  return {ok:true,index,reward:'Water'};
@@ -448,7 +448,7 @@ function generateFrom(state,kind,random=Math.random){
  ensurePuzzle(state);
  if(!GENERATORS[kind])return {ok:false,why:'Unknown generator.'};
  if(v2Limited(state)&&state.v2MovesLeft<=0)return {ok:false,why:'No generator moves left in this region. Merge existing items and use companion skills wisely.'};
- const free=[];for(let i=0;i<state.board.length;i++)if(!state.board[i]&&!isBlocked(state,i))free.push(i);
+ const free=[];for(let i=0;i<state.board.length;i++)if(isOpen(state,i)&&!state.board[i]&&!isBlocked(state,i))free.push(i);
  if(!free.length)return {ok:false,why:'Board is full. Merge or recycle an item first.'};
  const index=free[Math.min(free.length-1,Math.floor(random()*free.length))];
  state.board[index]={kind,tier:0};
@@ -537,7 +537,7 @@ function deliver(state,index) {
 }
 function spawn(state,random=Math.random){
  ensurePuzzle(state);
- const free=[];for(let i=0;i<state.board.length;i++)if(!state.board[i]&&!isBlocked(state,i))free.push(i);
+ const free=[];for(let i=0;i<state.board.length;i++)if(isOpen(state,i)&&!state.board[i]&&!isBlocked(state,i))free.push(i);
  if(!free.length)return {ok:false,why:'Board is full. Merge or recycle an item first.'};
  const kind=KINDS[Math.min(KINDS.length-1,Math.floor(random()*KINDS.length))];
  const index=free[Math.min(free.length-1,Math.floor(random()*free.length))];
@@ -800,23 +800,28 @@ function present(){
  persist();
 }
 function choose(i){
+ if(!isOpen(state,i))return;
  const item=state.board[i];
- if(v2Active(state)){
-  if(!item){groupSelected=[];selected=null;present();return;}
-  const pos=groupSelected.indexOf(i);
-  if(pos>=0){groupSelected.splice(pos,1);present();return;}
-  if(groupSelected.length>=5){message('You can select at most 5 items.');return;}
-  const first=groupSelected.length?state.board[groupSelected[0]]:null;
-  const normalBase=groupSelected.map(x=>state.board[x]).find(normalItem);
-  if(normalBase&&normalItem(item)&&(normalBase.kind!==item.kind||normalBase.tier!==item.tier)){message('Choose matching type and tier, or use one Wild Wisp.');return;}
-  if(isWild(item)&&groupSelected.some(x=>isWild(state.board[x]))){message('Only one Wild Wisp can join a merge.');return;}
-  groupSelected.push(i);selected=null;present();return;
+ if(isGenerator(item)){
+  const r=activateGenerator(state,i);selected=null;groupSelected=[];
+  if(r.ok){effect('spawn',r.index);message(`${GENERATORS[r.kind].name} created ${ITEMS[r.kind][0].name}. ⚡ ${state.energy}/${state.maxEnergy}`);}
+  else message(r.why);
+  present();return;
  }
- if(!item){selected=null;present();return;}
- if(selected!==null&&selected!==i){const r=merge(state,selected,i);if(r.ok){selected=null;effect('merge',i);message(`Beautiful merge! You made ${ITEMS[r.tile.kind][r.tile.tier].name}.`);present();return;}}
+ if(!item||isBlocked(state,i)){selected=null;present();return;}
+ if(selected!==null&&selected!==i){
+  const r=merge(state,selected,i);
+  if(r.ok){selected=null;effect('merge',r.target);message(`✨ ${ITEMS[r.tile.kind][r.tile.tier].name} crafted! +${r.magicGain} Magic${r.webCleared?' · Web cleared!':''}`);present();return;}
+  message(r.why);
+ }
  selected=selected===i?null:i;present();
 }
-function doMerge(from,to){const r=merge(state,from,to);selected=null;if(r.ok){effect('merge',to);message(`✨ ${ITEMS[r.tile.kind][r.tile.tier].name} crafted!`);}else message('Choose two matching items.');present();}
+function doMerge(from,to){
+ const r=merge(state,from,to);selected=null;
+ if(r.ok){effect('merge',r.target);message(`✨ ${ITEMS[r.tile.kind][r.tile.tier].name} crafted! +${r.magicGain} Magic`);}
+ else message(r.why);
+ present();
+}
 document.querySelectorAll('[data-generator]').forEach(btn=>btn.addEventListener('click',()=>{
  const kind=btn.dataset.generator;
  const r=generateFrom(state,kind);
