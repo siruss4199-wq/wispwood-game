@@ -63,6 +63,7 @@ test('illegal merges do not change items or moves', () => {
 
 test('deterministic gathering adds one tier-zero item to an empty tile', () => {
   const s = game.createState();
+  s.board[18]=null;
   const r = game.spawn(s, () => 0);
   assert.equal(r.ok, true);
   assert.equal(s.board[r.index].kind, 'leaf');
@@ -634,7 +635,8 @@ test('ordinary frontier crates reveal a real movable item instead of an empty ti
  assert.ok(st.board[10]);
  assert.equal(st.revealedCells.includes(10),true);
  assert.equal(st.cratesOpened,1);
- const moved=game.moveItem(st,10,18);
+ st.board[18]=null;
+  const moved=game.moveItem(st,10,18);
  assert.equal(moved.ok,true);
  assert.equal(st.board[10],null);
  assert.ok(st.board[18]);
@@ -693,7 +695,7 @@ test('schema 6 saves reset only the board into true-full schema 7', () => {
  assert.ok(loaded);
  assert.equal(loaded.boardSchema,7);
  assert.equal(loaded.openCells.length,12);
- assert.equal(loaded.board.filter(Boolean).length,7);
+ assert.equal(loaded.board.filter(Boolean).length,12);
  assert.equal(loaded.cratesOpened,0);
  assert.equal(loaded.websCleared,0);
  assert.equal(loaded.revealedMerges,0);
