@@ -461,6 +461,38 @@ function openEmptyIndices(state){
  const blockers=new Set((state.blockers||[]).map(b=>b.index));
  return state.openCells.filter(i=>state.board[i]===null&&!blockers.has(i));
 }
+function mergeablePair(state){
+ const seen=new Map();
+ for(const index of state.openCells){
+  const item=state.board[index];
+  if(!item||isGenerator(item)||isWild(item)||isBlocked(state,index)||item.tier>=MAX_TIER)continue;
+  const key=item.kind+':'+item.tier;
+  const prior=seen.get(key);
+  if(Number.isInteger(prior)&&!(isWebbed(state,prior)&&isWebbed(state,index)))return [prior,index];
+  if(!seen.has(key)||!isWebbed(state,index))seen.set(key,index);
+ }
+ return null;
+}
+function ensurePlayableState(state,preferredIndex=null,preferredEmpty=null){
+ if(mergeablePair(state))return null;
+ const candidates=[];
+ if(Number.isInteger(preferredIndex))candidates.push(preferredIndex);
+ for(const i of state.openCells)if(i!==preferredIndex)candidates.push(i);
+ let anchorIndex=null,anchor=null;
+ for(const i of candidates){
+  const item=state.board[i];
+  if(!item||isGenerator(item)||isWild(item)||isBlocked(state,i)||isWebbed(state,i)||item.tier>=MAX_TIER)continue;
+  anchorIndex=i;anchor=item;break;
+ }
+ if(!anchor)return null;
+ const empty=openEmptyIndices(state);
+ const index=Number.isInteger(preferredEmpty)&&empty.includes(preferredEmpty)?preferredEmpty:empty[0];
+ if(!Number.isInteger(index))return null;
+ state.board[index]={kind:anchor.kind,tier:anchor.tier};
+ if(!Array.isArray(state.revealedCells))state.revealedCells=[];
+ if(!state.revealedCells.includes(index))state.revealedCells.push(index);
+ return {index,anchorIndex,item:state.board[index],reason:'deadlock-guard'};
+}
 function seedFullBoardStart(state){
  const board=Array(SIZE*SIZE).fill(null);
  board[26]={kind:'leaf',tier:0};
@@ -723,8 +755,9 @@ function merge(state,from,to) {
  state.energy=Math.min(state.maxEnergy,state.energy+1);
  const comboBonus=state.combo>=3?2:0;gainXP(state,3+b.tier*2+comboBonus);
  const crateResult=damageAdjacentCrates(state,target);
+ const safetyDrop=ensurePlayableState(state,target,source);
  if(state.orruRescued)state.orruCharge=Math.min(ORRU_GROW_COST*2,state.orruCharge+1);
- return {ok:true,tile:state.board[target],target,combo:state.combo,magicGain,webCleared:aWeb||bWeb,revealedMerge,crateResult,skillReady:state.skillCharge===SKILL_MAX};
+ return {ok:true,tile:state.board[target],target,combo:state.combo,magicGain,webCleared:aWeb||bWeb,revealedMerge,crateResult,safetyDrop,skillReady:state.skillCharge===SKILL_MAX};
 }
 function deliver(state,index) {
  const item=state.board[index];if(!item)return {ok:false,why:'Select an item first.'};
@@ -846,6 +879,7 @@ function restore(raw){
   s.xp=Number.isInteger(s.xp)&&s.xp>=0?s.xp:0;s.level=Math.floor(s.xp/75)+1;
   s.bonusItems=Number.isInteger(s.bonusItems)&&s.bonusItems>=0?s.bonusItems:0;
   s.moves=Number.isInteger(s.moves)&&s.moves>=0?s.moves:0;s.spawns=Number.isInteger(s.spawns)&&s.spawns>=0?s.spawns:0;
+  if(s.moves>0)ensurePlayableState(s);
   return s;
  }catch{return null;}
 }
@@ -1146,7 +1180,7 @@ function doMerge(from,to){
  if(r.ok&&r.tile){
   const revealIndices=r.crateResult?.opened?.map(x=>x.index)||[];
   effect('merge',r.target,null,{revealIndices});
-  message(`✨ ${ITEMS[r.tile.kind][r.tile.tier].name} crafted!${revealIndices.length?' 📦 Hidden item revealed!':''}${r.webCleared?' · Vines cleared!':''}`);
+  message(`✨ ${ITEMS[r.tile.kind][r.tile.tier].name} crafted!${revealIndices.length?' 📦 Hidden item revealed!':''}${r.webCleared?' · Vines cleared!':''}${r.safetyDrop?` · 🌿 Forest Echo made a matching ${ITEMS[r.safetyDrop.item.kind][r.safetyDrop.item.tier].name}.`:''}`);
  }else if(r.ok&&r.generator){effect('merge',r.target);message(`✨ ${GENERATORS[r.generator.kind].name} upgraded to Lv.${r.level}!`);}
  else if(r.ok&&r.item){effect('spawn',r.to);message(isGenerator(r.item)?`Moved ${GENERATORS[r.item.kind].name}.`:`Moved ${ITEMS[r.item.kind][r.item.tier].name}.`);}
  else message(r.why);
