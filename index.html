@@ -745,6 +745,34 @@ let pendingEffect=null,rescueTimer;
 function effect(type,index=null,taskId=null){pendingEffect={type,index,taskId};}
 const message=txt=>{el('toast').textContent=txt;el('toast').classList.add('show');clearTimeout(confettiTimer);confettiTimer=setTimeout(()=>el('toast').classList.remove('show'),3200);};
 function persist(){storage.setItem(KEY,serialize(state));}
+function mobileSheetContent(kind){
+ const tasks=activeTasks(state);
+ const done=isTrail(state)?state.trailCompleted:state.explored?state.groveCompleted:state.completed;
+ if(kind==='quests'){
+  return tasks.map(t=>`<div class="mobile-sheet-task ${done.includes(t.id)?'done':''}"><span class="ico">${done.includes(t.id)?'✅':ITEMS[t.kind][t.tier].emoji}</span><span class="copy"><strong>${t.label}</strong><small>${done.includes(t.id)?'Completed':t.help}</small></span><b>${done.includes(t.id)?'Done':'Needed'}</b></div>`).join('');
+ }
+ if(kind==='story'){
+  const title=el('storyTitle').textContent,dialogue=el('dialogue').textContent,status=el('status').textContent;
+  return `<div class="mobile-story-card"><strong>${title}</strong><p>${dialogue}</p><small>${status}</small></div>`;
+ }
+ if(kind==='friends'){
+  return collected(state).map(f=>`<button type="button" class="mobile-friend ${f.unlocked?'':'locked'}" data-friend="${f.id}" ${f.unlocked?'':'disabled'}><span class="art">${f.unlocked?(f.id==='mivra'?'💜':'🍃'):'🔒'}</span><strong>${f.name}</strong><small>${f.unlocked?f.type:'Not rescued'}</small></button>`).join('');
+ }
+ return '';
+}
+function openMobileSheet(kind){
+ if(kind==='board'){closeMobileSheet();return;}
+ const titles={quests:'Quests',story:'Story',friends:'Friends'};
+ el('mobileSheetTitle').textContent=titles[kind]||'Wispwood';
+ el('mobileSheetBody').innerHTML=mobileSheetContent(kind);
+ el('mobileSheet').hidden=false;el('mobileSheetBackdrop').hidden=false;
+ document.querySelectorAll('[data-mobile-sheet]').forEach(b=>b.classList.toggle('active',b.dataset.mobileSheet===kind));
+ el('mobileSheetBody').querySelectorAll('[data-friend]').forEach(btn=>btn.addEventListener('click',()=>{closeMobileSheet();openCreature(btn.dataset.friend);}));
+}
+function closeMobileSheet(){
+ el('mobileSheet').hidden=true;el('mobileSheetBackdrop').hidden=true;
+ document.querySelectorAll('[data-mobile-sheet]').forEach(b=>b.classList.toggle('active',b.dataset.mobileSheet==='board'));
+}
 function present(){
  const fx=pendingEffect;pendingEffect=null;
  ensurePuzzle(state);
@@ -845,6 +873,14 @@ function present(){
  });
  el('tasksCount').textContent=`${done.length}/${tasks.length}`;
  el('progressFill').style.width=`${tasks.length?done.length/tasks.length*100:100}%`;
+ const currentTask=tasks.find(t=>!done.includes(t.id))||tasks[tasks.length-1];
+ if(currentTask){
+  el('mobileQuestIcon').textContent=ITEMS[currentTask.kind][currentTask.tier].emoji;
+  el('mobileQuestName').textContent=done.length===tasks.length?'All quests complete':currentTask.label;
+ }else{
+  el('mobileQuestIcon').textContent='✨';el('mobileQuestName').textContent='Adventure complete';
+ }
+ el('mobileQuestProgress').textContent=`${done.length}/${tasks.length}`;
  const orruActive=currentCompanion(state)==='orru';
  el('orruPanel').hidden=!state.orruRescued;
  el('orruCharge').textContent=`${state.orruCharge}/${ORRU_GROW_COST} ✨`;
@@ -1019,7 +1055,12 @@ el('companionSelect').onclick=()=>{
 };
 el('creatureClose').onclick=()=>{el('creatureOverlay').hidden=true;viewedCreature=null;};
 
-window.addEventListener('storage',e=>{if(e.key===KEY){state=restore(e.newValue)||createState();selected=null;groupSelected=[];el('endOverlay').hidden=true;el('creatureOverlay').hidden=true;present();}});
+document.querySelectorAll('[data-mobile-sheet]').forEach(btn=>btn.addEventListener('click',()=>openMobileSheet(btn.dataset.mobileSheet)));
+el('mobileQuestStrip').onclick=()=>openMobileSheet('quests');
+el('mobileSheetClose').onclick=closeMobileSheet;
+el('mobileSheetBackdrop').onclick=closeMobileSheet;
+window.addEventListener('keydown',e=>{if(e.key==='Escape'&&!el('mobileSheet').hidden)closeMobileSheet();});
+window.addEventListener('storage',e=>{if(e.key===KEY){state=restore(e.newValue)||createState();selected=null;groupSelected=[];el('endOverlay').hidden=true;el('creatureOverlay').hidden=true;closeMobileSheet();present();}});
 present();
 </script>
 </body></html>
