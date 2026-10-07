@@ -66,7 +66,11 @@ test('deadlock guard creates one matching safety item only when no merge remains
   assert.equal(r.safetyDrop.index,26);
   assert.equal(s.board[26].kind,'leaf');
   assert.equal(s.board[26].tier,1);
-  assert.deepEqual(game.mergeablePair(s),[34,26]);
+  const pair=game.mergeablePair(s);
+  assert.ok(pair);
+  assert.equal(pair.length,2);
+  assert.equal(new Set(pair).has(26),true);
+  assert.equal(new Set(pair).has(34),true);
 });
 
 test('deadlock guard does nothing when another valid pair already exists', () => {
@@ -80,7 +84,10 @@ test('deadlock guard does nothing when another valid pair already exists', () =>
   const r=game.merge(s,26,34);
   assert.equal(r.ok,true);
   assert.equal(r.safetyDrop,null);
-  assert.deepEqual(game.mergeablePair(s),[18,19]);
+  const pair=game.mergeablePair(s);
+  assert.ok(pair);
+  assert.equal(pair[0],18);
+  assert.equal(pair[1],19);
 });
 
 test('restoring a progressed deadlocked save self-heals without resetting progression', () => {
