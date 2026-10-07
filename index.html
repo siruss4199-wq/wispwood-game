@@ -230,7 +230,8 @@ const GENERATORS={
 function isWild(item){return Boolean(item&&item.special==='wild');}
 function normalItem(item){return item&&!isWild(item);}
 function itemLabel(item){return isWild(item)?'Wild Wisp':ITEMS[item.kind][item.tier].name;}
-function v2Active(state){return Boolean(state.orruRescued);}
+function v2Active(state){return true;}
+function v2Limited(state){return isTrail(state)&&state.trailIndex<TRAIL.length;}
 const PUZZLES=[
  {name:'Whispering Bridge',blocker:'vine',count:5,icon:'🌿',hint:'Clear the vines before the bridge can accept restoration magic.'},
  {name:'Starlit Garden',blocker:'fog',count:5,icon:'🌫️',hint:'Dispel the enchanted fog to wake the garden.'},
@@ -377,13 +378,13 @@ function createState() {
 function generateFrom(state,kind,random=Math.random){
  ensurePuzzle(state);
  if(!GENERATORS[kind])return {ok:false,why:'Unknown generator.'};
- if(v2Active(state)&&state.v2MovesLeft<=0)return {ok:false,why:'No moves left in this region. Use merges and companion skills wisely.'};
+ if(v2Limited(state)&&state.v2MovesLeft<=0)return {ok:false,why:'No generator moves left in this region. Merge existing items and use companion skills wisely.'};
  const free=[];for(let i=0;i<state.board.length;i++)if(!state.board[i]&&!isBlocked(state,i))free.push(i);
  if(!free.length)return {ok:false,why:'Board is full. Merge or recycle an item first.'};
  const index=free[Math.min(free.length-1,Math.floor(random()*free.length))];
  state.board[index]={kind,tier:0};
  state.spawns++;
- if(v2Active(state))state.v2MovesLeft--;
+ if(v2Limited(state))state.v2MovesLeft--;
  state.combo=0;
  let helper=null,bonusIndex=null;
  const active=currentCompanion(state);
@@ -417,7 +418,7 @@ function mergeGroup(state,indices){
  if(unique.length===5){
    secondIndex=freed.shift();state.board[secondIndex]={kind:base.kind,tier:base.tier+1};
    if(freed.length){wildIndex=freed.shift();state.board[wildIndex]={special:'wild'};}
-   if(v2Active(state))state.v2MovesLeft=Math.min(V2_MOVES,state.v2MovesLeft+1);
+   if(v2Limited(state))state.v2MovesLeft=Math.min(V2_MOVES,state.v2MovesLeft+1);
  }
  state.moves++;state.combo=Math.min(9,(state.combo||0)+1);
  state.skillCharge=Math.min(SKILL_MAX,(state.skillCharge||0)+(unique.length===5?2:1));
@@ -588,8 +589,8 @@ function present(){
  el('spawnBtn').hidden=v2;
  el('mergeGroupBtn').hidden=!v2;
  if(v2){
-  el('movesLeft').textContent=`${state.v2MovesLeft} move${state.v2MovesLeft===1?'':'s'}`;
-  document.querySelectorAll('[data-generator]').forEach(btn=>btn.disabled=state.v2MovesLeft<=0||!state.board.some((v,i)=>v===null&&!isBlocked(state,i)));
+  el('movesLeft').textContent=v2Limited(state)?`${state.v2MovesLeft} move${state.v2MovesLeft===1?'':'s'}`:'Unlimited';
+  document.querySelectorAll('[data-generator]').forEach(btn=>btn.disabled=(v2Limited(state)&&state.v2MovesLeft<=0)||!state.board.some((v,i)=>v===null&&!isBlocked(state,i)));
   const count=groupSelected.length;
   el('mergeGroupBtn').disabled=!(count===3||count===5);
   el('mergeGroupBtn').innerHTML=`Merge selected <small>${count}/${count<3?3:count<5?5:5}</small>`;
