@@ -109,6 +109,19 @@
 .creature-close{margin-top:10px;padding:10px 20px;border:0;background:#f2eef9;border-radius:10px;color:#6e5c86;font-weight:800}
 @keyframes sanctuaryFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
 @media(prefers-reduced-motion:reduce){.scene-effect.fx-animate,.friend-icon svg{animation:none!important}.scene .rescue-veil,.scene .creature{transition:none!important}}
+
+.orru-panel{margin-top:16px;padding:15px;background:linear-gradient(145deg,#ecf9e9,#f6faed);border:1px solid #b6dabb;border-radius:16px;color:#456b52}
+.orru-heading{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:11px;font-weight:900}
+#orruHint,.orru-quest p{font-size:11px;line-height:1.45;color:#608469;margin:8px 0}
+.orru-ability-row{display:flex;gap:8px;margin:11px 0}
+.orru-ability-row button,.orru-quest button{border:1px solid #a9d4ac;border-radius:10px;background:#fff;color:#377450;padding:10px 8px;font-weight:900;font-size:11px;flex:1}
+.orru-ability-row button:disabled,.orru-quest button:disabled{opacity:.48;cursor:not-allowed}
+.orru-ability-row button:not(:disabled):active,.orru-quest button:not(:disabled):active{transform:scale(.97)}
+.orru-quest{border-top:1px solid #cbe5cd;padding-top:11px}
+.orru-quest strong{font-size:11px}
+.orru-quest button{width:100%;margin-top:3px}
+.scene.vines-open .hill-front{background:linear-gradient(160deg,#89b983,#67b59b)}
+@media(max-width:670px){.orru-panel{padding:11px}.orru-ability-row button{min-height:43px}}
 </style></head>
 <body>
  <div class="shell">
@@ -152,7 +165,13 @@
     <div class="actions"><button id="spawnBtn" class="primary">✦ Gather magic <small>FREE</small></button><button id="deliverBtn" disabled class="secondary">♡ Deliver</button><button id="recycleBtn" disabled class="tertiary" aria-label="Recycle selected item">♻</button></div>
     <p class="footnote">Prototype mode: unlimited gathering, no timers, no ads, no account.</p>
    </section>
-   <aside class="sidebar card" aria-label="Rescue objectives"><div class="side-heading"><div><span class="eyebrow">TODAY'S ADVENTURE</span><h2 id="tasksTitle">Help Mivra heal</h2></div><span id="tasksCount" class="progress-count">0/3</span></div><div class="progress"><div id="progressFill"></div></div><p class="side-sub">Craft these magical items, select one on the board, then tap Deliver.</p><div id="tasks"></div><div id="trailPanel" class="trail-panel" hidden>
+   <aside class="sidebar card" aria-label="Rescue objectives"><div class="side-heading"><div><span class="eyebrow">TODAY'S ADVENTURE</span><h2 id="tasksTitle">Help Mivra heal</h2></div><span id="tasksCount" class="progress-count">0/3</span></div><div class="progress"><div id="progressFill"></div></div><p class="side-sub">Craft these magical items, select one on the board, then tap Deliver.</p><div id="tasks"></div><div id="orruPanel" class="orru-panel" hidden>
+  <div class="orru-heading"><strong>🍃 ORRU'S FOREST POWERS</strong><span id="orruCharge">0/4 ✨</span></div>
+  <p id="orruHint">Choose Orru in Sanctuary to use his powers.</p>
+  <div class="orru-ability-row"><button type="button" id="growBtn" disabled>🌱 Grow Seed</button><button type="button" id="vinesBtn" disabled>🌿 Clear Vines</button></div>
+  <div class="orru-quest"><strong>🌸 Companion Quest — Forest Remedy</strong><p id="orruQuestStatus">Give Orru 2 Herbs to restore his garden.</p><button type="button" id="orruQuestBtn" disabled>Give selected Herb</button></div>
+ </div>
+ <div id="trailPanel" class="trail-panel" hidden>
  <div class="trail-top"><strong>🗺️ RESTORATION TRAIL</strong><span id="trailCount">0 / 3</span></div>
  <div class="trail-stops" id="trailStops"></div>
  <p id="trailDescription" class="trail-description">Complete quests to restore Wispwood.</p>
@@ -223,6 +242,37 @@ function chooseCompanion(state,id){
  if(id==='mivra'&&!state.rescued||id==='orru'&&!state.orruRescued)return false;
  state.activeCompanion=id;return true;
 }
+const ORRU_GROW_COST=4;
+const ORRU_QUEST_GOAL=2;
+function orruUnlocked(state){return Boolean(state.orruRescued);}
+function orruCanGrow(state){return currentCompanion(state)==='orru'&&state.orruCharge>=ORRU_GROW_COST&&state.board.some(v=>v===null);}
+function orruGrow(state){
+ if(currentCompanion(state)!=='orru')return {ok:false,why:'Choose Orru as your active companion first.'};
+ if(state.orruCharge<ORRU_GROW_COST)return {ok:false,why:'Merge '+(ORRU_GROW_COST-state.orruCharge)+' more times to charge Grow.'};
+ const index=state.board.findIndex(v=>v===null);
+ if(index<0)return {ok:false,why:'Board is full. Merge or recycle an item first.'};
+ state.board[index]={kind:'leaf',tier:0};
+ state.orruCharge-=ORRU_GROW_COST;
+ return {ok:true,index};
+}
+function clearVines(state){
+ if(currentCompanion(state)!=='orru')return {ok:false,why:'Orru must be your active companion.'};
+ if(state.vinesCleared)return {ok:false,why:'The vines are already cleared.'};
+ const index=state.board.findIndex(v=>v===null);
+ if(index<0)return {ok:false,why:'Make space on the board before clearing the vines.'};
+ state.vinesCleared=true;gainXP(state,50);
+ state.board[index]={kind:'dew',tier:1};
+ return {ok:true,index,reward:'Water'};
+}
+function deliverOrruQuest(state,index){
+ if(!orruUnlocked(state)||state.orruQuestCount>=ORRU_QUEST_GOAL)return {ok:false,why:'The companion quest is not active.'};
+ const item=state.board[index];
+ if(!item||item.kind!=='leaf'||item.tier!==2)return {ok:false,why:'Give Orru a Herb to restore the garden.'};
+ state.orruQuestCount++;
+ state.board[index]=state.orruQuestCount===ORRU_QUEST_GOAL?{kind:'leaf',tier:3}:null;
+ gainXP(state,state.orruQuestCount===ORRU_QUEST_GOAL?75:25);
+ return {ok:true,completed:state.orruQuestCount===ORRU_QUEST_GOAL,index};
+}
 function collected(state){return Object.entries(CREATURES).map(([id,info])=>({
  id,name:info.name,type:info.type,ability:info.ability,
  unlocked:id==='mivra'?state.rescued:state.orruRescued,
@@ -232,7 +282,7 @@ function createState() {
  const board=Array(SIZE*SIZE).fill(null);
  const placement=[ [0,'leaf',0],[1,'leaf',0], [6,'dew',0],[7,'dew',0], [12,'glow',0],[13,'glow',0], [19,'leaf',1], [22,'dew',1], [26,'glow',1] ];
  for(const [i,kind,tier] of placement)board[i]={kind,tier};
- return { board,completed:[],groveCompleted:[], rescued:false, explored:false,orruRescued:false,activeCompanion:null,trailIndex:0,trailCompleted:[],xp:0,level:1,bonusItems:0,moves:0,spawns:0,message:'Help Mivra recover by crafting three supplies.' };
+ return { board,completed:[],groveCompleted:[], rescued:false, explored:false,orruRescued:false,activeCompanion:null,orruCharge:0,orruQuestCount:0,vinesCleared:false,trailIndex:0,trailCompleted:[],xp:0,level:1,bonusItems:0,moves:0,spawns:0,message:'Help Mivra recover by crafting three supplies.' };
 }
 function merge(state,from,to) {
  if(!Number.isInteger(from)||!Number.isInteger(to)||from===to||from<0||to<0||from>=SIZE*SIZE||to>=SIZE*SIZE)return {ok:false,why:'Choose two different tiles.'};
@@ -241,6 +291,7 @@ function merge(state,from,to) {
  state.board[from]=null;
  state.board[to]={kind:b.kind,tier:b.tier+1};
  state.moves++;gainXP(state,3+b.tier*2);
+ if(state.orruRescued)state.orruCharge=Math.min(ORRU_GROW_COST*2,state.orruCharge+1);
  return {ok:true,tile:state.board[to]};
 }
 function deliver(state,index) {
@@ -293,6 +344,9 @@ function restore(raw){
   s.orruRescued=Boolean(s.explored&&s.groveCompleted.length===GROVE_TASKS.length);
   // Existing v0.6 saves default to their first rescued companion.
   s.activeCompanion=s.activeCompanion==='orru'&&s.orruRescued?'orru':s.rescued?'mivra':null;
+  s.orruCharge=Number.isInteger(s.orruCharge)?Math.max(0,Math.min(ORRU_GROW_COST*2,s.orruCharge)):0;
+  s.orruQuestCount=Number.isInteger(s.orruQuestCount)?Math.max(0,Math.min(ORRU_QUEST_GOAL,s.orruQuestCount)):0;
+  s.vinesCleared=Boolean(s.vinesCleared);
   // Migrate v0.3/v0.4 progress; existing rescued friends and board remain intact.
   s.trailIndex=Number.isInteger(s.trailIndex)?Math.max(0,Math.min(TRAIL.length,s.trailIndex)):0;
   s.trailCompleted=Array.isArray(s.trailCompleted)&&s.trailIndex<TRAIL.length?TRAIL[s.trailIndex].tasks.map(t=>t.id).filter(id=>s.trailCompleted.includes(id)):[];
@@ -384,6 +438,17 @@ function present(){
  });
  el('tasksCount').textContent=`${done.length}/${tasks.length}`;
  el('progressFill').style.width=`${tasks.length?done.length/tasks.length*100:100}%`;
+ const orruActive=currentCompanion(state)==='orru';
+ el('orruPanel').hidden=!state.orruRescued;
+ el('orruCharge').textContent=`${state.orruCharge}/${ORRU_GROW_COST} ✨`;
+ el('orruHint').textContent=orruActive?'Grow charges every merge (4 merges = a free Seed). Clear Vines opens a hidden forest reward.':'Choose Orru in Sanctuary to activate Grow and Clear Vines.';
+ el('growBtn').disabled=!orruCanGrow(state);
+ el('growBtn').textContent=`🌱 Grow Seed (${state.orruCharge}/${ORRU_GROW_COST})`;
+ el('vinesBtn').disabled=!orruActive||state.vinesCleared;
+ el('vinesBtn').textContent=state.vinesCleared?'✓ Vines cleared':'🌿 Clear Vines';
+ el('orruQuestStatus').textContent=state.orruQuestCount>=ORRU_QUEST_GOAL?'Completed! Bloom reward collected.':`Give Orru 2 Herbs (${state.orruQuestCount}/${ORRU_QUEST_GOAL}) to earn a Bloom.`;
+ el('orruQuestBtn').disabled=state.orruQuestCount>=ORRU_QUEST_GOAL||selected===null||!state.board[selected]||state.board[selected].kind!=='leaf'||state.board[selected].tier!==2;
+ el('scene').classList.toggle('vines-open',state.vinesCleared);
  el('trailPanel').hidden=!trail;
  const trailStops=el('trailStops');trailStops.innerHTML='';
  if(trail){
@@ -448,6 +513,25 @@ el('deliverBtn').onclick=()=>{if(selected===null)return;const r=deliver(state,se
  }
  if(r.ok&&r.rescued&&r.friend==='Orru')showChapterModal('Restoration Trail unlocked! 🗺️','Orru joined your collection. You can now restore Whispering Bridge, Starlit Garden and Celestial Gate!','Start restoring');
  if(r.ok&&r.completedStage)showChapterModal(r.allRestored?'Wispwood restored! 🌟':r.stageName+' restored! 🎉',r.allRestored?'All three magical areas are shining again. You completed the Restoration Trail!':'A new area unlocked. Keep merging to restore Wispwood!','Continue adventure');
+};
+el('growBtn').onclick=()=>{
+ const r=orruGrow(state);selected=null;
+ if(r.ok){effect('spawn',r.index);message('🌱 Orru grew a free Seed!');triggerSceneEffect('🌱');}
+ else message(r.why);
+ present();
+};
+el('vinesBtn').onclick=()=>{
+ const r=clearVines(state);selected=null;
+ if(r.ok){effect('spawn',r.index);message('🌿 Hidden Glade opened! Orru found Water and 50 XP.');triggerSceneEffect('🌿');}
+ else message(r.why);
+ present();
+};
+el('orruQuestBtn').onclick=()=>{
+ if(selected===null)return;
+ const r=deliverOrruQuest(state,selected);selected=null;
+ if(r.ok){if(r.completed)effect('spawn',r.index);message(r.completed?'🌸 Forest Remedy complete! Bloom and 75 XP earned.':'🌿 Orru received a Herb. One more to go!');triggerSceneEffect(r.completed?'🌸':'💚');}
+ else message(r.why);
+ present();
 };
 el('recycleBtn').onclick=()=>{if(selected!==null){recycle(state,selected);selected=null;message('Item recycled. Space freed!');present();}};
 el('exploreBtn').onclick=()=>{if(explore(state)){selected=null;message('Moonlit Grove unlocked!');present();showChapterModal('Moonlit Grove 🌿','Mivra found Orru among the vines. Craft Bloom, Moonwell and Aurora to rescue your new friend.','Help Orru');}};
