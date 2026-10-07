@@ -874,14 +874,17 @@ function present(){
  });
  el('tasksCount').textContent=`${done.length}/${tasks.length}`;
  el('progressFill').style.width=`${tasks.length?done.length/tasks.length*100:100}%`;
- const currentTask=tasks.find(t=>!done.includes(t.id))||tasks[tasks.length-1];
- if(currentTask){
-  el('mobileQuestIcon').textContent=ITEMS[currentTask.kind][currentTask.tier].emoji;
-  el('mobileQuestName').textContent=done.length===tasks.length?'All quests complete':currentTask.label;
- }else{
-  el('mobileQuestIcon').textContent='✨';el('mobileQuestName').textContent='Adventure complete';
+ const mobileChips=el('mobileQuestChips');mobileChips.innerHTML='';
+ tasks.slice(0,3).forEach(t=>{
+  const finished=done.includes(t.id);
+  const chip=document.createElement('button');chip.type='button';chip.className='mobile-quest-chip'+(finished?' done':'');
+  chip.innerHTML=`<span>${finished?'✅':ITEMS[t.kind][t.tier].emoji}</span><small>${t.label}</small><b>${finished?'Done':'Needed'}</b>`;
+  chip.addEventListener('click',()=>openMobileSheet('quests'));
+  mobileChips.append(chip);
+ });
+ if(!tasks.length){
+  mobileChips.innerHTML='<button type="button" class="mobile-quest-chip done"><span>✨</span><small>Adventure complete</small><b>Done</b></button>';
  }
- el('mobileQuestProgress').textContent=`${done.length}/${tasks.length}`;
  const orruActive=currentCompanion(state)==='orru';
  el('orruPanel').hidden=!state.orruRescued;
  el('orruCharge').textContent=`${state.orruCharge}/${ORRU_GROW_COST} ✨`;
@@ -1057,7 +1060,7 @@ el('companionSelect').onclick=()=>{
 el('creatureClose').onclick=()=>{el('creatureOverlay').hidden=true;viewedCreature=null;};
 
 document.querySelectorAll('[data-mobile-sheet]').forEach(btn=>btn.addEventListener('click',()=>openMobileSheet(btn.dataset.mobileSheet)));
-el('mobileQuestStrip').onclick=()=>openMobileSheet('quests');
+el('mobileQuestMore').onclick=()=>openMobileSheet('quests');
 el('mobileSheetClose').onclick=closeMobileSheet;
 el('mobileSheetBackdrop').onclick=closeMobileSheet;
 window.addEventListener('keydown',e=>{if(e.key==='Escape'&&!el('mobileSheet').hidden)closeMobileSheet();});
