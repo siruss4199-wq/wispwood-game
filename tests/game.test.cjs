@@ -491,7 +491,7 @@ test('frontier crates open from adjacent merge hits instead of direct clicks', (
  assert.equal(game.isFrontierCell(st,17),true);
  assert.equal(game.crateHitsNeeded(st,17),1);
  st.board[18]={kind:'leaf',tier:0};st.board[26]={kind:'leaf',tier:0};
- const r=game.merge(st,18,26);
+ const r=game.merge(st,26,18);
  assert.equal(r.ok,true);
  assert.ok(r.crateResult.opened.some(x=>x.index===17));
  assert.equal(game.isOpen(st,17),true);
