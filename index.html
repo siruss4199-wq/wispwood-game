@@ -203,6 +203,16 @@ const SIZE = 6;
 const KINDS = ['leaf', 'dew', 'glow'];
 const MAX_TIER = 3;
 const SKILL_MAX = 5;
+const V2_MOVES = 24;
+const GENERATORS={
+ leaf:{name:'Ancient Tree',icon:'🌳',kind:'leaf'},
+ dew:{name:'Moon Spring',icon:'💧',kind:'dew'},
+ glow:{name:'Star Nest',icon:'⭐',kind:'glow'}
+};
+function isWild(item){return Boolean(item&&item.special==='wild');}
+function normalItem(item){return item&&!isWild(item);}
+function itemLabel(item){return isWild(item)?'Wild Wisp':ITEMS[item.kind][item.tier].name;}
+function v2Active(state){return Boolean(state.orruRescued);}
 const PUZZLES=[
  {name:'Whispering Bridge',blocker:'vine',count:5,icon:'🌿',hint:'Clear the vines before the bridge can accept restoration magic.'},
  {name:'Starlit Garden',blocker:'fog',count:5,icon:'🌫️',hint:'Dispel the enchanted fog to wake the garden.'},
@@ -265,6 +275,7 @@ function seedPuzzle(state){
 function ensurePuzzle(state){
  if(!Array.isArray(state.blockers))state.blockers=[];
  if(isTrail(state)&&state.trailIndex<TRAIL.length&&state.puzzleZone!==state.trailIndex)seedPuzzle(state);
+ if(v2Active(state)&&state.v2Zone!==state.trailIndex){state.v2Zone=state.trailIndex;state.v2MovesLeft=V2_MOVES;}
 }
 function isBlocked(state,index){return state.blockers.some(b=>b.index===index);}
 function useCompanionSkill(state){
@@ -343,7 +354,48 @@ function createState() {
  const board=Array(SIZE*SIZE).fill(null);
  const placement=[ [0,'leaf',0],[1,'leaf',0], [6,'dew',0],[7,'dew',0], [12,'glow',0],[13,'glow',0], [19,'leaf',1], [22,'dew',1], [26,'glow',1] ];
  for(const [i,kind,tier] of placement)board[i]={kind,tier};
- return { board,completed:[],groveCompleted:[], rescued:false, explored:false,orruRescued:false,activeCompanion:null,orruCharge:0,orruQuestCount:0,vinesCleared:false,trailIndex:0,trailCompleted:[],puzzleZone:-1,blockers:[],runesFound:0,combo:0,skillCharge:0,xp:0,level:1,bonusItems:0,moves:0,spawns:0,message:'Help Mivra recover by crafting three supplies.' };
+ return { board,completed:[],groveCompleted:[], rescued:false, explored:false,orruRescued:false,activeCompanion:null,orruCharge:0,orruQuestCount:0,vinesCleared:false,trailIndex:0,trailCompleted:[],puzzleZone:-1,blockers:[],runesFound:0,combo:0,skillCharge:0,v2MovesLeft:V2_MOVES,v2Zone:-1,xp:0,level:1,bonusItems:0,moves:0,spawns:0,message:'Help Mivra recover by crafting three supplies.' };
+}
+function generateFrom(state,kind,random=Math.random){
+ ensurePuzzle(state);
+ if(!GENERATORS[kind])return {ok:false,why:'Unknown generator.'};
+ if(v2Active(state)&&state.v2MovesLeft<=0)return {ok:false,why:'No moves left in this region. Use merges and companion skills wisely.'};
+ const free=[];for(let i=0;i<state.board.length;i++)if(!state.board[i]&&!isBlocked(state,i))free.push(i);
+ if(!free.length)return {ok:false,why:'Board is full. Merge or recycle an item first.'};
+ const index=free[Math.min(free.length-1,Math.floor(random()*free.length))];
+ state.board[index]={kind,tier:0};
+ state.spawns++;
+ if(v2Active(state))state.v2MovesLeft--;
+ state.combo=0;
+ return {ok:true,index,kind,movesLeft:state.v2MovesLeft};
+}
+function mergeGroup(state,indices){
+ ensurePuzzle(state);
+ const unique=[...new Set(indices)].filter(Number.isInteger);
+ if(unique.length!==3&&unique.length!==5)return {ok:false,why:'Select exactly 3 or 5 matching items.'};
+ if(unique.some(i=>i<0||i>=SIZE*SIZE||isBlocked(state,i)))return {ok:false,why:'Blocked tiles cannot be merged.'};
+ const items=unique.map(i=>state.board[i]);
+ if(items.some(x=>!x))return {ok:false,why:'Every selected tile must contain an item.'};
+ const wilds=items.filter(isWild);
+ if(wilds.length>1)return {ok:false,why:'Use at most one Wild Wisp in a merge.'};
+ const base=items.find(normalItem);
+ if(!base||base.tier>=MAX_TIER)return {ok:false,why:'Choose non-maxed magical items.'};
+ if(items.some(it=>normalItem(it)&&(it.kind!==base.kind||it.tier!==base.tier)))return {ok:false,why:'Selected items must match in type and tier.'};
+ const target=unique[0];
+ unique.forEach(i=>state.board[i]=null);
+ state.board[target]={kind:base.kind,tier:base.tier+1};
+ let secondIndex=null,wildIndex=null;
+ const freed=unique.slice(1);
+ if(unique.length===5){
+   secondIndex=freed.shift();state.board[secondIndex]={kind:base.kind,tier:base.tier+1};
+   if(freed.length){wildIndex=freed.shift();state.board[wildIndex]={special:'wild'};}
+ }
+ state.moves++;state.combo=Math.min(9,(state.combo||0)+1);
+ state.skillCharge=Math.min(SKILL_MAX,(state.skillCharge||0)+(unique.length===5?2:1));
+ const bonus=unique.length===5?10:state.combo>=3?4:0;
+ gainXP(state,5+(base.tier*3)+bonus);
+ if(state.orruRescued)state.orruCharge=Math.min(ORRU_GROW_COST*2,state.orruCharge+1);
+ return {ok:true,target,secondIndex,wildIndex,tile:state.board[target],count:unique.length,combo:state.combo,skillReady:state.skillCharge>=SKILL_MAX};
 }
 function merge(state,from,to) {
  if(!Number.isInteger(from)||!Number.isInteger(to)||from===to||from<0||to<0||from>=SIZE*SIZE||to>=SIZE*SIZE){state.combo=0;return {ok:false,why:'Choose two different tiles.'};}
@@ -405,7 +457,11 @@ function restore(raw){
  try{
   const s=JSON.parse(raw);
   if(!s||!Array.isArray(s.board)||s.board.length!==SIZE*SIZE||!Array.isArray(s.completed)||typeof s.rescued!=='boolean')return null;
-  for(const it of s.board){if(it!==null&&(!KINDS.includes(it.kind)||!Number.isInteger(it.tier)||it.tier<0||it.tier>MAX_TIER))return null;}
+  for(const it of s.board){
+   if(it===null)continue;
+   if(it.special==='wild')continue;
+   if(!KINDS.includes(it.kind)||!Number.isInteger(it.tier)||it.tier<0||it.tier>MAX_TIER)return null;
+  }
   s.completed=TASKS.map(t=>t.id).filter(id=>s.completed.includes(id));
   s.explored=Boolean(s.rescued&&s.explored);
   s.groveCompleted=Array.isArray(s.groveCompleted)?GROVE_TASKS.map(t=>t.id).filter(id=>s.groveCompleted.includes(id)):[];
@@ -420,6 +476,8 @@ function restore(raw){
   s.runesFound=Number.isInteger(s.runesFound)&&s.runesFound>=0?s.runesFound:0;
   s.combo=Number.isInteger(s.combo)&&s.combo>=0?Math.min(9,s.combo):0;
   s.skillCharge=Number.isInteger(s.skillCharge)&&s.skillCharge>=0?Math.min(SKILL_MAX,s.skillCharge):0;
+  s.v2MovesLeft=Number.isInteger(s.v2MovesLeft)?Math.max(0,Math.min(V2_MOVES,s.v2MovesLeft)):V2_MOVES;
+  s.v2Zone=Number.isInteger(s.v2Zone)?s.v2Zone:-1;
   // Migrate v0.3/v0.4 progress; existing rescued friends and board remain intact.
   s.trailIndex=Number.isInteger(s.trailIndex)?Math.max(0,Math.min(TRAIL.length,s.trailIndex)):0;
   s.trailCompleted=Array.isArray(s.trailCompleted)&&s.trailIndex<TRAIL.length?TRAIL[s.trailIndex].tasks.map(t=>t.id).filter(id=>s.trailCompleted.includes(id)):[];
