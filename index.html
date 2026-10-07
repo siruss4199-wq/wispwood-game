@@ -149,7 +149,7 @@
 .tile.vinebound:before,.tile.vinebound:after{content:'';position:absolute;left:-18%;top:46%;width:136%;height:9px;border-radius:999px;background:linear-gradient(90deg,#315f38,#6ea45d 26%,#3d743f 52%,#7ab267 76%,#315f38);box-shadow:0 1px 2px #234b2d66;z-index:3;pointer-events:none}
 .tile.vinebound:before{transform:rotate(35deg)}.tile.vinebound:after{transform:rotate(-35deg)}
 .tile.vinebound .item-icon,.tile.vinebound .item-name{opacity:.52;filter:saturate(.62) brightness(.92)}.tile.vinebound .tier-pips{opacity:.45}
-.vine-lock{position:absolute;z-index:4;display:grid;place-items:center;left:50%;top:50%;transform:translate(-50%,-50%);width:24px;height:24px;border-radius:50%;background:#f4f0d9;border:2px solid #55774d;box-shadow:0 2px 5px #243b2944;font-size:11px;line-height:1}.vine-lock:before{content:'🔒'}
+.vine-lock{position:absolute;z-index:4;display:grid;place-items:center;left:50%;top:47%;transform:translate(-50%,-50%);width:24px;height:24px;border-radius:50%;background:#f4f0d9;border:2px solid #55774d;box-shadow:0 2px 5px #243b2944;font-size:11px;line-height:1}.vine-lock:before{content:'🔒'}.vine-hint{position:absolute;z-index:5;left:50%;bottom:3px;transform:translateX(-50%);font-size:6px;font-weight:1000;letter-spacing:.7px;color:#fff;background:#416840e8;border-radius:999px;padding:2px 4px;pointer-events:none}
 .tile.drag-source{transform:scale(1.07);z-index:8;filter:brightness(1.08);box-shadow:0 10px 22px #4d41533d!important}.tile.drag-target{box-shadow:inset 0 0 0 4px #8e6bc4,0 0 0 3px #f5ecff!important;transform:scale(.96)}.tile.empty{background:linear-gradient(145deg,#eff7e9,#ddebd7);border-color:#d1e2c8}.board{background:#c7d9bd;border-color:#c7d9bd}.board-frame{background:linear-gradient(145deg,#eff5e8,#e5eee0)}
 @media(max-width:670px){.resource-bar>div{padding:7px 5px}.resource-bar strong{font-size:12px}.tile{border-radius:7px}.item-icon{font-size:clamp(17px,5vw,25px)}.item-name{font-size:6px}.board{gap:3px;border-width:5px}}
 
@@ -832,6 +832,7 @@ let state=restore(storage.getItem(KEY))||createState();
 let selected=null;let groupSelected=[];let confettiTimer;
 let viewedCreature=null,stageTimer;
 let pendingEffect=null,rescueTimer;
+let pointerDrag=null,suppressBoardClickUntil=0;
 function effect(type,index=null,taskId=null,extra={}){pendingEffect={type,index,taskId,...extra};}
 const message=txt=>{el('toast').textContent=txt;el('toast').classList.add('show');clearTimeout(confettiTimer);confettiTimer=setTimeout(()=>el('toast').classList.remove('show'),3200);};
 function persist(){storage.setItem(KEY,serialize(state));}
@@ -959,14 +960,18 @@ function present(){
   }else if(wild){
    cell.innerHTML='<span class="item-icon" aria-hidden="true">🌀</span><span class="item-name">Wild Wisp</span>';
   }else if(item){
-   const def=ITEMS[item.kind][item.tier];cell.setAttribute('aria-label',`${def.name}${webbed?' wrapped in enchanted vines':''}`);
-   cell.innerHTML=`<span class="item-icon" aria-hidden="true">${def.emoji}</span><span class="item-name">${def.name}</span><span class="tier-pips" aria-hidden="true">${"✦".repeat(item.tier+1)}</span>`;
+   const def=ITEMS[item.kind][item.tier];cell.setAttribute('aria-label',`${def.name}${webbed?' wrapped in enchanted vines — merge a matching item to free it':''}`);
+   cell.innerHTML=`<span class="item-icon" aria-hidden="true">${def.emoji}</span><span class="item-name">${def.name}</span><span class="tier-pips" aria-hidden="true">${"✦".repeat(item.tier+1)}</span>${webbed?'<span class="vine-lock" aria-hidden="true"></span><span class="vine-hint" aria-hidden="true">MERGE</span>':''}`;
   }else cell.setAttribute('aria-label','Open empty tile');
-  if(!blocker)cell.addEventListener('click',()=>choose(i));
+  if(!blocker)cell.addEventListener('click',()=>{if(Date.now()<suppressBoardClickUntil)return;choose(i);});
   cell.draggable=!!item&&!blocker&&!webbed;
   cell.addEventListener('dragstart',e=>{if(!item||webbed){e.preventDefault();return;}e.dataTransfer.setData('text/plain',String(i));});
   cell.addEventListener('dragover',e=>{if(!blocker)e.preventDefault();});
   cell.addEventListener('drop',e=>{e.preventDefault();const from=Number(e.dataTransfer.getData('text/plain'));if(Number.isInteger(from))doMerge(from,i);});
+  cell.addEventListener('pointerdown',e=>pointerDragStart(e,i,cell,item,Boolean(blocker),webbed));
+  cell.addEventListener('pointermove',pointerDragMove);
+  cell.addEventListener('pointerup',e=>pointerDragEnd(e,false));
+  cell.addEventListener('pointercancel',e=>pointerDragEnd(e,true));
   board.append(cell);
  });
  const taskList=el('tasks');taskList.innerHTML='';
@@ -1087,6 +1092,35 @@ function choose(i){
   message(r.why);
  }
  selected=selected===i?null:i;present();
+}
+function clearPointerDrag(){
+ document.querySelectorAll('.tile.drag-source,.tile.drag-target').forEach(x=>x.classList.remove('drag-source','drag-target'));
+ pointerDrag=null;
+}
+function pointerDragStart(e,index,cell,item,blocked,wrapped){
+ if(e.pointerType==='mouse'||!item||blocked||wrapped)return;
+ pointerDrag={id:e.pointerId,from:index,startX:e.clientX,startY:e.clientY,target:null,dragging:false,source:cell};
+ if(cell.setPointerCapture)cell.setPointerCapture(e.pointerId);
+}
+function pointerDragMove(e){
+ if(!pointerDrag||pointerDrag.id!==e.pointerId)return;
+ const dx=e.clientX-pointerDrag.startX,dy=e.clientY-pointerDrag.startY;
+ if(!pointerDrag.dragging&&Math.hypot(dx,dy)<8)return;
+ pointerDrag.dragging=true;e.preventDefault();
+ pointerDrag.source?.classList.add('drag-source');
+ const hit=document.elementFromPoint(e.clientX,e.clientY)?.closest?.('.tile');
+ const target=hit?Number(hit.dataset.index):null;
+ document.querySelectorAll('.tile.drag-target').forEach(x=>x.classList.remove('drag-target'));
+ pointerDrag.target=Number.isInteger(target)&&target!==pointerDrag.from?target:null;
+ if(pointerDrag.target!==null)hit.classList.add('drag-target');
+}
+function pointerDragEnd(e,cancelled=false){
+ if(!pointerDrag||pointerDrag.id!==e.pointerId)return;
+ const drag={...pointerDrag};clearPointerDrag();
+ if(!cancelled&&drag.dragging&&drag.target!==null){
+  suppressBoardClickUntil=Date.now()+450;
+  doMerge(drag.from,drag.target);
+ }
 }
 function doMerge(from,to){
  const fromItem=state.board[from],toItem=state.board[to];
