@@ -131,6 +131,15 @@
 .tile.blocker .item-name{font-size:9px}.skill-action{background:linear-gradient(135deg,#6d58aa,#8870c3);color:#fff;border:0;border-radius:12px;padding:10px 12px;font-weight:900}.skill-action small{display:block;font-size:9px;opacity:.8}.skill-action:disabled{opacity:.45}
 .board-frame.puzzle-locked{box-shadow:0 0 0 3px #d9c6e744,0 12px 28px #59476e19}.board-frame.puzzle-ready{box-shadow:0 0 0 3px #bce4c955,0 12px 28px #41634b19}
 @media(max-width:670px){.puzzle-hud{align-items:flex-start;flex-direction:column}.puzzle-stats{justify-content:flex-start}.actions{flex-wrap:wrap}.skill-action{flex:1 1 45%}}
+
+.generator-panel{margin:12px 0;padding:13px;border-radius:17px;border:1px solid #d9cbea;background:linear-gradient(145deg,#f7f2ff,#eff9f2)}
+.generator-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.generator-head>div{display:flex;flex-direction:column}.generator-head span{font-size:9px;font-weight:900;letter-spacing:.12em;color:#8c70a8}.generator-head strong{font-size:13px;color:#574468}.generator-head #movesLeft{font-size:11px;letter-spacing:0;background:#fff;border:1px solid #ded3e8;padding:7px 9px;border-radius:999px;color:#6d557e}
+.generators{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}.generators button{display:flex;align-items:center;gap:7px;justify-content:center;border:1px solid #d8cce3;border-radius:12px;background:#fff;padding:9px 6px;color:#5c4d68;font-weight:900}.generators button b{font-size:22px}.generators button span{display:flex;flex-direction:column;text-align:left;font-size:10px}.generators button small{font-size:8px;color:#8c8295}.generators button:disabled{opacity:.42}.generator-panel p{margin:9px 2px 0;font-size:10px;line-height:1.4;color:#766c7f}
+.tile.wild{background:radial-gradient(circle at 45% 35%,#fff8c9,#dfcbff 48%,#a687d8);border-color:#8661b7;box-shadow:inset 0 0 14px #fff9,0 0 9px #b99be677}.tile.wild .item-icon{filter:drop-shadow(0 0 5px #fff);animation:wildPulse 1.7s ease-in-out infinite}.tile.group-selected{z-index:3;border:2px solid #6750b5;box-shadow:0 0 0 2px #fff,0 0 0 5px #a98ce3;transform:scale(1.045)}
+.merge-v2{border:0;border-radius:12px;padding:10px 13px;background:linear-gradient(135deg,#edb75b,#bc7b35);color:#fff;font-weight:900;box-shadow:0 4px 10px #a86d3138}.merge-v2 small{display:block;font-size:9px}.merge-v2:disabled{opacity:.42;box-shadow:none}
+@keyframes wildPulse{50%{transform:scale(1.12) rotate(7deg)}}
+@media(max-width:670px){.generators button{padding:8px 3px}.generators button b{font-size:18px}.generators button span{font-size:9px}.generator-head{align-items:flex-start}.generator-panel{padding:10px}}
+@media(prefers-reduced-motion:reduce){.tile.wild .item-icon{animation:none!important}}
 </style></head>
 <body>
  <div class="shell">
@@ -168,14 +177,23 @@
    </section>
    <section class="play card" aria-label="Merge puzzle game"><div class="play-head"><div><span class="eyebrow">MAGIC WORKSHOP</span><h2>Merge to help</h2></div><span class="moves">↔ <b id="moves">0</b> moves</span></div>
     <p class="instruction">Tap two identical items to merge them into a stronger one. On desktop, you can also drag items together.</p>
-    <div class="merge-legend" aria-label="Magical item types"><span class="legend-leaf">🌿 Nature</span><span class="legend-dew">💧 Water</span><span class="legend-glow">✨ Starlight</span></div>
+    <div class="merge-legend" aria-label="Magical item types"><span class="legend-leaf">🌿 Nature</span><span class="legend-dew">💧 Water</span><span class="legend-glow">✨ Starlight</span><span>🌀 Wild</span></div>
+    <div id="v2GeneratorPanel" class="generator-panel" hidden>
+      <div class="generator-head"><div><span>MERGE BOARD v2</span><strong>Choose what to generate</strong></div><span id="movesLeft">24 moves</span></div>
+      <div class="generators">
+        <button type="button" data-generator="leaf"><b>🌳</b><span>Ancient Tree<small>Seed</small></span></button>
+        <button type="button" data-generator="dew"><b>💧</b><span>Moon Spring<small>Dewdrop</small></span></button>
+        <button type="button" data-generator="glow"><b>⭐</b><span>Star Nest<small>Spark</small></span></button>
+      </div>
+      <p>Tap 3 matching items, or hold out for 5 to gain <b>two upgrades + a Wild Wisp</b>.</p>
+    </div>
     <div id="puzzleHud" class="puzzle-hud" hidden>
       <div><span class="puzzle-label">REGION PUZZLE</span><strong id="puzzleName">Whispering Bridge</strong><small id="puzzleHint">Clear blockers to unlock delivery.</small></div>
       <div class="puzzle-stats"><span id="blockerCount">0 blockers</span><span id="comboLabel">Combo ×0</span><span id="skillLabel">Skill 0/5</span></div>
     </div>
     <div class="board-frame"><div class="board-caption"><span>✦ ENCHANTED MERGE GARDEN</span><span>6 × 6</span></div><div id="board" class="board" role="group" aria-label="6 by 6 merge board"></div></div>
     <div class="selected-row"><span id="selected">Select matching tiles to merge</span></div>
-    <div class="actions"><button id="spawnBtn" class="primary">✦ Gather magic <small>FREE</small></button><button id="skillBtn" hidden disabled class="skill-action">✨ Companion Skill <small>0/5</small></button><button id="deliverBtn" disabled class="secondary">♡ Deliver</button><button id="recycleBtn" disabled class="tertiary" aria-label="Recycle selected item">♻</button></div>
+    <div class="actions"><button id="spawnBtn" class="primary">✦ Gather magic <small>FREE</small></button><button id="mergeGroupBtn" hidden disabled class="merge-v2">Merge selected <small>0/3</small></button><button id="skillBtn" hidden disabled class="skill-action">✨ Companion Skill <small>0/5</small></button><button id="deliverBtn" disabled class="secondary">♡ Deliver</button><button id="recycleBtn" disabled class="tertiary" aria-label="Recycle selected item">♻</button></div>
     <p class="footnote">Prototype mode: unlimited gathering, no timers, no ads, no account.</p>
    </section>
    <aside class="sidebar card" aria-label="Rescue objectives"><div class="side-heading"><div><span class="eyebrow">TODAY'S ADVENTURE</span><h2 id="tasksTitle">Help Mivra heal</h2></div><span id="tasksCount" class="progress-count">0/3</span></div><div class="progress"><div id="progressFill"></div></div><p class="side-sub">Craft these magical items, select one on the board, then tap Deliver.</p><div id="tasks"></div><div id="orruPanel" class="orru-panel" hidden>
@@ -203,6 +221,17 @@ const SIZE = 6;
 const KINDS = ['leaf', 'dew', 'glow'];
 const MAX_TIER = 3;
 const SKILL_MAX = 5;
+const V2_MOVES = 24;
+const GENERATORS={
+ leaf:{name:'Ancient Tree',icon:'🌳',kind:'leaf'},
+ dew:{name:'Moon Spring',icon:'💧',kind:'dew'},
+ glow:{name:'Star Nest',icon:'⭐',kind:'glow'}
+};
+function isWild(item){return Boolean(item&&item.special==='wild');}
+function normalItem(item){return item&&!isWild(item);}
+function itemLabel(item){return isWild(item)?'Wild Wisp':ITEMS[item.kind][item.tier].name;}
+function v2Active(state){return true;}
+function v2Limited(state){return isTrail(state)&&state.trailIndex<TRAIL.length;}
 const PUZZLES=[
  {name:'Whispering Bridge',blocker:'vine',count:5,icon:'🌿',hint:'Clear the vines before the bridge can accept restoration magic.'},
  {name:'Starlit Garden',blocker:'fog',count:5,icon:'🌫️',hint:'Dispel the enchanted fog to wake the garden.'},
@@ -265,6 +294,7 @@ function seedPuzzle(state){
 function ensurePuzzle(state){
  if(!Array.isArray(state.blockers))state.blockers=[];
  if(isTrail(state)&&state.trailIndex<TRAIL.length&&state.puzzleZone!==state.trailIndex)seedPuzzle(state);
+ if(v2Active(state)&&state.v2Zone!==state.trailIndex){state.v2Zone=state.trailIndex;state.v2MovesLeft=V2_MOVES;}
 }
 function isBlocked(state,index){return state.blockers.some(b=>b.index===index);}
 function useCompanionSkill(state){
@@ -343,14 +373,66 @@ function createState() {
  const board=Array(SIZE*SIZE).fill(null);
  const placement=[ [0,'leaf',0],[1,'leaf',0], [6,'dew',0],[7,'dew',0], [12,'glow',0],[13,'glow',0], [19,'leaf',1], [22,'dew',1], [26,'glow',1] ];
  for(const [i,kind,tier] of placement)board[i]={kind,tier};
- return { board,completed:[],groveCompleted:[], rescued:false, explored:false,orruRescued:false,activeCompanion:null,orruCharge:0,orruQuestCount:0,vinesCleared:false,trailIndex:0,trailCompleted:[],puzzleZone:-1,blockers:[],runesFound:0,combo:0,skillCharge:0,xp:0,level:1,bonusItems:0,moves:0,spawns:0,message:'Help Mivra recover by crafting three supplies.' };
+ return { board,completed:[],groveCompleted:[], rescued:false, explored:false,orruRescued:false,activeCompanion:null,orruCharge:0,orruQuestCount:0,vinesCleared:false,trailIndex:0,trailCompleted:[],puzzleZone:-1,blockers:[],runesFound:0,combo:0,skillCharge:0,v2MovesLeft:V2_MOVES,v2Zone:-1,xp:0,level:1,bonusItems:0,moves:0,spawns:0,message:'Help Mivra recover by crafting three supplies.' };
+}
+function generateFrom(state,kind,random=Math.random){
+ ensurePuzzle(state);
+ if(!GENERATORS[kind])return {ok:false,why:'Unknown generator.'};
+ if(v2Limited(state)&&state.v2MovesLeft<=0)return {ok:false,why:'No generator moves left in this region. Merge existing items and use companion skills wisely.'};
+ const free=[];for(let i=0;i<state.board.length;i++)if(!state.board[i]&&!isBlocked(state,i))free.push(i);
+ if(!free.length)return {ok:false,why:'Board is full. Merge or recycle an item first.'};
+ const index=free[Math.min(free.length-1,Math.floor(random()*free.length))];
+ state.board[index]={kind,tier:0};
+ state.spawns++;
+ if(v2Limited(state))state.v2MovesLeft--;
+ state.combo=0;
+ let helper=null,bonusIndex=null;
+ const active=currentCompanion(state);
+ if(active&&state.spawns%8===0){
+  const bonusFree=free.filter(i=>i!==index);
+  if(bonusFree.length){
+   bonusIndex=bonusFree[Math.min(bonusFree.length-1,Math.floor(random()*bonusFree.length))];
+   state.board[bonusIndex]={kind:CREATURES[active].bonus,tier:0};
+   state.bonusItems++;helper=CREATURES[active].name;
+  }
+ }
+ return {ok:true,index,kind,movesLeft:state.v2MovesLeft,helper,bonusIndex};
+}
+function mergeGroup(state,indices){
+ ensurePuzzle(state);
+ const unique=[...new Set(indices)].filter(Number.isInteger);
+ if(unique.length!==3&&unique.length!==5)return {ok:false,why:'Select exactly 3 or 5 matching items.'};
+ if(unique.some(i=>i<0||i>=SIZE*SIZE||isBlocked(state,i)))return {ok:false,why:'Blocked tiles cannot be merged.'};
+ const items=unique.map(i=>state.board[i]);
+ if(items.some(x=>!x))return {ok:false,why:'Every selected tile must contain an item.'};
+ const wilds=items.filter(isWild);
+ if(wilds.length>1)return {ok:false,why:'Use at most one Wild Wisp in a merge.'};
+ const base=items.find(normalItem);
+ if(!base||base.tier>=MAX_TIER)return {ok:false,why:'Choose non-maxed magical items.'};
+ if(items.some(it=>normalItem(it)&&(it.kind!==base.kind||it.tier!==base.tier)))return {ok:false,why:'Selected items must match in type and tier.'};
+ const target=unique[0];
+ unique.forEach(i=>state.board[i]=null);
+ state.board[target]={kind:base.kind,tier:base.tier+1};
+ let secondIndex=null,wildIndex=null;
+ const freed=unique.slice(1);
+ if(unique.length===5){
+   secondIndex=freed.shift();state.board[secondIndex]={kind:base.kind,tier:base.tier+1};
+   if(freed.length){wildIndex=freed.shift();state.board[wildIndex]={special:'wild'};}
+   if(v2Limited(state))state.v2MovesLeft=Math.min(V2_MOVES,state.v2MovesLeft+1);
+ }
+ state.moves++;state.combo=Math.min(9,(state.combo||0)+1);
+ state.skillCharge=Math.min(SKILL_MAX,(state.skillCharge||0)+(unique.length===5?2:1));
+ const bonus=unique.length===5?10:state.combo>=3?4:0;
+ gainXP(state,5+(base.tier*3)+bonus);
+ if(state.orruRescued)state.orruCharge=Math.min(ORRU_GROW_COST*2,state.orruCharge+1);
+ return {ok:true,target,secondIndex,wildIndex,tile:state.board[target],count:unique.length,combo:state.combo,skillReady:state.skillCharge>=SKILL_MAX};
 }
 function merge(state,from,to) {
  if(!Number.isInteger(from)||!Number.isInteger(to)||from===to||from<0||to<0||from>=SIZE*SIZE||to>=SIZE*SIZE){state.combo=0;return {ok:false,why:'Choose two different tiles.'};}
  ensurePuzzle(state);
  if(isBlocked(state,from)||isBlocked(state,to)){state.combo=0;return {ok:false,why:'A magical blocker is occupying that tile.'};}
  const a=state.board[from],b=state.board[to];
- if(!a||!b||a.kind!==b.kind||a.tier!==b.tier||a.tier===MAX_TIER){state.combo=0;return {ok:false,why:'Merge two matching, non-maxed items.'};}
+ if(!a||!b||isWild(a)||isWild(b)||a.kind!==b.kind||a.tier!==b.tier||a.tier===MAX_TIER){state.combo=0;return {ok:false,why:'Merge two matching, non-maxed items.'};}
  state.board[from]=null;
  state.board[to]={kind:b.kind,tier:b.tier+1};
  state.moves++;state.combo=Math.min(9,(state.combo||0)+1);state.skillCharge=Math.min(SKILL_MAX,(state.skillCharge||0)+1);
@@ -405,7 +487,11 @@ function restore(raw){
  try{
   const s=JSON.parse(raw);
   if(!s||!Array.isArray(s.board)||s.board.length!==SIZE*SIZE||!Array.isArray(s.completed)||typeof s.rescued!=='boolean')return null;
-  for(const it of s.board){if(it!==null&&(!KINDS.includes(it.kind)||!Number.isInteger(it.tier)||it.tier<0||it.tier>MAX_TIER))return null;}
+  for(const it of s.board){
+   if(it===null)continue;
+   if(it.special==='wild')continue;
+   if(!KINDS.includes(it.kind)||!Number.isInteger(it.tier)||it.tier<0||it.tier>MAX_TIER)return null;
+  }
   s.completed=TASKS.map(t=>t.id).filter(id=>s.completed.includes(id));
   s.explored=Boolean(s.rescued&&s.explored);
   s.groveCompleted=Array.isArray(s.groveCompleted)?GROVE_TASKS.map(t=>t.id).filter(id=>s.groveCompleted.includes(id)):[];
@@ -420,6 +506,8 @@ function restore(raw){
   s.runesFound=Number.isInteger(s.runesFound)&&s.runesFound>=0?s.runesFound:0;
   s.combo=Number.isInteger(s.combo)&&s.combo>=0?Math.min(9,s.combo):0;
   s.skillCharge=Number.isInteger(s.skillCharge)&&s.skillCharge>=0?Math.min(SKILL_MAX,s.skillCharge):0;
+  s.v2MovesLeft=Number.isInteger(s.v2MovesLeft)?Math.max(0,Math.min(V2_MOVES,s.v2MovesLeft)):V2_MOVES;
+  s.v2Zone=Number.isInteger(s.v2Zone)?s.v2Zone:-1;
   // Migrate v0.3/v0.4 progress; existing rescued friends and board remain intact.
   s.trailIndex=Number.isInteger(s.trailIndex)?Math.max(0,Math.min(TRAIL.length,s.trailIndex)):0;
   s.trailCompleted=Array.isArray(s.trailCompleted)&&s.trailIndex<TRAIL.length?TRAIL[s.trailIndex].tasks.map(t=>t.id).filter(id=>s.trailCompleted.includes(id)):[];
@@ -458,7 +546,7 @@ function showChapterModal(title,body,label){
 const storage=(()=>{try{const k='__wispwood_storage_test';localStorage.setItem(k,'ok');localStorage.removeItem(k);return localStorage;}catch{return {getItem:()=>null,setItem:()=>{}};}})();
 const el=id=>document.getElementById(id);
 let state=restore(storage.getItem(KEY))||createState();
-let selected=null;let confettiTimer;
+let selected=null;let groupSelected=[];let confettiTimer;
 let viewedCreature=null,stageTimer;
 let pendingEffect=null,rescueTimer;
 function effect(type,index=null,taskId=null){pendingEffect={type,index,taskId};}
@@ -495,6 +583,18 @@ function present(){
   el('comboLabel').textContent=`Combo ×${state.combo||0}`;
   el('skillLabel').textContent=`Skill ${state.skillCharge||0}/${SKILL_MAX}`;
  }
+ const v2=v2Active(state);
+ const v2ActionIndex=v2&&groupSelected.length===1?groupSelected[0]:selected;
+ el('v2GeneratorPanel').hidden=!v2;
+ el('spawnBtn').hidden=v2;
+ el('mergeGroupBtn').hidden=!v2;
+ if(v2){
+  el('movesLeft').textContent=v2Limited(state)?`${state.v2MovesLeft} move${state.v2MovesLeft===1?'':'s'}`:'Unlimited';
+  document.querySelectorAll('[data-generator]').forEach(btn=>btn.disabled=(v2Limited(state)&&state.v2MovesLeft<=0)||!state.board.some((v,i)=>v===null&&!isBlocked(state,i)));
+  const count=groupSelected.length;
+  el('mergeGroupBtn').disabled=!(count===3||count===5);
+  el('mergeGroupBtn').innerHTML=`Merge selected <small>${count}/${count<3?3:count<5?5:5}</small>`;
+ }
  el('skillBtn').hidden=!puzzleActive;
  el('skillBtn').disabled=!puzzleActive||state.skillCharge<SKILL_MAX||state.blockers.length===0||!currentCompanion(state);
  el('skillBtn').innerHTML=`✨ Companion Skill <small>${state.skillCharge||0}/${SKILL_MAX}</small>`;
@@ -502,21 +602,28 @@ function present(){
  frame.classList.toggle('puzzle-locked',puzzleActive&&state.blockers.length>0);
  frame.classList.toggle('puzzle-ready',puzzleActive&&state.blockers.length===0);
  const board=el('board');board.innerHTML='';
- const picked=selected!==null?state.board[selected]:null;
+ const firstGroup=groupSelected.length?state.board[groupSelected[0]]:null;
+ const picked=v2?firstGroup:(selected!==null?state.board[selected]:null);
  state.board.forEach((item,i)=>{
   const blocker=state.blockers.find(b=>b.index===i);
-  const cell=document.createElement('button');cell.type='button';cell.className='tile '+(blocker?`blocker ${blocker.type==='fog'?'fog-blocker':'vine-blocker'}`:item?`filled ${item.kind} tier${item.tier}`:'empty')+(selected===i?' selected':'');
+  const cell=document.createElement('button');cell.type='button';
+  const wild=isWild(item);
+  cell.className='tile '+(blocker?`blocker ${blocker.type==='fog'?'fog-blocker':'vine-blocker'}`:wild?'filled wild':item?`filled ${item.kind} tier${item.tier}`:'empty')+(!v2&&selected===i?' selected':'')+(v2&&groupSelected.includes(i)?' group-selected':'');
   if(fx&&fx.index===i&&(fx.type==='merge'||fx.type==='spawn'))cell.classList.add('fx-'+fx.type);
   if(blocker){cell.disabled=true;cell.setAttribute('aria-label',`${blocker.type==='vine'?'Vine':'Fog'} blocker at ${Math.floor(i/SIZE)+1},${i%SIZE+1}`);}
-  if(!blocker&&item&&picked&&i!==selected&&item.kind===picked.kind&&item.tier===picked.tier&&item.tier<MAX_TIER)cell.classList.add('merge-match');
-  if(item&&item.tier===MAX_TIER)cell.classList.add('legendary');
-  if(item)cell.setAttribute('aria-pressed',selected===i?'true':'false');
+  if(!blocker&&item&&picked){
+   const compatible=isWild(item)||isWild(picked)||(normalItem(item)&&normalItem(picked)&&item.kind===picked.kind&&item.tier===picked.tier&&item.tier<MAX_TIER);
+   if(compatible&&!groupSelected.includes(i)&&i!==selected)cell.classList.add('merge-match');
+  }
+  if(normalItem(item)&&item.tier===MAX_TIER)cell.classList.add('legendary');
+  if(item)cell.setAttribute('aria-pressed',v2?groupSelected.includes(i)?'true':'false':selected===i?'true':'false');
   cell.dataset.index=i;
-  if(!blocker)cell.setAttribute('aria-label',item?`${ITEMS[item.kind][item.tier].name} at ${Math.floor(i/SIZE)+1},${i%SIZE+1}`:`Empty tile at ${Math.floor(i/SIZE)+1},${i%SIZE+1}`);
+  if(!blocker)cell.setAttribute('aria-label',item?`${itemLabel(item)} at ${Math.floor(i/SIZE)+1},${i%SIZE+1}`:`Empty tile at ${Math.floor(i/SIZE)+1},${i%SIZE+1}`);
   if(blocker)cell.innerHTML=`<span class="blocker-icon" aria-hidden="true">${BLOCKER_ICON[blocker.type]}</span><span class="item-name">${blocker.type==='vine'?'Vine':'Fog'}</span>`;
+  else if(wild)cell.innerHTML='<span class="item-icon" aria-hidden="true">🌀</span><span class="item-name">Wild Wisp</span><span class="tier-pips" aria-hidden="true">ANY</span>';
   else if(item){let def=ITEMS[item.kind][item.tier];cell.innerHTML=`<span class="item-icon" aria-hidden="true">${def.emoji}</span><span class="item-name">${def.name}</span><span class="tier-pips" aria-hidden="true">${"✦".repeat(item.tier+1)}</span>`;}
   if(!blocker)cell.addEventListener('click',()=>choose(i));
-  cell.draggable=!!item&&!blocker;
+  cell.draggable=!!item&&!blocker&&!v2;
   cell.addEventListener('dragstart',e=>{if(!item){e.preventDefault();return;}e.dataTransfer.setData('text/plain',String(i));e.dataTransfer.effectAllowed='move';});
   cell.addEventListener('dragover',e=>e.preventDefault());
   cell.addEventListener('drop',e=>{e.preventDefault();const from=Number(e.dataTransfer.getData('text/plain'));if(Number.isInteger(from))doMerge(from,i);});
@@ -541,7 +648,7 @@ function present(){
  el('vinesBtn').disabled=!orruActive||state.vinesCleared;
  el('vinesBtn').textContent=state.vinesCleared?'✓ Vines cleared':'🌿 Clear Vines';
  el('orruQuestStatus').textContent=state.orruQuestCount>=ORRU_QUEST_GOAL?'Completed! Bloom reward collected.':`Give Orru 2 Herbs (${state.orruQuestCount}/${ORRU_QUEST_GOAL}) to earn a Bloom.`;
- el('orruQuestBtn').disabled=state.orruQuestCount>=ORRU_QUEST_GOAL||selected===null||!state.board[selected]||state.board[selected].kind!=='leaf'||state.board[selected].tier!==2;
+ el('orruQuestBtn').disabled=state.orruQuestCount>=ORRU_QUEST_GOAL||v2ActionIndex===null||v2ActionIndex===undefined||!state.board[v2ActionIndex]||isWild(state.board[v2ActionIndex])||state.board[v2ActionIndex].kind!=='leaf'||state.board[v2ActionIndex].tier!==2;
  el('scene').classList.toggle('vines-open',state.vinesCleared);
  el('trailPanel').hidden=!trail;
  const trailStops=el('trailStops');trailStops.innerHTML='';
@@ -583,19 +690,53 @@ function present(){
  if(fx&&fx.type==='rescue'){clearTimeout(rescueTimer);el('character').classList.add('fx-rescue');el('scene').classList.add('fx-rescue');rescueTimer=setTimeout(()=>{el('character').classList.remove('fx-rescue');el('scene').classList.remove('fx-rescue');},1400);}
  el('exploreBtn').disabled=!state.rescued||state.explored;
  el('exploreBtn').textContent=trail?(stage?'✨ Restoration Trail active':'✓ Forest restored'):grove?'🌿 Moonlit Grove':state.rescued?'✨ Enter Moonlit Grove':'🔒 Rescue Mivra first';
- el('selected').textContent=selected!==null&&state.board[selected]?`${ITEMS[state.board[selected].kind][state.board[selected].tier].name} selected`:'Select matching tiles to merge';
- el('deliverBtn').disabled=!puzzleReady(state)||selected===null||!state.board[selected]||!tasks.some(t=>!done.includes(t.id)&&t.kind===state.board[selected].kind&&t.tier===state.board[selected].tier);
- el('recycleBtn').disabled=selected===null||!state.board[selected];
+ const singleIndex=v2ActionIndex;
+ const singleItem=singleIndex!==null&&singleIndex!==undefined?state.board[singleIndex]:null;
+ el('selected').textContent=v2?(groupSelected.length?`${groupSelected.length} selected — choose 3 or 5 matching items`:'Select 3 matching items; 5 gives a Wild Wisp'):singleItem?`${itemLabel(singleItem)} selected`:'Select matching tiles to merge';
+ el('deliverBtn').disabled=!puzzleReady(state)||!singleItem||isWild(singleItem)||!tasks.some(t=>!done.includes(t.id)&&t.kind===singleItem.kind&&t.tier===singleItem.tier);
+ el('recycleBtn').disabled=!singleItem;
  persist();
 }
 function choose(i){
- if(!state.board[i]){selected=null;present();return;}
+ const item=state.board[i];
+ if(v2Active(state)){
+  if(!item){groupSelected=[];selected=null;present();return;}
+  const pos=groupSelected.indexOf(i);
+  if(pos>=0){groupSelected.splice(pos,1);present();return;}
+  if(groupSelected.length>=5){message('You can select at most 5 items.');return;}
+  const first=groupSelected.length?state.board[groupSelected[0]]:null;
+  const normalBase=groupSelected.map(x=>state.board[x]).find(normalItem);
+  if(normalBase&&normalItem(item)&&(normalBase.kind!==item.kind||normalBase.tier!==item.tier)){message('Choose matching type and tier, or use one Wild Wisp.');return;}
+  if(isWild(item)&&groupSelected.some(x=>isWild(state.board[x]))){message('Only one Wild Wisp can join a merge.');return;}
+  groupSelected.push(i);selected=null;present();return;
+ }
+ if(!item){selected=null;present();return;}
  if(selected!==null&&selected!==i){const r=merge(state,selected,i);if(r.ok){selected=null;effect('merge',i);message(`Beautiful merge! You made ${ITEMS[r.tile.kind][r.tile.tier].name}.`);present();return;}}
  selected=selected===i?null:i;present();
 }
 function doMerge(from,to){const r=merge(state,from,to);selected=null;if(r.ok){effect('merge',to);message(`✨ ${ITEMS[r.tile.kind][r.tile.tier].name} crafted!`);}else message('Choose two matching items.');present();}
+document.querySelectorAll('[data-generator]').forEach(btn=>btn.addEventListener('click',()=>{
+ const kind=btn.dataset.generator;
+ const r=generateFrom(state,kind);
+ groupSelected=[];selected=null;
+ if(r.ok){
+  effect('spawn',r.index);
+  const source=GENERATORS[kind];
+  message(r.helper?`${source.name} created ${ITEMS[kind][0].name}. ${r.helper} also helped with a bonus item! ✨`:`${source.name} created ${ITEMS[kind][0].name}. ${r.movesLeft} moves left.`);
+  if(r.helper)triggerSceneEffect('🌟');
+ }else message(r.why);
+ present();
+}));
+el('mergeGroupBtn').onclick=()=>{
+ const r=mergeGroup(state,groupSelected);
+ if(r.ok){
+  groupSelected=[];selected=null;effect('merge',r.target);
+  message(r.count===5?`🌟 Perfect 5-merge! Two ${ITEMS[r.tile.kind][r.tile.tier].name}s + Wild Wisp + 1 move refunded.`:`✨ 3-merge created ${ITEMS[r.tile.kind][r.tile.tier].name}. Combo ×${r.combo}.`);
+ }else message(r.why);
+ present();
+};
 el('skillBtn').onclick=()=>{
- const r=useCompanionSkill(state);selected=null;
+ const r=useCompanionSkill(state);selected=null;groupSelected=[];
  if(r.ok){
   message(r.cleared?`✨ ${CREATURES[r.companion].name} cleared the last blocker — delivery is unlocked!`:`✨ ${CREATURES[r.companion].name} cleared ${r.count} blockers!`);
   triggerSceneEffect(r.companion==='orru'?'🌿':'🌫️');
@@ -608,7 +749,7 @@ el('spawnBtn').onclick=()=>{
  selected=null;present();
  if(r.ok&&r.helper)triggerSceneEffect('🌟');
 };
-el('deliverBtn').onclick=()=>{if(selected===null)return;const r=deliver(state,selected);selected=null;if(r.ok){effect(r.rescued?'rescue':'deliver',null,r.task.id);message(r.rescued?`${r.friend} is rescued! 🎉`:`Delivered: ${r.task.label}!`);}else message(r.why);present();
+el('deliverBtn').onclick=()=>{const actionIndex=v2Active(state)&&groupSelected.length===1?groupSelected[0]:selected;if(actionIndex===null||actionIndex===undefined)return;const r=deliver(state,actionIndex);selected=null;groupSelected=[];if(r.ok){effect(r.rescued?'rescue':'deliver',null,r.task.id);message(r.rescued?`${r.friend} is rescued! 🎉`:`Delivered: ${r.task.label}!`);}else message(r.why);present();
  if(r.ok&&r.friend&&!isTrail(state)){
   triggerSceneEffect(r.rescued?'💖':'✨');
   if(r.rescued&&r.friend==='Mivra')showChapterModal('Mivra rescued! 💜','Your first magical friend is safe. Meet Mivra in your Sanctuary, choose her as a companion, then explore Moonlit Grove.','Meet Mivra');
@@ -617,27 +758,28 @@ el('deliverBtn').onclick=()=>{if(selected===null)return;const r=deliver(state,se
  if(r.ok&&r.completedStage)showChapterModal(r.allRestored?'Wispwood restored! 🌟':r.stageName+' restored! 🎉',r.allRestored?'All three magical areas are shining again. You completed the Restoration Trail!':'A new area unlocked. Keep merging to restore Wispwood!','Continue adventure');
 };
 el('growBtn').onclick=()=>{
- const r=orruGrow(state);selected=null;
+ const r=orruGrow(state);selected=null;groupSelected=[];
  if(r.ok){effect('spawn',r.index);message('🌱 Orru grew a free Seed!');triggerSceneEffect('🌱');}
  else message(r.why);
  present();
 };
 el('vinesBtn').onclick=()=>{
- const r=clearVines(state);selected=null;
+ const r=clearVines(state);selected=null;groupSelected=[];
  if(r.ok){effect('spawn',r.index);message('🌿 Hidden Glade opened! Orru found Water and 50 XP.');triggerSceneEffect('🌿');}
  else message(r.why);
  present();
 };
 el('orruQuestBtn').onclick=()=>{
- if(selected===null)return;
- const r=deliverOrruQuest(state,selected);selected=null;
+ const actionIndex=v2Active(state)&&groupSelected.length===1?groupSelected[0]:selected;
+ if(actionIndex===null||actionIndex===undefined)return;
+ const r=deliverOrruQuest(state,actionIndex);selected=null;groupSelected=[];
  if(r.ok){if(r.completed)effect('spawn',r.index);message(r.completed?'🌸 Forest Remedy complete! Bloom and 75 XP earned.':'🌿 Orru received a Herb. One more to go!');triggerSceneEffect(r.completed?'🌸':'💚');}
  else message(r.why);
  present();
 };
-el('recycleBtn').onclick=()=>{if(selected!==null){recycle(state,selected);selected=null;message('Item recycled. Space freed!');present();}};
+el('recycleBtn').onclick=()=>{const actionIndex=v2Active(state)&&groupSelected.length===1?groupSelected[0]:selected;if(actionIndex!==null&&actionIndex!==undefined){recycle(state,actionIndex);selected=null;groupSelected=[];message('Item recycled. Space freed!');present();}};
 el('exploreBtn').onclick=()=>{if(explore(state)){selected=null;message('Moonlit Grove unlocked!');present();showChapterModal('Moonlit Grove 🌿','Mivra found Orru among the vines. Craft Bloom, Moonwell and Aurora to rescue your new friend.','Help Orru');}};
-el('resetBtn').onclick=()=>{if(confirm('Restart your rescue story?')){state=createState();selected=null;el('endOverlay').hidden=true;el('creatureOverlay').hidden=true;present();message('A fresh adventure begins!');}};
+el('resetBtn').onclick=()=>{if(confirm('Restart your rescue story?')){state=createState();selected=null;groupSelected=[];el('endOverlay').hidden=true;el('creatureOverlay').hidden=true;present();message('A fresh adventure begins!');}};
 el('endClose').onclick=()=>{el('endOverlay').hidden=true;el('spawnBtn').focus();};
 function triggerSceneEffect(symbol){
  const fx=el('sceneEffect');fx.textContent=symbol;fx.classList.remove('fx-animate');
@@ -666,7 +808,7 @@ el('companionSelect').onclick=()=>{
 };
 el('creatureClose').onclick=()=>{el('creatureOverlay').hidden=true;viewedCreature=null;};
 
-window.addEventListener('storage',e=>{if(e.key===KEY){state=restore(e.newValue)||createState();selected=null;el('endOverlay').hidden=true;el('creatureOverlay').hidden=true;present();}});
+window.addEventListener('storage',e=>{if(e.key===KEY){state=restore(e.newValue)||createState();selected=null;groupSelected=[];el('endOverlay').hidden=true;el('creatureOverlay').hidden=true;present();}});
 present();
 </script>
 </body></html>
