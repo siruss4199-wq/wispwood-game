@@ -673,18 +673,13 @@ function present(){
   el('comboLabel').textContent=`Combo ×${state.combo||0}`;
   el('skillLabel').textContent=`Skill ${state.skillCharge||0}/${SKILL_MAX}`;
  }
- const v2=v2Active(state);
- const v2ActionIndex=v2&&groupSelected.length===1?groupSelected[0]:selected;
- el('v2GeneratorPanel').hidden=!v2;
- el('spawnBtn').hidden=v2;
- el('mergeGroupBtn').hidden=!v2;
- if(v2){
-  el('movesLeft').textContent=v2Limited(state)?`${state.v2MovesLeft} move${state.v2MovesLeft===1?'':'s'}`:'Unlimited';
-  document.querySelectorAll('[data-generator]').forEach(btn=>btn.disabled=(v2Limited(state)&&state.v2MovesLeft<=0)||!state.board.some((v,i)=>v===null&&!isBlocked(state,i)));
-  const count=groupSelected.length;
-  el('mergeGroupBtn').disabled=!(count===3||count===5);
-  el('mergeGroupBtn').innerHTML=`Merge selected <small>${count}/${count<3?3:count<5?5:5}</small>`;
- }
+ const v2=false;
+ const v2ActionIndex=selected;
+ el('spawnBtn').hidden=true;
+ el('mergeGroupBtn').hidden=true;
+ el('energyLabel').textContent=`${state.energy}/${state.maxEnergy}`;
+ el('magicLabel').textContent=state.magic;
+ el('openLabel').textContent=`${state.openCells.length}/${SIZE*SIZE}`;
  el('skillBtn').hidden=!puzzleActive;
  el('skillBtn').disabled=!puzzleActive||state.skillCharge<SKILL_MAX||state.blockers.length===0||!currentCompanion(state);
  el('skillBtn').innerHTML=`✨ Companion Skill <small>${state.skillCharge||0}/${SKILL_MAX}</small>`;
@@ -695,27 +690,44 @@ function present(){
  const firstGroup=groupSelected.length?state.board[groupSelected[0]]:null;
  const picked=v2?firstGroup:(selected!==null?state.board[selected]:null);
  state.board.forEach((item,i)=>{
-  const blocker=state.blockers.find(b=>b.index===i);
-  const cell=document.createElement('button');cell.type='button';
-  const wild=isWild(item);
-  cell.className='tile '+(blocker?`blocker ${blocker.type==='fog'?'fog-blocker':'vine-blocker'}`:wild?'filled wild':item?`filled ${item.kind} tier${item.tier}`:'empty')+(!v2&&selected===i?' selected':'')+(v2&&groupSelected.includes(i)?' group-selected':'');
-  if(fx&&fx.index===i&&(fx.type==='merge'||fx.type==='spawn'))cell.classList.add('fx-'+fx.type);
-  if(blocker){cell.disabled=true;cell.setAttribute('aria-label',`${blocker.type==='vine'?'Vine':'Fog'} blocker at ${Math.floor(i/SIZE)+1},${i%SIZE+1}`);}
-  if(!blocker&&item&&picked){
-   const compatible=isWild(item)||isWild(picked)||(normalItem(item)&&normalItem(picked)&&item.kind===picked.kind&&item.tier===picked.tier&&item.tier<MAX_TIER);
-   if(compatible&&!groupSelected.includes(i)&&i!==selected)cell.classList.add('merge-match');
+  const open=isOpen(state,i),frontier=!open&&isFrontierCell(state,i),cost=frontier?unlockCost(state,i):null;
+  const blocker=open?state.blockers.find(b=>b.index===i):null;
+  const cell=document.createElement('button');cell.type='button';cell.dataset.index=i;
+  if(!open){
+   cell.className='tile locked'+(frontier?' frontier':'');
+   cell.disabled=!frontier;
+   cell.setAttribute('aria-label',frontier?`Locked tile — unlock for ${cost} Magic`:'Locked tile');
+   cell.innerHTML=`<span class="lock-icon" aria-hidden="true">🔒</span>${frontier?`<small>${cost} ✨</small>`:''}`;
+   if(frontier)cell.addEventListener('click',()=>{
+    const r=unlockCell(state,i);
+    if(r.ok){selected=null;groupSelected=[];message(r.reveal.type==='generator'?'✨ New generator discovered!':r.reveal.type==='web'?'🕸 A trapped item was revealed!':r.reveal.type==='blocker'?'A magical obstacle blocks the new tile.':'✨ New ground opened!');}
+    else message(r.why);
+    present();
+   });
+   board.append(cell);return;
   }
+  const generator=isGenerator(item),webbed=isWebbed(state,i),wild=isWild(item);
+  cell.className='tile '+(blocker?`blocker ${blocker.type==='fog'?'fog-blocker':'vine-blocker'}`:generator?'generator':wild?'filled wild':item?`filled ${item.kind} tier${item.tier}`:'empty')+(webbed?' webbed':'')+(selected===i?' selected':'');
+  if(fx&&fx.index===i&&(fx.type==='merge'||fx.type==='spawn'))cell.classList.add('fx-'+fx.type);
+  if(blocker){cell.disabled=true;cell.setAttribute('aria-label',`${blocker.type==='vine'?'Vine':'Fog'} blocker`);}
+  const picked=selected!==null?state.board[selected]:null;
+  if(!blocker&&!generator&&item&&picked&&!isGenerator(picked)&&i!==selected&&normalItem(item)&&normalItem(picked)&&item.kind===picked.kind&&item.tier===picked.tier&&item.tier<MAX_TIER)cell.classList.add('merge-match');
   if(normalItem(item)&&item.tier===MAX_TIER)cell.classList.add('legendary');
-  if(item)cell.setAttribute('aria-pressed',v2?groupSelected.includes(i)?'true':'false':selected===i?'true':'false');
-  cell.dataset.index=i;
-  if(!blocker)cell.setAttribute('aria-label',item?`${itemLabel(item)} at ${Math.floor(i/SIZE)+1},${i%SIZE+1}`:`Empty tile at ${Math.floor(i/SIZE)+1},${i%SIZE+1}`);
-  if(blocker)cell.innerHTML=`<span class="blocker-icon" aria-hidden="true">${BLOCKER_ICON[blocker.type]}</span><span class="item-name">${blocker.type==='vine'?'Vine':'Fog'}</span>`;
-  else if(wild)cell.innerHTML='<span class="item-icon" aria-hidden="true">🌀</span><span class="item-name">Wild Wisp</span><span class="tier-pips" aria-hidden="true">ANY</span>';
-  else if(item){let def=ITEMS[item.kind][item.tier];cell.innerHTML=`<span class="item-icon" aria-hidden="true">${def.emoji}</span><span class="item-name">${def.name}</span><span class="tier-pips" aria-hidden="true">${"✦".repeat(item.tier+1)}</span>`;}
+  if(generator){
+   const g=GENERATORS[item.kind];cell.setAttribute('aria-label',`${g.name} generator — tap to create ${ITEMS[item.kind][0].name}`);
+   cell.innerHTML=`<span class="generator-icon" aria-hidden="true">${g.icon}</span><span class="item-name">${g.name}</span><span class="tier-pips">TAP · 1⚡</span>`;
+  }else if(blocker){
+   cell.innerHTML=`<span class="blocker-icon" aria-hidden="true">${BLOCKER_ICON[blocker.type]}</span><span class="item-name">${blocker.type==='vine'?'Vine':'Fog'}</span>`;
+  }else if(wild){
+   cell.innerHTML='<span class="item-icon" aria-hidden="true">🌀</span><span class="item-name">Wild Wisp</span>';
+  }else if(item){
+   const def=ITEMS[item.kind][item.tier];cell.setAttribute('aria-label',`${def.name}${webbed?' trapped in a web':''}`);
+   cell.innerHTML=`<span class="item-icon" aria-hidden="true">${def.emoji}</span><span class="item-name">${def.name}</span><span class="tier-pips" aria-hidden="true">${"✦".repeat(item.tier+1)}</span>`;
+  }else cell.setAttribute('aria-label','Open empty tile');
   if(!blocker)cell.addEventListener('click',()=>choose(i));
-  cell.draggable=!!item&&!blocker&&!v2;
-  cell.addEventListener('dragstart',e=>{if(!item){e.preventDefault();return;}e.dataTransfer.setData('text/plain',String(i));e.dataTransfer.effectAllowed='move';});
-  cell.addEventListener('dragover',e=>e.preventDefault());
+  cell.draggable=!!item&&!generator&&!blocker;
+  cell.addEventListener('dragstart',e=>{if(!item||generator){e.preventDefault();return;}e.dataTransfer.setData('text/plain',String(i));});
+  cell.addEventListener('dragover',e=>{if(!blocker)e.preventDefault();});
   cell.addEventListener('drop',e=>{e.preventDefault();const from=Number(e.dataTransfer.getData('text/plain'));if(Number.isInteger(from))doMerge(from,i);});
   board.append(cell);
  });
@@ -780,9 +792,9 @@ function present(){
  if(fx&&fx.type==='rescue'){clearTimeout(rescueTimer);el('character').classList.add('fx-rescue');el('scene').classList.add('fx-rescue');rescueTimer=setTimeout(()=>{el('character').classList.remove('fx-rescue');el('scene').classList.remove('fx-rescue');},1400);}
  el('exploreBtn').disabled=!state.rescued||state.explored;
  el('exploreBtn').textContent=trail?(stage?'✨ Restoration Trail active':'✓ Forest restored'):grove?'🌿 Moonlit Grove':state.rescued?'✨ Enter Moonlit Grove':'🔒 Rescue Mivra first';
- const singleIndex=v2ActionIndex;
+ const singleIndex=selected;
  const singleItem=singleIndex!==null&&singleIndex!==undefined?state.board[singleIndex]:null;
- el('selected').textContent=v2?(groupSelected.length?`${groupSelected.length} selected — choose 3 or 5 matching items`:'Select 3 matching items; 5 gives a Wild Wisp'):singleItem?`${itemLabel(singleItem)} selected`:'Select matching tiles to merge';
+ el('selected').textContent=singleItem?`${itemLabel(singleItem)} selected`:'Tap a generator, merge matching pairs, and expand the clearing';
  el('deliverBtn').disabled=!puzzleReady(state)||!singleItem||isWild(singleItem)||!tasks.some(t=>!done.includes(t.id)&&t.kind===singleItem.kind&&t.tier===singleItem.tier);
  el('recycleBtn').disabled=!singleItem;
  persist();
