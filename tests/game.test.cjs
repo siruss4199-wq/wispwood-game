@@ -106,7 +106,7 @@ test('saved progress can be restored and malformed saves are rejected', () => {
   s.moves = 11;
   const copy = game.restore(game.serialize(s));
   assert.equal(copy.moves, 11);
-  assert.equal(copy.board.length,49);
+  assert.equal(copy.board.length,64);
   assert.equal(game.restore('{not-json'), null);
   assert.equal(game.restore('{"board":[]}'), null);
   const bad = JSON.parse(game.serialize(s));
@@ -116,8 +116,8 @@ test('saved progress can be restored and malformed saves are rejected', () => {
 
 test('recycling makes an unlocked item tile empty', () => {
   const s=game.createState();
-  assert.equal(game.recycle(s,23),true);
-  assert.equal(s.board[23],null);
+  assert.equal(game.recycle(s,26),true);
+  assert.equal(s.board[26],null);
   assert.equal(game.recycle(s,23),false);
 });
 
@@ -215,7 +215,7 @@ test('restoration quests advance through all 3 zones exactly once', () => {
 
 test('merges grant XP and build companion skill charge', () => {
  const s=game.createState();
- const first=game.merge(s,23,30);
+ const first=game.merge(s,26,34);
  assert.equal(first.ok,true);assert.ok(s.xp>0);
  assert.equal(s.skillCharge,1);assert.equal(s.magic,2);
 });
@@ -661,8 +661,8 @@ test('merging a crate-revealed item advances the revealed-item goal', () => {
  const r=game.openCellFromCrate(st,10);
  assert.equal(r.reveal.type,'item');
  const item=st.board[10];
- st.board[17]={kind:item.kind,tier:item.tier};
- const merged=game.merge(st,17,10);
+ st.board[18]={kind:item.kind,tier:item.tier};
+ const merged=game.merge(st,18,10);
  assert.equal(merged.ok,true);
  assert.equal(merged.revealedMerge,true);
  assert.equal(st.revealedMerges,1);
