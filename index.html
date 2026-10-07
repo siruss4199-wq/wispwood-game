@@ -131,6 +131,15 @@
 .tile.blocker .item-name{font-size:9px}.skill-action{background:linear-gradient(135deg,#6d58aa,#8870c3);color:#fff;border:0;border-radius:12px;padding:10px 12px;font-weight:900}.skill-action small{display:block;font-size:9px;opacity:.8}.skill-action:disabled{opacity:.45}
 .board-frame.puzzle-locked{box-shadow:0 0 0 3px #d9c6e744,0 12px 28px #59476e19}.board-frame.puzzle-ready{box-shadow:0 0 0 3px #bce4c955,0 12px 28px #41634b19}
 @media(max-width:670px){.puzzle-hud{align-items:flex-start;flex-direction:column}.puzzle-stats{justify-content:flex-start}.actions{flex-wrap:wrap}.skill-action{flex:1 1 45%}}
+
+.generator-panel{margin:12px 0;padding:13px;border-radius:17px;border:1px solid #d9cbea;background:linear-gradient(145deg,#f7f2ff,#eff9f2)}
+.generator-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.generator-head>div{display:flex;flex-direction:column}.generator-head span{font-size:9px;font-weight:900;letter-spacing:.12em;color:#8c70a8}.generator-head strong{font-size:13px;color:#574468}.generator-head #movesLeft{font-size:11px;letter-spacing:0;background:#fff;border:1px solid #ded3e8;padding:7px 9px;border-radius:999px;color:#6d557e}
+.generators{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}.generators button{display:flex;align-items:center;gap:7px;justify-content:center;border:1px solid #d8cce3;border-radius:12px;background:#fff;padding:9px 6px;color:#5c4d68;font-weight:900}.generators button b{font-size:22px}.generators button span{display:flex;flex-direction:column;text-align:left;font-size:10px}.generators button small{font-size:8px;color:#8c8295}.generators button:disabled{opacity:.42}.generator-panel p{margin:9px 2px 0;font-size:10px;line-height:1.4;color:#766c7f}
+.tile.wild{background:radial-gradient(circle at 45% 35%,#fff8c9,#dfcbff 48%,#a687d8);border-color:#8661b7;box-shadow:inset 0 0 14px #fff9,0 0 9px #b99be677}.tile.wild .item-icon{filter:drop-shadow(0 0 5px #fff);animation:wildPulse 1.7s ease-in-out infinite}.tile.group-selected{z-index:3;border:2px solid #6750b5;box-shadow:0 0 0 2px #fff,0 0 0 5px #a98ce3;transform:scale(1.045)}
+.merge-v2{border:0;border-radius:12px;padding:10px 13px;background:linear-gradient(135deg,#edb75b,#bc7b35);color:#fff;font-weight:900;box-shadow:0 4px 10px #a86d3138}.merge-v2 small{display:block;font-size:9px}.merge-v2:disabled{opacity:.42;box-shadow:none}
+@keyframes wildPulse{50%{transform:scale(1.12) rotate(7deg)}}
+@media(max-width:670px){.generators button{padding:8px 3px}.generators button b{font-size:18px}.generators button span{font-size:9px}.generator-head{align-items:flex-start}.generator-panel{padding:10px}}
+@media(prefers-reduced-motion:reduce){.tile.wild .item-icon{animation:none!important}}
 </style></head>
 <body>
  <div class="shell">
@@ -168,14 +177,23 @@
    </section>
    <section class="play card" aria-label="Merge puzzle game"><div class="play-head"><div><span class="eyebrow">MAGIC WORKSHOP</span><h2>Merge to help</h2></div><span class="moves">↔ <b id="moves">0</b> moves</span></div>
     <p class="instruction">Tap two identical items to merge them into a stronger one. On desktop, you can also drag items together.</p>
-    <div class="merge-legend" aria-label="Magical item types"><span class="legend-leaf">🌿 Nature</span><span class="legend-dew">💧 Water</span><span class="legend-glow">✨ Starlight</span></div>
+    <div class="merge-legend" aria-label="Magical item types"><span class="legend-leaf">🌿 Nature</span><span class="legend-dew">💧 Water</span><span class="legend-glow">✨ Starlight</span><span>🌀 Wild</span></div>
+    <div id="v2GeneratorPanel" class="generator-panel" hidden>
+      <div class="generator-head"><div><span>MERGE BOARD v2</span><strong>Choose what to generate</strong></div><span id="movesLeft">24 moves</span></div>
+      <div class="generators">
+        <button type="button" data-generator="leaf"><b>🌳</b><span>Ancient Tree<small>Seed</small></span></button>
+        <button type="button" data-generator="dew"><b>💧</b><span>Moon Spring<small>Dewdrop</small></span></button>
+        <button type="button" data-generator="glow"><b>⭐</b><span>Star Nest<small>Spark</small></span></button>
+      </div>
+      <p>Tap 3 matching items, or hold out for 5 to gain <b>two upgrades + a Wild Wisp</b>.</p>
+    </div>
     <div id="puzzleHud" class="puzzle-hud" hidden>
       <div><span class="puzzle-label">REGION PUZZLE</span><strong id="puzzleName">Whispering Bridge</strong><small id="puzzleHint">Clear blockers to unlock delivery.</small></div>
       <div class="puzzle-stats"><span id="blockerCount">0 blockers</span><span id="comboLabel">Combo ×0</span><span id="skillLabel">Skill 0/5</span></div>
     </div>
     <div class="board-frame"><div class="board-caption"><span>✦ ENCHANTED MERGE GARDEN</span><span>6 × 6</span></div><div id="board" class="board" role="group" aria-label="6 by 6 merge board"></div></div>
     <div class="selected-row"><span id="selected">Select matching tiles to merge</span></div>
-    <div class="actions"><button id="spawnBtn" class="primary">✦ Gather magic <small>FREE</small></button><button id="skillBtn" hidden disabled class="skill-action">✨ Companion Skill <small>0/5</small></button><button id="deliverBtn" disabled class="secondary">♡ Deliver</button><button id="recycleBtn" disabled class="tertiary" aria-label="Recycle selected item">♻</button></div>
+    <div class="actions"><button id="spawnBtn" class="primary">✦ Gather magic <small>FREE</small></button><button id="mergeGroupBtn" hidden disabled class="merge-v2">Merge selected <small>0/3</small></button><button id="skillBtn" hidden disabled class="skill-action">✨ Companion Skill <small>0/5</small></button><button id="deliverBtn" disabled class="secondary">♡ Deliver</button><button id="recycleBtn" disabled class="tertiary" aria-label="Recycle selected item">♻</button></div>
     <p class="footnote">Prototype mode: unlimited gathering, no timers, no ads, no account.</p>
    </section>
    <aside class="sidebar card" aria-label="Rescue objectives"><div class="side-heading"><div><span class="eyebrow">TODAY'S ADVENTURE</span><h2 id="tasksTitle">Help Mivra heal</h2></div><span id="tasksCount" class="progress-count">0/3</span></div><div class="progress"><div id="progressFill"></div></div><p class="side-sub">Craft these magical items, select one on the board, then tap Deliver.</p><div id="tasks"></div><div id="orruPanel" class="orru-panel" hidden>
@@ -402,7 +420,7 @@ function merge(state,from,to) {
  ensurePuzzle(state);
  if(isBlocked(state,from)||isBlocked(state,to)){state.combo=0;return {ok:false,why:'A magical blocker is occupying that tile.'};}
  const a=state.board[from],b=state.board[to];
- if(!a||!b||a.kind!==b.kind||a.tier!==b.tier||a.tier===MAX_TIER){state.combo=0;return {ok:false,why:'Merge two matching, non-maxed items.'};}
+ if(!a||!b||isWild(a)||isWild(b)||a.kind!==b.kind||a.tier!==b.tier||a.tier===MAX_TIER){state.combo=0;return {ok:false,why:'Merge two matching, non-maxed items.'};}
  state.board[from]=null;
  state.board[to]={kind:b.kind,tier:b.tier+1};
  state.moves++;state.combo=Math.min(9,(state.combo||0)+1);state.skillCharge=Math.min(SKILL_MAX,(state.skillCharge||0)+1);
@@ -516,7 +534,7 @@ function showChapterModal(title,body,label){
 const storage=(()=>{try{const k='__wispwood_storage_test';localStorage.setItem(k,'ok');localStorage.removeItem(k);return localStorage;}catch{return {getItem:()=>null,setItem:()=>{}};}})();
 const el=id=>document.getElementById(id);
 let state=restore(storage.getItem(KEY))||createState();
-let selected=null;let confettiTimer;
+let selected=null;let groupSelected=[];let confettiTimer;
 let viewedCreature=null,stageTimer;
 let pendingEffect=null,rescueTimer;
 function effect(type,index=null,taskId=null){pendingEffect={type,index,taskId};}
