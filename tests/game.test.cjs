@@ -17,7 +17,7 @@ test('complete browser game JavaScript compiles without syntax errors', () => {
 const uiStart = script.indexOf("const KEY='wispwood-prototype-v1'");
 assert.ok(uiStart > 0, 'Could not find boundary between game rules and browser UI');
 const context = vm.createContext({});
-const names = ['SIZE','KINDS','INITIAL_OPEN','INITIAL_ENERGY','MAX_ENERGY','CELL_REVEALS','GENERATORS','BOARD_GOALS','boardGoalProgress','isOpen','isGenerator','isWebbed','neighbors','isFrontierCell','unlockCost','openEmptyIndices','ensureStarterGenerator','revealUnlockedCell','crateRevealFor','crateHitsNeeded','crateDamage','openCellFromCrate','damageAdjacentCrates','unlockCell','moveItem','mergeGenerator','activateGenerator','V2_MOVES','isWild','normalItem','itemLabel','v2Active','v2Limited','generateFrom','mergeGroup','TASKS', 'GROVE_TASKS', 'TRAIL', 'PUZZLES', 'SKILL_MAX', 'BLOCKER_ICON', 'puzzleInfo', 'puzzleReady', 'seedPuzzle', 'ensurePuzzle', 'isBlocked', 'useCompanionSkill', 'CREATURES', 'ORRU_GROW_COST', 'ORRU_QUEST_GOAL', 'orruGrow', 'orruCanGrow', 'clearVines', 'deliverOrruQuest', 'rescueStage', 'currentCompanion', 'chooseCompanion', 'activeTasks', 'gainXP', 'trailInfo', 'isTrail', 'collected', 'createState', 'merge', 'deliver', 'spawn', 'recycle', 'breakDown', 'explore', 'serialize', 'restore'];
+const names = ['SIZE','KINDS','INITIAL_OPEN','INITIAL_ENERGY','MAX_ENERGY','CELL_REVEALS','GENERATORS','BOARD_GOALS','boardGoalProgress','isOpen','isGenerator','isWebbed','neighbors','isFrontierCell','unlockCost','openEmptyIndices','mergeablePair','ensurePlayableState','ensureStarterGenerator','revealUnlockedCell','crateRevealFor','crateHitsNeeded','crateDamage','openCellFromCrate','damageAdjacentCrates','unlockCell','moveItem','mergeGenerator','activateGenerator','V2_MOVES','isWild','normalItem','itemLabel','v2Active','v2Limited','generateFrom','mergeGroup','TASKS', 'GROVE_TASKS', 'TRAIL', 'PUZZLES', 'SKILL_MAX', 'BLOCKER_ICON', 'puzzleInfo', 'puzzleReady', 'seedPuzzle', 'ensurePuzzle', 'isBlocked', 'useCompanionSkill', 'CREATURES', 'ORRU_GROW_COST', 'ORRU_QUEST_GOAL', 'orruGrow', 'orruCanGrow', 'clearVines', 'deliverOrruQuest', 'rescueStage', 'currentCompanion', 'chooseCompanion', 'activeTasks', 'gainXP', 'trailInfo', 'isTrail', 'collected', 'createState', 'merge', 'deliver', 'spawn', 'recycle', 'breakDown', 'explore', 'serialize', 'restore'];
 vm.runInContext(script.slice(0, uiStart) + '\nglobalThis.game = {' + names.join(',') + '};', context, { timeout: 1000 });
 const game = context.game;
 
@@ -52,6 +52,57 @@ test('two identical items merge and advance the move counter', () => {
   assert.equal(s.magic,2);
   assert.equal(s.energy,25);
   assert.equal(s.moves, 1);
+});
+
+test('deadlock guard creates one matching safety item only when no merge remains', () => {
+  const s=game.createState();
+  s.openCells=Array.from({length:64},(_,i)=>i);
+  s.board.fill(null);
+  s.board[26]={kind:'leaf',tier:0};
+  s.board[34]={kind:'leaf',tier:0};
+  const r=game.merge(s,26,34);
+  assert.equal(r.ok,true);
+  assert.ok(r.safetyDrop);
+  assert.equal(r.safetyDrop.index,26);
+  assert.equal(s.board[26].kind,'leaf');
+  assert.equal(s.board[26].tier,1);
+  const pair=game.mergeablePair(s);
+  assert.ok(pair);
+  assert.equal(pair.length,2);
+  assert.equal(new Set(pair).has(26),true);
+  assert.equal(new Set(pair).has(34),true);
+});
+
+test('deadlock guard does nothing when another valid pair already exists', () => {
+  const s=game.createState();
+  s.openCells=[18,19,26,34];
+  s.board.fill(null);
+  s.board[18]={kind:'dew',tier:0};
+  s.board[19]={kind:'dew',tier:0};
+  s.board[26]={kind:'leaf',tier:0};
+  s.board[34]={kind:'leaf',tier:0};
+  const r=game.merge(s,26,34);
+  assert.equal(r.ok,true);
+  assert.equal(r.safetyDrop,null);
+  const pair=game.mergeablePair(s);
+  assert.ok(pair);
+  assert.equal(pair[0],18);
+  assert.equal(pair[1],19);
+});
+
+test('restoring a progressed deadlocked save self-heals without resetting progression', () => {
+  const s=game.createState();
+  s.openCells=[18,19,26,34];
+  s.board.fill(null);
+  s.board[18]={kind:'dew',tier:0};
+  s.board[19]={kind:'glow',tier:0};
+  s.board[34]={kind:'leaf',tier:1};
+  s.moves=5;s.xp=123;
+  const loaded=game.restore(game.serialize(s));
+  assert.equal(loaded.moves,5);
+  assert.equal(loaded.xp,123);
+  assert.ok(game.mergeablePair(loaded));
+  assert.equal(loaded.board.filter(Boolean).length,4);
 });
 
 test('illegal merges do not change items or moves', () => {
