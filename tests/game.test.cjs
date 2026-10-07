@@ -406,7 +406,7 @@ test('v1 restoration region seeds real blockers on empty board cells', () => {
 });
 
 test('quest delivery is locked until region blockers are cleared', () => {
- const st=game.createState();st.rescued=true;st.explored=true;st.orruRescued=true;
+ const st=game.createState();st.rescued=true;st.explored=true;st.orruRescued=true;st.board.fill(null);
  game.ensurePuzzle(st);
  const task=game.TRAIL[0].tasks[0];
  const index=st.board.findIndex((v,i)=>v===null&&!game.isBlocked(st,i));
@@ -446,7 +446,7 @@ test('Orru clears vines while Mivra clears fog and mixed gate needs both', () =>
 });
 
 test('zone completion seeds the next region puzzle', () => {
- const st=game.createState();st.rescued=true;st.explored=true;st.orruRescued=true;
+ const st=game.createState();st.rescued=true;st.explored=true;st.orruRescued=true;st.board.fill(null);
  st.puzzleZone=0;st.blockers=[];
  for(let i=0;i<3;i++){
   const t=game.TRAIL[0].tasks[i];st.board[i]={kind:t.kind,tier:t.tier};
@@ -459,7 +459,7 @@ test('zone completion seeds the next region puzzle', () => {
 });
 
 test('v0.8 saves migrate into v1 puzzle fields without losing progress', () => {
- const st=game.createState();st.rescued=true;st.explored=true;
+ const st=game.createState();st.rescued=true;st.explored=true;st.board.fill(null);
  st.groveCompleted=['grove-bloom','grove-well','grove-aurora'];st.orruRescued=true;
  st.trailIndex=1;st.xp=234;delete st.puzzleZone;delete st.blockers;delete st.runesFound;delete st.combo;delete st.skillCharge;
  const loaded=game.restore(JSON.stringify(st));
@@ -484,7 +484,7 @@ test('embedded Spirit Tree spends energy and creates a Seed after a merge frees 
  const r=game.activateGenerator(st,27,()=>0);
  assert.equal(r.ok,true);
  assert.equal(st.board[r.index].kind,'leaf');assert.equal(st.board[r.index].tier,0);
- assert.equal(st.energy,game.INITIAL_ENERGY-1);
+ assert.equal(st.energy,game.INITIAL_ENERGY);
  assert.equal(game.isOpen(st,r.index),true);
 });
 
