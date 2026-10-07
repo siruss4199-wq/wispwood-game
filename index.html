@@ -174,15 +174,32 @@ function activeTasks(state){
 function gainXP(state,points){state.xp+=points;state.level=Math.floor(state.xp/75)+1;}
 function trailInfo(state){return TRAIL[state.trailIndex]||null;}
 
-function collected(state){return [
- {name:'Mivra',type:'Mist guide',icon:'🪻',unlocked:state.rescued},
- {name:'Orru',type:'Forest keeper',icon:'🍃',unlocked:state.orruRescued}
-];}
+const CREATURES={
+ mivra:{name:'Mivra',type:'Mist Guide',ability:'Starlight Gift',description:'Mivra uncovers paths hidden in the mist and gifts a Spark every eighth Gather.',bonus:'glow'},
+ orru:{name:'Orru',type:'Forest Keeper',ability:'Forest Gift',description:'Orru tends the forest and gifts a Seed every eighth Gather.',bonus:'leaf'}
+};
+function rescueStage(state,who){return who==='orru'?state.groveCompleted.length:state.completed.length;}
+function currentCompanion(state){
+ const id=state.activeCompanion;
+ if(id==='mivra'&&state.rescued)return id;
+ if(id==='orru'&&state.orruRescued)return id;
+ return null;
+}
+function chooseCompanion(state,id){
+ if(!Object.hasOwn(CREATURES,id))return false;
+ if(id==='mivra'&&!state.rescued||id==='orru'&&!state.orruRescued)return false;
+ state.activeCompanion=id;return true;
+}
+function collected(state){return Object.entries(CREATURES).map(([id,info])=>({
+ id,name:info.name,type:info.type,ability:info.ability,
+ unlocked:id==='mivra'?state.rescued:state.orruRescued,
+ active:currentCompanion(state)===id
+}));}
 function createState() {
  const board=Array(SIZE*SIZE).fill(null);
  const placement=[ [0,'leaf',0],[1,'leaf',0], [6,'dew',0],[7,'dew',0], [12,'glow',0],[13,'glow',0], [19,'leaf',1], [22,'dew',1], [26,'glow',1] ];
  for(const [i,kind,tier] of placement)board[i]={kind,tier};
- return { board,completed:[],groveCompleted:[], rescued:false, explored:false,orruRescued:false,trailIndex:0,trailCompleted:[],xp:0,level:1,bonusItems:0,moves:0,spawns:0,message:'Help Mivra recover by crafting three supplies.' };
+ return { board,completed:[],groveCompleted:[], rescued:false, explored:false,orruRescued:false,activeCompanion:null,trailIndex:0,trailCompleted:[],xp:0,level:1,bonusItems:0,moves:0,spawns:0,message:'Help Mivra recover by crafting three supplies.' };
 }
 function merge(state,from,to) {
  if(!Number.isInteger(from)||!Number.isInteger(to)||from===to||from<0||to<0||from>=SIZE*SIZE||to>=SIZE*SIZE)return {ok:false,why:'Choose two different tiles.'};
@@ -207,7 +224,7 @@ function deliver(state,index) {
   return {ok:true,task,rescued:false,friend:null,completedStage,stageName:stage.name,allRestored:state.trailIndex===TRAIL.length};
  }
  if(state.explored){if(done.length===GROVE_TASKS.length)state.orruRescued=true;}
- else if(done.length===TASKS.length)state.rescued=true;
+ else if(done.length===TASKS.length){state.rescued=true;if(!currentCompanion(state))state.activeCompanion='mivra';}
  return {ok:true,task,rescued:state.explored?state.orruRescued:state.rescued,friend:state.explored?'Orru':'Mivra'};
 }
 function spawn(state,random=Math.random){
@@ -216,16 +233,18 @@ function spawn(state,random=Math.random){
  const kind=KINDS[Math.min(KINDS.length-1,Math.floor(random()*KINDS.length))];
  const index=free[Math.min(free.length-1,Math.floor(random()*free.length))];
  state.board[index]={kind,tier:0};state.spawns++;
- // Mivra and Orru periodically help once rescued. No energy timers or paywalls.
- let helper=null,bonusIndex=null;
- if(state.rescued&&state.spawns%8===0){
-  const bonusKind=state.orruRescued?'leaf':'glow';
+ const active=currentCompanion(state);
+ const bonusDue=Boolean(active&&state.spawns%8===0);
+ let helper=null,bonusIndex=null,bonusSkipped=false;
+ if(bonusDue){
   const empty=free.filter(i=>i!==index);
-  if(empty.length){bonusIndex=empty[Math.min(empty.length-1,Math.floor(random()*empty.length))];
-   state.board[bonusIndex]={kind:bonusKind,tier:0};state.bonusItems++;
-   helper=state.orruRescued?'Orru':'Mivra';}
+  if(empty.length){
+   bonusIndex=empty[Math.min(empty.length-1,Math.floor(random()*empty.length))];
+   state.board[bonusIndex]={kind:CREATURES[active].bonus,tier:0};state.bonusItems++;
+   helper=CREATURES[active].name;
+  }else bonusSkipped=true;
  }
- return {ok:true,index,kind,helper,bonusIndex};
+ return {ok:true,index,kind,helper,bonusIndex,bonusSkipped};
 }
 function recycle(state,index){if(!state.board[index])return false;state.board[index]=null;return true;}
 function explore(state){if(!state.rescued||state.explored)return false;state.explored=true;return true;}
@@ -239,6 +258,8 @@ function restore(raw){
   s.explored=Boolean(s.rescued&&s.explored);
   s.groveCompleted=Array.isArray(s.groveCompleted)?GROVE_TASKS.map(t=>t.id).filter(id=>s.groveCompleted.includes(id)):[];
   s.orruRescued=Boolean(s.explored&&s.groveCompleted.length===GROVE_TASKS.length);
+  // Existing v0.6 saves default to their first rescued companion.
+  s.activeCompanion=s.activeCompanion==='orru'&&s.orruRescued?'orru':s.rescued?'mivra':null;
   // Migrate v0.3/v0.4 progress; existing rescued friends and board remain intact.
   s.trailIndex=Number.isInteger(s.trailIndex)?Math.max(0,Math.min(TRAIL.length,s.trailIndex)):0;
   s.trailCompleted=Array.isArray(s.trailCompleted)&&s.trailIndex<TRAIL.length?TRAIL[s.trailIndex].tasks.map(t=>t.id).filter(id=>s.trailCompleted.includes(id)):[];
