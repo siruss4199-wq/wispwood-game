@@ -13,7 +13,7 @@ assert.ok(script, 'Inline game script must exist');
 const uiStart = script.indexOf("const KEY='wispwood-prototype-v1'");
 assert.ok(uiStart > 0, 'Could not find boundary between game rules and browser UI');
 const context = vm.createContext({});
-const names = ['SIZE', 'KINDS', 'TASKS', 'GROVE_TASKS', 'TRAIL', 'activeTasks', 'gainXP', 'trailInfo', 'isTrail', 'collected', 'createState', 'merge', 'deliver', 'spawn', 'recycle', 'explore', 'serialize', 'restore'];
+const names = ['SIZE', 'KINDS', 'TASKS', 'GROVE_TASKS', 'TRAIL', 'CREATURES', 'rescueStage', 'currentCompanion', 'chooseCompanion', 'activeTasks', 'gainXP', 'trailInfo', 'isTrail', 'collected', 'createState', 'merge', 'deliver', 'spawn', 'recycle', 'explore', 'serialize', 'restore'];
 vm.runInContext(script.slice(0, uiStart) + '\nglobalThis.game = {' + names.join(',') + '};', context, { timeout: 1000 });
 const game = context.game;
 
@@ -209,6 +209,7 @@ test('merges grant XP and rescued friends give periodic free items', () => {
  const first=game.merge(s,0,1);
  assert.equal(first.ok,true);assert.ok(s.xp>0);
  s.rescued=true;s.orruRescued=true;
+ assert.equal(game.chooseCompanion(s,'orru'),true);
  s.spawns=7;
  const result=game.spawn(s,()=>0);
  assert.equal(result.ok,true);
@@ -260,5 +261,83 @@ test('matching item highlighting excludes selected and maximum-tier items', () =
  assert.match(html,/i!==selected&&item\.kind===picked\.kind&&item\.tier===picked\.tier&&item\.tier<MAX_TIER/);
  assert.match(html,/cell\.classList\.add\('merge-match'\)/);
  assert.match(html,/aria-pressed/);
+ assert.match(html,/prefers-reduced-motion:reduce/);
+});
+
+test('rescue stages follow delivered items in either chapter', () => {
+ const gameState=game.createState();
+ assert.equal(game.rescueStage(gameState,'mivra'),0);
+ for(let i=0;i<game.TASKS.length;i++){
+  const t=game.TASKS[i];gameState.board[i]={kind:t.kind,tier:t.tier};
+  assert.equal(game.deliver(gameState,i).ok,true);
+  assert.equal(game.rescueStage(gameState,'mivra'),i+1);
+ }
+ game.explore(gameState);
+ for(let i=0;i<game.GROVE_TASKS.length;i++){
+  const t=game.GROVE_TASKS[i];gameState.board[i]={kind:t.kind,tier:t.tier};
+  assert.equal(game.deliver(gameState,i).ok,true);
+  assert.equal(game.rescueStage(gameState,'orru'),i+1);
+ }
+});
+
+test('only rescued creatures can be selected and saved', () => {
+ const state=game.createState();
+ assert.equal(game.chooseCompanion(state,'mivra'),false);
+ assert.equal(game.chooseCompanion(state,'orru'),false);
+ assert.equal(game.chooseCompanion(state,'unknown'),false);
+ state.rescued=true;
+ assert.equal(game.chooseCompanion(state,'mivra'),true);
+ assert.equal(game.currentCompanion(state),'mivra');
+ state.explored=true;state.groveCompleted=['grove-bloom','grove-well','grove-aurora'];state.orruRescued=true;
+ assert.equal(game.chooseCompanion(state,'orru'),true);
+ assert.equal(game.currentCompanion(state),'orru');
+ assert.equal(game.restore(game.serialize(state)).activeCompanion,'orru');
+});
+
+test('selected Mivra gives Spark and selected Orru gives Seed every eighth gather', () => {
+ const state=game.createState();state.rescued=true;state.orruRescued=true;
+ assert.equal(game.chooseCompanion(state,'mivra'),true);
+ state.spawns=7;
+ let result=game.spawn(state,()=>0);
+ assert.equal(result.helper,'Mivra');
+ assert.equal(state.board[result.bonusIndex].kind,'glow');
+ assert.equal(game.chooseCompanion(state,'orru'),true);
+ state.spawns=15;
+ result=game.spawn(state,()=>0);
+ assert.equal(result.helper,'Orru');
+ assert.equal(state.board[result.bonusIndex].kind,'leaf');
+ assert.equal(state.bonusItems,2);
+});
+
+test('bonus is skipped transparently if only one free tile remains', () => {
+ const state=game.createState();state.rescued=true;
+ assert.equal(game.chooseCompanion(state,'mivra'),true);
+ state.board.fill({kind:'leaf',tier:0});
+ state.board[0]=null;state.spawns=7;
+ const result=game.spawn(state,()=>0);
+ assert.equal(result.ok,true);
+ assert.equal(result.bonusSkipped,true);
+ assert.equal(result.helper,null);
+ assert.equal(state.bonusItems,0);
+});
+
+test('v0.6 save migration keeps existing progress and assigns a rescued companion', () => {
+ const old=game.createState();old.rescued=true;old.explored=true;old.orruRescued=true;
+ old.groveCompleted=['grove-bloom','grove-well','grove-aurora'];
+ delete old.activeCompanion;
+ old.trailIndex=1;old.xp=165;old.level=3;
+ const restored=game.restore(JSON.stringify(old));
+ assert.equal(restored.activeCompanion,'mivra');
+ assert.equal(restored.orruRescued,true);
+ assert.equal(restored.trailIndex,1);
+ assert.equal(restored.xp,165);
+});
+
+test('Sanctuary profiles and visual rescue stages are in the interface', () => {
+ for(const id of ['creatureOverlay','creaturePortrait','creatureTitle','creatureRole','creatureAbility','companionSelect','creatureClose','rescueVeil','sceneEffect'])
+  assert.match(html,new RegExp('id="'+id+'"'));
+ assert.match(html,/stage-\x27\+i/);
+ assert.match(html,/CREATURE SANCTUARY/);
+ assert.match(html,/MIVRA_ART:ORRU_ART/);
  assert.match(html,/prefers-reduced-motion:reduce/);
 });
