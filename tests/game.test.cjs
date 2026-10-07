@@ -551,7 +551,7 @@ test('six-tier chains include meaningful late-game items', () => {
  assert.match(html,/Star Core/);
 });
 
-test('legacy or pre-schema save keeps progression but restarts Merge Board 2.0 from one clearing', () => {
+test('legacy or pre-schema save keeps progression but restarts from the two-seed clearing', () => {
  const old=game.createState();
  old.rescued=true;old.completed=['heal','drink','light'];old.xp=210;old.level=3;
  old.boardSchema=2;old.openCells=Array.from({length:18},(_,i)=>i);old.magic=99;
@@ -559,8 +559,8 @@ test('legacy or pre-schema save keeps progression but restarts Merge Board 2.0 f
  const loaded=game.restore(JSON.stringify(old));
  assert.ok(loaded);assert.equal(loaded.board.length,64);
  assert.equal(loaded.openCells.length,12);
- assert.equal(loaded.board.filter(Boolean).length,12);
- assert.equal(game.isGenerator(loaded.board[27]),true);
+ assert.equal(loaded.board.filter(Boolean).length,2);
+ assert.equal(loaded.board.some(game.isGenerator),false);
  assert.equal(loaded.magic,0);assert.equal(loaded.energy,game.INITIAL_ENERGY);
  assert.equal(loaded.rescued,true);assert.equal(loaded.xp,210);
 });
@@ -690,7 +690,7 @@ test('board discovery goals expose crate, web and revealed-merge progress', () =
  assert.doesNotThrow(()=>new vm.Script(script));
 });
 
-test('schema 6 saves reset only the board into current two-seed schema 9', () => {
+test('schema 6 saves reset only the board into current two-seed schema 10', () => {
  const old=game.createState();
  old.boardSchema=6;
  old.openCells=[...Array.from({length:25},(_,i)=>i)];
@@ -698,7 +698,7 @@ test('schema 6 saves reset only the board into current two-seed schema 9', () =>
  old.rescued=true;old.completed=['heal','drink','light'];old.xp=300;
  const loaded=game.restore(JSON.stringify(old));
  assert.ok(loaded);
- assert.equal(loaded.boardSchema,9);
+ assert.equal(loaded.boardSchema,10);
  assert.equal(loaded.openCells.length,12);
  assert.equal(loaded.board.filter(Boolean).length,2);
  assert.equal(loaded.cratesOpened,0);
@@ -799,12 +799,12 @@ test('mobile 8x8 board uses calm crate visuals with subtle variations', () => {
 });
 
 test('current two-seed schema version resets existing saves into the calm start', () => {
- assert.match(html,/const BOARD_SCHEMA=9;/);
+ assert.match(html,/const BOARD_SCHEMA=10;/);
  const old=game.createState();
- old.boardSchema=8;
+ old.boardSchema=9;
  old.board[18]={kind:'glow',tier:2};
  const loaded=game.restore(JSON.stringify(old));
- assert.equal(loaded.boardSchema,9);
+ assert.equal(loaded.boardSchema,10);
  assert.equal(loaded.board.filter(Boolean).length,2);
  assert.equal(loaded.board[26].kind,'leaf');
  assert.equal(loaded.board[34].kind,'leaf');
