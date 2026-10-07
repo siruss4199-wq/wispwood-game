@@ -17,7 +17,7 @@ test('complete browser game JavaScript compiles without syntax errors', () => {
 const uiStart = script.indexOf("const KEY='wispwood-prototype-v1'");
 assert.ok(uiStart > 0, 'Could not find boundary between game rules and browser UI');
 const context = vm.createContext({});
-const names = ['SIZE','KINDS','INITIAL_OPEN','INITIAL_ENERGY','MAX_ENERGY','CELL_REVEALS','GENERATORS','isOpen','isGenerator','isWebbed','neighbors','isFrontierCell','unlockCost','openEmptyIndices','ensureStarterGenerator','revealUnlockedCell','unlockCell','activateGenerator','V2_MOVES','isWild','normalItem','itemLabel','v2Active','v2Limited','generateFrom','mergeGroup','TASKS', 'GROVE_TASKS', 'TRAIL', 'PUZZLES', 'SKILL_MAX', 'BLOCKER_ICON', 'puzzleInfo', 'puzzleReady', 'seedPuzzle', 'ensurePuzzle', 'isBlocked', 'useCompanionSkill', 'CREATURES', 'ORRU_GROW_COST', 'ORRU_QUEST_GOAL', 'orruGrow', 'orruCanGrow', 'clearVines', 'deliverOrruQuest', 'rescueStage', 'currentCompanion', 'chooseCompanion', 'activeTasks', 'gainXP', 'trailInfo', 'isTrail', 'collected', 'createState', 'merge', 'deliver', 'spawn', 'recycle', 'explore', 'serialize', 'restore'];
+const names = ['SIZE','KINDS','INITIAL_OPEN','INITIAL_ENERGY','MAX_ENERGY','CELL_REVEALS','GENERATORS','isOpen','isGenerator','isWebbed','neighbors','isFrontierCell','unlockCost','openEmptyIndices','ensureStarterGenerator','revealUnlockedCell','crateHitsNeeded','crateDamage','openCellFromCrate','damageAdjacentCrates','unlockCell','activateGenerator','V2_MOVES','isWild','normalItem','itemLabel','v2Active','v2Limited','generateFrom','mergeGroup','TASKS', 'GROVE_TASKS', 'TRAIL', 'PUZZLES', 'SKILL_MAX', 'BLOCKER_ICON', 'puzzleInfo', 'puzzleReady', 'seedPuzzle', 'ensurePuzzle', 'isBlocked', 'useCompanionSkill', 'CREATURES', 'ORRU_GROW_COST', 'ORRU_QUEST_GOAL', 'orruGrow', 'orruCanGrow', 'clearVines', 'deliverOrruQuest', 'rescueStage', 'currentCompanion', 'chooseCompanion', 'activeTasks', 'gainXP', 'trailInfo', 'isTrail', 'collected', 'createState', 'merge', 'deliver', 'spawn', 'recycle', 'explore', 'serialize', 'restore'];
 vm.runInContext(script.slice(0, uiStart) + '\nglobalThis.game = {' + names.join(',') + '};', context, { timeout: 1000 });
 const game = context.game;
 
@@ -486,15 +486,16 @@ test('embedded Spirit Tree spends energy and creates a Seed in the open clearing
  assert.equal(game.isOpen(st,r.index),true);
 });
 
-test('locked frontier costs Magic and opens one tile at a time', () => {
+test('frontier crates open from adjacent merge hits instead of direct clicks', () => {
  const st=game.createState();
  assert.equal(game.isFrontierCell(st,17),true);
- const cost=game.unlockCost(st,17);assert.equal(cost,4);
- assert.equal(game.unlockCell(st,17).ok,false);
- st.magic=cost;
- const r=game.unlockCell(st,17);
- assert.equal(r.ok,true);assert.equal(st.magic,0);assert.equal(game.isOpen(st,17),true);
- assert.equal(r.reveal.type,'web');assert.equal(game.isWebbed(st,17),true);
+ assert.equal(game.crateHitsNeeded(st,17),1);
+ st.board[18]={kind:'leaf',tier:0};st.board[26]={kind:'leaf',tier:0};
+ const r=game.merge(st,26,18);
+ assert.equal(r.ok,true);
+ assert.ok(r.crateResult.opened.some(x=>x.index===17));
+ assert.equal(game.isOpen(st,17),true);
+ assert.equal(game.isWebbed(st,17),true);
 });
 
 test('pair merges earn Magic and recover one energy', () => {
@@ -515,15 +516,13 @@ test('webbed item is freed by merging it with a matching item', () => {
  assert.equal(st.board[17].tier,2);
 });
 
-test('unlocking special frontier tiles can reveal generators and blockers', () => {
+test('breaking crates can reveal generators and blockers', () => {
  const st=game.createState();
- st.magic=20;
- let r=game.unlockCell(st,21);
- assert.equal(r.ok,true);assert.equal(r.reveal.type,'generator');
- assert.equal(game.isGenerator(st.board[21]),true);assert.equal(st.board[21].kind,'dew');
- st.magic=20;r=game.unlockCell(st,25);
- assert.equal(r.ok,true);assert.equal(r.reveal.type,'blocker');
- assert.ok(st.blockers.some(b=>b.index===25&&b.type==='fog'));
+ // Directly simulate crate break reveal results for deterministic coverage.
+ st.openCells.push(21);let r=game.revealUnlockedCell(st,21);
+ assert.equal(r.type,'generator');assert.equal(game.isGenerator(st.board[21]),true);
+ st.openCells.push(25);r=game.revealUnlockedCell(st,25);
+ assert.equal(r.type,'blocker');assert.ok(st.blockers.some(b=>b.index===25&&b.type==='fog'));
 });
 
 test('locked cells cannot be merged or used as generator output', () => {
@@ -563,7 +562,17 @@ test('legacy or pre-schema save keeps progression but restarts Merge Board 2.0 f
 test('Merge Board 2.0 interface exposes resources, locked 8x8 board and parses fully', () => {
  for(const id of ['resourceBar','energyLabel','magicLabel','openLabel','board'])
   assert.match(html,new RegExp('id="'+id+'"'));
- assert.match(html,/8 × 8/);assert.match(html,/tile locked/);assert.match(html,/terrain-icon/);assert.match(html,/webbed/);assert.match(html,/generator/);
+ assert.match(html,/8 × 8/);assert.match(html,/tile locked/);assert.match(html,/📦/);assert.match(html,/crate-help/);assert.match(html,/webbed/);assert.match(html,/generator/);
  assert.doesNotThrow(()=>new vm.Script(script));
 });
 
+
+test('later crates require multiple adjacent merge hits', () => {
+ const st=game.createState();
+ st.openCells=[...Array.from({length:20},(_,i)=>i),26,27,28,34,35,36];
+ const idx=21;
+ assert.equal(game.isFrontierCell(st,idx),true);
+ assert.ok(game.crateHitsNeeded(st,idx)>=2);
+ st.crateDamage[idx]=1;
+ assert.equal(game.crateDamage(st,idx),1);
+});

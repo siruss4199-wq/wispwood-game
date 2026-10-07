@@ -142,7 +142,7 @@
 @media(prefers-reduced-motion:reduce){.tile.wild .item-icon{animation:none!important}}
 
 .resource-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}.resource-bar>div{background:linear-gradient(145deg,#fff,#f4eef9);border:1px solid #e2d7ed;border-radius:13px;padding:9px 10px;text-align:center}.resource-bar span{display:block;font-size:9px;color:#91829d;font-weight:900}.resource-bar strong{font-size:14px;color:#5b4771}.board-guide{font-size:10px;color:#8c8197;line-height:1.45;margin:4px 0 11px}
-.tile.locked{position:relative;background:linear-gradient(145deg,#6c7669,#4d5b50);border-color:#445147;color:#eef5ee;box-shadow:inset 0 0 18px #24302766;cursor:not-allowed;overflow:hidden}.tile.locked.frontier{cursor:pointer;background:linear-gradient(145deg,#788775,#59685d);box-shadow:inset 0 0 18px #24302766,0 0 0 2px #d7efcf55}.tile.locked .terrain-icon{font-size:clamp(18px,2.6vw,30px);filter:saturate(.65) brightness(.92);opacity:.78}.tile.locked small{position:absolute;right:3px;bottom:3px;font-size:8px;color:#fff5cf;font-weight:900;background:#584966cc;border-radius:999px;padding:3px 5px}.tile.locked.terrain-1{background:linear-gradient(145deg,#6a7567,#455348)}.tile.locked.terrain-2{background:linear-gradient(145deg,#727873,#555d57)}.tile.locked.terrain-3{background:linear-gradient(145deg,#666f77,#4b545d)}
+.tile.locked{position:relative;background:linear-gradient(145deg,#697268,#4b554d);border-color:#435048;color:#eef5ee;box-shadow:inset 0 0 18px #24302766;cursor:not-allowed;overflow:hidden}.tile.locked.frontier{background:linear-gradient(145deg,#b8946a,#8b6748);border-color:#76583f;box-shadow:inset 0 0 16px #53351f55,0 2px 5px #3e2d1f44}.tile.locked .terrain-icon{font-size:clamp(18px,2.6vw,30px);opacity:.72}.tile.locked.frontier .terrain-icon{font-size:clamp(28px,3.3vw,42px);opacity:1;filter:drop-shadow(0 2px 2px #5e3f2d55)}.tile.locked small{position:absolute;right:4px;bottom:3px;font-size:8px;color:#fff5cf;font-weight:900;background:#6b4b34dd;border-radius:999px;padding:3px 5px}.tile.locked.terrain-1{background:linear-gradient(145deg,#6a7567,#455348)}.tile.locked.terrain-2{background:linear-gradient(145deg,#727873,#555d57)}.tile.locked.terrain-3{background:linear-gradient(145deg,#666f77,#4b545d)}.tile.crate-hit{animation:crateHit .28s ease-out}.tile.crate-open{animation:crateOpen .5s ease-out}.crate-cracks{position:absolute;inset:0;display:grid;place-items:center;font-size:19px;pointer-events:none}.crate-help{font-size:7px;color:#fff3dc;background:#6c4a33cc;border-radius:999px;padding:2px 4px;position:absolute;left:3px;bottom:3px}@keyframes crateHit{0%,100%{transform:translateX(0)}30%{transform:translateX(-4px) rotate(-2deg)}60%{transform:translateX(4px) rotate(2deg)}}@keyframes crateOpen{0%{transform:scale(1);opacity:1}100%{transform:scale(1.25);opacity:0}}
 .tile.generator{background:radial-gradient(circle at 50% 35%,#fff8cc,#daf1d4 55%,#b8ddb0);border:2px solid #85af7e;box-shadow:0 3px 8px #47664035}.tile.generator .generator-icon{font-size:clamp(22px,3vw,34px)}.tile.generator .item-name{color:#44674b}.tile.generator .tier-pips{font-size:8px;color:#739276}
 .tile.webbed{position:relative;overflow:hidden}.tile.webbed:after{content:'🕸';position:absolute;inset:0;display:grid;place-items:center;font-size:clamp(24px,3vw,38px);opacity:.7;pointer-events:none}
 .tile.webbed .item-icon,.tile.webbed .item-name{opacity:.65}.tile.empty{background:linear-gradient(145deg,#eff7e9,#ddebd7);border-color:#d1e2c8}.board{background:#c7d9bd;border-color:#c7d9bd}.board-frame{background:linear-gradient(145deg,#eff5e8,#e5eee0)}
@@ -303,6 +303,36 @@ function neighbors(index){
  return out;
 }
 function isFrontierCell(state,index){return !isOpen(state,index)&&neighbors(index).some(i=>isOpen(state,i));}
+function crateHitsNeeded(state,index){
+ if(!isFrontierCell(state,index))return 0;
+ const expanded=Math.max(0,state.openCells.length-INITIAL_OPEN.length);
+ return expanded<8?1:expanded<20?2:3;
+}
+function crateDamage(state,index){return Number(state.crateDamage?.[index]||0);}
+function openCellFromCrate(state,index){
+ if(!isFrontierCell(state,index))return null;
+ if(!Array.isArray(state.openCells))state.openCells=[];
+ if(!state.openCells.includes(index))state.openCells.push(index);
+ state.openCells.sort((a,b)=>a-b);
+ if(state.crateDamage)delete state.crateDamage[index];
+ const reveal=revealUnlockedCell(state,index);gainXP(state,5);
+ return {index,reveal};
+}
+function damageAdjacentCrates(state,center){
+ if(!state.crateDamage||typeof state.crateDamage!=='object')state.crateDamage={};
+ const hit=[],opened=[];
+ for(const index of neighbors(center)){
+  if(!isFrontierCell(state,index))continue;
+  const need=crateHitsNeeded(state,index);
+  state.crateDamage[index]=(state.crateDamage[index]||0)+1;
+  hit.push({index,damage:state.crateDamage[index],need});
+  if(state.crateDamage[index]>=need){
+   const result=openCellFromCrate(state,index);
+   if(result)opened.push(result);
+  }
+ }
+ return {hit,opened};
+}
 function unlockCost(state,index){
  if(!isFrontierCell(state,index))return null;
  const extra=Math.max(0,state.openCells.length-INITIAL_OPEN.length);
@@ -316,7 +346,7 @@ function resetMergeBoardForSchema(state){
  const board=Array(SIZE*SIZE).fill(null);
  board[27]={special:'generator',kind:'leaf',level:1};
  board[26]={kind:'leaf',tier:0};board[34]={kind:'leaf',tier:0};
- state.board=board;state.openCells=[...INITIAL_OPEN];state.webbed=[];state.blockers=[];
+ state.board=board;state.openCells=[...INITIAL_OPEN];state.webbed=[];state.crateDamage={};state.blockers=[];
  state.magic=0;state.energy=INITIAL_ENERGY;state.maxEnergy=MAX_ENERGY;
  state.puzzleZone=-1;state.combo=0;state.skillCharge=0;state.boardSchema=BOARD_SCHEMA;
  state.boardResetNotice=true;
@@ -452,7 +482,7 @@ function createState() {
  const board=Array(SIZE*SIZE).fill(null);
  board[27]={special:'generator',kind:'leaf',level:1};
  board[26]={kind:'leaf',tier:0};board[34]={kind:'leaf',tier:0};
- return {board,boardSchema:BOARD_SCHEMA,openCells:[...INITIAL_OPEN],webbed:[],magic:0,energy:INITIAL_ENERGY,maxEnergy:MAX_ENERGY,completed:[],groveCompleted:[],rescued:false,explored:false,orruRescued:false,activeCompanion:null,orruCharge:0,orruQuestCount:0,vinesCleared:false,trailIndex:0,trailCompleted:[],puzzleZone:-1,blockers:[],runesFound:0,combo:0,skillCharge:0,v2MovesLeft:V2_MOVES,v2Zone:-1,xp:0,level:1,bonusItems:0,moves:0,spawns:0,message:'Grow your clearing, merge magic, and rescue the creatures of Wispwood.'};
+ return {board,boardSchema:BOARD_SCHEMA,openCells:[...INITIAL_OPEN],webbed:[],crateDamage:{},magic:0,energy:INITIAL_ENERGY,maxEnergy:MAX_ENERGY,completed:[],groveCompleted:[],rescued:false,explored:false,orruRescued:false,activeCompanion:null,orruCharge:0,orruQuestCount:0,vinesCleared:false,trailIndex:0,trailCompleted:[],puzzleZone:-1,blockers:[],runesFound:0,combo:0,skillCharge:0,v2MovesLeft:V2_MOVES,v2Zone:-1,xp:0,level:1,bonusItems:0,moves:0,spawns:0,message:'Grow your clearing, merge magic, and rescue the creatures of Wispwood.'};
 }
 function generateFrom(state,kind,random=Math.random){
  ensurePuzzle(state);
@@ -523,8 +553,9 @@ function merge(state,from,to) {
  const magicGain=2+(a.tier||0)+(aWeb||bWeb?2:0);state.magic+=magicGain;
  state.energy=Math.min(state.maxEnergy,state.energy+1);
  const comboBonus=state.combo>=3?2:0;gainXP(state,3+b.tier*2+comboBonus);
+ const crateResult=damageAdjacentCrates(state,target);
  if(state.orruRescued)state.orruCharge=Math.min(ORRU_GROW_COST*2,state.orruCharge+1);
- return {ok:true,tile:state.board[target],target,combo:state.combo,magicGain,webCleared:aWeb||bWeb,skillReady:state.skillCharge===SKILL_MAX};
+ return {ok:true,tile:state.board[target],target,combo:state.combo,magicGain,webCleared:aWeb||bWeb,crateResult,skillReady:state.skillCharge===SKILL_MAX};
 }
 function deliver(state,index) {
  const item=state.board[index];if(!item)return {ok:false,why:'Select an item first.'};
@@ -608,6 +639,7 @@ function restore(raw){
   s.skillCharge=Number.isInteger(s.skillCharge)&&s.skillCharge>=0?Math.min(SKILL_MAX,s.skillCharge):0;
   if(s.boardSchema!==BOARD_SCHEMA)resetMergeBoardForSchema(s);
   s.boardSchema=BOARD_SCHEMA;
+  s.crateDamage=s.crateDamage&&typeof s.crateDamage==='object'?Object.fromEntries(Object.entries(s.crateDamage).filter(([k,v])=>Number.isInteger(Number(k))&&Number(k)>=0&&Number(k)<SIZE*SIZE&&Number.isInteger(v)&&v>=0)):{};
   s.magic=Number.isInteger(s.magic)&&s.magic>=0?s.magic:0;
   s.maxEnergy=MAX_ENERGY;
   s.energy=Number.isInteger(s.energy)?Math.max(0,Math.min(MAX_ENERGY,s.energy)):INITIAL_ENERGY;
@@ -708,16 +740,15 @@ function present(){
   if(!open){
    const terrain=i%4;
    cell.className='tile locked terrain-'+terrain+(frontier?' frontier':'');
-   cell.disabled=!frontier;
-   cell.setAttribute('aria-label',frontier?`Sealed Wispwood tile — unlock for ${cost} Magic`:'Sealed Wispwood tile');
-   const decor=['🌿','🪨','🌫️','🍂'][terrain];
-   cell.innerHTML=`<span class="terrain-icon" aria-hidden="true">${decor}</span>${frontier?`<small>${cost} ✨</small>`:''}`;
-   if(frontier)cell.addEventListener('click',()=>{
-    const r=unlockCell(state,i);
-    if(r.ok){selected=null;groupSelected=[];message(r.reveal.type==='generator'?'✨ New generator discovered!':r.reveal.type==='web'?'🕸 A trapped item was revealed!':r.reveal.type==='blocker'?'A magical obstacle blocks the new tile.':'✨ New ground opened!');}
-    else message(r.why);
-    present();
-   });
+   cell.disabled=true;
+   if(frontier){
+    const need=crateHitsNeeded(state,i),damage=crateDamage(state,i),left=Math.max(0,need-damage);
+    cell.setAttribute('aria-label',`Wooden crate — ${left} adjacent merge hit${left===1?'':'s'} remaining`);
+    cell.innerHTML=`<span class="terrain-icon" aria-hidden="true">📦</span>${damage?'<span class="crate-cracks" aria-hidden="true">💥</span>':''}<span class="crate-help">${left} hit${left===1?'':'s'}</span>`;
+   }else{
+    cell.setAttribute('aria-label','Sealed Wispwood terrain');
+    const decor=['🌿','🪨','🌫️','🍂'][terrain];cell.innerHTML=`<span class="terrain-icon" aria-hidden="true">${decor}</span>`;
+   }
    board.append(cell);return;
   }
   const generator=isGenerator(item),webbed=isWebbed(state,i),wild=isWild(item);
@@ -808,7 +839,7 @@ function present(){
  el('exploreBtn').textContent=trail?(stage?'✨ Restoration Trail active':'✓ Forest restored'):grove?'🌿 Moonlit Grove':state.rescued?'✨ Enter Moonlit Grove':'🔒 Rescue Mivra first';
  const singleIndex=selected;
  const singleItem=singleIndex!==null&&singleIndex!==undefined?state.board[singleIndex]:null;
- el('selected').textContent=singleItem?`${itemLabel(singleItem)} selected`:'Tap a generator, merge matching pairs, and expand the clearing';
+ el('selected').textContent=singleItem?`${itemLabel(singleItem)} selected`:'Merge beside crates to break them and reveal more of Wispwood';
  el('deliverBtn').disabled=!puzzleReady(state)||!singleItem||isWild(singleItem)||!tasks.some(t=>!done.includes(t.id)&&t.kind===singleItem.kind&&t.tier===singleItem.tier);
  el('recycleBtn').disabled=!singleItem;
  persist();
@@ -825,14 +856,14 @@ function choose(i){
  if(!item||isBlocked(state,i)){selected=null;present();return;}
  if(selected!==null&&selected!==i){
   const r=merge(state,selected,i);
-  if(r.ok){selected=null;effect('merge',r.target);message(`✨ ${ITEMS[r.tile.kind][r.tile.tier].name} crafted! +${r.magicGain} Magic${r.webCleared?' · Web cleared!':''}`);present();return;}
+  if(r.ok){selected=null;effect('merge',r.target);message(`✨ ${ITEMS[r.tile.kind][r.tile.tier].name} crafted!${r.crateResult?.opened?.length?' 📦 Crate opened!':''}${r.webCleared?' · Web cleared!':''}`);present();return;}
   message(r.why);
  }
  selected=selected===i?null:i;present();
 }
 function doMerge(from,to){
  const r=merge(state,from,to);selected=null;
- if(r.ok){effect('merge',r.target);message(`✨ ${ITEMS[r.tile.kind][r.tile.tier].name} crafted! +${r.magicGain} Magic`);}
+ if(r.ok){effect('merge',r.target);message(`✨ ${ITEMS[r.tile.kind][r.tile.tier].name} crafted!${r.crateResult?.opened?.length?' 📦 Crate opened!':''}`);}
  else message(r.why);
  present();
 }
