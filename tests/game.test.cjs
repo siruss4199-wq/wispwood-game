@@ -771,3 +771,12 @@ test('enchanted vines visibly communicate a locked merge state', () => {
  assert.match(html,/border-color:#9ab98b/);
  assert.match(html,/merge a matching item to free it/);
 });
+
+test('mobile 8x8 board uses calm unified crate visuals', () => {
+ assert.match(html,/const crateIcon='📦'/);
+ assert.match(html,/\.crate-help,.crate-seal\{display:none!important\}/);
+ assert.match(html,/\.board \.tier-pips,.tile\.generator \.item-name\{display:none!important\}/);
+ assert.match(html,/max-width:calc\(100vw - 12px\)/);
+ assert.match(html,/gap:3px;padding:5px/);
+ assert.doesNotThrow(()=>new vm.Script(script));
+});
