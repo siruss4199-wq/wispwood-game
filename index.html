@@ -264,21 +264,21 @@ const TASKS = [
 ];
 const GROVE_TASKS=[
  {id:'grove-bloom',label:'Moonlit Bloom',kind:'leaf',tier:3,help:'Untangle Orru’s forest vines'},
- {id:'grove-well',label:'Moonwell Water',kind:'dew',tier:3,help:'Restore Orru’s energy'},
- {id:'grove-aurora',label:'Aurora Light',kind:'glow',tier:3,help:'Light the way to safety'}
+ {id:'grove-well',label:'Moonwell Water',kind:'dew',tier:4,help:'Restore Orru’s energy'},
+ {id:'grove-aurora',label:'Aurora Light',kind:'glow',tier:4,help:'Light the way to safety'}
 ];
 const TRAIL=[
  {name:'Whispering Bridge',icon:'🌉',description:'Restore a passage through the woods',tasks:[
   {id:'bridge-herb',label:'Soothing Herb',kind:'leaf',tier:2,help:'Comfort the bridge guardian'},
   {id:'bridge-crystal',label:'Shining Crystal',kind:'glow',tier:2,help:'Reveal the hidden crossing'},
-  {id:'bridge-moonwell',label:'Moonwell Seal',kind:'dew',tier:3,help:'Restore the ancient river seal'}]},
+  {id:'bridge-moonwell',label:'Moonwell Seal',kind:'dew',tier:4,help:'Restore the ancient river seal'}]},
  {name:'Starlit Garden',icon:'🌼',description:'Bring colour back to the sleeping flowers',tasks:[
   {id:'garden-bloom',label:'Star Bloom',kind:'leaf',tier:3,help:'Wake the enchanted flowers'},
   {id:'garden-elixir',label:'Garden Elixir',kind:'dew',tier:2,help:'Water the sleeping roots'},
-  {id:'garden-aurora',label:'Aurora Lantern',kind:'glow',tier:3,help:'Brighten the garden'}]},
+  {id:'garden-aurora',label:'Aurora Lantern',kind:'glow',tier:4,help:'Brighten the garden'}]},
  {name:'Celestial Gate',icon:'🌌',description:'Open the final constellation',tasks:[
-  {id:'gate-moonwell',label:'Moonwell Key',kind:'dew',tier:3,help:'Charge the moonstone lock'},
-  {id:'gate-aurora',label:'Aurora Beacon',kind:'glow',tier:3,help:'Align the stars'},
+  {id:'gate-moonwell',label:'Moonwell Key',kind:'dew',tier:4,help:'Charge the moonstone lock'},
+  {id:'gate-aurora',label:'Aurora Beacon',kind:'glow',tier:4,help:'Align the stars'},
   {id:'gate-bloom',label:'Eternal Bloom',kind:'leaf',tier:3,help:'Awaken the guardian tree'}]}
 ];
 function isTrail(state){return Boolean(state.orruRescued);}
@@ -350,7 +350,7 @@ function seedPuzzle(state){
  state.skillCharge=0;
  if(!info)return;
  const preferred=[5,10,15,20,25,30,4,11,18,27,34,31];
- const free=[...preferred.filter(i=>state.board[i]===null),...state.board.map((v,i)=>v===null&& !preferred.includes(i)?i:null).filter(i=>i!==null)];
+ const free=[...preferred.filter(i=>isOpen(state,i)&&state.board[i]===null),...state.openCells.filter(i=>state.board[i]===null&&!preferred.includes(i))];
  for(let n=0;n<Math.min(info.count,free.length);n++){
   const type=info.blocker==='mixed'?(n%2===0?'vine':'fog'):info.blocker;
   state.blockers.push({index:free[n],type});
@@ -401,11 +401,11 @@ function chooseCompanion(state,id){
 const ORRU_GROW_COST=4;
 const ORRU_QUEST_GOAL=2;
 function orruUnlocked(state){return Boolean(state.orruRescued);}
-function orruCanGrow(state){return currentCompanion(state)==='orru'&&state.orruCharge>=ORRU_GROW_COST&&state.board.some(v=>v===null);}
+function orruCanGrow(state){return currentCompanion(state)==='orru'&&state.orruCharge>=ORRU_GROW_COST&&openEmptyIndices(state).length>0;}
 function orruGrow(state){
  if(currentCompanion(state)!=='orru')return {ok:false,why:'Choose Orru as your active companion first.'};
  if(state.orruCharge<ORRU_GROW_COST)return {ok:false,why:'Merge '+(ORRU_GROW_COST-state.orruCharge)+' more times to charge Grow.'};
- const index=state.board.findIndex(v=>v===null);
+ const index=openEmptyIndices(state)[0];
  if(index<0)return {ok:false,why:'Board is full. Merge or recycle an item first.'};
  state.board[index]={kind:'leaf',tier:0};
  state.orruCharge-=ORRU_GROW_COST;
@@ -414,7 +414,7 @@ function orruGrow(state){
 function clearVines(state){
  if(currentCompanion(state)!=='orru')return {ok:false,why:'Orru must be your active companion.'};
  if(state.vinesCleared)return {ok:false,why:'The vines are already cleared.'};
- const index=state.board.findIndex(v=>v===null);
+ const index=openEmptyIndices(state)[0];
  if(index<0)return {ok:false,why:'Make space on the board before clearing the vines.'};
  state.vinesCleared=true;gainXP(state,50);
  state.board[index]={kind:'dew',tier:1};
@@ -556,37 +556,52 @@ function explore(state){if(!state.rescued||state.explored)return false;state.exp
 function serialize(state){return JSON.stringify(state);}
 function restore(raw){
  try{
-  const s=JSON.parse(raw);
-  if(!s||!Array.isArray(s.board)||s.board.length!==SIZE*SIZE||!Array.isArray(s.completed)||typeof s.rescued!=='boolean')return null;
-  for(const it of s.board){
+  const old=JSON.parse(raw);
+  if(!old||!Array.isArray(old.board)||!Array.isArray(old.completed)||typeof old.rescued!=='boolean')return null;
+  const oldBoard=old.board;
+  const oldSize=oldBoard.length===36?6:oldBoard.length===64?8:null;
+  if(!oldSize)return null;
+  for(const it of oldBoard){
    if(it===null)continue;
-   if(it.special==='wild')continue;
+   if(it.special==='wild'||it.special==='generator')continue;
    if(!KINDS.includes(it.kind)||!Number.isInteger(it.tier)||it.tier<0||it.tier>MAX_TIER)return null;
+  }
+  const s={...old};
+  if(oldSize===6){
+   const next=Array(SIZE*SIZE).fill(null),occupied=oldBoard.filter(Boolean);
+   const order=[26,28,34,35,36,18,19,20,25,29,33,37,42,43,44,17,21,30,31,32,38,39,40,41,45,46,47,49,50,51,52,53,54,55,57,58,59,60,61,62,63];
+   for(let i=0;i<occupied.length&&i<order.length;i++)next[order[i]]=occupied[i];
+   s.board=next;
+   s.openCells=[...new Set([...INITIAL_OPEN,...order.slice(0,occupied.length)])].sort((a,b)=>a-b);
+   s.webbed=[];
+  }else{
+   s.board=oldBoard;
+   s.openCells=Array.isArray(s.openCells)?[...new Set(s.openCells.filter(i=>Number.isInteger(i)&&i>=0&&i<SIZE*SIZE))].sort((a,b)=>a-b):[...INITIAL_OPEN];
+   s.webbed=Array.isArray(s.webbed)?s.webbed.filter(i=>s.openCells.includes(i)&&s.board[i]&&!isGenerator(s.board[i])):[];
   }
   s.completed=TASKS.map(t=>t.id).filter(id=>s.completed.includes(id));
   s.explored=Boolean(s.rescued&&s.explored);
   s.groveCompleted=Array.isArray(s.groveCompleted)?GROVE_TASKS.map(t=>t.id).filter(id=>s.groveCompleted.includes(id)):[];
   s.orruRescued=Boolean(s.explored&&s.groveCompleted.length===GROVE_TASKS.length);
-  // Existing v0.6 saves default to their first rescued companion.
   s.activeCompanion=s.activeCompanion==='orru'&&s.orruRescued?'orru':s.rescued?'mivra':null;
   s.orruCharge=Number.isInteger(s.orruCharge)?Math.max(0,Math.min(ORRU_GROW_COST*2,s.orruCharge)):0;
   s.orruQuestCount=Number.isInteger(s.orruQuestCount)?Math.max(0,Math.min(ORRU_QUEST_GOAL,s.orruQuestCount)):0;
   s.vinesCleared=Boolean(s.vinesCleared);
   s.puzzleZone=Number.isInteger(s.puzzleZone)?s.puzzleZone:-1;
-  s.blockers=Array.isArray(s.blockers)?s.blockers.filter(b=>b&&Number.isInteger(b.index)&&b.index>=0&&b.index<SIZE*SIZE&&(b.type==='vine'||b.type==='fog')&&s.board[b.index]===null):[];
+  s.blockers=Array.isArray(s.blockers)?s.blockers.filter(b=>b&&Number.isInteger(b.index)&&s.openCells.includes(b.index)&&(b.type==='vine'||b.type==='fog')&&s.board[b.index]===null):[];
   s.runesFound=Number.isInteger(s.runesFound)&&s.runesFound>=0?s.runesFound:0;
   s.combo=Number.isInteger(s.combo)&&s.combo>=0?Math.min(9,s.combo):0;
   s.skillCharge=Number.isInteger(s.skillCharge)&&s.skillCharge>=0?Math.min(SKILL_MAX,s.skillCharge):0;
-  s.v2MovesLeft=Number.isInteger(s.v2MovesLeft)?Math.max(0,Math.min(V2_MOVES,s.v2MovesLeft)):V2_MOVES;
-  s.v2Zone=Number.isInteger(s.v2Zone)?s.v2Zone:-1;
-  // Migrate v0.3/v0.4 progress; existing rescued friends and board remain intact.
+  s.magic=Number.isInteger(s.magic)&&s.magic>=0?s.magic:0;
+  s.maxEnergy=MAX_ENERGY;
+  s.energy=Number.isInteger(s.energy)?Math.max(0,Math.min(MAX_ENERGY,s.energy)):INITIAL_ENERGY;
+  s.v2MovesLeft=V2_MOVES;s.v2Zone=-1;
   s.trailIndex=Number.isInteger(s.trailIndex)?Math.max(0,Math.min(TRAIL.length,s.trailIndex)):0;
   s.trailCompleted=Array.isArray(s.trailCompleted)&&s.trailIndex<TRAIL.length?TRAIL[s.trailIndex].tasks.map(t=>t.id).filter(id=>s.trailCompleted.includes(id)):[];
-  s.xp=Number.isInteger(s.xp)&&s.xp>=0?s.xp:0;
-  s.level=Math.floor(s.xp/75)+1;
+  s.xp=Number.isInteger(s.xp)&&s.xp>=0?s.xp:0;s.level=Math.floor(s.xp/75)+1;
   s.bonusItems=Number.isInteger(s.bonusItems)&&s.bonusItems>=0?s.bonusItems:0;
-  s.moves=Number.isInteger(s.moves)&&s.moves>=0?s.moves:0;
-  s.spawns=Number.isInteger(s.spawns)&&s.spawns>=0?s.spawns:0;
+  s.moves=Number.isInteger(s.moves)&&s.moves>=0?s.moves:0;s.spawns=Number.isInteger(s.spawns)&&s.spawns>=0?s.spawns:0;
+  ensureStarterGenerator(s);
   return s;
  }catch{return null;}
 }
