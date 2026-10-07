@@ -429,6 +429,8 @@ function ensureStarterGenerator(state){
  if(Number.isInteger(index))state.board[index]={special:'generator',kind:'leaf',level:1};
 }
 function revealUnlockedCell(state,index,fromCrate=false){
+ if(!Array.isArray(state.revealedCells))state.revealedCells=[];
+ if(!Array.isArray(state.webbed))state.webbed=[];
  const reveal=fromCrate?crateRevealFor(state,index):CELL_REVEALS[index];
  if(!reveal)return {type:'empty'};
  if(reveal.type==='generator'){state.board[index]={special:'generator',kind:reveal.kind,level:1};return reveal;}
@@ -653,6 +655,7 @@ function merge(state,from,to) {
 }
 function deliver(state,index) {
  const item=state.board[index];if(!item)return {ok:false,why:'Select an item first.'};
+ if(isWebbed(state,index))return {ok:false,why:'Clear the web by merging this item first.'};
  const trail=isTrail(state),stage=trailInfo(state);
  if(trail&&!stage)return {ok:false,why:'All three restoration areas are complete!'};
  ensurePuzzle(state);
@@ -660,7 +663,9 @@ function deliver(state,index) {
  const tasks=activeTasks(state),done=trail?state.trailCompleted:state.explored?state.groveCompleted:state.completed;
  const task=tasks.find(t=>!done.includes(t.id)&&t.kind===item.kind&&t.tier===item.tier);
  if(!task)return {ok:false,why:'This item is not needed for an active quest.'};
- state.board[index]=null;done.push(task.id);gainXP(state,30+item.tier*10);
+ state.board[index]=null;
+ if(Array.isArray(state.revealedCells))state.revealedCells=state.revealedCells.filter(i=>i!==index);
+ done.push(task.id);gainXP(state,30+item.tier*10);
  if(trail){
   const completedStage=done.length===tasks.length;
   if(completedStage){state.trailIndex++;state.trailCompleted=[];gainXP(state,90);seedPuzzle(state);}
@@ -690,7 +695,13 @@ function spawn(state,random=Math.random){
  }
  return {ok:true,index,kind,helper,bonusIndex,bonusSkipped};
 }
-function recycle(state,index){ensurePuzzle(state);if(isBlocked(state,index)||!state.board[index])return false;state.board[index]=null;state.combo=0;return true;}
+function recycle(state,index){
+ ensurePuzzle(state);
+ if(isBlocked(state,index)||!state.board[index]||isWebbed(state,index))return false;
+ state.board[index]=null;
+ if(Array.isArray(state.revealedCells))state.revealedCells=state.revealedCells.filter(i=>i!==index);
+ state.combo=0;return true;
+}
 function explore(state){if(!state.rescued||state.explored)return false;state.explored=true;return true;}
 function serialize(state){return JSON.stringify(state);}
 function restore(raw){
