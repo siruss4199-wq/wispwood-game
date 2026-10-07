@@ -19,6 +19,19 @@
 .creature .mivra-eye{transform-box:fill-box;transform-origin:center;animation:mivra-blink 5.4s ease-in-out infinite}
 @keyframes mivra-blink{0%,42%,46%,100%{transform:scaleY(1)}43%,45%{transform:scaleY(.08)}}
 @media(prefers-reduced-motion:reduce){.creature .mivra-eye{animation:none!important}}
+
+/* Chapter 2 and creature collection: original, asset-free styling. */
+.scene.grove-mode{background:linear-gradient(180deg,#a6d9d4 0%,#d4e9c7 55%,#80b995 100%)}
+.scene.grove-mode .hill-back{background:#8bc2a0}.scene.grove-mode .hill-front{background:#5e9c7e}
+.collection-panel{margin-top:16px;padding-top:15px;border-top:1px solid #eae4ef}
+.collection-heading{display:flex;justify-content:space-between;color:#736589;font-size:11px;font-weight:900;margin-bottom:10px}
+.collection-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.friend-card{padding:10px;border:1px solid #e3ddea;border-radius:12px;background:#fcf9ff}
+.friend-card.locked{filter:grayscale(1);background:#f4f2f6;opacity:.7}
+.friend-icon{display:block;font-size:28px}.friend-card strong{display:block;font-size:12px;color:#584d66}
+.friend-card small{font-size:10px;color:#897e94;display:block}
+.collection-hint{font-size:11px;line-height:1.4;color:#877b97;margin:10px 0 0}
+@media(prefers-reduced-motion:reduce){.scene.grove-mode .creature{animation:none!important}}
 </style></head>
 <body>
  <div class="shell">
@@ -50,9 +63,9 @@
        </svg>
       </div>
       <div class="mist-path"><span>✧</span><span>✧</span></div>
-      <div class="scene-label">CHAPTER ONE · THE LOST WISP</div>
+      <div class="scene-label" id="sceneLabel">CHAPTER ONE · THE LOST WISP</div>
     </div>
-    <div class="story-content"><div class="story-heading"><span class="chapter">Your first friend</span><span class="pill">❤️ Rescue quest</span></div><h1>Meet Mivra</h1><p class="status" id="status">Mivra needs your help</p><p class="bubble" id="dialogue">It’s a little cold here… could you help me gather some healing magic?</p><button id="exploreBtn" class="explore" disabled>🔒 Rescue Mivra first</button></div>
+    <div class="story-content"><div class="story-heading"><span class="chapter" id="storyChapter">Your first friend</span><span class="pill">❤️ Rescue quest</span></div><h1 id="storyTitle">Meet Mivra</h1><p class="status" id="status">Mivra needs your help</p><p class="bubble" id="dialogue">It’s a little cold here… could you help me gather some healing magic?</p><button id="exploreBtn" class="explore" disabled>🔒 Rescue Mivra first</button></div>
    </section>
    <section class="play card" aria-label="Merge puzzle game"><div class="play-head"><div><span class="eyebrow">MAGIC WORKSHOP</span><h2>Merge to help</h2></div><span class="moves">↔ <b id="moves">0</b> moves</span></div>
     <p class="instruction">Tap two identical items to merge them into a stronger one. On desktop, you can also drag items together.</p>
@@ -61,12 +74,12 @@
     <div class="actions"><button id="spawnBtn" class="primary">✦ Gather magic <small>FREE</small></button><button id="deliverBtn" disabled class="secondary">♡ Deliver</button><button id="recycleBtn" disabled class="tertiary" aria-label="Recycle selected item">♻</button></div>
     <p class="footnote">Prototype mode: unlimited gathering, no timers, no ads, no account.</p>
    </section>
-   <aside class="sidebar card" aria-label="Rescue objectives"><div class="side-heading"><div><span class="eyebrow">TODAY'S ADVENTURE</span><h2>Help Mivra heal</h2></div><span id="tasksCount" class="progress-count">0/3</span></div><div class="progress"><div id="progressFill"></div></div><p class="side-sub">Craft these magical items, select one on the board, then tap Deliver.</p><div id="tasks"></div><div class="tip"><span>💡</span><div><strong>Little tip</strong><p>Merge two seeds to make a sprout, then two sprouts to make a healing herb!</p></div></div><div class="fair"><span>✦</span> Crafted as an original, offline-friendly prototype.</div></aside>
+   <aside class="sidebar card" aria-label="Rescue objectives"><div class="side-heading"><div><span class="eyebrow">TODAY'S ADVENTURE</span><h2 id="tasksTitle">Help Mivra heal</h2></div><span id="tasksCount" class="progress-count">0/3</span></div><div class="progress"><div id="progressFill"></div></div><p class="side-sub">Craft these magical items, select one on the board, then tap Deliver.</p><div id="tasks"></div><div class="collection-panel"><div class="collection-heading"><span>✦ YOUR CREATURES</span><strong id="collectionCount">0/2</strong></div><div id="collection" class="collection-grid" aria-label="Your rescued friends"></div><p class="collection-hint" id="worldHint">Save Mivra to find the path ahead.</p></div><div class="tip"><span>💡</span><div><strong>Little tip</strong><p id="tipText">Merge two seeds to make a sprout, then two sprouts to make a healing herb!</p></div></div><div class="fair"><span>✦</span> Crafted as an original, offline-friendly prototype.</div></aside>
   </main>
   <footer>Wispwood prototype · Your progress is saved on this device · No external AI credits</footer>
  </div>
  <div id="toast" class="toast" role="status" aria-live="polite"></div>
- <div id="endOverlay" class="end-overlay" hidden><div class="end-modal"><span class="end-icon">🌙✨</span><h2>You saved Mivra!</h2><p>The mist parts. Moonlit Grove is open, and your first magical friend is ready for the next adventure.</p><button id="endClose" class="primary">Keep exploring soon</button></div></div>
+ <div id="endOverlay" class="end-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="overlayTitle"><div class="end-modal"><span class="end-icon">🌙✨</span><h2 id="overlayTitle">Moonlit Grove is open!</h2><p id="overlayText">Mivra found a new friend in the forest.</p><button id="endClose" class="primary">Continue</button></div></div>
  <script>// Copyright (c) 2026 Magical Creature Rescue project. Original prototype.
 // Dependency-free game rules: no runtime AI service or network requests.
 const SIZE = 6;
@@ -145,7 +158,28 @@ function restore(raw){
 }
 
 
-const KEY='wispwood-prototype-v1';
+const KEY='wispwood-prototype-v1'; // Keep v0.3 saves intact.
+const MIVRA_ART=document.getElementById('character').innerHTML;
+const ORRU_ART=`<svg viewBox="0 0 270 260" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+<ellipse cx="135" cy="238" rx="74" ry="13" fill="#28543a" opacity=".18"/>
+<path d="M89 113 Q25 80 54 14 Q102 31 120 92" fill="#73b989" stroke="#478965" stroke-width="5"/>
+<path d="M176 113 Q244 80 219 14 Q166 31 152 92" fill="#80c99b" stroke="#478965" stroke-width="5"/>
+<path d="M54 14 Q81 49 99 79 M219 14 Q189 43 169 79" fill="none" stroke="#caf2b6" stroke-width="5"/>
+<ellipse cx="135" cy="177" rx="79" ry="68" fill="#8ecaa2" stroke="#579675" stroke-width="5"/>
+<ellipse cx="135" cy="192" rx="49" ry="41" fill="#e9f2d5"/>
+<ellipse cx="135" cy="112" rx="74" ry="66" fill="#b0dfb7" stroke="#579675" stroke-width="5"/>
+<ellipse class="mivra-eye" cx="106" cy="115" rx="9" ry="13" fill="#345d51"/><ellipse class="mivra-eye" cx="163" cy="115" rx="9" ry="13" fill="#345d51"/>
+<circle cx="109" cy="110" r="3" fill="white"/><circle cx="166" cy="110" r="3" fill="white"/>
+<ellipse cx="88" cy="137" rx="15" ry="8" fill="#e8b0b6" opacity=".75"/><ellipse cx="182" cy="137" rx="15" ry="8" fill="#e8b0b6" opacity=".75"/>
+<path d="M125 142 Q136 153 146 142" fill="none" stroke="#599476" stroke-width="4" stroke-linecap="round"/>
+<ellipse cx="90" cy="219" rx="22" ry="15" fill="#80b595"/><ellipse cx="183" cy="219" rx="22" ry="15" fill="#80b595"/>
+<path d="M134 60 Q116 29 149 22 Q167 43 134 60" fill="#68bd81" stroke="#478e64" stroke-width="4"/>
+</svg>`;
+function showChapterModal(title,body,label){
+ el('overlayTitle').textContent=title;el('overlayText').textContent=body;
+ el('endClose').textContent=label;el('endOverlay').hidden=false;
+ el('endClose').focus();
+}
 const storage=(()=>{try{const k='__wispwood_storage_test';localStorage.setItem(k,'ok');localStorage.removeItem(k);return localStorage;}catch{return {getItem:()=>null,setItem:()=>{}};}})();
 const el=id=>document.getElementById(id);
 let state=restore(storage.getItem(KEY))||createState();
