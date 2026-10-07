@@ -280,7 +280,7 @@
 const SIZE = 7;
 const KINDS = ['leaf', 'dew', 'glow'];
 const MAX_TIER = 5;
-const BOARD_SCHEMA=4;
+const BOARD_SCHEMA=5;
 const INITIAL_OPEN=[16,17,18,23,24,25,30,31,32];
 const INITIAL_ENERGY=24;
 const MAX_ENERGY=30;
@@ -420,6 +420,7 @@ function resetMergeBoardForSchema(state){
  board[23]={kind:'leaf',tier:0};board[30]={kind:'leaf',tier:0};
  state.board=board;state.openCells=[...INITIAL_OPEN];state.webbed=[];state.revealedCells=[];state.crateDamage={};state.blockers=[];
  state.magic=0;state.energy=INITIAL_ENERGY;state.maxEnergy=MAX_ENERGY;
+ state.cratesOpened=0;state.websCleared=0;state.revealedMerges=0;
  state.puzzleZone=-1;state.combo=0;state.skillCharge=0;state.boardSchema=BOARD_SCHEMA;
  state.boardResetNotice=true;
 }
