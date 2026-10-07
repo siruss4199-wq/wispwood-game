@@ -100,7 +100,28 @@ const GROVE_TASKS=[
  {id:'grove-well',label:'Moonwell Water',kind:'dew',tier:3,help:'Restore Orru’s energy'},
  {id:'grove-aurora',label:'Aurora Light',kind:'glow',tier:3,help:'Light the way to safety'}
 ];
-function activeTasks(state){return state.explored?GROVE_TASKS:TASKS;}
+const TRAIL=[
+ {name:'Whispering Bridge',icon:'🌉',description:'Restore a passage through the woods',tasks:[
+  {id:'bridge-herb',label:'Soothing Herb',kind:'leaf',tier:2,help:'Comfort the bridge guardian'},
+  {id:'bridge-crystal',label:'Shining Crystal',kind:'glow',tier:2,help:'Reveal the hidden crossing'},
+  {id:'bridge-moonwell',label:'Moonwell Seal',kind:'dew',tier:3,help:'Restore the ancient river seal'}]},
+ {name:'Starlit Garden',icon:'🌼',description:'Bring colour back to the sleeping flowers',tasks:[
+  {id:'garden-bloom',label:'Star Bloom',kind:'leaf',tier:3,help:'Wake the enchanted flowers'},
+  {id:'garden-elixir',label:'Garden Elixir',kind:'dew',tier:2,help:'Water the sleeping roots'},
+  {id:'garden-aurora',label:'Aurora Lantern',kind:'glow',tier:3,help:'Brighten the garden'}]},
+ {name:'Celestial Gate',icon:'🌌',description:'Open the final constellation',tasks:[
+  {id:'gate-moonwell',label:'Moonwell Key',kind:'dew',tier:3,help:'Charge the moonstone lock'},
+  {id:'gate-aurora',label:'Aurora Beacon',kind:'glow',tier:3,help:'Align the stars'},
+  {id:'gate-bloom',label:'Eternal Bloom',kind:'leaf',tier:3,help:'Awaken the guardian tree'}]}
+];
+function isTrail(state){return Boolean(state.orruRescued);}
+function activeTasks(state){
+ if(isTrail(state))return TRAIL[state.trailIndex]?.tasks||[];
+ return state.explored?GROVE_TASKS:TASKS;
+}
+function gainXP(state,points){state.xp+=points;state.level=Math.floor(state.xp/75)+1;}
+function trailInfo(state){return TRAIL[state.trailIndex]||null;}
+
 function collected(state){return [
  {name:'Mivra',type:'Mist guide',icon:'🪻',unlocked:state.rescued},
  {name:'Orru',type:'Forest keeper',icon:'🍃',unlocked:state.orruRescued}
@@ -109,7 +130,7 @@ function createState() {
  const board=Array(SIZE*SIZE).fill(null);
  const placement=[ [0,'leaf',0],[1,'leaf',0], [6,'dew',0],[7,'dew',0], [12,'glow',0],[13,'glow',0], [19,'leaf',1], [22,'dew',1], [26,'glow',1] ];
  for(const [i,kind,tier] of placement)board[i]={kind,tier};
- return { board,completed:[],groveCompleted:[], rescued:false, explored:false,orruRescued:false,moves:0,spawns:0,message:'Help Mivra recover by crafting three supplies.' };
+ return { board,completed:[],groveCompleted:[], rescued:false, explored:false,orruRescued:false,trailIndex:0,trailCompleted:[],xp:0,level:1,bonusItems:0,moves:0,spawns:0,message:'Help Mivra recover by crafting three supplies.' };
 }
 function merge(state,from,to) {
  if(!Number.isInteger(from)||!Number.isInteger(to)||from===to||from<0||to<0||from>=SIZE*SIZE||to>=SIZE*SIZE)return {ok:false,why:'Choose two different tiles.'};
@@ -117,27 +138,42 @@ function merge(state,from,to) {
  if(!a||!b||a.kind!==b.kind||a.tier!==b.tier||a.tier===MAX_TIER)return {ok:false,why:'Merge two matching, non-maxed items.'};
  state.board[from]=null;
  state.board[to]={kind:b.kind,tier:b.tier+1};
- state.moves++;
+ state.moves++;gainXP(state,3+b.tier*2);
  return {ok:true,tile:state.board[to]};
 }
 function deliver(state,index) {
  const item=state.board[index];if(!item)return {ok:false,why:'Select an item first.'};
- if(state.explored&&state.orruRescued)return {ok:false,why:'Orru has already been rescued.'};
- const tasks=activeTasks(state),done=state.explored?state.groveCompleted:state.completed;
+ const trail=isTrail(state),stage=trailInfo(state);
+ if(trail&&!stage)return {ok:false,why:'All three restoration areas are complete!'};
+ const tasks=activeTasks(state),done=trail?state.trailCompleted:state.explored?state.groveCompleted:state.completed;
  const task=tasks.find(t=>!done.includes(t.id)&&t.kind===item.kind&&t.tier===item.tier);
- if(!task)return {ok:false,why:'This item is not needed for a current rescue task.'};
- state.board[index]=null;done.push(task.id);
+ if(!task)return {ok:false,why:'This item is not needed for an active quest.'};
+ state.board[index]=null;done.push(task.id);gainXP(state,30+item.tier*10);
+ if(trail){
+  const completedStage=done.length===tasks.length;
+  if(completedStage){state.trailIndex++;state.trailCompleted=[];gainXP(state,90);}
+  return {ok:true,task,rescued:false,friend:null,completedStage,stageName:stage.name,allRestored:state.trailIndex===TRAIL.length};
+ }
  if(state.explored){if(done.length===GROVE_TASKS.length)state.orruRescued=true;}
  else if(done.length===TASKS.length)state.rescued=true;
  return {ok:true,task,rescued:state.explored?state.orruRescued:state.rescued,friend:state.explored?'Orru':'Mivra'};
 }
 function spawn(state,random=Math.random){
- const free=[]; for(let i=0;i<state.board.length;i++)if(!state.board[i])free.push(i);
+ const free=[];for(let i=0;i<state.board.length;i++)if(!state.board[i])free.push(i);
  if(!free.length)return {ok:false,why:'Board is full. Merge or recycle an item first.'};
  const kind=KINDS[Math.min(KINDS.length-1,Math.floor(random()*KINDS.length))];
  const index=free[Math.min(free.length-1,Math.floor(random()*free.length))];
- state.board[index]={kind,tier:0}; state.spawns++;
- return {ok:true,index,kind};
+ state.board[index]={kind,tier:0};state.spawns++;
+ // Mivra and Orru periodically help once rescued. No energy timers or paywalls.
+ let helper=null,bonusIndex=null;
+ if(state.rescued&&state.spawns%8===0){
+  const bonusKind=state.orruRescued?'leaf':'glow';
+  const empty=free.filter(i=>i!==index);
+  if(empty.length){bonusIndex=empty[Math.min(empty.length-1,Math.floor(random()*empty.length))];
+   state.board[bonusIndex]={kind:bonusKind,tier:0};state.bonusItems++;
+   helper=state.orruRescued?'Orru':'Mivra';}
+ }
+ return {ok:true,index,kind,helper,bonusIndex};
 }
 function recycle(state,index){if(!state.board[index])return false;state.board[index]=null;return true;}
 function explore(state){if(!state.rescued||state.explored)return false;state.explored=true;return true;}
@@ -151,6 +187,12 @@ function restore(raw){
   s.explored=Boolean(s.rescued&&s.explored);
   s.groveCompleted=Array.isArray(s.groveCompleted)?GROVE_TASKS.map(t=>t.id).filter(id=>s.groveCompleted.includes(id)):[];
   s.orruRescued=Boolean(s.explored&&s.groveCompleted.length===GROVE_TASKS.length);
+  // Migrate v0.3/v0.4 progress; existing rescued friends and board remain intact.
+  s.trailIndex=Number.isInteger(s.trailIndex)?Math.max(0,Math.min(TRAIL.length,s.trailIndex)):0;
+  s.trailCompleted=Array.isArray(s.trailCompleted)&&s.trailIndex<TRAIL.length?TRAIL[s.trailIndex].tasks.map(t=>t.id).filter(id=>s.trailCompleted.includes(id)):[];
+  s.xp=Number.isInteger(s.xp)&&s.xp>=0?s.xp:0;
+  s.level=Math.floor(s.xp/75)+1;
+  s.bonusItems=Number.isInteger(s.bonusItems)&&s.bonusItems>=0?s.bonusItems:0;
   s.moves=Number.isInteger(s.moves)&&s.moves>=0?s.moves:0;
   s.spawns=Number.isInteger(s.spawns)&&s.spawns>=0?s.spawns:0;
   return s;
