@@ -223,6 +223,34 @@ function chooseCompanion(state,id){
  if(id==='mivra'&&!state.rescued||id==='orru'&&!state.orruRescued)return false;
  state.activeCompanion=id;return true;
 }
+const ORRU_GROW_COST=4;
+const ORRU_QUEST_GOAL=2;
+function orruUnlocked(state){return Boolean(state.orruRescued);}
+function orruCanGrow(state){return currentCompanion(state)==='orru'&&state.orruCharge>=ORRU_GROW_COST&&state.board.some(v=>v===null);}
+function orruGrow(state){
+ if(currentCompanion(state)!=='orru')return {ok:false,why:'Choose Orru as your active companion first.'};
+ if(state.orruCharge<ORRU_GROW_COST)return {ok:false,why:'Merge '+(ORRU_GROW_COST-state.orruCharge)+' more times to charge Grow.'};
+ const index=state.board.findIndex(v=>v===null);
+ if(index<0)return {ok:false,why:'Board is full. Merge or recycle an item first.'};
+ state.board[index]={kind:'leaf',tier:0};
+ state.orruCharge-=ORRU_GROW_COST;
+ return {ok:true,index};
+}
+function clearVines(state){
+ if(currentCompanion(state)!=='orru')return {ok:false,why:'Orru must be your active companion.'};
+ if(state.vinesCleared)return {ok:false,why:'The vines are already cleared.'};
+ state.vinesCleared=true;gainXP(state,50);
+ return {ok:true};
+}
+function deliverOrruQuest(state,index){
+ if(!orruUnlocked(state)||state.orruQuestCount>=ORRU_QUEST_GOAL)return {ok:false,why:'The companion quest is not active.'};
+ const item=state.board[index];
+ if(!item||item.kind!=='leaf'||item.tier!==2)return {ok:false,why:'Give Orru a Herb to restore the garden.'};
+ state.orruQuestCount++;
+ state.board[index]=state.orruQuestCount===ORRU_QUEST_GOAL?{kind:'leaf',tier:3}:null;
+ gainXP(state,state.orruQuestCount===ORRU_QUEST_GOAL?75:25);
+ return {ok:true,completed:state.orruQuestCount===ORRU_QUEST_GOAL,index};
+}
 function collected(state){return Object.entries(CREATURES).map(([id,info])=>({
  id,name:info.name,type:info.type,ability:info.ability,
  unlocked:id==='mivra'?state.rescued:state.orruRescued,
@@ -232,7 +260,7 @@ function createState() {
  const board=Array(SIZE*SIZE).fill(null);
  const placement=[ [0,'leaf',0],[1,'leaf',0], [6,'dew',0],[7,'dew',0], [12,'glow',0],[13,'glow',0], [19,'leaf',1], [22,'dew',1], [26,'glow',1] ];
  for(const [i,kind,tier] of placement)board[i]={kind,tier};
- return { board,completed:[],groveCompleted:[], rescued:false, explored:false,orruRescued:false,activeCompanion:null,trailIndex:0,trailCompleted:[],xp:0,level:1,bonusItems:0,moves:0,spawns:0,message:'Help Mivra recover by crafting three supplies.' };
+ return { board,completed:[],groveCompleted:[], rescued:false, explored:false,orruRescued:false,activeCompanion:null,orruCharge:0,orruQuestCount:0,vinesCleared:false,trailIndex:0,trailCompleted:[],xp:0,level:1,bonusItems:0,moves:0,spawns:0,message:'Help Mivra recover by crafting three supplies.' };
 }
 function merge(state,from,to) {
  if(!Number.isInteger(from)||!Number.isInteger(to)||from===to||from<0||to<0||from>=SIZE*SIZE||to>=SIZE*SIZE)return {ok:false,why:'Choose two different tiles.'};
@@ -241,6 +269,7 @@ function merge(state,from,to) {
  state.board[from]=null;
  state.board[to]={kind:b.kind,tier:b.tier+1};
  state.moves++;gainXP(state,3+b.tier*2);
+ if(state.orruRescued)state.orruCharge=Math.min(ORRU_GROW_COST*2,state.orruCharge+1);
  return {ok:true,tile:state.board[to]};
 }
 function deliver(state,index) {
@@ -293,6 +322,9 @@ function restore(raw){
   s.orruRescued=Boolean(s.explored&&s.groveCompleted.length===GROVE_TASKS.length);
   // Existing v0.6 saves default to their first rescued companion.
   s.activeCompanion=s.activeCompanion==='orru'&&s.orruRescued?'orru':s.rescued?'mivra':null;
+  s.orruCharge=Number.isInteger(s.orruCharge)?Math.max(0,Math.min(ORRU_GROW_COST*2,s.orruCharge)):0;
+  s.orruQuestCount=Number.isInteger(s.orruQuestCount)?Math.max(0,Math.min(ORRU_QUEST_GOAL,s.orruQuestCount)):0;
+  s.vinesCleared=Boolean(s.vinesCleared);
   // Migrate v0.3/v0.4 progress; existing rescued friends and board remain intact.
   s.trailIndex=Number.isInteger(s.trailIndex)?Math.max(0,Math.min(TRAIL.length,s.trailIndex)):0;
   s.trailCompleted=Array.isArray(s.trailCompleted)&&s.trailIndex<TRAIL.length?TRAIL[s.trailIndex].tasks.map(t=>t.id).filter(id=>s.trailCompleted.includes(id)):[];
