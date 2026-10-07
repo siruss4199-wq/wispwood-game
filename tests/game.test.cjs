@@ -615,9 +615,9 @@ test('mobile board fits fully above navigation and hides disabled actions', () =
  assert.match(html,/\.actions #deliverBtn:disabled,.actions #recycleBtn:disabled\{display:none\}/);
 });
 
-test('completed adventures still show quest history in the mobile quest sheet', () => {
- assert.match(html,/COMPLETED QUESTS/);
- assert.match(html,/No quest history yet/);
+test('completed adventures still show story history alongside board goals in the mobile quest sheet', () => {
+ assert.match(html,/BOARD GOALS/);
+ assert.match(html,/COMPLETED STORY/);
  assert.match(html,/const history=\[\]/);
  assert.match(html,/TASKS\.forEach/);
  assert.match(html,/GROVE_TASKS\.forEach/);
