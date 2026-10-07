@@ -224,6 +224,7 @@
 const SIZE = 8;
 const KINDS = ['leaf', 'dew', 'glow'];
 const MAX_TIER = 5;
+const BOARD_SCHEMA=3;
 const INITIAL_OPEN=[18,19,20,26,27,28,34,35,36];
 const INITIAL_ENERGY=24;
 const MAX_ENERGY=30;
@@ -310,6 +311,15 @@ function unlockCost(state,index){
 function openEmptyIndices(state){
  const blockers=new Set((state.blockers||[]).map(b=>b.index));
  return state.openCells.filter(i=>state.board[i]===null&&!blockers.has(i));
+}
+function resetMergeBoardForSchema(state){
+ const board=Array(SIZE*SIZE).fill(null);
+ board[27]={special:'generator',kind:'leaf',level:1};
+ board[26]={kind:'leaf',tier:0};board[34]={kind:'leaf',tier:0};
+ state.board=board;state.openCells=[...INITIAL_OPEN];state.webbed=[];state.blockers=[];
+ state.magic=0;state.energy=INITIAL_ENERGY;state.maxEnergy=MAX_ENERGY;
+ state.puzzleZone=-1;state.combo=0;state.skillCharge=0;state.boardSchema=BOARD_SCHEMA;
+ state.boardResetNotice=true;
 }
 function ensureStarterGenerator(state){
  if(state.board.some(isGenerator))return;
@@ -442,7 +452,7 @@ function createState() {
  const board=Array(SIZE*SIZE).fill(null);
  board[27]={special:'generator',kind:'leaf',level:1};
  board[26]={kind:'leaf',tier:0};board[34]={kind:'leaf',tier:0};
- return {board,openCells:[...INITIAL_OPEN],webbed:[],magic:0,energy:INITIAL_ENERGY,maxEnergy:MAX_ENERGY,completed:[],groveCompleted:[],rescued:false,explored:false,orruRescued:false,activeCompanion:null,orruCharge:0,orruQuestCount:0,vinesCleared:false,trailIndex:0,trailCompleted:[],puzzleZone:-1,blockers:[],runesFound:0,combo:0,skillCharge:0,v2MovesLeft:V2_MOVES,v2Zone:-1,xp:0,level:1,bonusItems:0,moves:0,spawns:0,message:'Grow your clearing, merge magic, and rescue the creatures of Wispwood.'};
+ return {board,boardSchema:BOARD_SCHEMA,openCells:[...INITIAL_OPEN],webbed:[],magic:0,energy:INITIAL_ENERGY,maxEnergy:MAX_ENERGY,completed:[],groveCompleted:[],rescued:false,explored:false,orruRescued:false,activeCompanion:null,orruCharge:0,orruQuestCount:0,vinesCleared:false,trailIndex:0,trailCompleted:[],puzzleZone:-1,blockers:[],runesFound:0,combo:0,skillCharge:0,v2MovesLeft:V2_MOVES,v2Zone:-1,xp:0,level:1,bonusItems:0,moves:0,spawns:0,message:'Grow your clearing, merge magic, and rescue the creatures of Wispwood.'};
 }
 function generateFrom(state,kind,random=Math.random){
  ensurePuzzle(state);
@@ -596,6 +606,8 @@ function restore(raw){
   s.runesFound=Number.isInteger(s.runesFound)&&s.runesFound>=0?s.runesFound:0;
   s.combo=Number.isInteger(s.combo)&&s.combo>=0?Math.min(9,s.combo):0;
   s.skillCharge=Number.isInteger(s.skillCharge)&&s.skillCharge>=0?Math.min(SKILL_MAX,s.skillCharge):0;
+  if(s.boardSchema!==BOARD_SCHEMA)resetMergeBoardForSchema(s);
+  s.boardSchema=BOARD_SCHEMA;
   s.magic=Number.isInteger(s.magic)&&s.magic>=0?s.magic:0;
   s.maxEnergy=MAX_ENERGY;
   s.energy=Number.isInteger(s.energy)?Math.max(0,Math.min(MAX_ENERGY,s.energy)):INITIAL_ENERGY;
