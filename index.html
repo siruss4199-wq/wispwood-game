@@ -189,6 +189,13 @@
 const SIZE = 6;
 const KINDS = ['leaf', 'dew', 'glow'];
 const MAX_TIER = 3;
+const SKILL_MAX = 5;
+const PUZZLES=[
+ {name:'Whispering Bridge',blocker:'vine',count:5,icon:'🌿',hint:'Clear the vines before the bridge can accept restoration magic.'},
+ {name:'Starlit Garden',blocker:'fog',count:5,icon:'🌫️',hint:'Dispel the enchanted fog to wake the garden.'},
+ {name:'Celestial Gate',blocker:'mixed',count:6,icon:'🌀',hint:'Use both companions to clear the final tangled barrier.'}
+];
+const BLOCKER_ICON={vine:'🌿',fog:'🌫️'};
 const ITEMS = {
   leaf: [{name:'Seed', emoji:'🌰'}, {name:'Sprout', emoji:'🌱'}, {name:'Herb', emoji:'🌿'}, {name:'Bloom', emoji:'🌸'}],
   dew: [{name:'Dewdrop', emoji:'💧'}, {name:'Water', emoji:'🫧'}, {name:'Elixir', emoji:'🧪'}, {name:'Moonwell', emoji:'💎'}],
@@ -225,6 +232,46 @@ function activeTasks(state){
 }
 function gainXP(state,points){state.xp+=points;state.level=Math.floor(state.xp/75)+1;}
 function trailInfo(state){return TRAIL[state.trailIndex]||null;}
+function puzzleInfo(state){return PUZZLES[state.trailIndex]||null;}
+function puzzleReady(state){return !isTrail(state)||state.trailIndex>=TRAIL.length||state.blockers.length===0;}
+function seedPuzzle(state){
+ const info=puzzleInfo(state);
+ state.puzzleZone=state.trailIndex;
+ state.blockers=[];
+ state.runesFound=0;
+ state.combo=0;
+ state.skillCharge=0;
+ if(!info)return;
+ const preferred=[5,10,15,20,25,30,4,11,18,27,34,31];
+ const free=preferred.filter(i=>state.board[i]===null);
+ for(let n=0;n<Math.min(info.count,free.length);n++){
+  const type=info.blocker==='mixed'?(n%2===0?'vine':'fog'):info.blocker;
+  state.blockers.push({index:free[n],type});
+ }
+}
+function ensurePuzzle(state){
+ if(!Array.isArray(state.blockers))state.blockers=[];
+ if(isTrail(state)&&state.trailIndex<TRAIL.length&&state.puzzleZone!==state.trailIndex)seedPuzzle(state);
+}
+function isBlocked(state,index){return state.blockers.some(b=>b.index===index);}
+function useCompanionSkill(state){
+ ensurePuzzle(state);
+ const active=currentCompanion(state);
+ if(!active)return {ok:false,why:'Choose a rescued companion first.'};
+ if(state.skillCharge<SKILL_MAX)return {ok:false,why:'Build a 5-merge charge first.'};
+ if(!state.blockers.length)return {ok:false,why:'No blockers remain in this region.'};
+ const preferred=active==='orru'?'vine':'fog';
+ const matching=state.blockers.filter(b=>b.type===preferred);
+ const targets=(matching.length?matching:state.blockers).slice(0,matching.length?3:1);
+ const ids=new Set(targets.map(b=>b.index));
+ state.blockers=state.blockers.filter(b=>!ids.has(b.index));
+ state.runesFound+=targets.length;
+ state.skillCharge=0;
+ state.combo=0;
+ const cleared=state.blockers.length===0;
+ if(cleared)gainXP(state,40);
+ return {ok:true,cleared,count:targets.length,companion:active};
+}
 
 const CREATURES={
  mivra:{name:'Mivra',type:'Mist Guide',ability:'Starlight Gift',description:'Mivra uncovers paths hidden in the mist and gifts a Spark every eighth Gather.',bonus:'glow'},
@@ -282,29 +329,35 @@ function createState() {
  const board=Array(SIZE*SIZE).fill(null);
  const placement=[ [0,'leaf',0],[1,'leaf',0], [6,'dew',0],[7,'dew',0], [12,'glow',0],[13,'glow',0], [19,'leaf',1], [22,'dew',1], [26,'glow',1] ];
  for(const [i,kind,tier] of placement)board[i]={kind,tier};
- return { board,completed:[],groveCompleted:[], rescued:false, explored:false,orruRescued:false,activeCompanion:null,orruCharge:0,orruQuestCount:0,vinesCleared:false,trailIndex:0,trailCompleted:[],xp:0,level:1,bonusItems:0,moves:0,spawns:0,message:'Help Mivra recover by crafting three supplies.' };
+ return { board,completed:[],groveCompleted:[], rescued:false, explored:false,orruRescued:false,activeCompanion:null,orruCharge:0,orruQuestCount:0,vinesCleared:false,trailIndex:0,trailCompleted:[],puzzleZone:-1,blockers:[],runesFound:0,combo:0,skillCharge:0,xp:0,level:1,bonusItems:0,moves:0,spawns:0,message:'Help Mivra recover by crafting three supplies.' };
 }
 function merge(state,from,to) {
- if(!Number.isInteger(from)||!Number.isInteger(to)||from===to||from<0||to<0||from>=SIZE*SIZE||to>=SIZE*SIZE)return {ok:false,why:'Choose two different tiles.'};
+ if(!Number.isInteger(from)||!Number.isInteger(to)||from===to||from<0||to<0||from>=SIZE*SIZE||to>=SIZE*SIZE){state.combo=0;return {ok:false,why:'Choose two different tiles.'};}
+ ensurePuzzle(state);
+ if(isBlocked(state,from)||isBlocked(state,to)){state.combo=0;return {ok:false,why:'A magical blocker is occupying that tile.'};}
  const a=state.board[from],b=state.board[to];
- if(!a||!b||a.kind!==b.kind||a.tier!==b.tier||a.tier===MAX_TIER)return {ok:false,why:'Merge two matching, non-maxed items.'};
+ if(!a||!b||a.kind!==b.kind||a.tier!==b.tier||a.tier===MAX_TIER){state.combo=0;return {ok:false,why:'Merge two matching, non-maxed items.'};}
  state.board[from]=null;
  state.board[to]={kind:b.kind,tier:b.tier+1};
- state.moves++;gainXP(state,3+b.tier*2);
+ state.moves++;state.combo=Math.min(9,(state.combo||0)+1);state.skillCharge=Math.min(SKILL_MAX,(state.skillCharge||0)+1);
+ const comboBonus=state.combo>=3?2:0;
+ gainXP(state,3+b.tier*2+comboBonus);
  if(state.orruRescued)state.orruCharge=Math.min(ORRU_GROW_COST*2,state.orruCharge+1);
- return {ok:true,tile:state.board[to]};
+ return {ok:true,tile:state.board[to],combo:state.combo,skillReady:state.skillCharge===SKILL_MAX};
 }
 function deliver(state,index) {
  const item=state.board[index];if(!item)return {ok:false,why:'Select an item first.'};
  const trail=isTrail(state),stage=trailInfo(state);
  if(trail&&!stage)return {ok:false,why:'All three restoration areas are complete!'};
+ ensurePuzzle(state);
+ if(trail&&!puzzleReady(state))return {ok:false,why:'Clear this region’s blockers before delivering quest magic.'};
  const tasks=activeTasks(state),done=trail?state.trailCompleted:state.explored?state.groveCompleted:state.completed;
  const task=tasks.find(t=>!done.includes(t.id)&&t.kind===item.kind&&t.tier===item.tier);
  if(!task)return {ok:false,why:'This item is not needed for an active quest.'};
  state.board[index]=null;done.push(task.id);gainXP(state,30+item.tier*10);
  if(trail){
   const completedStage=done.length===tasks.length;
-  if(completedStage){state.trailIndex++;state.trailCompleted=[];gainXP(state,90);}
+  if(completedStage){state.trailIndex++;state.trailCompleted=[];gainXP(state,90);seedPuzzle(state);}
   return {ok:true,task,rescued:false,friend:null,completedStage,stageName:stage.name,allRestored:state.trailIndex===TRAIL.length};
  }
  if(state.explored){if(done.length===GROVE_TASKS.length)state.orruRescued=true;}
@@ -312,7 +365,8 @@ function deliver(state,index) {
  return {ok:true,task,rescued:state.explored?state.orruRescued:state.rescued,friend:state.explored?'Orru':'Mivra'};
 }
 function spawn(state,random=Math.random){
- const free=[];for(let i=0;i<state.board.length;i++)if(!state.board[i])free.push(i);
+ ensurePuzzle(state);
+ const free=[];for(let i=0;i<state.board.length;i++)if(!state.board[i]&&!isBlocked(state,i))free.push(i);
  if(!free.length)return {ok:false,why:'Board is full. Merge or recycle an item first.'};
  const kind=KINDS[Math.min(KINDS.length-1,Math.floor(random()*KINDS.length))];
  const index=free[Math.min(free.length-1,Math.floor(random()*free.length))];
@@ -330,7 +384,7 @@ function spawn(state,random=Math.random){
  }
  return {ok:true,index,kind,helper,bonusIndex,bonusSkipped};
 }
-function recycle(state,index){if(!state.board[index])return false;state.board[index]=null;return true;}
+function recycle(state,index){ensurePuzzle(state);if(isBlocked(state,index)||!state.board[index])return false;state.board[index]=null;state.combo=0;return true;}
 function explore(state){if(!state.rescued||state.explored)return false;state.explored=true;return true;}
 function serialize(state){return JSON.stringify(state);}
 function restore(raw){
