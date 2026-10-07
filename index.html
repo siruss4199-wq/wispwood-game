@@ -122,6 +122,15 @@
 .orru-quest button{width:100%;margin-top:3px}
 .scene.vines-open .hill-front{background:linear-gradient(160deg,#89b983,#67b59b)}
 @media(max-width:670px){.orru-panel{padding:11px}.orru-ability-row button{min-height:43px}}
+
+.puzzle-hud{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:12px 0;padding:12px 14px;border:1px solid #cfc2e6;border-radius:16px;background:linear-gradient(135deg,#f4efff,#eef8f1)}
+.puzzle-hud[hidden]{display:none}.puzzle-hud>div:first-child{display:flex;flex-direction:column;gap:2px}.puzzle-label{font-size:9px;letter-spacing:.12em;font-weight:900;color:#8b72a8}.puzzle-hud strong{font-size:14px;color:#564069}.puzzle-hud small{font-size:10px;color:#796d84}
+.puzzle-stats{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.puzzle-stats span{font-size:10px;font-weight:900;padding:6px 8px;background:#fff;border-radius:999px;color:#6b5980;border:1px solid #e0d7eb}
+.tile.blocker{cursor:not-allowed;background:linear-gradient(145deg,#dbe9d3,#b9d0b1);border:2px solid #7b9a70;box-shadow:inset 0 0 18px #4c6b4055}
+.tile.blocker.fog-blocker{background:linear-gradient(145deg,#dee1ee,#bfc3d9);border-color:#888ca5;box-shadow:inset 0 0 18px #62677b66}.tile.blocker .blocker-icon{font-size:28px;filter:drop-shadow(0 2px 2px #344)}
+.tile.blocker .item-name{font-size:9px}.skill-action{background:linear-gradient(135deg,#6d58aa,#8870c3);color:#fff;border:0;border-radius:12px;padding:10px 12px;font-weight:900}.skill-action small{display:block;font-size:9px;opacity:.8}.skill-action:disabled{opacity:.45}
+.board-frame.puzzle-locked{box-shadow:0 0 0 3px #d9c6e744,0 12px 28px #59476e19}.board-frame.puzzle-ready{box-shadow:0 0 0 3px #bce4c955,0 12px 28px #41634b19}
+@media(max-width:670px){.puzzle-hud{align-items:flex-start;flex-direction:column}.puzzle-stats{justify-content:flex-start}.actions{flex-wrap:wrap}.skill-action{flex:1 1 45%}}
 </style></head>
 <body>
  <div class="shell">
@@ -160,9 +169,13 @@
    <section class="play card" aria-label="Merge puzzle game"><div class="play-head"><div><span class="eyebrow">MAGIC WORKSHOP</span><h2>Merge to help</h2></div><span class="moves">↔ <b id="moves">0</b> moves</span></div>
     <p class="instruction">Tap two identical items to merge them into a stronger one. On desktop, you can also drag items together.</p>
     <div class="merge-legend" aria-label="Magical item types"><span class="legend-leaf">🌿 Nature</span><span class="legend-dew">💧 Water</span><span class="legend-glow">✨ Starlight</span></div>
+    <div id="puzzleHud" class="puzzle-hud" hidden>
+      <div><span class="puzzle-label">REGION PUZZLE</span><strong id="puzzleName">Whispering Bridge</strong><small id="puzzleHint">Clear blockers to unlock delivery.</small></div>
+      <div class="puzzle-stats"><span id="blockerCount">0 blockers</span><span id="comboLabel">Combo ×0</span><span id="skillLabel">Skill 0/5</span></div>
+    </div>
     <div class="board-frame"><div class="board-caption"><span>✦ ENCHANTED MERGE GARDEN</span><span>6 × 6</span></div><div id="board" class="board" role="group" aria-label="6 by 6 merge board"></div></div>
     <div class="selected-row"><span id="selected">Select matching tiles to merge</span></div>
-    <div class="actions"><button id="spawnBtn" class="primary">✦ Gather magic <small>FREE</small></button><button id="deliverBtn" disabled class="secondary">♡ Deliver</button><button id="recycleBtn" disabled class="tertiary" aria-label="Recycle selected item">♻</button></div>
+    <div class="actions"><button id="spawnBtn" class="primary">✦ Gather magic <small>FREE</small></button><button id="skillBtn" hidden disabled class="skill-action">✨ Companion Skill <small>0/5</small></button><button id="deliverBtn" disabled class="secondary">♡ Deliver</button><button id="recycleBtn" disabled class="tertiary" aria-label="Recycle selected item">♻</button></div>
     <p class="footnote">Prototype mode: unlimited gathering, no timers, no ads, no account.</p>
    </section>
    <aside class="sidebar card" aria-label="Rescue objectives"><div class="side-heading"><div><span class="eyebrow">TODAY'S ADVENTURE</span><h2 id="tasksTitle">Help Mivra heal</h2></div><span id="tasksCount" class="progress-count">0/3</span></div><div class="progress"><div id="progressFill"></div></div><p class="side-sub">Craft these magical items, select one on the board, then tap Deliver.</p><div id="tasks"></div><div id="orruPanel" class="orru-panel" hidden>
@@ -189,6 +202,13 @@
 const SIZE = 6;
 const KINDS = ['leaf', 'dew', 'glow'];
 const MAX_TIER = 3;
+const SKILL_MAX = 5;
+const PUZZLES=[
+ {name:'Whispering Bridge',blocker:'vine',count:5,icon:'🌿',hint:'Clear the vines before the bridge can accept restoration magic.'},
+ {name:'Starlit Garden',blocker:'fog',count:5,icon:'🌫️',hint:'Dispel the enchanted fog to wake the garden.'},
+ {name:'Celestial Gate',blocker:'mixed',count:6,icon:'🌀',hint:'Use both companions to clear the final tangled barrier.'}
+];
+const BLOCKER_ICON={vine:'🌿',fog:'🌫️'};
 const ITEMS = {
   leaf: [{name:'Seed', emoji:'🌰'}, {name:'Sprout', emoji:'🌱'}, {name:'Herb', emoji:'🌿'}, {name:'Bloom', emoji:'🌸'}],
   dew: [{name:'Dewdrop', emoji:'💧'}, {name:'Water', emoji:'🫧'}, {name:'Elixir', emoji:'🧪'}, {name:'Moonwell', emoji:'💎'}],
@@ -225,6 +245,47 @@ function activeTasks(state){
 }
 function gainXP(state,points){state.xp+=points;state.level=Math.floor(state.xp/75)+1;}
 function trailInfo(state){return TRAIL[state.trailIndex]||null;}
+function puzzleInfo(state){return PUZZLES[state.trailIndex]||null;}
+function puzzleReady(state){return !isTrail(state)||state.trailIndex>=TRAIL.length||state.blockers.length===0;}
+function seedPuzzle(state){
+ const info=puzzleInfo(state);
+ state.puzzleZone=state.trailIndex;
+ state.blockers=[];
+ state.runesFound=0;
+ state.combo=0;
+ state.skillCharge=0;
+ if(!info)return;
+ const preferred=[5,10,15,20,25,30,4,11,18,27,34,31];
+ const free=[...preferred.filter(i=>state.board[i]===null),...state.board.map((v,i)=>v===null&& !preferred.includes(i)?i:null).filter(i=>i!==null)];
+ for(let n=0;n<Math.min(info.count,free.length);n++){
+  const type=info.blocker==='mixed'?(n%2===0?'vine':'fog'):info.blocker;
+  state.blockers.push({index:free[n],type});
+ }
+}
+function ensurePuzzle(state){
+ if(!Array.isArray(state.blockers))state.blockers=[];
+ if(isTrail(state)&&state.trailIndex<TRAIL.length&&state.puzzleZone!==state.trailIndex)seedPuzzle(state);
+}
+function isBlocked(state,index){return state.blockers.some(b=>b.index===index);}
+function useCompanionSkill(state){
+ ensurePuzzle(state);
+ const active=currentCompanion(state);
+ if(!active)return {ok:false,why:'Choose a rescued companion first.'};
+ if(state.skillCharge<SKILL_MAX)return {ok:false,why:'Build a 5-merge charge first.'};
+ if(!state.blockers.length)return {ok:false,why:'No blockers remain in this region.'};
+ const preferred=active==='orru'?'vine':'fog';
+ const matching=state.blockers.filter(b=>b.type===preferred);
+ if(!matching.length)return {ok:false,why:active==='orru'?'No vines here. Switch to Mivra to dispel fog.':'No fog here. Switch to Orru to clear vines.'};
+ const targets=matching.slice(0,3);
+ const ids=new Set(targets.map(b=>b.index));
+ state.blockers=state.blockers.filter(b=>!ids.has(b.index));
+ state.runesFound+=targets.length;
+ state.skillCharge=0;
+ state.combo=0;
+ const cleared=state.blockers.length===0;
+ if(cleared)gainXP(state,40);
+ return {ok:true,cleared,count:targets.length,companion:active};
+}
 
 const CREATURES={
  mivra:{name:'Mivra',type:'Mist Guide',ability:'Starlight Gift',description:'Mivra uncovers paths hidden in the mist and gifts a Spark every eighth Gather.',bonus:'glow'},
@@ -282,29 +343,35 @@ function createState() {
  const board=Array(SIZE*SIZE).fill(null);
  const placement=[ [0,'leaf',0],[1,'leaf',0], [6,'dew',0],[7,'dew',0], [12,'glow',0],[13,'glow',0], [19,'leaf',1], [22,'dew',1], [26,'glow',1] ];
  for(const [i,kind,tier] of placement)board[i]={kind,tier};
- return { board,completed:[],groveCompleted:[], rescued:false, explored:false,orruRescued:false,activeCompanion:null,orruCharge:0,orruQuestCount:0,vinesCleared:false,trailIndex:0,trailCompleted:[],xp:0,level:1,bonusItems:0,moves:0,spawns:0,message:'Help Mivra recover by crafting three supplies.' };
+ return { board,completed:[],groveCompleted:[], rescued:false, explored:false,orruRescued:false,activeCompanion:null,orruCharge:0,orruQuestCount:0,vinesCleared:false,trailIndex:0,trailCompleted:[],puzzleZone:-1,blockers:[],runesFound:0,combo:0,skillCharge:0,xp:0,level:1,bonusItems:0,moves:0,spawns:0,message:'Help Mivra recover by crafting three supplies.' };
 }
 function merge(state,from,to) {
- if(!Number.isInteger(from)||!Number.isInteger(to)||from===to||from<0||to<0||from>=SIZE*SIZE||to>=SIZE*SIZE)return {ok:false,why:'Choose two different tiles.'};
+ if(!Number.isInteger(from)||!Number.isInteger(to)||from===to||from<0||to<0||from>=SIZE*SIZE||to>=SIZE*SIZE){state.combo=0;return {ok:false,why:'Choose two different tiles.'};}
+ ensurePuzzle(state);
+ if(isBlocked(state,from)||isBlocked(state,to)){state.combo=0;return {ok:false,why:'A magical blocker is occupying that tile.'};}
  const a=state.board[from],b=state.board[to];
- if(!a||!b||a.kind!==b.kind||a.tier!==b.tier||a.tier===MAX_TIER)return {ok:false,why:'Merge two matching, non-maxed items.'};
+ if(!a||!b||a.kind!==b.kind||a.tier!==b.tier||a.tier===MAX_TIER){state.combo=0;return {ok:false,why:'Merge two matching, non-maxed items.'};}
  state.board[from]=null;
  state.board[to]={kind:b.kind,tier:b.tier+1};
- state.moves++;gainXP(state,3+b.tier*2);
+ state.moves++;state.combo=Math.min(9,(state.combo||0)+1);state.skillCharge=Math.min(SKILL_MAX,(state.skillCharge||0)+1);
+ const comboBonus=state.combo>=3?2:0;
+ gainXP(state,3+b.tier*2+comboBonus);
  if(state.orruRescued)state.orruCharge=Math.min(ORRU_GROW_COST*2,state.orruCharge+1);
- return {ok:true,tile:state.board[to]};
+ return {ok:true,tile:state.board[to],combo:state.combo,skillReady:state.skillCharge===SKILL_MAX};
 }
 function deliver(state,index) {
  const item=state.board[index];if(!item)return {ok:false,why:'Select an item first.'};
  const trail=isTrail(state),stage=trailInfo(state);
  if(trail&&!stage)return {ok:false,why:'All three restoration areas are complete!'};
+ ensurePuzzle(state);
+ if(trail&&!puzzleReady(state))return {ok:false,why:'Clear this region’s blockers before delivering quest magic.'};
  const tasks=activeTasks(state),done=trail?state.trailCompleted:state.explored?state.groveCompleted:state.completed;
  const task=tasks.find(t=>!done.includes(t.id)&&t.kind===item.kind&&t.tier===item.tier);
  if(!task)return {ok:false,why:'This item is not needed for an active quest.'};
  state.board[index]=null;done.push(task.id);gainXP(state,30+item.tier*10);
  if(trail){
   const completedStage=done.length===tasks.length;
-  if(completedStage){state.trailIndex++;state.trailCompleted=[];gainXP(state,90);}
+  if(completedStage){state.trailIndex++;state.trailCompleted=[];gainXP(state,90);seedPuzzle(state);}
   return {ok:true,task,rescued:false,friend:null,completedStage,stageName:stage.name,allRestored:state.trailIndex===TRAIL.length};
  }
  if(state.explored){if(done.length===GROVE_TASKS.length)state.orruRescued=true;}
@@ -312,7 +379,8 @@ function deliver(state,index) {
  return {ok:true,task,rescued:state.explored?state.orruRescued:state.rescued,friend:state.explored?'Orru':'Mivra'};
 }
 function spawn(state,random=Math.random){
- const free=[];for(let i=0;i<state.board.length;i++)if(!state.board[i])free.push(i);
+ ensurePuzzle(state);
+ const free=[];for(let i=0;i<state.board.length;i++)if(!state.board[i]&&!isBlocked(state,i))free.push(i);
  if(!free.length)return {ok:false,why:'Board is full. Merge or recycle an item first.'};
  const kind=KINDS[Math.min(KINDS.length-1,Math.floor(random()*KINDS.length))];
  const index=free[Math.min(free.length-1,Math.floor(random()*free.length))];
@@ -330,7 +398,7 @@ function spawn(state,random=Math.random){
  }
  return {ok:true,index,kind,helper,bonusIndex,bonusSkipped};
 }
-function recycle(state,index){if(!state.board[index])return false;state.board[index]=null;return true;}
+function recycle(state,index){ensurePuzzle(state);if(isBlocked(state,index)||!state.board[index])return false;state.board[index]=null;state.combo=0;return true;}
 function explore(state){if(!state.rescued||state.explored)return false;state.explored=true;return true;}
 function serialize(state){return JSON.stringify(state);}
 function restore(raw){
@@ -347,6 +415,11 @@ function restore(raw){
   s.orruCharge=Number.isInteger(s.orruCharge)?Math.max(0,Math.min(ORRU_GROW_COST*2,s.orruCharge)):0;
   s.orruQuestCount=Number.isInteger(s.orruQuestCount)?Math.max(0,Math.min(ORRU_QUEST_GOAL,s.orruQuestCount)):0;
   s.vinesCleared=Boolean(s.vinesCleared);
+  s.puzzleZone=Number.isInteger(s.puzzleZone)?s.puzzleZone:-1;
+  s.blockers=Array.isArray(s.blockers)?s.blockers.filter(b=>b&&Number.isInteger(b.index)&&b.index>=0&&b.index<SIZE*SIZE&&(b.type==='vine'||b.type==='fog')&&s.board[b.index]===null):[];
+  s.runesFound=Number.isInteger(s.runesFound)&&s.runesFound>=0?s.runesFound:0;
+  s.combo=Number.isInteger(s.combo)&&s.combo>=0?Math.min(9,s.combo):0;
+  s.skillCharge=Number.isInteger(s.skillCharge)&&s.skillCharge>=0?Math.min(SKILL_MAX,s.skillCharge):0;
   // Migrate v0.3/v0.4 progress; existing rescued friends and board remain intact.
   s.trailIndex=Number.isInteger(s.trailIndex)?Math.max(0,Math.min(TRAIL.length,s.trailIndex)):0;
   s.trailCompleted=Array.isArray(s.trailCompleted)&&s.trailIndex<TRAIL.length?TRAIL[s.trailIndex].tasks.map(t=>t.id).filter(id=>s.trailCompleted.includes(id)):[];
@@ -393,6 +466,7 @@ const message=txt=>{el('toast').textContent=txt;el('toast').classList.add('show'
 function persist(){storage.setItem(KEY,serialize(state));}
 function present(){
  const fx=pendingEffect;pendingEffect=null;
+ ensurePuzzle(state);
  const grove=state.explored;
  const tasks=activeTasks(state);
  const done=isTrail(state)?state.trailCompleted:grove?state.groveCompleted:state.completed;
@@ -411,18 +485,38 @@ function present(){
  el('storyTitle').textContent=trail?(stage?stage.name:'Wispwood restored!'):grove?'Meet Orru':'Meet Mivra';
  el('tasksTitle').textContent=trail?(stage?'Restore '+stage.name:'Adventure complete'):grove?'Rescue Orru':'Help Mivra heal';
  el('tipText').textContent=trail?'Keep merging to create quest items. Every merge gives XP and rescued friends periodically add free items.':grove?'Merge to tier 4 to create a Bloom, Moonwell, and Aurora.':'Merge two seeds to make a sprout, then two sprouts to make a healing herb!';
+ const puzzle=puzzleInfo(state);
+ const puzzleActive=isTrail(state)&&state.trailIndex<TRAIL.length;
+ el('puzzleHud').hidden=!puzzleActive;
+ if(puzzleActive){
+  el('puzzleName').textContent=puzzle.name;
+  el('puzzleHint').textContent=state.blockers.length?puzzle.hint:'Path clear — quest delivery unlocked.';
+  el('blockerCount').textContent=`${state.blockers.length} blocker${state.blockers.length===1?'':'s'}`;
+  el('comboLabel').textContent=`Combo ×${state.combo||0}`;
+  el('skillLabel').textContent=`Skill ${state.skillCharge||0}/${SKILL_MAX}`;
+ }
+ el('skillBtn').hidden=!puzzleActive;
+ el('skillBtn').disabled=!puzzleActive||state.skillCharge<SKILL_MAX||state.blockers.length===0||!currentCompanion(state);
+ el('skillBtn').innerHTML=`✨ Companion Skill <small>${state.skillCharge||0}/${SKILL_MAX}</small>`;
+ const frame=document.querySelector('.board-frame');
+ frame.classList.toggle('puzzle-locked',puzzleActive&&state.blockers.length>0);
+ frame.classList.toggle('puzzle-ready',puzzleActive&&state.blockers.length===0);
  const board=el('board');board.innerHTML='';
  const picked=selected!==null?state.board[selected]:null;
  state.board.forEach((item,i)=>{
-  const cell=document.createElement('button');cell.type='button';cell.className='tile '+(item?`filled ${item.kind} tier${item.tier}`:'empty')+(selected===i?' selected':'');
+  const blocker=state.blockers.find(b=>b.index===i);
+  const cell=document.createElement('button');cell.type='button';cell.className='tile '+(blocker?`blocker ${blocker.type==='fog'?'fog-blocker':'vine-blocker'}`:item?`filled ${item.kind} tier${item.tier}`:'empty')+(selected===i?' selected':'');
   if(fx&&fx.index===i&&(fx.type==='merge'||fx.type==='spawn'))cell.classList.add('fx-'+fx.type);
-  if(item&&picked&&i!==selected&&item.kind===picked.kind&&item.tier===picked.tier&&item.tier<MAX_TIER)cell.classList.add('merge-match');
+  if(blocker){cell.disabled=true;cell.setAttribute('aria-label',`${blocker.type==='vine'?'Vine':'Fog'} blocker at ${Math.floor(i/SIZE)+1},${i%SIZE+1}`);}
+  if(!blocker&&item&&picked&&i!==selected&&item.kind===picked.kind&&item.tier===picked.tier&&item.tier<MAX_TIER)cell.classList.add('merge-match');
   if(item&&item.tier===MAX_TIER)cell.classList.add('legendary');
   if(item)cell.setAttribute('aria-pressed',selected===i?'true':'false');
-  cell.dataset.index=i;cell.setAttribute('aria-label',item?`${ITEMS[item.kind][item.tier].name} at ${Math.floor(i/SIZE)+1},${i%SIZE+1}`:`Empty tile at ${Math.floor(i/SIZE)+1},${i%SIZE+1}`);
-  if(item){let def=ITEMS[item.kind][item.tier];cell.innerHTML=`<span class="item-icon" aria-hidden="true">${def.emoji}</span><span class="item-name">${def.name}</span><span class="tier-pips" aria-hidden="true">${"✦".repeat(item.tier+1)}</span>`;}
-  cell.addEventListener('click',()=>choose(i));
-  cell.draggable=!!item;
+  cell.dataset.index=i;
+  if(!blocker)cell.setAttribute('aria-label',item?`${ITEMS[item.kind][item.tier].name} at ${Math.floor(i/SIZE)+1},${i%SIZE+1}`:`Empty tile at ${Math.floor(i/SIZE)+1},${i%SIZE+1}`);
+  if(blocker)cell.innerHTML=`<span class="blocker-icon" aria-hidden="true">${BLOCKER_ICON[blocker.type]}</span><span class="item-name">${blocker.type==='vine'?'Vine':'Fog'}</span>`;
+  else if(item){let def=ITEMS[item.kind][item.tier];cell.innerHTML=`<span class="item-icon" aria-hidden="true">${def.emoji}</span><span class="item-name">${def.name}</span><span class="tier-pips" aria-hidden="true">${"✦".repeat(item.tier+1)}</span>`;}
+  if(!blocker)cell.addEventListener('click',()=>choose(i));
+  cell.draggable=!!item&&!blocker;
   cell.addEventListener('dragstart',e=>{if(!item){e.preventDefault();return;}e.dataTransfer.setData('text/plain',String(i));e.dataTransfer.effectAllowed='move';});
   cell.addEventListener('dragover',e=>e.preventDefault());
   cell.addEventListener('drop',e=>{e.preventDefault();const from=Number(e.dataTransfer.getData('text/plain'));if(Number.isInteger(from))doMerge(from,i);});
@@ -490,7 +584,7 @@ function present(){
  el('exploreBtn').disabled=!state.rescued||state.explored;
  el('exploreBtn').textContent=trail?(stage?'✨ Restoration Trail active':'✓ Forest restored'):grove?'🌿 Moonlit Grove':state.rescued?'✨ Enter Moonlit Grove':'🔒 Rescue Mivra first';
  el('selected').textContent=selected!==null&&state.board[selected]?`${ITEMS[state.board[selected].kind][state.board[selected].tier].name} selected`:'Select matching tiles to merge';
- el('deliverBtn').disabled=selected===null||!state.board[selected]||!tasks.some(t=>!done.includes(t.id)&&t.kind===state.board[selected].kind&&t.tier===state.board[selected].tier);
+ el('deliverBtn').disabled=!puzzleReady(state)||selected===null||!state.board[selected]||!tasks.some(t=>!done.includes(t.id)&&t.kind===state.board[selected].kind&&t.tier===state.board[selected].tier);
  el('recycleBtn').disabled=selected===null||!state.board[selected];
  persist();
 }
@@ -500,6 +594,14 @@ function choose(i){
  selected=selected===i?null:i;present();
 }
 function doMerge(from,to){const r=merge(state,from,to);selected=null;if(r.ok){effect('merge',to);message(`✨ ${ITEMS[r.tile.kind][r.tile.tier].name} crafted!`);}else message('Choose two matching items.');present();}
+el('skillBtn').onclick=()=>{
+ const r=useCompanionSkill(state);selected=null;
+ if(r.ok){
+  message(r.cleared?`✨ ${CREATURES[r.companion].name} cleared the last blocker — delivery is unlocked!`:`✨ ${CREATURES[r.companion].name} cleared ${r.count} blockers!`);
+  triggerSceneEffect(r.companion==='orru'?'🌿':'🌫️');
+ }else message(r.why);
+ present();
+};
 el('spawnBtn').onclick=()=>{
  const r=spawn(state);if(r.ok)effect('spawn',r.index);
  message(r.ok?r.helper?`${r.helper} helped! ✨ Free extra item appeared.`:r.bonusSkipped?'Your companion tried to help, but the board is full.':`New ${r.kind} item appeared!`:r.why);
