@@ -763,11 +763,11 @@ test('mobile board restores touch drag interactions with Pointer Events', () => 
 });
 
 test('enchanted vines visibly communicate a locked merge state', () => {
- assert.match(html,/class="vine-lock"/);
- assert.match(html,/class="vine-hint"/);
- assert.match(html,/>MERGE</);
- assert.match(html,/content:'🔒'/);
- assert.match(html,/rotate\(35deg\)/);
- assert.match(html,/rotate\(-35deg\)/);
+ assert.match(html,/class="vine-seal"/);
+ assert.doesNotMatch(html,/class="vine-lock"/);
+ assert.doesNotMatch(html,/>MERGE</);
+ assert.doesNotMatch(html,/content:'🔒'/);
+ assert.match(html,/content:'✦'/);
+ assert.match(html,/border-color:#9ab98b/);
  assert.match(html,/merge a matching item to free it/);
 });
