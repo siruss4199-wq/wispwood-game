@@ -604,7 +604,7 @@ function restore(raw){
   const old=JSON.parse(raw);
   if(!old||!Array.isArray(old.board)||!Array.isArray(old.completed)||typeof old.rescued!=='boolean')return null;
   const oldBoard=old.board;
-  const oldSize=oldBoard.length===36?6:oldBoard.length===64?8:null;
+  const oldSize=oldBoard.length===36?6:oldBoard.length===64?8:oldBoard.length===49?7:null;
   if(!oldSize)return null;
   for(const it of oldBoard){
    if(it===null)continue;
