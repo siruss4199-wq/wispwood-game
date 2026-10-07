@@ -224,7 +224,7 @@
     <div id="resourceBar" class="resource-bar">
       <div><span>⚡ Energy</span><strong id="energyLabel">24/30</strong></div>
       <div><span>✨ Magic</span><strong id="magicLabel">0</strong></div>
-      <div><span>🧩 Open tiles</span><strong id="openLabel">9/49</strong></div>
+      <div><span>🧩 Open tiles</span><strong id="openLabel">12/64</strong></div>
     </div>
     <div id="mobileQuestStrip" class="mobile-quest-strip" aria-label="Current quests">
       <div class="mobile-quest-head"><span>QUESTS</span><button type="button" id="mobileQuestMore">View all ›</button></div>
@@ -239,7 +239,7 @@
       <div><span class="puzzle-label">REGION PUZZLE</span><strong id="puzzleName">Whispering Bridge</strong><small id="puzzleHint">Clear blockers to unlock delivery.</small></div>
       <div class="puzzle-stats"><span id="blockerCount">0 blockers</span><span id="comboLabel">Combo ×0</span><span id="skillLabel">Skill 0/5</span></div>
     </div>
-    <div class="board-frame"><div class="board-caption"><span>✦ WISPWOOOD CLEARING</span><span>7 × 7</span></div><div id="board" class="board" role="group" aria-label="7 by 7 merge board"></div></div>
+    <div class="board-frame"><div class="board-caption"><span>✦ WISPWOOOD CLEARING</span><span>8 × 8</span></div><div id="board" class="board" role="group" aria-label="8 by 8 merge board"></div></div>
     <div class="selected-row"><span id="selected">Select matching tiles to merge</span></div>
     <div class="actions"><button id="spawnBtn" hidden class="primary">✦ Gather magic <small>FREE</small></button><button id="mergeGroupBtn" hidden disabled class="merge-v2">Merge selected <small>0/3</small></button><button id="skillBtn" hidden disabled class="skill-action">✨ Companion Skill <small>0/5</small></button><button id="deliverBtn" disabled class="secondary">♡ Deliver</button><button id="recycleBtn" disabled class="tertiary" aria-label="Recycle selected item">♻</button></div>
     <p class="footnote">Prototype mode: unlimited gathering, no timers, no ads, no account.</p>
@@ -277,27 +277,27 @@
  <div id="endOverlay" class="end-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="overlayTitle"><div class="end-modal"><span class="end-icon">🌙✨</span><h2 id="overlayTitle">Moonlit Grove is open!</h2><p id="overlayText">Mivra found a new friend in the forest.</p><button id="endClose" class="primary">Continue</button></div></div>
  <script>// Copyright (c) 2026 Magical Creature Rescue project. Original prototype.
 // Dependency-free game rules: no runtime AI service or network requests.
-const SIZE = 7;
+const SIZE = 8;
 const KINDS = ['leaf', 'dew', 'glow'];
 const MAX_TIER = 5;
-const BOARD_SCHEMA=5;
-const INITIAL_OPEN=[16,17,18,23,24,25,30,31,32];
+const BOARD_SCHEMA=6;
+const INITIAL_OPEN=[18,19,20,21,26,27,28,29,34,35,36,37];
 const INITIAL_ENERGY=24;
 const MAX_ENERGY=30;
 const CELL_REVEALS={
- 15:{type:'web',item:{kind:'leaf',tier:1}},
- 19:{type:'generator',kind:'dew'},
- 9:{type:'blocker',blocker:'fog'},
- 26:{type:'blocker',blocker:'vine'},
- 29:{type:'web',item:{kind:'leaf',tier:0}},
- 33:{type:'generator',kind:'glow'},
- 38:{type:'web',item:{kind:'dew',tier:0}},
- 37:{type:'blocker',blocker:'fog'},
- 39:{type:'blocker',blocker:'vine'}
+ 17:{type:'vinewrap',item:{kind:'leaf',tier:1}},
+ 22:{type:'generator',kind:'dew'},
+ 25:{type:'blocker',blocker:'fog'},
+ 30:{type:'blocker',blocker:'vine'},
+ 33:{type:'vinewrap',item:{kind:'leaf',tier:0}},
+ 38:{type:'generator',kind:'glow'},
+ 42:{type:'vinewrap',item:{kind:'dew',tier:0}},
+ 41:{type:'blocker',blocker:'fog'},
+ 46:{type:'blocker',blocker:'vine'}
 };
 const BOARD_GOALS=[
  {id:'crate-open',label:'Open hidden crates',icon:'📦',goal:3,key:'cratesOpened'},
- {id:'web-clear',label:'Clear webbed items',icon:'🕸️',goal:2,key:'websCleared'},
+ {id:'vine-clear',label:'Clear enchanted vines',icon:'🌿',goal:3,key:'websCleared'},
  {id:'reveal-merge',label:'Merge revealed items',icon:'✨',goal:2,key:'revealedMerges'}
 ];
 const SKILL_MAX = 5;
