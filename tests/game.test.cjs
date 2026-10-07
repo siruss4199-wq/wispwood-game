@@ -483,7 +483,7 @@ test('v0.8 saves migrate into v1 puzzle fields without losing progress', () => {
  st.trailIndex=1;st.xp=234;delete st.puzzleZone;delete st.blockers;delete st.runesFound;delete st.combo;delete st.skillCharge;
  const loaded=game.restore(JSON.stringify(st));
  assert.equal(loaded.trailIndex,1);assert.equal(loaded.xp,234);
- assert.equal(loaded.puzzleZone,-1);assert.deepEqual(loaded.blockers,[]);
+ assert.equal(loaded.puzzleZone,-1);assert.equal(loaded.blockers.length,0);
  assert.equal(loaded.combo,0);assert.equal(loaded.skillCharge,0);
  game.ensurePuzzle(loaded);
  assert.equal(loaded.puzzleZone,1);assert.equal(loaded.blockers.length,5);
