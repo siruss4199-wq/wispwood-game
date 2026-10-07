@@ -13,7 +13,7 @@ assert.ok(script, 'Inline game script must exist');
 const uiStart = script.indexOf("const KEY='wispwood-prototype-v1'");
 assert.ok(uiStart > 0, 'Could not find boundary between game rules and browser UI');
 const context = vm.createContext({});
-const names = ['SIZE', 'KINDS', 'TASKS', 'GROVE_TASKS', 'activeTasks', 'collected', 'createState', 'merge', 'deliver', 'spawn', 'recycle', 'explore', 'serialize', 'restore'];
+const names = ['SIZE', 'KINDS', 'TASKS', 'GROVE_TASKS', 'TRAIL', 'activeTasks', 'gainXP', 'trailInfo', 'isTrail', 'collected', 'createState', 'merge', 'deliver', 'spawn', 'recycle', 'explore', 'serialize', 'restore'];
 vm.runInContext(script.slice(0, uiStart) + '\nglobalThis.game = {' + names.join(',') + '};', context, { timeout: 1000 });
 const game = context.game;
 
@@ -172,4 +172,78 @@ test('new chapter 2 interface and modal are present and dismissible', () => {
   assert.match(html,new RegExp('id="'+id+'"'));
  assert.match(html,/el\('endOverlay'\)\.hidden=true/);
  assert.doesNotMatch(html,/if\(state\.explored\)el\('endOverlay'\)\.hidden=false/);
+});
+
+test('restoration trail unlocks only after rescuing Orru', () => {
+ const s=game.createState();
+ assert.equal(game.isTrail(s),false);
+ s.rescued=true;s.explored=true;s.orruRescued=true;
+ assert.equal(game.isTrail(s),true);
+ assert.equal(game.activeTasks(s).length,3);
+ assert.equal(game.trailInfo(s).name,'Whispering Bridge');
+});
+
+test('restoration quests advance through all 3 zones exactly once', () => {
+ const s=game.createState();s.rescued=true;s.explored=true;s.orruRescued=true;
+ for(let zone=0;zone<3;zone++){
+  for(let i=0;i<3;i++){
+   const task=game.TRAIL[zone].tasks[i];
+   s.board[i]={kind:task.kind,tier:task.tier};
+   const result=game.deliver(s,i);
+   assert.equal(result.ok,true);
+   assert.equal(result.completedStage,i===2);
+   if(i<2)assert.equal(s.trailIndex,zone);
+  }
+  assert.equal(s.trailIndex,zone+1);
+  assert.equal(s.trailCompleted.length,0);
+ }
+ assert.equal(game.activeTasks(s).length,0);
+ s.board[0]={kind:'glow',tier:3};
+ assert.equal(game.deliver(s,0).ok,false);
+ assert.equal(s.trailIndex,3);
+ assert.ok(s.xp>=300);
+});
+
+test('merges grant XP and rescued friends give periodic free items', () => {
+ const s=game.createState();
+ const first=game.merge(s,0,1);
+ assert.equal(first.ok,true);assert.ok(s.xp>0);
+ s.rescued=true;s.orruRescued=true;
+ s.spawns=7;
+ const result=game.spawn(s,()=>0);
+ assert.equal(result.ok,true);
+ assert.equal(result.helper,'Orru');
+ assert.equal(s.bonusItems,1);
+ assert.equal(s.spawns,8);
+ assert.equal(s.board.filter(Boolean).length,10); // initial 9, merged 2->1, then 2 spawned
+});
+
+test('XP levels advance at 75 points with no level gaps', () => {
+ const s=game.createState();
+ assert.equal(s.level,1);
+ game.gainXP(s,75);
+ assert.equal(s.level,2);
+ game.gainXP(s,150);
+ assert.equal(s.level,4);
+});
+
+test('old v0.4 saves migrate to restoration progression without resetting board', () => {
+ const s=game.createState();
+ s.rescued=true;s.explored=true;s.orruRescued=true;
+ s.completed=['heal','drink','light'];
+ s.groveCompleted=['grove-bloom','grove-well','grove-aurora'];
+ delete s.trailIndex;delete s.trailCompleted;delete s.xp;delete s.level;delete s.bonusItems;
+ const loaded=game.restore(JSON.stringify(s));
+ assert.ok(loaded);assert.equal(loaded.rescued,true);
+ assert.equal(loaded.orruRescued,true);
+ assert.equal(loaded.trailIndex,0);
+ assert.equal(loaded.board.length,36);
+ assert.equal(loaded.level,1);
+});
+
+test('level, restoration map and creature collection UI exist', () => {
+ for(const id of ['trailPanel','trailStops','trailCount','trailDescription','levelLabel','xpLabel','levelBar'])
+  assert.match(html,new RegExp('id="'+id+'"'));
+ assert.match(html,/r\.completedStage/);
+ assert.match(html,/r\.helper/);
 });
