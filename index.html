@@ -374,6 +374,10 @@ function boardGoalProgress(state,goal){return Math.min(goal.goal,Number(state[go
 function crateRevealFor(state,index){
  const fixed=CELL_REVEALS[index];
  if(fixed)return fixed;
+ if(index>0&&index%12===0){
+  const generatorKind=KINDS[Math.floor(index/12)%KINDS.length];
+  return {type:'generator',kind:generatorKind,fromCrate:true};
+ }
  const kind=KINDS[(index+Math.floor(index/SIZE))%KINDS.length];
  const tier=state.openCells.length>24&&index%5===0?1:0;
  const webbed=index%4===0||index%7===1;
@@ -453,7 +457,7 @@ function moveItem(state,from,to){
  if(!Number.isInteger(from)||!Number.isInteger(to)||from===to||!isOpen(state,from)||!isOpen(state,to))return {ok:false,why:'Move between open tiles.'};
  if(isBlocked(state,from)||isBlocked(state,to))return {ok:false,why:'A blocker is in the way.'};
  const item=state.board[from];
- if(!item||isGenerator(item)||isWild(item))return {ok:false,why:'Choose a movable item.'};
+ if(!item||isWild(item))return {ok:false,why:'Choose a movable item.'};
  if(isWebbed(state,from))return {ok:false,why:'This item is web-covered. Merge a matching item into it to free it.'};
  if(state.board[to])return {ok:false,why:'Move onto an empty tile.'};
  state.board[to]=item;state.board[from]=null;
@@ -464,6 +468,18 @@ function moveItem(state,from,to){
  state.combo=0;
  return {ok:true,from,to,item};
 }
+function mergeGenerator(state,from,to){
+ ensurePuzzle(state);
+ if(!Number.isInteger(from)||!Number.isInteger(to)||from===to||!isOpen(state,from)||!isOpen(state,to))return {ok:false,why:'Choose two producers.'};
+ const a=state.board[from],b=state.board[to];
+ if(!isGenerator(a)||!isGenerator(b)||a.kind!==b.kind)return {ok:false,why:'Only matching producers can merge.'};
+ const levelA=Number.isInteger(a.level)?a.level:1,levelB=Number.isInteger(b.level)?b.level:1;
+ if(levelA!==levelB)return {ok:false,why:'Producer levels must match.'};
+ if(levelA>=3)return {ok:false,why:'This producer is already max level.'};
+ state.board[from]=null;state.board[to]={special:'generator',kind:b.kind,level:levelB+1};
+ state.moves++;gainXP(state,12*levelA);
+ return {ok:true,target:to,generator:state.board[to],level:levelB+1};
+}
 function activateGenerator(state,index,random=Math.random){
  const source=state.board[index];
  if(!isOpen(state,index)||!isGenerator(source))return {ok:false,why:'That is not an active generator.'};
@@ -471,8 +487,10 @@ function activateGenerator(state,index,random=Math.random){
  const free=openEmptyIndices(state);
  if(!free.length)return {ok:false,why:'Your open clearing is full. Merge items or unlock more space.'};
  const target=free[Math.min(free.length-1,Math.floor(random()*free.length))];
- state.board[target]={kind:source.kind,tier:0};state.energy--;state.spawns++;
- return {ok:true,index:target,kind:source.kind,generator:index};
+ const level=Number.isInteger(source.level)?source.level:1;
+ const tier=Math.min(MAX_TIER-1,Math.max(0,level-1));
+ state.board[target]={kind:source.kind,tier};state.energy--;state.spawns++;
+ return {ok:true,index:target,kind:source.kind,tier,generator:index,level};
 }
 
 function puzzleInfo(state){return PUZZLES[state.trailIndex]||null;}
