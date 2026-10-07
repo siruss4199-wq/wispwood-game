@@ -161,10 +161,9 @@
  .play{height:100%;padding:8px 10px 76px;border:0;border-radius:0;box-shadow:none;overflow:hidden;display:flex;flex-direction:column;background:linear-gradient(180deg,#fbfafc 0%,#f0f5eb 100%)}
  .play-head,.instruction,.merge-legend,.board-guide,.footnote,.board-caption,.selected-row{display:none!important}
  .resource-bar{margin:0 0 7px;gap:6px;flex:0 0 auto}.resource-bar>div{padding:6px 5px;border-radius:12px}.resource-bar span{font-size:8px}.resource-bar strong{font-size:12px}
- .mobile-quest-strip{display:flex;width:100%;min-height:42px;align-items:center;gap:9px;border:0;border-radius:14px;background:#fff;padding:6px 9px;margin:0 0 7px;box-shadow:0 5px 14px #5f53691a;text-align:left;flex:0 0 auto}
- .mobile-quest-icon{width:30px;height:30px;display:grid;place-items:center;border-radius:10px;background:#f3eef8;font-size:18px}
- .mobile-quest-copy{min-width:0;flex:1}.mobile-quest-copy small{display:block;font-size:7px;letter-spacing:1px;color:#9a89aa;font-weight:900}.mobile-quest-copy strong{display:block;font-size:11px;color:#4f4659;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
- .mobile-quest-progress{font-size:9px;font-weight:900;color:#765aa2;background:#f2ebfa;border-radius:999px;padding:5px 7px}.mobile-quest-arrow{font-size:22px;color:#9d91a8}
+ .mobile-quest-strip{display:block;width:100%;border-radius:14px;background:#fff;padding:7px 8px;margin:0 0 7px;box-shadow:0 5px 14px #5f53691a;flex:0 0 auto}
+ .mobile-quest-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;padding:0 2px}.mobile-quest-head>span{font-size:8px;letter-spacing:1.1px;color:#8f7ca0;font-weight:900}.mobile-quest-head button{border:0;background:transparent;color:#765aa2;font-size:8px;font-weight:900;padding:2px 0}
+ .mobile-quest-chips{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}.mobile-quest-chip{min-width:0;border:0;border-radius:11px;background:#f7f4fa;padding:6px 4px;display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:4px;text-align:left}.mobile-quest-chip>span{grid-row:1/3;font-size:17px;align-self:center}.mobile-quest-chip small{font-size:7px;font-weight:900;color:#5f5468;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mobile-quest-chip b{font-size:7px;color:#8f7ca0}.mobile-quest-chip.done{background:#eef7eb}.mobile-quest-chip.done b{color:#57966f}
  .puzzle-hud{margin:0 0 6px;padding:7px;border-radius:11px;flex:0 0 auto}.puzzle-hud small,.puzzle-label{font-size:7px}.puzzle-hud strong{font-size:10px}.puzzle-stats{font-size:7px}
  .board-frame{flex:1;min-height:0;display:grid;place-items:center;background:transparent;border:0;padding:0;overflow:hidden}
  .board{width:min(calc(100vw - 20px),calc(100dvh - 230px));max-width:100%;aspect-ratio:1/1;gap:5px;padding:7px;border-radius:22px;margin:auto}
@@ -227,12 +226,14 @@
       <div><span>✨ Magic</span><strong id="magicLabel">0</strong></div>
       <div><span>🧩 Open tiles</span><strong id="openLabel">9/49</strong></div>
     </div>
-    <button type="button" id="mobileQuestStrip" class="mobile-quest-strip" aria-label="Open quests">
-      <span id="mobileQuestIcon" class="mobile-quest-icon">🌿</span>
-      <span class="mobile-quest-copy"><small>CURRENT QUEST</small><strong id="mobileQuestName">Healing herbs</strong></span>
-      <span id="mobileQuestProgress" class="mobile-quest-progress">0/3</span>
-      <span class="mobile-quest-arrow">›</span>
-    </button>
+    <div id="mobileQuestStrip" class="mobile-quest-strip" aria-label="Current quests">
+      <div class="mobile-quest-head"><span>QUESTS</span><button type="button" id="mobileQuestMore">View all ›</button></div>
+      <div id="mobileQuestChips" class="mobile-quest-chips">
+        <button type="button" class="mobile-quest-chip"><span>🌿</span><small>Healing herbs</small><b>0/1</b></button>
+        <button type="button" class="mobile-quest-chip"><span>💧</span><small>Gentle elixir</small><b>0/1</b></button>
+        <button type="button" class="mobile-quest-chip"><span>✨</span><small>Guiding crystal</small><b>0/1</b></button>
+      </div>
+    </div>
     <p class="board-guide">Tap a generator on the board to create items. Merge matching pairs to earn Magic, then unlock tiles beside your clearing.</p>
     <div id="puzzleHud" class="puzzle-hud" hidden>
       <div><span class="puzzle-label">REGION PUZZLE</span><strong id="puzzleName">Whispering Bridge</strong><small id="puzzleHint">Clear blockers to unlock delivery.</small></div>
@@ -873,14 +874,17 @@ function present(){
  });
  el('tasksCount').textContent=`${done.length}/${tasks.length}`;
  el('progressFill').style.width=`${tasks.length?done.length/tasks.length*100:100}%`;
- const currentTask=tasks.find(t=>!done.includes(t.id))||tasks[tasks.length-1];
- if(currentTask){
-  el('mobileQuestIcon').textContent=ITEMS[currentTask.kind][currentTask.tier].emoji;
-  el('mobileQuestName').textContent=done.length===tasks.length?'All quests complete':currentTask.label;
- }else{
-  el('mobileQuestIcon').textContent='✨';el('mobileQuestName').textContent='Adventure complete';
+ const mobileChips=el('mobileQuestChips');mobileChips.innerHTML='';
+ tasks.slice(0,3).forEach(t=>{
+  const finished=done.includes(t.id);
+  const chip=document.createElement('button');chip.type='button';chip.className='mobile-quest-chip'+(finished?' done':'');
+  chip.innerHTML=`<span>${finished?'✅':ITEMS[t.kind][t.tier].emoji}</span><small>${t.label}</small><b>${finished?'Done':'Needed'}</b>`;
+  chip.addEventListener('click',()=>openMobileSheet('quests'));
+  mobileChips.append(chip);
+ });
+ if(!tasks.length){
+  mobileChips.innerHTML='<button type="button" class="mobile-quest-chip done"><span>✨</span><small>Adventure complete</small><b>Done</b></button>';
  }
- el('mobileQuestProgress').textContent=`${done.length}/${tasks.length}`;
  const orruActive=currentCompanion(state)==='orru';
  el('orruPanel').hidden=!state.orruRescued;
  el('orruCharge').textContent=`${state.orruCharge}/${ORRU_GROW_COST} ✨`;
@@ -1056,7 +1060,7 @@ el('companionSelect').onclick=()=>{
 el('creatureClose').onclick=()=>{el('creatureOverlay').hidden=true;viewedCreature=null;};
 
 document.querySelectorAll('[data-mobile-sheet]').forEach(btn=>btn.addEventListener('click',()=>openMobileSheet(btn.dataset.mobileSheet)));
-el('mobileQuestStrip').onclick=()=>openMobileSheet('quests');
+el('mobileQuestMore').onclick=()=>openMobileSheet('quests');
 el('mobileSheetClose').onclick=closeMobileSheet;
 el('mobileSheetBackdrop').onclick=closeMobileSheet;
 window.addEventListener('keydown',e=>{if(e.key==='Escape'&&!el('mobileSheet').hidden)closeMobileSheet();});

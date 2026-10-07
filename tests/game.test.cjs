@@ -596,3 +596,16 @@ test('mobile board is designed to fit the viewport without page scrolling', () =
  assert.match(html,/\.story,.sidebar,footer\{display:none!important\}/);
  assert.match(html,/\.mobile-sheet-body\{overflow:auto/);
 });
+
+test('mobile board always renders visible quest chips above the board', () => {
+ for(const id of ['mobileQuestStrip','mobileQuestMore','mobileQuestChips'])
+  assert.match(html,new RegExp('id="'+id+'"'));
+ assert.match(html,/mobile-quest-chips/);
+ assert.match(html,/mobile-quest-chip/);
+ assert.match(html,/tasks\.slice\(0,3\)/);
+ assert.match(html,/openMobileSheet\('quests'\)/);
+ assert.doesNotMatch(html,/mobileQuestIcon/);
+ assert.doesNotMatch(html,/mobileQuestName/);
+ assert.doesNotMatch(html,/mobileQuestProgress/);
+ assert.doesNotThrow(()=>new vm.Script(script));
+});
