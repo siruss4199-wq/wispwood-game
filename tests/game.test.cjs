@@ -17,7 +17,7 @@ test('complete browser game JavaScript compiles without syntax errors', () => {
 const uiStart = script.indexOf("const KEY='wispwood-prototype-v1'");
 assert.ok(uiStart > 0, 'Could not find boundary between game rules and browser UI');
 const context = vm.createContext({});
-const names = ['SIZE', 'KINDS', 'TASKS', 'GROVE_TASKS', 'TRAIL', 'PUZZLES', 'SKILL_MAX', 'BLOCKER_ICON', 'puzzleInfo', 'puzzleReady', 'seedPuzzle', 'ensurePuzzle', 'isBlocked', 'useCompanionSkill', 'CREATURES', 'ORRU_GROW_COST', 'ORRU_QUEST_GOAL', 'orruGrow', 'orruCanGrow', 'clearVines', 'deliverOrruQuest', 'rescueStage', 'currentCompanion', 'chooseCompanion', 'activeTasks', 'gainXP', 'trailInfo', 'isTrail', 'collected', 'createState', 'merge', 'deliver', 'spawn', 'recycle', 'explore', 'serialize', 'restore'];
+const names = ['SIZE', 'KINDS', 'V2_MOVES', 'GENERATORS', 'isWild', 'normalItem', 'itemLabel', 'v2Active', 'generateFrom', 'mergeGroup', 'TASKS', 'GROVE_TASKS', 'TRAIL', 'PUZZLES', 'SKILL_MAX', 'BLOCKER_ICON', 'puzzleInfo', 'puzzleReady', 'seedPuzzle', 'ensurePuzzle', 'isBlocked', 'useCompanionSkill', 'CREATURES', 'ORRU_GROW_COST', 'ORRU_QUEST_GOAL', 'orruGrow', 'orruCanGrow', 'clearVines', 'deliverOrruQuest', 'rescueStage', 'currentCompanion', 'chooseCompanion', 'activeTasks', 'gainXP', 'trailInfo', 'isTrail', 'collected', 'createState', 'merge', 'deliver', 'spawn', 'recycle', 'explore', 'serialize', 'restore'];
 vm.runInContext(script.slice(0, uiStart) + '\nglobalThis.game = {' + names.join(',') + '};', context, { timeout: 1000 });
 const game = context.game;
 
@@ -263,9 +263,10 @@ test('merge garden uses semantic item colours and a clear legend', () => {
  assert.match(html,/\.tile\.glow\{/);
 });
 
-test('matching item highlighting excludes selected and maximum-tier items', () => {
- assert.match(html,/i!==selected&&item\.kind===picked\.kind&&item\.tier===picked\.tier&&item\.tier<MAX_TIER/);
+test('matching item highlighting supports group selection and Wild Wisps', () => {
+ assert.match(html,/compatible=isWild\(item\)\|\|isWild\(picked\)/);
  assert.match(html,/cell\.classList\.add\('merge-match'\)/);
+ assert.match(html,/groupSelected\.includes\(i\)/);
  assert.match(html,/aria-pressed/);
  assert.match(html,/prefers-reduced-motion:reduce/);
 });
@@ -494,5 +495,89 @@ test('v1 puzzle HUD, blockers and companion skill controls exist', () => {
   assert.match(html,new RegExp('id="'+id+'"'));
  assert.match(html,/fog-blocker/);assert.match(html,/vine-blocker/);
  assert.match(html,/puzzle-locked/);assert.match(html,/puzzle-ready/);
+ assert.doesNotThrow(()=>new vm.Script(script));
+});
+
+test('Merge Board v2 generator spends one move and creates the chosen chain', () => {
+ const st=game.createState();st.rescued=true;st.explored=true;st.orruRescued=true;
+ st.puzzleZone=0;st.blockers=[];st.v2Zone=0;st.v2MovesLeft=2;
+ const r=game.generateFrom(st,'dew',()=>0);
+ assert.equal(r.ok,true);assert.equal(r.kind,'dew');
+ assert.equal(st.board[r.index].kind,'dew');assert.equal(st.board[r.index].tier,0);
+ assert.equal(st.v2MovesLeft,1);
+ game.generateFrom(st,'glow',()=>0);
+ assert.equal(st.v2MovesLeft,0);
+ assert.equal(game.generateFrom(st,'leaf',()=>0).ok,false);
+});
+
+test('three matching items create exactly one upgraded item', () => {
+ const st=game.createState();st.orruRescued=true;st.puzzleZone=0;st.blockers=[];st.v2Zone=0;
+ st.board.fill(null);
+ st.board[0]={kind:'leaf',tier:0};st.board[1]={kind:'leaf',tier:0};st.board[2]={kind:'leaf',tier:0};
+ const r=game.mergeGroup(st,[0,1,2]);
+ assert.equal(r.ok,true);assert.equal(r.count,3);
+ assert.equal(st.board[0].kind,'leaf');assert.equal(st.board[0].tier,1);
+ assert.equal(st.board[1],null);assert.equal(st.board[2],null);
+ assert.equal(st.skillCharge,1);
+});
+
+test('five matching items create two upgrades, a Wild Wisp and refund one move', () => {
+ const st=game.createState();st.orruRescued=true;st.puzzleZone=0;st.blockers=[];st.v2Zone=0;st.v2MovesLeft=10;
+ st.board.fill(null);
+ for(let i=0;i<5;i++)st.board[i]={kind:'dew',tier:0};
+ const r=game.mergeGroup(st,[0,1,2,3,4]);
+ assert.equal(r.ok,true);assert.equal(r.count,5);
+ assert.equal(st.board[r.target].tier,1);
+ assert.equal(st.board[r.secondIndex].tier,1);
+ assert.equal(game.isWild(st.board[r.wildIndex]),true);
+ assert.equal(st.v2MovesLeft,11);
+ assert.equal(st.skillCharge,2);
+});
+
+test('one Wild Wisp can substitute for one matching item in a group merge', () => {
+ const st=game.createState();st.orruRescued=true;st.puzzleZone=0;st.blockers=[];st.v2Zone=0;
+ st.board.fill(null);
+ st.board[0]={special:'wild'};st.board[1]={kind:'glow',tier:1};st.board[2]={kind:'glow',tier:1};
+ const r=game.mergeGroup(st,[0,1,2]);
+ assert.equal(r.ok,true);
+ assert.equal(st.board[0].kind,'glow');assert.equal(st.board[0].tier,2);
+});
+
+test('group merge rejects mixed items, two Wild Wisps and blocked cells', () => {
+ const st=game.createState();st.orruRescued=true;st.puzzleZone=0;st.blockers=[];st.v2Zone=0;
+ st.board.fill(null);
+ st.board[0]={kind:'leaf',tier:0};st.board[1]={kind:'dew',tier:0};st.board[2]={kind:'leaf',tier:0};
+ assert.equal(game.mergeGroup(st,[0,1,2]).ok,false);
+ st.board[0]={special:'wild'};st.board[1]={special:'wild'};st.board[2]={kind:'leaf',tier:0};
+ assert.equal(game.mergeGroup(st,[0,1,2]).ok,false);
+ st.board[0]={kind:'leaf',tier:0};st.board[1]={kind:'leaf',tier:0};st.board[2]={kind:'leaf',tier:0};st.blockers=[{index:2,type:'vine'}];
+ assert.equal(game.mergeGroup(st,[0,1,2]).ok,false);
+});
+
+test('v2 generators preserve the active companion periodic bonus', () => {
+ const st=game.createState();st.rescued=true;st.orruRescued=true;st.activeCompanion='orru';
+ st.puzzleZone=0;st.blockers=[];st.v2Zone=0;st.v2MovesLeft=5;st.spawns=7;
+ const r=game.generateFrom(st,'dew',()=>0);
+ assert.equal(r.ok,true);assert.equal(r.helper,'Orru');
+ assert.ok(Number.isInteger(r.bonusIndex));
+ assert.equal(st.board[r.bonusIndex].kind,'leaf');
+ assert.equal(st.bonusItems,1);
+});
+
+test('v1 saves migrate to v2 move fields and Wild Wisp saves restore safely', () => {
+ const st=game.createState();st.rescued=true;st.explored=true;st.orruRescued=true;
+ delete st.v2MovesLeft;delete st.v2Zone;
+ st.board[8]={special:'wild'};
+ const loaded=game.restore(JSON.stringify(st));
+ assert.ok(loaded);assert.equal(loaded.v2MovesLeft,game.V2_MOVES);
+ assert.equal(loaded.v2Zone,-1);assert.equal(game.isWild(loaded.board[8]),true);
+});
+
+test('Merge Board v2 controls are present and full browser JavaScript still parses', () => {
+ for(const id of ['v2GeneratorPanel','movesLeft','mergeGroupBtn'])
+  assert.match(html,new RegExp('id="'+id+'"'));
+ for(const kind of ['leaf','dew','glow'])
+  assert.match(html,new RegExp('data-generator="'+kind+'"'));
+ assert.match(html,/Wild Wisp/);assert.match(html,/group-selected/);
  assert.doesNotThrow(()=>new vm.Script(script));
 });
