@@ -352,3 +352,20 @@ test('UI exposes source upgrades, a restoration map and Forest Parcel progress',
  assert.match(css,/mapZone/);
  assert.match(css,/parcelPop/);
 });
+
+
+test('commercial board layout uses profile HUD activity cards and bottom info bar',()=>{
+ const html=fs.readFileSync(new URL('../v4/index.html',import.meta.url),'utf8');
+ const app=fs.readFileSync(new URL('../v4/app.mjs',import.meta.url),'utf8');
+ const css=fs.readFileSync(new URL('../v4/style.css',import.meta.url),'utf8');
+ assert.match(html,/class="playerProfile"/);
+ assert.match(html,/class="activityTray"/);
+ assert.match(html,/id="activityRequestProgress"/);
+ assert.match(html,/class="dockHint"/);
+ assert.match(html,/id="hint"/);
+ assert.match(app,/activityMilestoneTitle/);
+ assert.match(app,/worldNodes/);
+ assert.match(css,/grid-template-columns:58px minmax\(0,1fr\) 58px 58px/);
+ assert.match(css,/background:linear-gradient\(180deg,#c88145,#ac642f\)/);
+ assert.doesNotMatch(app,/class="tag">T\$\{cell\.content\.tier\+1\}/);
+});
