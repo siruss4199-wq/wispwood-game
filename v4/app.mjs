@@ -1,14 +1,14 @@
 import {CHAIN_MARKS,CHAINS,MILESTONES,PRODUCERS,itemDef} from './core/catalog.mjs';
 import {createInitialState,restore,serialize} from './core/state.mjs';
 import {platform} from './platform.mjs';
-import {chapterProgress,completeMilestone as finishMilestone,completeOrder as finishOrder,currentMilestone,fillOrdersInPlace,initializePlayableState,merge,milestoneReady,move,orderReady,producerPreview,requirementProgress,retrieveItem,reviveSparseBoard,storeItem,tapProducer} from './core/engine.mjs';
+import {chapterProgress,completeMilestone as finishMilestone,completeOrder as finishOrder,currentMilestone,fillOrdersInPlace,frontierName as getFrontierName,initializePlayableState,merge,milestoneReady,move,nextFrontierIndices,orderReady,producerPreview,requirementProgress,retrieveItem,reviveSparseBoard,storeItem,tapProducer} from './core/engine.mjs';
 
 const KEY='wispwood-v4';
 const $=s=>document.querySelector(s);
 const board=$('#board'),ordersEl=$('#orders'),sourcesEl=$('#sources'),storageEl=$('#storage');
 const energy=$('#energy'),coins=$('#coins'),light=$('#light'),discovered=$('#discovered');
 const milestoneTitle=$('#milestoneTitle'),milestoneReq=$('#milestoneReq'),milestoneStep=$('#milestoneStep'),progressBar=$('#progressBar i');
-const boardStatus=$('#boardStatus'),rushFill=$('#rushFill'),rushCount=$('#rushCount'),questRibbon=$('#questRibbon'),questIcon=$('#questIcon'),questTitle=$('#questTitle'),questText=$('#questText'),questStep=$('#questStep'),inspect=$('#inspect'),inspectIcon=$('#inspectIcon'),inspectName=$('#inspectName'),inspectMeta=$('#inspectMeta'),inspectUse=$('#inspectUse');
+const boardStatus=$('#boardStatus'),frontierNameEl=$('#frontierName'),rushFill=$('#rushFill'),rushCount=$('#rushCount'),questRibbon=$('#questRibbon'),questIcon=$('#questIcon'),questTitle=$('#questTitle'),questText=$('#questText'),questStep=$('#questStep'),inspect=$('#inspect'),inspectIcon=$('#inspectIcon'),inspectName=$('#inspectName'),inspectMeta=$('#inspectMeta'),inspectUse=$('#inspectUse');
 const completeOrderBtn=$('#completeOrder'),completeMilestoneBtn=$('#completeMilestone'),storeBtn=$('#store'),hint=$('#hint'),toast=$('#toast');
 
 const restored=restore(localStorage.getItem(KEY));
@@ -110,6 +110,13 @@ function apply(r){
    setTimeout(()=>el?.classList.remove('unlock-wave'),850);
   },n*90);
  });
+ events.filter(x=>x.type==='bonus_spawned').forEach((x,n)=>{
+  setTimeout(()=>{
+   const el=board.querySelector(`[data-index="${x.index}"]`);
+   el?.classList.add('bonus-pop');
+   setTimeout(()=>el?.classList.remove('bonus-pop'),700);
+  },160+n*100);
+ });
 }
 function clickTile(i){
  if(performance.now()<suppressClickUntil)return;
@@ -165,7 +172,7 @@ function tutorialState(){
   return {icon:'📜',title:o?.title??'First Forest Order',text:`Build ${need}. Useful pieces are already outlined.`,step:'2/3'};
  }
  if(state.milestoneIndex===0)return {icon:'🌿',title:'Wake the clearing',text:'Orders give Light. Finish the restoration items and wake your first landmark.',step:'3/3'};
- return {icon:'🌙',title:'The clearing is yours',text:'Build chains, trigger Wisp Rush and push deeper into Wispwood.',step:'EXPLORE'};
+ return {icon:'🌙',title:`Push into ${getFrontierName(state)}`,text:'New cells reveal at the frontier with fresh pieces. Keep orders and restorations moving outward.',step:'EXPLORE'};
 }
 function tileAria(cell,i){
  if(cell.terrain==='locked')return `Locked forest cell ${i+1}`;
@@ -191,6 +198,7 @@ function render(){
  }));
  const chosen=selectedContent();
  const suggested=suggestedIndices();
+ const frontierNext=new Set(nextFrontierIndices(state,3));
 
  state.cells.forEach((cell,i)=>{
   const b=document.createElement('button');
@@ -202,7 +210,7 @@ function render(){
 
   if(i===selected)b.classList.add('selected');
   if(suggested.has(i)&&!Number.isInteger(selected))b.classList.add('suggested');
-  if(cell.terrain==='locked')b.dataset.decor=['🌲','🍄','🌿','✦'][i%4];
+  if(cell.terrain==='locked'){b.dataset.decor=['🌲','🍄','🌿','✦'][i%4];if(frontierNext.has(i)){b.classList.add('frontier-next');b.dataset.frontier='?';}}
   if(chosen?.type==='item'&&i!==selected&&cell.content?.type==='item'&&cell.content.chain===chosen.chain&&cell.content.tier===chosen.tier&&(cell.terrain==='open'||cell.terrain==='cobweb'))b.classList.add('merge-match');
 
   if(cell.content?.type==='item'&&(cell.terrain==='open'||cell.terrain==='cobweb')){
@@ -254,6 +262,7 @@ function render(){
  const empties=state.cells.filter(c=>c.terrain==='open'&&!c.content).length;
  const webs=state.cells.filter(c=>c.terrain==='cobweb').length;
  const explored=state.cells.filter(c=>c.terrain!=='locked').length;
+ const frontier=getFrontierName(state);frontierNameEl.textContent=frontier;
  boardStatus.textContent=`${explored}/64 explored · ${openItems} items · ${empties} free`;
  const rush=(state.mergeCount??0)%5;rushCount.textContent=`${rush}/5`;rushFill.style.width=(rush/5*100)+'%';
 

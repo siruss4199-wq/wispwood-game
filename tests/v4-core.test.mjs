@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {CHAINS,MILESTONES} from '../v4/core/catalog.mjs';
 import {COBWEBS,OPEN_START,STARTING_ITEMS,createInitialState} from '../v4/core/state.mjs';
-import {completeOrder,currentMilestone,fillOrdersInPlace,initializePlayableState,merge,milestoneReady,producerIndices,reviveSparseBoard,tapProducer,unlockedChains,validateState} from '../v4/core/engine.mjs';
+import {completeOrder,currentMilestone,fillOrdersInPlace,frontierName,initializePlayableState,merge,milestoneReady,nextFrontierIndices,producerIndices,reviveSparseBoard,tapProducer,unlockedChains,validateState} from '../v4/core/engine.mjs';
 
 const start=()=>initializePlayableState(createInitialState());
 
@@ -113,7 +113,7 @@ test('early completed orders visibly expand the board toward the outer edge',()=
  const before=n.cells.filter(c=>c.terrain==='locked').length;
  const r=completeOrder(n,n.activeOrders[0].id);
  assert.equal(r.ok,true,r.reason);
- assert.equal(r.state.cells.filter(c=>c.terrain==='locked').length,before-1);
+ assert.equal(r.state.cells.filter(c=>c.terrain==='locked').length,before-2);
  const unlocked=r.events.find(e=>e.type==='cell_unlocked');
  assert.ok(unlocked,'first orders should visibly expand the clearing');
  const row=Math.floor(unlocked.index/8),col=unlocked.index%8;
@@ -170,4 +170,35 @@ test('board exposes a visible Wisp Rush loop and pins the first order after the 
  assert.match(html,/id="rushFill"/);
  assert.match(app,/state\.moves>0&&state\.ordersCompleted===0&&!selectedOrder/);
  assert.match(app,/wisp_burst/);
+});
+
+
+test('frontier preview points at the same cells that early orders will reveal',()=>{
+ const s=start(),preview=nextFrontierIndices(s,3);
+ assert.equal(preview.length,3);
+ assert.equal(new Set(preview).size,3);
+ assert.equal(frontierName(s),'Mossy Verge');
+ const n=structuredClone(s);n.activeOrders[0].requirements=[];
+ const r=completeOrder(n,n.activeOrders[0].id);
+ const unlocked=r.events.filter(e=>e.type==='cell_unlocked').map(e=>e.index);
+ assert.equal(unlocked.length,2);
+ assert.deepEqual(unlocked,preview.slice(0,2));
+});
+
+test('order bonus items appear in newly opened frontier space instead of clustering in the center',()=>{
+ const s=start(),n=structuredClone(s);n.activeOrders[0].requirements=[];
+ const r=completeOrder(n,n.activeOrders[0].id);
+ const unlocked=new Set(r.events.filter(e=>e.type==='cell_unlocked').map(e=>e.index));
+ const gifts=r.events.filter(e=>e.type==='bonus_spawned').map(e=>e.index);
+ assert.ok(gifts.some(i=>unlocked.has(i)),'at least one reward should visibly appear in the new frontier');
+});
+
+test('UI previews the next frontier before it unlocks',()=>{
+ const html=fs.readFileSync(new URL('../v4/index.html',import.meta.url),'utf8');
+ const app=fs.readFileSync(new URL('../v4/app.mjs',import.meta.url),'utf8');
+ const css=fs.readFileSync(new URL('../v4/style.css',import.meta.url),'utf8');
+ assert.match(html,/NEXT FRONTIER/);
+ assert.match(app,/nextFrontierIndices/);
+ assert.match(app,/frontier-next/);
+ assert.match(css,/frontierPulse/);
 });

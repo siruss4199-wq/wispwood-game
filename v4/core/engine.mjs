@@ -118,9 +118,18 @@ function giftSource(s){
  s.giftSerial=serial+1;
  return {type:'item',chain,tier:Math.min(MAX_TIER,baseTier+Math.floor((level-1)/2))};
 }
+function frontierEmptyIndices(s){
+ return openEmptyIndices(s).sort((a,b)=>{
+  const ae=edgeDepth(a),be=edgeDepth(b);
+  if(ae!==be)return ae-be;
+  const ar=Math.floor(a/SIZE),ac=a%SIZE,br=Math.floor(b/SIZE),bc=b%SIZE;
+  const ad=Math.abs(ar-3.5)+Math.abs(ac-3.5),bd=Math.abs(br-3.5)+Math.abs(bc-3.5);
+  return bd-ad||a-b;
+ });
+}
 function spawnForestGiftsInPlace(s,count,events,source='forest'){
  for(let n=0;n<count;n++){
-  const index=openEmptyIndices(s)[0];if(!Number.isInteger(index))break;
+  const index=frontierEmptyIndices(s)[0];if(!Number.isInteger(index))break;
   const item=giftSource(s);if(!item)break;
   s.cells[index].content=item;
   events.push({type:'bonus_spawned',source,index,item:structuredClone(item)});
@@ -200,8 +209,17 @@ function lockedByExpansion(s){
   return (Math.abs(ar-3.5)+Math.abs(ac-3.5))-(Math.abs(br-3.5)+Math.abs(bc-3.5))||a-b;
  });
 }
+export function nextFrontierIndices(s,count=3){return lockedByExpansion(s).slice(0,count);}
+export function frontierName(s){
+ const explored=s.cells.filter(c=>c.terrain!=='locked').length;
+ if(explored<34)return 'Mossy Verge';
+ if(explored<42)return 'Moonlit Thicket';
+ if(explored<50)return 'Whisper Grove';
+ if(explored<58)return 'Ancient Hollow';
+ return 'Heartwood Edge';
+}
 function unlockBoardCellsInPlace(s,count,events,source='milestone'){
- for(const i of lockedByExpansion(s).slice(0,count)){
+ for(const i of nextFrontierIndices(s,count)){
   s.cells[i].terrain='open';s.unlockedCells++;
   events.push({type:'cell_unlocked',index:i,source});
  }
@@ -212,7 +230,7 @@ export function completeOrder(s,orderId){
  const n=cloneState(s),events=[{type:'order_completed',orderId,coins:order.rewardCoins,light:order.rewardLight}];
  consumeRequirementsInPlace(n,order.requirements);
  n.coins+=order.rewardCoins;n.forestLight+=order.rewardLight;n.energy=Math.min(n.maxEnergy,n.energy+order.rewardEnergy);n.ordersCompleted++;
- if(n.ordersCompleted<=4)unlockBoardCellsInPlace(n,1,events,'order');
+ if(n.ordersCompleted<=4)unlockBoardCellsInPlace(n,2,events,'order');
  spawnForestGiftsInPlace(n,Math.min(3,1+order.requirements.length),events,'order');
  n.activeOrders=n.activeOrders.filter(o=>o.id!==orderId);fillOrdersInPlace(n);
  return result(n,events);
@@ -227,7 +245,7 @@ export function completeMilestone(s){
  const m=currentMilestone(s);if(!m)return result(s,[],false,'Lost Clearing chapter is complete.');
  if(!milestoneReady(s,m))return result(s,[],false,'Milestone requirements are not ready.');
  const n=cloneState(s),events=[];consumeRequirementsInPlace(n,m.requirements);n.coins-=m.coinCost;n.completedMilestones.push(m.id);n.milestoneIndex++;
- unlockBoardCellsInPlace(n,2+(n.milestoneIndex%3===0?1:0),events,'milestone');unlockProducerInPlace(n,m.unlock,events);
+ unlockBoardCellsInPlace(n,3+(n.milestoneIndex%3===0?1:0),events,'milestone');unlockProducerInPlace(n,m.unlock,events);
  spawnForestGiftsInPlace(n,3,events,'milestone');
  events.unshift({type:'milestone_completed',milestoneId:m.id,progress:chapterProgress(n)});
  fillOrdersInPlace(n);return result(n,events);

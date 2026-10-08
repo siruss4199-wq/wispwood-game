@@ -499,3 +499,25 @@ h1{font-size:28px;line-height:1;margin:4px 0 4px;letter-spacing:-.7px}
   .rushBar{padding:5px 7px;margin-bottom:6px}
   .rushBar>small{display:none}
 }
+
+
+.frontierBadge{
+  display:flex;flex-direction:column;align-items:flex-end;gap:1px;
+  padding:4px 7px;border-radius:10px;background:#edf5e9;border:1px solid #cfdfc8;
+}
+.frontierBadge span{font-size:6px;font-weight:1000;letter-spacing:.8px;color:#879185}
+.frontierBadge b{font-size:10px;color:#466548}
+.tile.frontier-next{
+  z-index:1;
+  box-shadow:inset 0 0 0 2px rgba(207,255,170,.38),0 0 15px rgba(191,248,155,.24);
+  animation:frontierPulse 1.8s ease-in-out infinite;
+}
+.tile.frontier-next:after{
+  content:attr(data-frontier);position:absolute;inset:0;display:grid;place-items:center;
+  color:#edffcd;font-size:20px;font-weight:1000;text-shadow:0 0 10px #d8ffb6;
+  background:radial-gradient(circle,rgba(186,236,149,.12),transparent 58%);
+}
+@keyframes frontierPulse{
+  0%,100%{filter:brightness(1);transform:scale(1)}
+  50%{filter:brightness(1.16);transform:scale(1.025)}
+}
