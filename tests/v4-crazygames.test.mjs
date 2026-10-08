@@ -21,7 +21,7 @@ test('platform adapter reports gameplay start without enabling Basic Launch ads'
 });
 
 test('CrazyGames build is far below the 20 MB mobile-homepage initial-download target',()=>{
-  const files=['crazygames.html','style.css','app.mjs','platform.mjs','core/catalog.mjs','core/state.mjs','core/engine.mjs'];
+  const files=fs.readdirSync(root,{recursive:true}).filter(name=>fs.statSync(new URL(name,root)).isFile());
   const total=files.reduce((n,name)=>n+fs.statSync(new URL(name,root)).size,0);
   assert.ok(total<20*1024*1024,'initial local payload bytes='+total);
 });
@@ -41,3 +41,4 @@ test('audio respects CrazyGames muteAudio settings',()=>{
  assert.match(adapter,/addSettingsChangeListener/);
  assert.match(audio,/bindPlatformMute/);
 });
+

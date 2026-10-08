@@ -61,3 +61,22 @@ body{background:#1b3935!important}
 /* Ready requests guide the player without taking control away from the board. */
 .deliveryTutorial .boardFrame,.deliveryTutorial .worldStrip,.deliveryTutorial .gameDock,.deliveryTutorial .goalNav{pointer-events:auto;filter:none;opacity:1}
 .itemActions{position:static!important;display:flex!important;justify-content:flex-end!important}
+.gameDock{transform:none!important;left:auto!important;bottom:auto!important;width:100%!important;height:58px!important}
+.gameDock .dockBtn{color:#254d40!important;border:0!important;height:48px!important}
+.gameHud{margin:0!important}.soundToggle{position:static!important}
+.board .tile.item{background:#e9e6cd!important;border:1px solid #cbd1ad!important;box-shadow:none!important}
+.board .tile.item.cobweb{background:#93ae87!important;border-color:#789973!important}
+.board .tile.producer{background:#e2d8af!important;border:2px solid #587c60!important;box-shadow:none!important}
+.board .tile.item .emoji{filter:none!important}
+.itemActions button{width:auto!important;height:36px!important;padding:4px 14px!important;border-radius:9px!important;font-size:12px!important;background:#396550!important;box-shadow:none!important;border:0!important}
+.itemActions button:before{display:none!important}
+.panelHandle{height:24px!important;width:56px!important;background:linear-gradient(transparent 9px,#b7c3b2 9px 13px,transparent 13px)!important}
+/* Matching targets remain stationary under a player's finger. */
+.board .tile.suggested,.board .tile.merge-match{animation:none!important}
+.requestPortrait .craftArt,.orderPortrait .craftArt{border-radius:12px}
+.gameHud{display:flex!important;gap:5px!important;align-items:center!important}
+.gameHud .wallet{display:flex!important;gap:4px!important;flex:1!important;min-width:0!important;max-width:none!important}
+.gameHud .wallet>span{flex:1!important;min-width:0!important;padding:5px!important;gap:3px!important}
+.gameHud .wallet .energyPill{flex:1.4!important}.wallet em{display:none!important}
+.gameHud .wallet b{font-size:11px!important;white-space:nowrap!important;overflow:visible!important}
+.hudShop{width:28px!important;min-width:28px!important}.hudShop span{font-size:20px!important}.hudShop small{display:none!important}

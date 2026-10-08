@@ -1,4 +1,4 @@
-import {itemArt,producerArt} from './art.mjs';
+import {itemArt,producerArt,residentArt} from './art.mjs';
 import {RESIDENTS,requestBonus} from './core/requests.mjs';
 import {CHAINS,MAX_TIER,COLLECTION_TOTAL,producerForm,producerStage,MILESTONES,PRODUCERS,PRODUCER_MAX_LEVEL,itemDef} from './core/catalog.mjs';
 import {createInitialState,restore,serialize} from './core/state.mjs';
@@ -104,7 +104,7 @@ function itemText(chain,tier,count=1){
 }
 function progressChip(r){
  const d=itemDef(r.chain,r.tier),done=r.current>=r.count;
- return `<span class="reqChip ${done?'done':''}"><span class="reqIcon">${itemArt(r.chain,r.tier)}</span><span class="reqName">${d.name}</span><b>${Math.min(r.current,r.count)}/${r.count}</b></span>`;
+ return `<span class="reqChip ${done?'done':''}" aria-label="${d.name}: ${Math.min(r.current,r.count)} of ${r.count}"><span class="reqIcon">${itemArt(r.chain,r.tier)}</span><span class="reqName">${d.name}</span><b>${Math.min(r.current,r.count)}/${r.count}</b></span>`;
 }
 function tileAt(x,y){
  for(const el of board.querySelectorAll('.tile')){
@@ -274,7 +274,7 @@ function requestNPC(order){
  const slot=Number.isInteger(order?.slot)?order.slot:Math.max(0,state.activeOrders.findIndex(o=>o.id===order?.id));
  return REQUEST_NPCS[slot%REQUEST_NPCS.length];
 }
-function requestFace(order){return requestNPC(order).face;}
+function requestFace(order){return residentArt(order?.npc??order?.slot??0);}
 function tutorialState(){
  if(state.moves===0)return {icon:'✨',title:'Make your first merge',text:'Combine one glowing pair to open space and reveal your first request.',step:'1/3'};
  const o=state.activeOrders.find(x=>x.id===selectedOrder)??state.activeOrders[0];
@@ -328,7 +328,7 @@ function render(){
  if(state.moves>0&&(!selectedOrder||!state.activeOrders.some(o=>o.id===selectedOrder))){
   selectedOrder=(state.activeOrders.find(o=>orderReady(state,o))??state.activeOrders[0])?.id??null;
  }
- if(state.ordersCompleted===0){
+ if(state.ordersCompleted===0&&state.moves>0){
   const ready=state.activeOrders.find(o=>orderReady(state,o));
   if(ready)selectedOrder=ready.id;
  }
@@ -402,7 +402,7 @@ function render(){
  });
 
  const tutorial=tutorialState();
- questIcon.textContent=tutorial.icon;requestPortrait.textContent=focusOrder?requestFace(focusOrder):'MV';questTitle.textContent=tutorial.title;questText.textContent=tutorial.text;
+ questIcon.textContent=tutorial.icon;requestPortrait.innerHTML=focusOrder?requestFace(focusOrder):residentArt(0);questTitle.textContent=tutorial.title;questText.textContent=tutorial.text;
  questRibbon.classList.toggle('complete',state.milestoneIndex>0);
  if(focusOrder){
   const prog=requirementProgress(state,focusOrder.requirements);
@@ -453,7 +453,7 @@ function render(){
   el.type='button';
   el.className='order npcOrder'+(selectedOrder===o.id?' active':'')+(ready?' ready':'');
   el.setAttribute('aria-pressed',selectedOrder===o.id?'true':'false');
-  el.innerHTML=`<span class="orderPortrait">${npc.face}</span><div class="orderCopy"><small>${npc.role.toUpperCase()} · ${ready?'READY':o.label.toUpperCase()}</small><strong>${npc.name}</strong><em>${o.title}</em><p class="requestPurpose">${o.narrative??npc.purpose}</p><small>${o.kind==='timed'?(requestBonus(o)?'Dusk bonus: +'+requestBonus(o)+' coins · '+Math.ceil((o.bonusUntil-Date.now())/60000)+' min left':'Bonus ended · base reward stays'):''}</small><div class="req">${prog.map(r=>`<span class="${r.current>=r.count?'done':''}">${itemText(r.chain,r.tier,r.count)} · ${Math.min(r.current,r.count)}/${r.count}</span>`).join('')}</div><div class="reward">+${o.rewardCoins} 🪙 · +${o.rewardLight} ✨ · +${o.rewardEnergy} ⚡</div></div>`;
+  el.innerHTML=`<span class="orderPortrait">${requestFace(o)}</span><div class="orderCopy"><small>${npc.role.toUpperCase()} · ${ready?'READY':o.label.toUpperCase()}</small><strong>${npc.name}</strong><em>${o.title}</em><p class="requestPurpose">${o.narrative??npc.purpose}</p><small>${o.kind==='timed'?(requestBonus(o)?'Dusk bonus: +'+requestBonus(o)+' coins · '+Math.ceil((o.bonusUntil-Date.now())/60000)+' min left':'Bonus ended · base reward stays'):''}</small><div class="req">${prog.map(r=>`<span class="${r.current>=r.count?'done':''}">${itemText(r.chain,r.tier,r.count)} · ${Math.min(r.current,r.count)}/${r.count}</span>`).join('')}</div><div class="reward">+${o.rewardCoins} 🪙 · +${o.rewardLight} ✨ · +${o.rewardEnergy} ⚡</div></div>`;
   el.addEventListener('click',()=>{selectedOrder=o.id;selected=null;closePanels();render();questRibbon.scrollIntoView({behavior:'smooth',block:'center'});});
   ordersEl.appendChild(el);
  }
@@ -469,7 +469,7 @@ function render(){
   card.hidden=!o;if(!o)return;
   const npc=requestNPC(o),prog=requirementProgress(state,o.requirements),ready=orderReady(state,o);
   card.dataset.orderId=o.id;card.classList.toggle('ready',ready);card.classList.toggle('active',selectedOrder===o.id);
-  card.querySelector('.requestMiniPortrait').textContent=npc.face;
+  card.querySelector('.requestMiniPortrait').innerHTML=requestFace(o);
   card.querySelector('.requestMiniName').textContent=npc.name;
   card.querySelector('.requestMiniItems').innerHTML=prog.slice(0,2).map(r=>{
    const d=itemDef(r.chain,r.tier),done=r.current>=r.count;

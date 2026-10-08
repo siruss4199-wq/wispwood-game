@@ -6,3 +6,7 @@ export function itemArt(chain,tier){
 export function producerArt(s,id){
  return `<img class="craftArt workshopArt" src="./assets/${id}-${producerStage(s,id)}.svg" alt="" title="${producerForm(s,id)}" draggable="false" width="64" height="64">`;
 }
+
+export function residentArt(slot=0){
+ return `<img class="craftArt" src="./assets/resident-${slot%4}.svg" alt="" draggable="false" width="64" height="64">`;
+}
