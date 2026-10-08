@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {CHAINS,MILESTONES} from '../v4/core/catalog.mjs';
-import {COBWEBS,createInitialState} from '../v4/core/state.mjs';
+import {COBWEBS,OPEN_START,STARTING_ITEMS,createInitialState} from '../v4/core/state.mjs';
 import {currentMilestone,fillOrdersInPlace,initializePlayableState,merge,milestoneReady,producerIndices,tapProducer,unlockedChains,validateState} from '../v4/core/engine.mjs';
 
 const start=()=>initializePlayableState(createInitialState());
@@ -13,7 +13,20 @@ test('V4 starts as an item-rich permanent workspace',()=>{
  assert.equal(s.activeOrders.length,4);
  assert.equal(COBWEBS.length,12);
  assert.equal(s.cells.filter(c=>c.terrain==='open').length,16);
+ assert.equal(STARTING_ITEMS.length,15);
+ assert.equal(s.cells.filter(c=>c.terrain==='open'&&!c.content).length,0,'starting workspace should be visually full');
  assert.deepEqual(validateState(s),[]);
+});
+
+test('full starting workspace immediately offers several meaningful merge choices',()=>{
+ const s=start();
+ const counts=new Map();
+ for(const c of s.cells){
+  if(c.terrain!=='open'||c.content?.type!=='item')continue;
+  const k=c.content.chain+':'+c.content.tier;counts.set(k,(counts.get(k)??0)+1);
+ }
+ const pairs=[...counts.values()].filter(v=>v>=2).length;
+ assert.ok(pairs>=4,'pairs='+pairs);
 });
 
 test('Ancient Tree deterministically produces two chains',()=>{
