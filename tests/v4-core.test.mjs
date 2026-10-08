@@ -10,7 +10,7 @@ const start=()=>initializePlayableState(createInitialState());
 test('V4 starts as an item-rich permanent workspace',()=>{
  const s=start();
  assert.equal(Object.keys(CHAINS).length,6);
- assert.equal(Object.values(CHAINS).every(c=>c.items.length===8),true);
+ assert.equal(Object.values(CHAINS).every(c=>c.items.length===10),true);
  assert.equal(s.activeOrders.length,4);
  assert.equal(COBWEBS.length,12);
  assert.equal(s.cells.filter(c=>c.terrain==='open').length,16);
@@ -19,10 +19,10 @@ test('V4 starts as an item-rich permanent workspace',()=>{
  assert.deepEqual(validateState(s),[]);
 });
 
-test('every merge item has a distinct visual icon across all six chains',()=>{
- const icons=Object.values(CHAINS).flatMap(c=>c.items.map(i=>i.emoji));
- assert.equal(icons.length,48);
- assert.equal(new Set(icons).size,48,'duplicate item emoji found');
+test('every merge item has a distinct vector asset across all six chains',()=>{
+ const icons=Object.values(CHAINS).flatMap(c=>c.items.map(i=>i.art));
+ assert.equal(icons.length,60);
+ assert.equal(new Set(icons).size,60,'duplicate asset key found');
 });
 
 test('full starting workspace immediately offers several meaningful merge choices',()=>{
@@ -397,7 +397,7 @@ test('board producer presentation has ready and tap feedback without text TAP la
  const app=fs.readFileSync(new URL('../v4/app.mjs',import.meta.url),'utf8');
  const css=fs.readFileSync(new URL('../v4/style.css',import.meta.url),'utf8');
  assert.match(app,/producer-ready/);
- assert.match(app,/producerSpark/);
+ assert.match(app,/producerArt/);
  assert.match(app,/producer-tap/);
  assert.match(app,/produce-pop/);
  assert.doesNotMatch(app,/tapCue/);
@@ -445,11 +445,11 @@ test('stage-specific producer boxes live directly on the merge board',()=>{
  const app=fs.readFileSync(new URL('../v4/app.mjs',import.meta.url),'utf8');
  const css=fs.readFileSync(new URL('../v4/style.css',import.meta.url),'utf8');
  assert.doesNotMatch(html,/id="sourceShelf"/);
- assert.match(app,/STAGE_BOX_THEMES/);
- assert.match(app,/stageBoxTheme/);
+ assert.match(app,/producerForm/);
+ assert.match(app,/producerStage/);
  assert.match(app,/stage-producer/);
  assert.match(app,/dataset\.stageBox/);
- assert.match(app,/stageBoxSkin/);
+ assert.match(app,/producerArt/);
  assert.match(css,/stage-zone-5/);
  assert.match(css,/boxLidTap/);
 });
@@ -470,3 +470,4 @@ test('mobile objective area is compact and removes redundant request navigation'
  assert.match(css,/min-height:55px!important/);
  assert.match(css,/\.worldReq \.reqName\{display:none!important\}/);
 });
+

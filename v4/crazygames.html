@@ -6,13 +6,14 @@
 <meta name="theme-color" content="#17261f">
 <title>Wispwood — Lost Clearing · CrazyGames</title>
 <link rel="stylesheet" href="./style.css">
+<link rel="stylesheet" href="./craft.css">
 <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
 </head>
 <body>
 <main class="shell gameShell">
   <header class="topbar gameHud">
     <button class="playerProfile" data-open-panel="collection" type="button" aria-label="Open collection">
-      <span class="playerAvatar">🧝‍♀️</span>
+      <span class="playerAvatar">W</span>
       <span class="playerLevelStar">★ <b id="playerLevel">1</b></span>
       <span class="playerChapter"><small>WISPWOOD</small><b>Lost Clearing</b></span>
     </button>
@@ -23,7 +24,7 @@
     </div>
     <button class="hudShop" data-open-panel="sources" type="button" aria-label="Open sources"><span>🏪</span><small>SOURCES</small></button>
     <button id="soundToggle" class="soundToggle" type="button" aria-label="Toggle sound" aria-pressed="true">🔊</button>
-    <span class="hudDiscovery" hidden>📖 <b id="discovered"></b>/48 discoveries</span>
+    <span class="hudDiscovery" hidden>📖 <b id="discovered"></b>/60 discoveries</span>
   </header>
 
   <section class="activityTray" aria-label="Wispwood activities">
@@ -143,7 +144,7 @@
     <div class="panelHandle"></div>
     <div class="collectionHero">
       <div><small>DISCOVERY BOOK</small><b>Wispwood Collection</b><span>Reveal every merge chain.</span></div>
-      <strong id="collectionCount">1/48</strong>
+      <strong id="collectionCount">1/60</strong>
     </div>
     <div class="collectionProgress"><i id="collectionProgress"></i></div>
     <div id="collectionGrid" class="collectionGrid"></div>

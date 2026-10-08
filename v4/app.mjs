@@ -1,4 +1,6 @@
-import {CHAINS,MILESTONES,PRODUCERS,PRODUCER_MAX_LEVEL,itemDef} from './core/catalog.mjs';
+import {itemArt,producerArt,residentArt} from './art.mjs';
+import {RESIDENTS,requestBonus} from './core/requests.mjs';
+import {CHAINS,MAX_TIER,COLLECTION_TOTAL,producerForm,producerStage,MILESTONES,PRODUCERS,PRODUCER_MAX_LEVEL,itemDef} from './core/catalog.mjs';
 import {createInitialState,restore,serialize} from './core/state.mjs';
 import {platform} from './platform.mjs';
 import {audio} from './audio.mjs';
@@ -48,7 +50,7 @@ function discoveryPop(event){
  const item=event?.item;if(!item)return;
  const d=itemDef(item.chain,item.tier),el=document.createElement('div');
  el.className='discoveryPop';
- el.innerHTML=`<small>NEW DISCOVERY</small><span>${d.emoji}</span><b>${d.name}</b><em>+${event.coins??0} 🪙</em>`;
+ el.innerHTML=`<small>NEW DISCOVERY</small><span>${itemArt(item.chain,item.tier)}</span><b>${d.name}</b><em>+${event.coins??0} 🪙</em>`;
  document.body.appendChild(el);setTimeout(()=>el.classList.add('show'),20);setTimeout(()=>el.remove(),1500);
 }
 function rewardEffects(events){
@@ -84,7 +86,7 @@ function rewardEffects(events){
  const upgraded=events.find(e=>e.type==='producer_upgraded');
  if(upgraded){
   const p=PRODUCERS[upgraded.producerId],el=document.createElement('div');el.className='parcelPop producerPop';
-  el.innerHTML=`<small>SOURCE UPGRADED</small><span>${p.emoji}</span><b>${p.name} · Lv${upgraded.level}</b><em>Higher-level drops are now possible</em>`;
+  el.innerHTML=`<small>SOURCE UPGRADED</small><span>${producerArt(state,p.id)}</span><b>${producerForm(state,p.id)} · Lv${upgraded.level}</b><em>Higher-level drops are now possible</em>`;
   document.body.appendChild(el);setTimeout(()=>el.classList.add('show'),20);setTimeout(()=>el.remove(),1550);
  }
  const fresh=events.find(e=>e.type==='discovered');
@@ -98,23 +100,11 @@ function rewardEffects(events){
 }
 function itemText(chain,tier,count=1){
  const d=itemDef(chain,tier);
- return `${count>1?count+'× ':''}${d.emoji} ${d.name}`;
+ return `${count>1?count+'× ':''}${d.name}`;
 }
 function progressChip(r){
  const d=itemDef(r.chain,r.tier),done=r.current>=r.count;
- return `<span class="reqChip ${done?'done':''}"><span class="reqIcon">${d.emoji}</span><span class="reqName">${d.name}</span><b>${Math.min(r.current,r.count)}/${r.count}</b></span>`;
-}
-const STAGE_BOX_THEMES=[
- {name:'Mossy Supply Box',icon:'🌱'},
- {name:'Moonlit Supply Box',icon:'🌙'},
- {name:'Whisper Crate',icon:'✦'},
- {name:'Ancient Cache',icon:'🗿'},
- {name:'Heartwood Chest',icon:'💜'},
- {name:'Spirit Vault',icon:'⭐'}
-];
-function stageBoxTheme(){
- const zone=Math.min(STAGE_BOX_THEMES.length-1,Math.floor(state.milestoneIndex/3));
- return {zone,...STAGE_BOX_THEMES[zone]};
+ return `<span class="reqChip ${done?'done':''}" aria-label="${d.name}: ${Math.min(r.current,r.count)} of ${r.count}"><span class="reqIcon">${itemArt(r.chain,r.tier)}</span><span class="reqName">${d.name}</span><b>${Math.min(r.current,r.count)}/${r.count}</b></span>`;
 }
 function tileAt(x,y){
  for(const el of board.querySelectorAll('.tile')){
@@ -130,7 +120,7 @@ function canDrop(from,to){
  if(source?.terrain!=='open'||a?.type!=='item')return false;
  if(target?.terrain==='open'&&!b)return true;
  if((target?.terrain==='open'||target?.terrain==='cobweb')&&b?.type==='item'){
-  return a.chain===b.chain&&a.tier===b.tier;
+  return a.chain===b.chain&&a.tier===b.tier&&(target.terrain==='cobweb'||a.tier<MAX_TIER);
  }
  return false;
 }
@@ -181,7 +171,8 @@ function apply(r){
   events.some(x=>x.type==='producer_unlocked')?'✨ A new source awakened!':
   events.some(x=>x.type==='cobweb_cleared')?'🕸️ Vines cleared — item recovered!':
   events.some(x=>x.type==='merged')?'✨ Merge complete!':
-  events.some(x=>x.type==='produced')?'🌱 New item produced':
+  events.some(x=>x.type==='produced'&&x.special)?'Special craft recovered!':
+  events.some(x=>x.type==='produced')?'New craft produced':
   events.some(x=>x.type==='stored')?'🎒 Item stored':
   'Done'
  );
@@ -249,7 +240,7 @@ function suggestedIndices(){
  const groups=new Map();
  state.cells.forEach((c,i)=>{
   const x=c.content;
-  if(c.terrain!=='open'||x?.type!=='item'||x.tier>=7)return;
+  if(c.terrain!=='open'||x?.type!=='item'||x.tier>=MAX_TIER)return;
   const k=x.chain+':'+x.tier;
   if(!groups.has(k))groups.set(k,[]);
   groups.get(k).push(i);
@@ -278,17 +269,12 @@ function selectOrderByOffset(delta){
  const next=(current+delta+orders.length)%orders.length;
  selectedOrder=orders[next].id;selected=null;audio.play('select');render();
 }
-const REQUEST_NPCS=[
- {face:'🧚',name:'Luma',role:'Garden Wisp'},
- {face:'🐿️',name:'Pip',role:'Trail Runner'},
- {face:'🦉',name:'Orin',role:'Old Archivist'},
- {face:'🦌',name:'Elowen',role:'Grove Keeper'}
-];
+const REQUEST_NPCS=RESIDENTS;
 function requestNPC(order){
  const slot=Number.isInteger(order?.slot)?order.slot:Math.max(0,state.activeOrders.findIndex(o=>o.id===order?.id));
  return REQUEST_NPCS[slot%REQUEST_NPCS.length];
 }
-function requestFace(order){return requestNPC(order).face;}
+function requestFace(order){return residentArt(order?.npc??order?.slot??0);}
 function tutorialState(){
  if(state.moves===0)return {icon:'✨',title:'Make your first merge',text:'Combine one glowing pair to open space and reveal your first request.',step:'1/3'};
  const o=state.activeOrders.find(x=>x.id===selectedOrder)??state.activeOrders[0];
@@ -297,7 +283,7 @@ function tutorialState(){
   const need=o.requirements.map(r=>itemText(r.chain,r.tier,r.count)).join(' + ');
   const npc=requestNPC(o);
   if(ready&&state.ordersCompleted===0)return {icon:'🎁',title:`${npc.name}'s request is ready!`,text:'Tap Deliver to send the items and collect the reward.',step:'3/3'};
-  return {icon:'📜',title:`${npc.name} · ${o.title}`,text:`Build ${need} for ${npc.name}. Matching pieces are highlighted.`,step:'2/3'};
+  return {icon:'📜',title:`${npc.name} · ${o.title}`,text:`${o.narrative??npc.purpose} Build ${need}.`,step:'2/3'};
  }
  return {icon:'🌙',title:`Push into ${getFrontierName(state)}`,text:'Keep merging and restoring to reveal the next part of Wispwood.',step:'EXPLORE'};
 }
@@ -328,8 +314,8 @@ function renderRestorationMap(){
 function tileAria(cell,i){
  if(cell.terrain==='locked')return `Locked forest cell ${i+1}`;
  if(cell.content?.type==='producer'){
-  const p=PRODUCERS[cell.content.producerId],theme=stageBoxTheme();
-  return `${theme.name}. ${p.name} source, level ${state.producerLevels[p.id]}. Tap repeatedly to produce items.`;
+  const p=PRODUCERS[cell.content.producerId];
+  return `${producerForm(state,p.id)}. ${p.name} source, level ${state.producerLevels[p.id]}. Tap repeatedly to produce items.`;
  }
  if(cell.content?.type==='item'){
   const d=itemDef(cell.content.chain,cell.content.tier),chain=CHAINS[cell.content.chain];
@@ -342,7 +328,7 @@ function render(){
  if(state.moves>0&&(!selectedOrder||!state.activeOrders.some(o=>o.id===selectedOrder))){
   selectedOrder=(state.activeOrders.find(o=>orderReady(state,o))??state.activeOrders[0])?.id??null;
  }
- if(state.ordersCompleted===0){
+ if(state.ordersCompleted===0&&state.moves>0){
   const ready=state.activeOrders.find(o=>orderReady(state,o));
   if(ready)selectedOrder=ready.id;
  }
@@ -367,22 +353,22 @@ function render(){
 
   if(i===selected)b.classList.add('selected');
   if(suggested.has(i)&&!Number.isInteger(selected))b.classList.add('suggested');
-  if(cell.terrain==='locked'){b.dataset.decor=['🌲','🍄','🌿','✦'][i%4];if(frontierNext.has(i)){b.classList.add('frontier-next');b.dataset.frontier='?';}}
-  if(chosen?.type==='item'&&i!==selected&&cell.content?.type==='item'&&cell.content.chain===chosen.chain&&cell.content.tier===chosen.tier&&(cell.terrain==='open'||cell.terrain==='cobweb'))b.classList.add('merge-match');
+  if(cell.terrain==='locked'){b.dataset.decor=['⌁','⋄','⌁','·'][i%4];if(frontierNext.has(i)){b.classList.add('frontier-next');b.dataset.frontier='?';}}
+  if(chosen?.type==='item'&&chosen.tier<MAX_TIER&&i!==selected&&cell.content?.type==='item'&&cell.content.chain===chosen.chain&&cell.content.tier===chosen.tier&&(cell.terrain==='open'||cell.terrain==='cobweb'))b.classList.add('merge-match');
 
   if(cell.content?.type==='item'&&(cell.terrain==='open'||cell.terrain==='cobweb')){
     const d=itemDef(cell.content.chain,cell.content.tier),tier=cell.content.tier;
     const rarity=tier>=6?'mythic':tier>=4?'rare':tier>=2?'uncommon':'common';
     b.classList.add('item','chain-'+cell.content.chain,'tier-'+tier,'rarity-'+rarity);
     if(wanted.has(cell.content.chain+':'+tier))b.classList.add('wanted');
-    b.innerHTML=`<span class="itemPedestal"></span>${tier>=4?'<span class="itemSparkles">✦</span>':''}<span class="emoji">${d.emoji}</span>${cell.terrain==='cobweb'?'<span class="web">🕸️</span>':''}`;
+    b.innerHTML=`<span class="itemPedestal"></span>${tier>=4?'<span class="itemSparkles">✦</span>':''}<span class="emoji">${itemArt(cell.content.chain,tier)}</span>${cell.terrain==='cobweb'?'<span class="web">⌁</span>':''}`;
   }
   if(cell.terrain==='open'&&cell.content?.type==='producer'){
-    const d=PRODUCERS[cell.content.producerId],theme=stageBoxTheme();
-    b.classList.add('producer','source-awake','stage-producer','stage-zone-'+theme.zone);
+    const d=PRODUCERS[cell.content.producerId],stage=producerStage(state,d.id);
+    b.classList.add('producer','source-awake','stage-producer','stage-zone-'+stage);
     if(state.energy>0&&state.cells.some(c=>c.terrain==='open'&&!c.content))b.classList.add('producer-ready');
-    b.dataset.producerId=d.id;b.dataset.stageBox=theme.name;
-    b.innerHTML=`<span class="producerSpark">✦</span><span class="stageBoxSkin"><i></i></span><span class="stageBoxMark">${d.emoji}</span><span class="stageBoxZone">${theme.icon}</span><span class="producerBolt">⚡</span><span class="producerLevel">Lv${state.producerLevels[d.id]}</span>`;
+    b.dataset.producerId=d.id;b.dataset.stageBox=producerForm(state,d.id);
+    b.innerHTML=`${producerArt(state,d.id)}<span class="producerBolt">ϟ</span><span class="producerLevel">${state.producerLevels[d.id]}</span>`;
   }
 
   b.addEventListener('click',()=>clickTile(i));
@@ -416,11 +402,11 @@ function render(){
  });
 
  const tutorial=tutorialState();
- questIcon.textContent=tutorial.icon;requestPortrait.textContent=focusOrder?requestFace(focusOrder):'🧚';questTitle.textContent=tutorial.title;questText.textContent=tutorial.text;
+ questIcon.textContent=tutorial.icon;requestPortrait.innerHTML=focusOrder?requestFace(focusOrder):residentArt(0);questTitle.textContent=tutorial.title;questText.textContent=tutorial.text;
  questRibbon.classList.toggle('complete',state.milestoneIndex>0);
  if(focusOrder){
   const prog=requirementProgress(state,focusOrder.requirements);
-  goalReq.innerHTML=prog.map(progressChip).join('')+`<span class="goalReward">+${focusOrder.rewardCoins} 🪙 · +${focusOrder.rewardLight} ✨</span>`;
+  goalReq.innerHTML=prog.map(progressChip).join('')+`<span class="goalReward">+${focusOrder.rewardCoins+requestBonus(focusOrder)} 🪙 · +${focusOrder.rewardLight} ✨</span>`;
   const pos=state.activeOrders.findIndex(o=>o.id===focusOrder.id)+1;goalPosition.textContent=`${pos}/${state.activeOrders.length}`;
  }else{
   goalReq.innerHTML='<span class="reqChip">✨ Merge a matching pair</span>';
@@ -441,18 +427,18 @@ function render(){
  storageBadge.textContent=String(state.storage.filter(Boolean).length);
  const discoveryTotal=Object.keys(state.discovered).length;
  collectionBadge.textContent=String(discoveryTotal);
- collectionCount.textContent=`${discoveryTotal}/48`;
- collectionProgress.style.width=(discoveryTotal/48*100)+'%';
+ collectionCount.textContent=`${discoveryTotal}/${COLLECTION_TOTAL}`;
+ collectionProgress.style.width=(discoveryTotal/COLLECTION_TOTAL*100)+'%';
  collectionEl.innerHTML='';
  for(const [chainId,chain] of Object.entries(CHAINS)){
   const section=document.createElement('section');section.className='collectionChain chain-'+chainId;
   const found=chain.items.filter(item=>state.discovered[chainId+':'+item.tier]).length;
-  section.innerHTML=`<div class="collectionChainHead"><b>${chain.name}</b><span>${found}/8</span></div><div class="collectionItems"></div>`;
+  section.innerHTML=`<div class="collectionChainHead"><b>${chain.name}</b><span>${found}/${chain.items.length}</span></div><div class="collectionItems"></div>`;
   const grid=section.querySelector('.collectionItems');
   for(const d of chain.items){
    const unlocked=!!state.discovered[chainId+':'+d.tier],cell=document.createElement('button');
    cell.type='button';cell.className='collectionItem'+(unlocked?' found':' locked');
-   cell.innerHTML=unlocked?`<span>${d.emoji}</span><b>${d.name}</b><small>T${d.tier+1}</small>`:`<span>?</span><b>Unknown</b><small>T${d.tier+1}</small>`;
+   cell.innerHTML=unlocked?`<span>${itemArt(chainId,d.tier)}</span><b>${d.name}</b><small>T${d.tier+1}</small>`:`<span>?</span><b>Unknown</b><small>T${d.tier+1}</small>`;
    if(unlocked)cell.addEventListener('click',()=>msg(`${d.emoji} ${d.name} · ${chain.name} · Tier ${d.tier+1}`));
    else cell.disabled=true;
    grid.appendChild(cell);
@@ -467,7 +453,7 @@ function render(){
   el.type='button';
   el.className='order npcOrder'+(selectedOrder===o.id?' active':'')+(ready?' ready':'');
   el.setAttribute('aria-pressed',selectedOrder===o.id?'true':'false');
-  el.innerHTML=`<span class="orderPortrait">${npc.face}</span><div class="orderCopy"><small>${npc.role.toUpperCase()} · ${ready?'READY':o.label.toUpperCase()}</small><strong>${npc.name}</strong><em>${o.title}</em><div class="req">${prog.map(r=>`<span class="${r.current>=r.count?'done':''}">${itemText(r.chain,r.tier,r.count)} · ${Math.min(r.current,r.count)}/${r.count}</span>`).join('')}</div><div class="reward">+${o.rewardCoins} 🪙 · +${o.rewardLight} ✨ · +${o.rewardEnergy} ⚡</div></div>`;
+  el.innerHTML=`<span class="orderPortrait">${requestFace(o)}</span><div class="orderCopy"><small>${npc.role.toUpperCase()} · ${ready?'READY':o.label.toUpperCase()}</small><strong>${npc.name}</strong><em>${o.title}</em><p class="requestPurpose">${o.narrative??npc.purpose}</p><small>${o.kind==='timed'?(requestBonus(o)?'Dusk bonus: +'+requestBonus(o)+' coins · '+Math.ceil((o.bonusUntil-Date.now())/60000)+' min left':'Bonus ended · base reward stays'):''}</small><div class="req">${prog.map(r=>`<span class="${r.current>=r.count?'done':''}">${itemText(r.chain,r.tier,r.count)} · ${Math.min(r.current,r.count)}/${r.count}</span>`).join('')}</div><div class="reward">+${o.rewardCoins} 🪙 · +${o.rewardLight} ✨ · +${o.rewardEnergy} ⚡</div></div>`;
   el.addEventListener('click',()=>{selectedOrder=o.id;selected=null;closePanels();render();questRibbon.scrollIntoView({behavior:'smooth',block:'center'});});
   ordersEl.appendChild(el);
  }
@@ -483,11 +469,11 @@ function render(){
   card.hidden=!o;if(!o)return;
   const npc=requestNPC(o),prog=requirementProgress(state,o.requirements),ready=orderReady(state,o);
   card.dataset.orderId=o.id;card.classList.toggle('ready',ready);card.classList.toggle('active',selectedOrder===o.id);
-  card.querySelector('.requestMiniPortrait').textContent=npc.face;
+  card.querySelector('.requestMiniPortrait').innerHTML=requestFace(o);
   card.querySelector('.requestMiniName').textContent=npc.name;
   card.querySelector('.requestMiniItems').innerHTML=prog.slice(0,2).map(r=>{
    const d=itemDef(r.chain,r.tier),done=r.current>=r.count;
-   return `<span class="${done?'done':''}" title="${d.name}">${d.emoji}<b>${Math.min(r.current,r.count)}/${r.count}</b></span>`;
+   return `<span class="${done?'done':''}" title="${d.name}">${itemArt(r.chain,r.tier)}<b>${Math.min(r.current,r.count)}/${r.count}</b></span>`;
   }).join('');
   card.querySelector('.requestMiniReward').textContent=ready?'READY · DELIVER':`+${o.rewardCoins} 🪙 · +${o.rewardLight} ✨`;
  });
@@ -511,7 +497,7 @@ function render(){
   const preview=producerPreview(state,id,3),cost=producerUpgradeCost(state,id),maxed=level>=PRODUCER_MAX_LEVEL;
   const card=document.createElement('div');card.className='source sourceUpgrade';
   const pips=Array.from({length:PRODUCER_MAX_LEVEL},(_,i)=>`<i class="${i<level?'on':''}"></i>`).join('');
-  card.innerHTML=`<span class="sourceIcon">${p.emoji}</span><div class="sourceInfo"><b>${p.name} · Lv${level}</b><div class="sourcePips">${pips}</div><small>Next drops</small><div class="dropPreview">${preview.map(x=>{const d=itemDef(x.chain,x.tier);return `<span title="${d.name}">${d.emoji}</span>`;}).join('')}</div></div><button class="sourceUpgradeBtn" type="button" ${maxed?'disabled':''}>${maxed?'MAX':`Upgrade<br><small>${cost.coins} 🪙 · ${cost.light} ✨</small>`}</button>`;
+  card.innerHTML=`<span class="sourceIcon">${producerArt(state,id)}</span><div class="sourceInfo"><b>${producerForm(state,id)} · Lv${level}</b><div class="sourcePips">${pips}</div><small>${p.name} · special every ${[16,14,12][producerStage(state,id)]} taps</small><div class="dropPreview">${preview.map(x=>{const d=itemDef(x.chain,x.tier);return `<span title="${d.name}${x.special?' · guaranteed special':''}">${itemArt(x.chain,x.tier)}${x.special?'<b>✦</b>':''}</span>`;}).join('')}</div></div><button class="sourceUpgradeBtn" type="button" ${maxed?'disabled':''}>${maxed?'MAX':`Upgrade<br><small>${cost.coins} 🪙 · ${cost.light} ✨</small>`}</button>`;
   card.querySelector('.sourceUpgradeBtn')?.addEventListener('click',e=>{e.stopPropagation();audio.unlock();apply(upgradeProducer(state,id));});
   sourcesEl.appendChild(card);
  }
@@ -520,7 +506,7 @@ function render(){
  if(item?.type==='item'){
   const d=itemDef(item.chain,item.tier);
   inspect.hidden=false;
-  inspectIcon.textContent=d.emoji;
+  inspectIcon.innerHTML=itemArt(item.chain,item.tier);
   inspectName.textContent=d.name;
   inspectMeta.textContent=`${CHAINS[item.chain].name} · Tier ${item.tier+1}`;
   inspectUse.textContent=selectionUseLabel(item);
@@ -544,7 +530,7 @@ function render(){
   b.className='slot'+(x?'':' empty');
   if(x){
     const d=itemDef(x.chain,x.tier);
-    b.textContent=d.emoji;
+    b.innerHTML=itemArt(x.chain,x.tier);
     b.title=`${d.name} · Tier ${x.tier+1}`;
     b.setAttribute('aria-label',`Return ${d.name} from Backpack`);
     b.addEventListener('click',()=>apply(retrieveItem(state,i)));
@@ -597,3 +583,7 @@ soundToggle.setAttribute('aria-pressed',audio.enabled()?'true':'false');
 audio.bindPlatformMute(platform);
 render();
 platform.startGameplay?.();
+
+
+// Refresh optional bonus labels without changing a request or consuming items.
+setInterval(()=>{if(!drag&&state.activeOrders.some(o=>o.kind==='timed'))render();},30000);

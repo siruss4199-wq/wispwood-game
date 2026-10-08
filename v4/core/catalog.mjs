@@ -1,37 +1,58 @@
 export const SIZE=8;
 export const CELL_COUNT=64;
-export const MAX_TIER=7;
+export const MAX_TIER=9;
 export const PRODUCER_MAX_LEVEL=5;
 
-const chain=(id,name,items)=>({id,name,items:items.map(([name,emoji],tier)=>({name,emoji,tier}))});
+// Stable family IDs preserve V4 inventories. Art keys are owned vector assets.
+const chain=(id,name,names)=>({id,name,items:names.split('|').map((name,tier)=>({name,tier,art:`${id}-${tier}`,emoji:'',rarity:tier>=8?'heirloom':tier>=5?'rare':'common'}))});
 export const CHAINS={
- leaf:chain('leaf','Forest Growth',[['Seed','🌰'],['Sprout','🌱'],['Herb','🌿'],['Fern','🍃'],['Bloom','🌸'],['Moon Flower','🌺'],['Ancient Blossom','🪷'],['Elder Crown','🍀']]),
- wood:chain('wood','Ancient Wood',[['Twig','🪵'],['Branch','🌾'],['Bundle','🧺'],['Carved Wood','🪚'],['Totem','🗿'],['Spirit Totem','🧿'],['Heartwood','🟤'],['Worldroot','🌳']]),
- water:chain('water','Moon Water',[['Drop','💧'],['Dew','🫧'],['Flask','🧴'],['Elixir','🧪'],['Moonwater','🌀'],['Sacred Water','🩵'],['Moonwell','🌊'],['Lunar Chalice','🏺']]),
- crystal:chain('crystal','Crystal Stone',[['Pebble','🪨'],['Shard','🔹'],['Gem','💎'],['Prism','🔷'],['Moon Gem','♦️'],['Star Crystal','💠'],['Soul Crystal','🧊'],['Crown Crystal','👑']]),
- magic:chain('magic','Wisp Light',[['Spark','✨'],['Wisp','🟣'],['Glow Orb','🪩'],['Star Dust','🌟'],['Star Shard','💫'],['Aurora','🌌'],['Spirit Flame','🔥'],['Heart Star','⭐']]),
- relic:chain('relic','Lost Relics',[['Scrap','⚙️'],['Rune','🪬'],['Charm','📿'],['Idol','🪆'],['Tablet','📜'],['Moon Relic','🌙'],['Ancient Key','🗝️'],['Forest Heart','💜']])
+ leaf:chain('leaf','Canopy Weaving','Foldseed|Twinshoot|Veinleaf|Fern Fan|Woven Nest|Petal Canopy|Rainleaf Bower|Crown Arbor|Living Pavilion|Canopy Haven'),
+ wood:chain('wood','Rootwright Craft','Root Curl|Forkwood|Bound Staves|Root Peg|Bentwood Frame|Trail Arch|Hollow Shelter|Rootwork Hall|Grove Belfry|Heartwood Lodge'),
+ water:chain('water','Dewglass','Dew Bead|Dew Cup|Reed Vial|Coiled Flask|Drift Vessel|Dewglass Basin|Mist Fountain|Rain Choir|Cloud Conservatory|Watersong Spire'),
+ crystal:chain('crystal','Echo Stone','Echo Grain|Splitstone|Chime Chip|Tuning Stone|Echo Fork|Resonant Wheel|Chime Array|Echo Beacon|Harmonic Gate|Valley Resonator'),
+ magic:chain('magic','Gloamthread','Gloam Fibre|Light Loop|Wisp Spool|Thread Knot|Glow Shuttle|Dusk Loom|Luminous Sail|Nightward Kite|Aurora Awning|Skythread Vault'),
+ relic:chain('relic','Memory Imprints','Bark Rubbing|Marked Tile|Memory Seal|Leaf Folio|Bound Ledger|Grove Atlas|Archive Stand|Memory Cabinet|Ancestral Alcove|Living Chronicle')
 };
+export const COLLECTION_TOTAL=Object.values(CHAINS).reduce((n,c)=>n+c.items.length,0);
 
 export const CHAIN_MARKS={leaf:'FG',wood:'WD',water:'WT',crystal:'CR',magic:'MG',relic:'RL'};
 
 export const PRODUCERS={
  ancientTree:{
-  id:'ancientTree',name:'Ancient Tree',emoji:'🌳',unlockAt:0,
+  id:'ancientTree',name:'Rootfold Nursery',emoji:'🌳',unlockAt:0,
   chains:['leaf','wood'],
   cycle:[['leaf',0],['leaf',0],['wood',0],['leaf',0],['leaf',1],['wood',0],['leaf',0],['wood',1]]
  },
  moonSpring:{
-  id:'moonSpring',name:'Moon Spring',emoji:'⛲',unlockAt:3,
+  id:'moonSpring',name:'Dewwheel Cistern',emoji:'⛲',unlockAt:3,
   chains:['water','crystal'],
   cycle:[['water',0],['water',0],['crystal',0],['water',1],['crystal',0],['water',0],['crystal',1],['water',0]]
  },
  wispNest:{
-  id:'wispNest',name:'Wisp Nest',emoji:'🪺',unlockAt:8,
+  id:'wispNest',name:'Gloamthread Loom',emoji:'🪺',unlockAt:8,
   chains:['magic','relic'],
   cycle:[['magic',0],['magic',0],['relic',0],['magic',1],['relic',0],['magic',0],['relic',1],['magic',0]]
  }
 };
+
+// Each workshop evolves independently with restoration, while upgrades improve yield.
+export const PRODUCER_FORMS={
+ ancientTree:['Seed Cradle','Rootfold Nursery','Canopy Workshop'],
+ moonSpring:['Reed Collector','Dewwheel Cistern','Rain Choir Works'],
+ wispNest:['Thread Basket','Gloamthread Loom','Memory Weavery']
+};
+export function producerStage(s,id){
+ const p=PRODUCERS[id];
+ return Math.max(0,Math.min(2,Math.floor((s.milestoneIndex-p.unlockAt)/4)));
+}
+export function producerForm(s,id){return PRODUCER_FORMS[id][producerStage(s,id)];}
+export function producerDrop(s,id,tap=s.producerTapCounts[id]??0){
+ const p=PRODUCERS[id],level=s.producerLevels[id]??1,stage=producerStage(s,id);
+ const specialEvery=[16,14,12][stage];
+ const special=(tap+1)%specialEvery===0;
+ const [chain,tier]=special?[p.chains[1],2+stage]:p.cycle[tap%p.cycle.length];
+ return {chain,tier:Math.min(MAX_TIER,tier+Math.floor((level-1)/2)+(level%2===0&&tap%4===3?1:0)),special};
+}
 
 const M=(id,title,icon,coinCost,lightRequired,requirements,unlock=null)=>({id,title,icon,coinCost,lightRequired,requirements,unlock});
 export const MILESTONES=[
@@ -52,9 +73,10 @@ export const MILESTONES=[
  M('sanctuary','Restore the Sanctuary','🕯️',3650,126,[['magic',5,1],['water',5,1],['leaf',6,1]]),
  M('mivra','Restore Mivra’s Shelter','💜',4350,144,[['relic',5,1],['leaf',6,1],['wood',6,1]]),
  M('heartpath','Open the Heart Path','🛤️',5150,163,[['magic',6,1],['crystal',6,1],['water',6,1]]),
- M('heart','Awaken the Heart of Wispwood','🌳',6100,184,[['leaf',7,1],['magic',6,1],['relic',6,1]])
+ M('heart','Awaken the Heart of Wispwood','🌳',6100,184,[['leaf',9,1],['magic',8,1],['relic',8,1]])
 ];
 
 export const STORAGE_UPGRADES=[6,8,10,13,16];
 export function itemDef(chainId,tier){return CHAINS[chainId]?.items?.[tier]??null;}
 export function producerForChain(chainId){return Object.values(PRODUCERS).find(p=>p.chains.includes(chainId))??null;}
+
