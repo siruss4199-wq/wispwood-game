@@ -7,11 +7,13 @@ const {chromium}=require('playwright');
  try{
   for(const width of [360,390,768]){
    const page=await browser.newPage({viewport:{width,height:844},hasTouch:true,isMobile:width<500});
+   page.setDefaultTimeout(10000);
    const errors=[];page.on('pageerror',e=>errors.push(e.message));
    await page.goto('http://127.0.0.1:8080/v4/');await page.waitForFunction(()=>document.querySelectorAll('#board .tile').length===64);
    await page.evaluate(()=>Promise.all([...document.images].map(i=>i.decode().catch(()=>{}))));
    assert.equal(await page.locator('img').evaluateAll(xs=>xs.filter(x=>!x.naturalWidth).length),0);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'horizontal overflow');
+   await page.screenshot({path:`test-artifacts/initial-${width}.png`,fullPage:true});
    const board=await page.locator('#board').boundingBox();assert.ok(board.width>=Math.min(width-32,470));assert.ok(board.y+board.height<844,'board must fit mobile viewport');
    await page.locator('[data-index="28"]').tap();await page.locator('[data-index="35"]').tap();
    assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('wispwood-v4')).mergeCount),1);

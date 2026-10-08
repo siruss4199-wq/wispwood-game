@@ -58,3 +58,6 @@ body{background:#1b3935!important}
 .tile.locked:before{content:attr(data-decor)!important}
 .tile.merge-match{outline:2px dashed #fff7bf!important;outline-offset:-3px}
 .dropPreview>span{position:relative}.dropPreview b{position:absolute;right:0;bottom:0;font-size:10px;color:#805a20}
+/* Ready requests guide the player without taking control away from the board. */
+.deliveryTutorial .boardFrame,.deliveryTutorial .worldStrip,.deliveryTutorial .gameDock,.deliveryTutorial .goalNav{pointer-events:auto;filter:none;opacity:1}
+.itemActions{position:static!important;display:flex!important;justify-content:flex-end!important}
