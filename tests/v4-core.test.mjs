@@ -425,3 +425,38 @@ test('reward feedback can burst from board and request origins',()=>{
  assert.match(css,/boardRewardOrb/);
  assert.match(css,/boardRewardOrb \.72s/);
 });
+
+
+test('board art hierarchy distinguishes item tiers without text labels',()=>{
+ const app=fs.readFileSync(new URL('../v4/app.mjs',import.meta.url),'utf8');
+ const css=fs.readFileSync(new URL('../v4/style.css',import.meta.url),'utf8');
+ assert.match(app,/rarity-mythic/);
+ assert.match(app,/rarity-rare/);
+ assert.match(app,/itemPedestal/);
+ assert.match(app,/itemSparkles/);
+ assert.match(css,/rarity-common/);
+ assert.match(css,/rarity-uncommon/);
+ assert.match(css,/rarity-rare/);
+ assert.match(css,/rarity-mythic/);
+});
+
+test('quick source shelf exposes unlocked producers and next drops near the board',()=>{
+ const html=fs.readFileSync(new URL('../v4/index.html',import.meta.url),'utf8');
+ const app=fs.readFileSync(new URL('../v4/app.mjs',import.meta.url),'utf8');
+ const css=fs.readFileSync(new URL('../v4/style.css',import.meta.url),'utf8');
+ assert.match(html,/id="sourceShelf"/);
+ assert.match(app,/producerIndices\(state\)/);
+ assert.match(app,/className='sourceShelfCard'/);
+ assert.match(app,/producerPreview\(state,p\.id,2\)/);
+ assert.match(app,/tapProducer\(state,index\)/);
+ assert.match(css,/sourceShelfCard/);
+ assert.match(css,/shelfDrops/);
+});
+
+test('board frame carries decorative forest reward props outside the playable grid',()=>{
+ const html=fs.readFileSync(new URL('../v4/index.html',import.meta.url),'utf8');
+ const css=fs.readFileSync(new URL('../v4/style.css',import.meta.url),'utf8');
+ assert.equal((html.match(/class="boardScenery/g)??[]).length,4);
+ assert.match(css,/boardScenery/);
+ assert.match(css,/pointer-events:none/);
+});
