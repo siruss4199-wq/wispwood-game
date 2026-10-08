@@ -430,8 +430,8 @@ test('reward feedback can burst from board and request origins',()=>{
 test('board art hierarchy distinguishes item tiers without text labels',()=>{
  const app=fs.readFileSync(new URL('../v4/app.mjs',import.meta.url),'utf8');
  const css=fs.readFileSync(new URL('../v4/style.css',import.meta.url),'utf8');
- assert.match(app,/rarity-mythic/);
- assert.match(app,/rarity-rare/);
+ assert.match(app,/tier>=6\?'mythic'/);
+ assert.match(app,/tier>=4\?'rare'/);
  assert.match(app,/itemPedestal/);
  assert.match(app,/itemSparkles/);
  assert.match(css,/rarity-common/);
