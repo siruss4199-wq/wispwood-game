@@ -18,6 +18,35 @@ function tileIndexAtPoint(x,y){
  }
  return null;
 }
+function nearestDropTarget(from,x,y){
+ const source=state.cells[from]?.content;
+ if(!source)return null;
+ let best=null,bestDistance=Infinity,tileSize=0;
+ for(const tile of board.querySelectorAll('.tile')){
+  const index=Number(tile.dataset.index);
+  if(index===from)continue;
+  const cell=state.cells[index];
+  if(cell?.terrain!=='open')continue;
+  const r=tile.getBoundingClientRect();
+  tileSize=Math.max(tileSize,r.width,r.height);
+  const cx=r.left+r.width/2,cy=r.top+r.height/2;
+  const distance=Math.hypot(x-cx,y-cy);
+  const target=cell.content;
+  const exactMerge=source.type==='item'&&target?.type==='item'&&source.chain===target.chain&&source.tier===target.tier;
+  const movableEmpty=target===null;
+  if((exactMerge||movableEmpty)&&distance<bestDistance){
+   best=index;bestDistance=distance;
+  }
+ }
+ return bestDistance<=Math.max(48,tileSize*1.15)?best:null;
+}
+function resolveDropTarget(from,x,y,lastX,lastY){
+ const direct=tileIndexAtPoint(x,y);
+ if(Number.isInteger(direct)&&direct!==from)return direct;
+ const last=tileIndexAtPoint(lastX,lastY);
+ if(Number.isInteger(last)&&last!==from)return last;
+ return nearestDropTarget(from,Number.isFinite(lastX)?lastX:x,Number.isFinite(lastY)?lastY:y);
+}
 function clearDragClasses(){document.querySelectorAll('.drag-source,.drag-target').forEach(x=>x.classList.remove('drag-source','drag-target'));}
 function selectedItem(){return Number.isInteger(selected)?state.cells[selected]?.content:null;}
 function findRequestItem(){const q=currentRequest(state);return state.cells.findIndex(c=>c.content?.type==='item'&&c.content.chain===q.chain&&c.content.tier===q.tier);}
@@ -83,9 +112,9 @@ function render(){
   if(i===selected)b.classList.add('selected');
   if(cell.terrain==='open'&&cell.content?.type==='item'){b.classList.add('item');const d=itemDef(cell.content);b.innerHTML=`<span class="emoji">${d.emoji}</span><span class="tier">T${cell.content.tier+1}</span>`;}
   if(cell.terrain==='open'&&cell.content?.type==='producer'){b.classList.add('producer');const d=PRODUCERS[cell.content.producerId];b.innerHTML=`<span class="emoji">${d.emoji}</span><span class="tier">SOURCE</span>`;}
-  b.addEventListener('pointerdown',e=>{if(cell.terrain!=='open'||!cell.content)return;drag={id:e.pointerId,from:i,x:e.clientX,y:e.clientY,moved:false,producer:cell.content.type==='producer'};b.setPointerCapture?.(e.pointerId);});
-  b.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)return;if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>8)drag.moved=true;if(!drag.moved)return;clearDragClasses();board.querySelector(`[data-index="${drag.from}"]`)?.classList.add('drag-source');const over=tileIndexAtPoint(e.clientX,e.clientY);if(Number.isInteger(over)&&over!==drag.from)board.querySelector(`[data-index="${over}"]`)?.classList.add('drag-target');});
-  b.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;const d=drag;drag=null;clearDragClasses();if(d.producer&&!d.moved){apply(tapProducer(state,d.from));return;}const to=tileIndexAtPoint(e.clientX,e.clientY);if(!d.moved||!Number.isInteger(to)||to===d.from){selected=d.from;render();return;}apply(state.cells[to]?.terrain==='open'&&state.cells[to].content===null?move(state,d.from,to):merge(state,d.from,to));});
+  b.addEventListener('pointerdown',e=>{if(cell.terrain!=='open'||!cell.content)return;drag={id:e.pointerId,from:i,x:e.clientX,y:e.clientY,lastX:e.clientX,lastY:e.clientY,moved:false,producer:cell.content.type==='producer'};b.setPointerCapture?.(e.pointerId);});
+  b.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)return;drag.lastX=e.clientX;drag.lastY=e.clientY;if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>8)drag.moved=true;if(!drag.moved)return;clearDragClasses();board.querySelector(`[data-index="${drag.from}"]`)?.classList.add('drag-source');const over=resolveDropTarget(drag.from,e.clientX,e.clientY,drag.lastX,drag.lastY);if(Number.isInteger(over)&&over!==drag.from)board.querySelector(`[data-index="${over}"]`)?.classList.add('drag-target');});
+  b.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;const d=drag;drag=null;clearDragClasses();if(d.producer&&!d.moved){apply(tapProducer(state,d.from));return;}const to=resolveDropTarget(d.from,e.clientX,e.clientY,d.lastX,d.lastY);if(!d.moved||!Number.isInteger(to)||to===d.from){selected=d.from;render();return;}apply(state.cells[to]?.terrain==='open'&&state.cells[to].content===null?move(state,d.from,to):merge(state,d.from,to));});
   b.addEventListener('pointercancel',()=>{drag=null;clearDragClasses();});
   board.appendChild(b);
  });
