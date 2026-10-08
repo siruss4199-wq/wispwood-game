@@ -11,6 +11,7 @@ const energy=$('#energy'),coins=$('#coins'),light=$('#light'),discovered=$('#dis
 const milestoneTitle=$('#milestoneTitle'),milestoneReq=$('#milestoneReq'),milestoneStep=$('#milestoneStep'),progressBar=$('#progressBar i');
 const boardStatus=$('#boardStatus'),frontierNameEl=$('#frontierName'),rushFill=$('#rushFill'),rushCount=$('#rushCount'),questRibbon=$('#questRibbon'),questIcon=$('#questIcon'),questTitle=$('#questTitle'),questText=$('#questText'),goalReq=$('#goalReq'),goalPosition=$('#goalPosition'),goalPrev=$('#goalPrev'),goalNext=$('#goalNext'),soundToggle=$('#soundToggle'),inspect=$('#inspect'),inspectIcon=$('#inspectIcon'),inspectName=$('#inspectName'),inspectMeta=$('#inspectMeta'),inspectUse=$('#inspectUse');
 const completeOrderBtn=$('#completeOrder'),completeMilestoneBtn=$('#completeMilestone'),storeBtn=$('#store'),hint=$('#hint'),toast=$('#toast');
+const panelButtons=[...document.querySelectorAll('[data-open-panel]')],gamePanels=[...document.querySelectorAll('.gamePanel')],focusGoal=$('#focusGoal'),ordersBadge=$('#ordersBadge'),storageBadge=$('#storageBadge');
 
 const restored=restore(localStorage.getItem(KEY));
 let state=restored?reviveSparseBoard(restored):initializePlayableState(createInitialState());
@@ -167,6 +168,16 @@ function suggestedIndices(){
  }
  return out;
 }
+function closePanels(){
+ gamePanels.forEach(p=>p.classList.remove('open'));
+ panelButtons.forEach(b=>b.classList.remove('active'));
+}
+function togglePanel(name){
+ const panel=gamePanels.find(p=>p.dataset.panel===name),button=panelButtons.find(b=>b.dataset.openPanel===name);
+ const opening=!panel?.classList.contains('open');
+ closePanels();
+ if(opening){panel?.classList.add('open');button?.classList.add('active');audio.play('select');}
+}
 function selectOrderByOffset(delta){
  const orders=state.activeOrders;if(!orders.length)return;
  const current=Math.max(0,orders.findIndex(o=>o.id===selectedOrder));
@@ -283,6 +294,8 @@ function render(){
  boardStatus.textContent=`${explored}/64 explored · ${openItems} items · ${empties} free`;
  const rush=(state.mergeCount??0)%5;rushCount.textContent=`${rush}/5`;rushFill.style.width=(rush/5*100)+'%';
 
+ ordersBadge.textContent=String(state.activeOrders.length);
+ storageBadge.textContent=String(state.storage.filter(Boolean).length);
  ordersEl.innerHTML='';
  for(const o of state.activeOrders){
   const ready=orderReady(state,o),prog=requirementProgress(state,o.requirements);
@@ -368,6 +381,9 @@ function render(){
 completeOrderBtn.addEventListener('click',()=>{audio.unlock();selectedOrder&&apply(finishOrder(state,selectedOrder));});
 completeMilestoneBtn.addEventListener('click',()=>{audio.unlock();apply(finishMilestone(state));});
 storeBtn.addEventListener('click',()=>{audio.unlock();Number.isInteger(selected)&&apply(storeItem(state,selected));});
+panelButtons.forEach(b=>b.addEventListener('click',()=>togglePanel(b.dataset.openPanel)));
+gamePanels.forEach(p=>p.querySelector('.panelHandle')?.addEventListener('click',closePanels));
+focusGoal.addEventListener('click',()=>{closePanels();questRibbon.scrollIntoView({behavior:'smooth',block:'center'});audio.play('select');});
 goalPrev.addEventListener('click',()=>selectOrderByOffset(-1));
 goalNext.addEventListener('click',()=>selectOrderByOffset(1));
 soundToggle.addEventListener('click',()=>{

@@ -3,17 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#edf3e8">
+<meta name="theme-color" content="#17261f">
 <title>Wispwood — Lost Clearing</title>
 <link rel="stylesheet" href="./style.css">
+
 </head>
 <body>
-<main class="shell">
-  <header class="topbar">
+<main class="shell gameShell">
+  <header class="topbar gameHud">
     <div class="titleBlock">
-      <small>WISPWOOD · CHAPTER I</small>
+      <small>WISPWOOOD · CHAPTER I</small>
       <h1>Lost Clearing</h1>
-      <div class="discovery">📖 <b id="discovered"></b>/48 discoveries</div>
+      <div class="discovery">📖 <b id="discovered"></b>/48</div>
     </div>
     <div class="wallet" aria-label="Resources">
       <span>⚡ <b id="energy"></b></span>
@@ -23,11 +24,25 @@
     </div>
   </header>
 
+  <section class="worldStrip" aria-label="Forest journey">
+    <div class="worldMoon">☾</div>
+    <div class="worldPath">
+      <span class="worldNode active">🌱</span><i></i><span class="worldNode">🪨</span><i></i><span class="worldNode">🌙</span><i></i><span class="worldNode">🏛️</span>
+    </div>
+    <div class="worldCopy"><small>RESTORING</small><b id="milestoneTitle"></b></div>
+    <div class="progress compactProgress">
+      <b id="milestoneStep"></b>
+      <span id="progressBar" aria-label="Chapter progress"><i></i></span>
+    </div>
+    <button id="completeMilestone" class="restoreAction" type="button" disabled>Restore</button>
+    <div id="milestoneReq" class="milestoneReq worldReq"></div>
+  </section>
+
   <section id="questRibbon" class="goalDock" aria-label="Active goal">
     <div class="goalMain">
       <span id="questIcon" class="questIcon">✨</span>
       <div class="goalCopy">
-        <small>ACTIVE GOAL</small>
+        <small>FOREST REQUEST</small>
         <b id="questTitle">Wake the clearing</b>
         <span id="questText">Merge a glowing pair to begin.</span>
       </div>
@@ -36,22 +51,9 @@
     <div id="goalReq" class="goalReq"></div>
     <div class="goalNav">
       <button id="goalPrev" type="button" aria-label="Previous order">‹</button>
-      <span><b id="goalPosition">—</b><small>FOREST ORDERS</small></span>
+      <span><b id="goalPosition">—</b><small>REQUEST</small></span>
       <button id="goalNext" type="button" aria-label="Next order">›</button>
     </div>
-  </section>
-
-  <section class="milestone journeyStrip" aria-label="Current restoration">
-    <div class="journeyTitle">
-      <span>🌿</span>
-      <div><small>RESTORATION</small><strong id="milestoneTitle"></strong></div>
-    </div>
-    <div id="milestoneReq" class="milestoneReq"></div>
-    <div class="progress">
-      <b id="milestoneStep"></b>
-      <span id="progressBar" aria-label="Chapter progress"><i></i></span>
-    </div>
-    <button id="completeMilestone" class="restoreAction" type="button" disabled>Restore</button>
   </section>
 
   <section class="boardSection" aria-label="Merge Garden">
@@ -60,48 +62,59 @@
         <b>Merge Garden</b>
         <small id="boardStatus"></small>
       </div>
-      <div class="frontierBadge"><span>NEXT FRONTIER</span><b id="frontierName">Mossy Verge</b></div>
+      <div class="frontierBadge"><span>NEXT</span><b id="frontierName">Mossy Verge</b></div>
     </div>
+
     <div class="rushBar" aria-label="Wisp Rush progress">
       <span>✦ WISP RUSH</span>
       <div><i id="rushFill"></i></div>
       <b id="rushCount">0/5</b>
       <small>5 merges = +2 ✨ + bonus drop</small>
     </div>
+
     <div class="boardFrame">
+      <div class="forestCanopy canopyTop" aria-hidden="true">🌲　✦　🌿　☾　🌲</div>
       <span class="ambientWisp w1">✦</span><span class="ambientWisp w2">✧</span><span class="ambientWisp w3">✦</span>
       <div id="board" class="board" role="grid" aria-label="8 by 8 Wispwood merge board"></div>
+      <div class="forestCanopy canopyBottom" aria-hidden="true">🍄　🌿　✦　🌲　🍄</div>
     </div>
 
     <section id="inspect" class="inspect" hidden aria-live="polite">
       <span id="inspectIcon" class="inspectIcon"></span>
-      <div class="inspectCopy">
-        <b id="inspectName"></b>
-        <small id="inspectMeta"></small>
-      </div>
+      <div class="inspectCopy"><b id="inspectName"></b><small id="inspectMeta"></small></div>
       <span id="inspectUse" class="inspectUse"></span>
     </section>
 
     <div id="actions" class="actions itemActions">
-      <button id="store" disabled>Store item</button>
+      <button id="store" disabled>🎒 Store</button>
     </div>
     <p id="hint" class="hint">Find a matching pair to create your first free space.</p>
   </section>
 
-  <section class="ordersSection">
-    <div class="sectionHead"><b>More Orders</b><small>Swipe to switch goals</small></div>
+  <section id="ordersPanel" class="gamePanel ordersSection" data-panel="orders">
+    <div class="panelHandle"></div>
+    <div class="sectionHead"><b>📜 Forest Requests</b><small>Choose a target</small></div>
     <div id="orders" class="orders"></div>
   </section>
 
-  <section class="sourcesSection">
-    <div class="sectionHead"><b>Sources</b><small>Next drops</small></div>
+  <section id="sourcesPanel" class="gamePanel sourcesSection" data-panel="sources">
+    <div class="panelHandle"></div>
+    <div class="sectionHead"><b>🌳 Sources</b><small>Next drops</small></div>
     <div id="sources" class="sources"></div>
   </section>
 
-  <section class="storageWrap">
-    <div class="sectionHead"><b>Backpack</b><small>Save rare pieces</small></div>
+  <section id="storagePanel" class="gamePanel storageWrap" data-panel="storage">
+    <div class="panelHandle"></div>
+    <div class="sectionHead"><b>🎒 Backpack</b><small>Save rare pieces</small></div>
     <div id="storage" class="storage"></div>
   </section>
+
+  <nav class="gameDock" aria-label="Game menu">
+    <button class="dockBtn" data-open-panel="orders" type="button"><span>📜</span><b>Requests</b><em id="ordersBadge">4</em></button>
+    <button class="dockBtn" data-open-panel="sources" type="button"><span>🌳</span><b>Sources</b></button>
+    <button class="dockBtn" data-open-panel="storage" type="button"><span>🎒</span><b>Bag</b><em id="storageBadge">0</em></button>
+    <button class="dockBtn" id="focusGoal" type="button"><span>✨</span><b>Goal</b></button>
+  </nav>
 </main>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script type="module" src="./app.mjs"></script>
