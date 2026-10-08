@@ -1,0 +1,9 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Wispwood V4</title><link rel="stylesheet" href="./style.css"></head><body><main class="shell">
+<header><div><small>WISPWOOOD · EXPEDITION BUILD</small><h1>Lost Clearing</h1><div class="discovery">📖 <b id="discovered"></b>/48 discovered</div></div><div class="wallet"><span>⚡ <b id="energy"></b></span><span>🪙 <b id="coins"></b></span><span>✨ <b id="light"></b></span></div></header>
+<section class="milestone"><div><small>EXPEDITION MILESTONE</small><strong id="milestoneTitle"></strong><p id="milestoneReq"></p></div><div class="progress"><b id="milestoneStep"></b><span id="progressBar"><i></i></span></div></section>
+<section><div class="sectionHead"><b>Orders</b><small>Choose what to build toward</small></div><div id="orders" class="orders"></div></section><section><div class="sectionHead"><b>Sources</b><small>Preview the next drops</small></div><div id="sources" class="sources"></div></section>
+<div id="board" class="board" aria-label="Wispwood merge board"></div>
+<div id="actions" class="actions"><button id="completeOrder" disabled>Complete order</button><button id="completeMilestone" disabled>Complete milestone</button><button id="store" disabled>Store item</button></div>
+<section class="storageWrap"><div class="sectionHead"><b>Backpack</b><small>Tap a stored item to return it</small></div><div id="storage" class="storage"></div></section>
+<p id="hint" class="hint">The board starts full. Merge a matching pair to create your first free space.</p>
+</main><div id="toast" class="toast"></div><script type="module" src="./app.mjs"></script></body></html>
