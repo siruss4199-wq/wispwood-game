@@ -7,9 +7,9 @@ import {chapterProgress,completeMilestone as finishMilestone,completeOrder as fi
 const KEY='wispwood-v4';
 const $=s=>document.querySelector(s);
 const board=$('#board'),ordersEl=$('#orders'),sourcesEl=$('#sources'),storageEl=$('#storage');
-const energy=$('#energy'),coins=$('#coins'),light=$('#light'),discovered=$('#discovered');
+const energy=$('#energy'),coins=$('#coins'),light=$('#light'),discovered=$('#discovered'),playerLevel=$('#playerLevel');
 const milestoneTitle=$('#milestoneTitle'),milestoneReq=$('#milestoneReq'),milestoneStep=$('#milestoneStep'),progressBar=$('#progressBar i');
-const boardStatus=$('#boardStatus'),frontierNameEl=$('#frontierName'),rushFill=$('#rushFill'),rushCount=$('#rushCount'),questRibbon=$('#questRibbon'),questIcon=$('#questIcon'),questTitle=$('#questTitle'),questText=$('#questText'),goalReq=$('#goalReq'),goalPosition=$('#goalPosition'),goalPrev=$('#goalPrev'),goalNext=$('#goalNext'),deliveryCoach=$('#deliveryCoach'),soundToggle=$('#soundToggle'),inspect=$('#inspect'),inspectIcon=$('#inspectIcon'),inspectName=$('#inspectName'),inspectMeta=$('#inspectMeta'),inspectUse=$('#inspectUse');
+const boardStatus=$('#boardStatus'),frontierNameEl=$('#frontierName'),rushFill=$('#rushFill'),rushCount=$('#rushCount'),questRibbon=$('#questRibbon'),questIcon=$('#questIcon'),requestPortrait=$('#requestPortrait'),questTitle=$('#questTitle'),questText=$('#questText'),goalReq=$('#goalReq'),goalPosition=$('#goalPosition'),goalPrev=$('#goalPrev'),goalNext=$('#goalNext'),deliveryCoach=$('#deliveryCoach'),soundToggle=$('#soundToggle'),inspect=$('#inspect'),inspectIcon=$('#inspectIcon'),inspectName=$('#inspectName'),inspectMeta=$('#inspectMeta'),inspectUse=$('#inspectUse');
 const completeOrderBtn=$('#completeOrder'),completeMilestoneBtn=$('#completeMilestone'),storeBtn=$('#store'),hint=$('#hint'),toast=$('#toast');
 const panelButtons=[...document.querySelectorAll('[data-open-panel]')],gamePanels=[...document.querySelectorAll('.gamePanel')],focusGoal=$('#focusGoal'),ordersBadge=$('#ordersBadge'),storageBadge=$('#storageBadge');
 
@@ -184,6 +184,11 @@ function selectOrderByOffset(delta){
  const next=(current+delta+orders.length)%orders.length;
  selectedOrder=orders[next].id;selected=null;audio.play('select');render();
 }
+const REQUEST_FACES=['🧚','🐿️','🦉','🦌'];
+function requestFace(order){
+ const i=Math.max(0,state.activeOrders.findIndex(o=>o.id===order?.id));
+ return REQUEST_FACES[i%REQUEST_FACES.length];
+}
 function tutorialState(){
  if(state.moves===0)return {icon:'✨',title:'Make your first merge',text:'Combine one glowing pair to open space and reveal your first request.',step:'1/3'};
  const o=state.activeOrders.find(x=>x.id===selectedOrder)??state.activeOrders[0];
@@ -283,7 +288,7 @@ function render(){
  });
 
  const tutorial=tutorialState();
- questIcon.textContent=tutorial.icon;questTitle.textContent=tutorial.title;questText.textContent=tutorial.text;
+ questIcon.textContent=tutorial.icon;requestPortrait.textContent=focusOrder?requestFace(focusOrder):'🧚';questTitle.textContent=tutorial.title;questText.textContent=tutorial.text;
  questRibbon.classList.toggle('complete',state.milestoneIndex>0);
  if(focusOrder){
   const prog=requirementProgress(state,focusOrder.requirements);
@@ -324,6 +329,7 @@ function render(){
  milestoneStep.textContent=`${state.milestoneIndex}/${MILESTONES.length}`;
  progressBar.style.width=chapterProgress(state)+'%';
 
+ playerLevel.textContent=String(Math.max(1,state.milestoneIndex+1));
  energy.textContent=state.energy+'/'+state.maxEnergy;
  coins.textContent=state.coins;
  light.textContent=state.forestLight;
