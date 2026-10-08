@@ -24,3 +24,5 @@ jobs:
         run: node --test tests/game.test.cjs
       - name: Run clean V2 core tests
         run: node --test tests/v2-core.test.mjs
+      - name: Check V2 UI module syntax
+        run: node --check v2/app.mjs
