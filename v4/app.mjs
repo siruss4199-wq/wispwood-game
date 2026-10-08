@@ -2,11 +2,11 @@ import {CHAINS,MILESTONES,PRODUCERS,PRODUCER_MAX_LEVEL,itemDef} from './core/cat
 import {createInitialState,restore,serialize} from './core/state.mjs';
 import {platform} from './platform.mjs';
 import {audio} from './audio.mjs';
-import {chapterProgress,completeMilestone as finishMilestone,completeOrder as finishOrder,currentMilestone,fillOrdersInPlace,frontierName as getFrontierName,initializePlayableState,merge,milestoneReady,move,nextFrontierIndices,orderReady,producerIndices,producerPreview,producerUpgradeCost,requirementProgress,retrieveItem,reviveSparseBoard,storeItem,tapProducer,upgradeProducer} from './core/engine.mjs';
+import {chapterProgress,completeMilestone as finishMilestone,completeOrder as finishOrder,currentMilestone,fillOrdersInPlace,frontierName as getFrontierName,initializePlayableState,merge,milestoneReady,move,nextFrontierIndices,orderReady,producerPreview,producerUpgradeCost,requirementProgress,retrieveItem,reviveSparseBoard,storeItem,tapProducer,upgradeProducer} from './core/engine.mjs';
 
 const KEY='wispwood-v4';
 const $=s=>document.querySelector(s);
-const board=$('#board'),ordersEl=$('#orders'),sourcesEl=$('#sources'),storageEl=$('#storage'),collectionEl=$('#collectionGrid'),restorationMap=$('#restorationMap'),sourceShelf=$('#sourceShelf');
+const board=$('#board'),ordersEl=$('#orders'),sourcesEl=$('#sources'),storageEl=$('#storage'),collectionEl=$('#collectionGrid'),restorationMap=$('#restorationMap');
 const energy=$('#energy'),coins=$('#coins'),light=$('#light'),discovered=$('#discovered'),playerLevel=$('#playerLevel');
 const milestoneTitle=$('#milestoneTitle'),milestoneReq=$('#milestoneReq'),milestoneStep=$('#milestoneStep'),progressBar=$('#progressBar i');
 const boardStatus=$('#boardStatus'),frontierNameEl=$('#frontierName'),rushFill=$('#rushFill'),rushCount=$('#rushCount'),questRibbon=$('#questRibbon'),questIcon=$('#questIcon'),requestPortrait=$('#requestPortrait'),questTitle=$('#questTitle'),questText=$('#questText'),goalReq=$('#goalReq'),goalPosition=$('#goalPosition'),goalPrev=$('#goalPrev'),goalNext=$('#goalNext'),deliveryCoach=$('#deliveryCoach'),soundToggle=$('#soundToggle'),inspect=$('#inspect'),inspectIcon=$('#inspectIcon'),inspectName=$('#inspectName'),inspectMeta=$('#inspectMeta'),inspectUse=$('#inspectUse');
@@ -102,7 +102,19 @@ function itemText(chain,tier,count=1){
 }
 function progressChip(r){
  const d=itemDef(r.chain,r.tier),done=r.current>=r.count;
- return `<span class="reqChip ${done?'done':''}">${d.emoji} ${d.name} <b>${Math.min(r.current,r.count)}/${r.count}</b></span>`;
+ return `<span class="reqChip ${done?'done':''}"><span class="reqIcon">${d.emoji}</span><span class="reqName">${d.name}</span><b>${Math.min(r.current,r.count)}/${r.count}</b></span>`;
+}
+const STAGE_BOX_THEMES=[
+ {name:'Mossy Supply Box',icon:'🌱'},
+ {name:'Moonlit Supply Box',icon:'🌙'},
+ {name:'Whisper Crate',icon:'✦'},
+ {name:'Ancient Cache',icon:'🗿'},
+ {name:'Heartwood Chest',icon:'💜'},
+ {name:'Spirit Vault',icon:'⭐'}
+];
+function stageBoxTheme(){
+ const zone=Math.min(STAGE_BOX_THEMES.length-1,Math.floor(state.milestoneIndex/3));
+ return {zone,...STAGE_BOX_THEMES[zone]};
 }
 function tileAt(x,y){
  for(const el of board.querySelectorAll('.tile')){
@@ -316,8 +328,8 @@ function renderRestorationMap(){
 function tileAria(cell,i){
  if(cell.terrain==='locked')return `Locked forest cell ${i+1}`;
  if(cell.content?.type==='producer'){
-  const p=PRODUCERS[cell.content.producerId];
-  return `${p.name}, level ${state.producerLevels[p.id]}. Tap to produce.`;
+  const p=PRODUCERS[cell.content.producerId],theme=stageBoxTheme();
+  return `${theme.name}. ${p.name} source, level ${state.producerLevels[p.id]}. Tap repeatedly to produce items.`;
  }
  if(cell.content?.type==='item'){
   const d=itemDef(cell.content.chain,cell.content.tier),chain=CHAINS[cell.content.chain];
@@ -366,11 +378,11 @@ function render(){
     b.innerHTML=`<span class="itemPedestal"></span>${tier>=4?'<span class="itemSparkles">✦</span>':''}<span class="emoji">${d.emoji}</span>${cell.terrain==='cobweb'?'<span class="web">🕸️</span>':''}`;
   }
   if(cell.terrain==='open'&&cell.content?.type==='producer'){
-    const d=PRODUCERS[cell.content.producerId];
-    b.classList.add('producer','source-awake');
+    const d=PRODUCERS[cell.content.producerId],theme=stageBoxTheme();
+    b.classList.add('producer','source-awake','stage-producer','stage-zone-'+theme.zone);
     if(state.energy>0&&state.cells.some(c=>c.terrain==='open'&&!c.content))b.classList.add('producer-ready');
-    b.dataset.producerId=d.id;
-    b.innerHTML=`<span class="producerSpark">✦</span><span class="producerBolt">⚡</span><span class="emoji">${d.emoji}</span><span class="producerLevel">Lv${state.producerLevels[d.id]}</span>`;
+    b.dataset.producerId=d.id;b.dataset.stageBox=theme.name;
+    b.innerHTML=`<span class="producerSpark">✦</span><span class="stageBoxSkin"><i></i></span><span class="stageBoxMark">${d.emoji}</span><span class="stageBoxZone">${theme.icon}</span><span class="producerBolt">⚡</span><span class="producerLevel">Lv${state.producerLevels[d.id]}</span>`;
   }
 
   b.addEventListener('click',()=>clickTile(i));
@@ -492,19 +504,6 @@ function render(){
  coins.textContent=state.coins;
  light.textContent=state.forestLight;
  discovered.textContent=Object.keys(state.discovered).length;
-
- sourceShelf.innerHTML='';
- const pIndices=producerIndices(state);
- for(const index of pIndices){
-  const content=state.cells[index]?.content;if(content?.type!=='producer')continue;
-  const p=PRODUCERS[content.producerId],level=state.producerLevels[p.id]??0,preview=producerPreview(state,p.id,2);
-  const card=document.createElement('button');card.type='button';card.className='sourceShelfCard';
-  if(state.energy<=0||!state.cells.some(c=>c.terrain==='open'&&!c.content))card.classList.add('disabled');
-  card.innerHTML=`<span class="shelfSourceIcon">${p.emoji}</span><span class="shelfSourceCopy"><b>${p.name}</b><small>Lv${level} · 1 ⚡</small></span><span class="shelfDrops">${preview.map(x=>`<i>${itemDef(x.chain,x.tier).emoji}</i>`).join('')}</span>`;
-  card.setAttribute('aria-label',`${p.name}, level ${level}. Tap to produce for 1 energy.`);
-  card.addEventListener('click',()=>{audio.unlock();apply(tapProducer(state,index));});
-  sourceShelf.appendChild(card);
- }
 
  sourcesEl.innerHTML='';
  for(const [id,p] of Object.entries(PRODUCERS)){
