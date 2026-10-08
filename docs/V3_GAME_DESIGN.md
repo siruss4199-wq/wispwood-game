@@ -1,84 +1,58 @@
 # Wispwood V3 — Full Merge Game Foundation
 
-## Design goal
-V3 is built as a long-session merge game, not a short board demo. The player should always have:
-- a board decision,
-- a short-term order target,
-- a medium-term restoration target,
-- a long-term unlock target.
+## The V3 correction
+The board must not be something the player clears in a few minutes. Opening space is now a progression system, not a side effect of every merge.
 
-## Core loop
-Producer → merge → fulfill one of 3 active orders → earn Coins + Forest Light → spend on restoration or producer upgrades → unlock new producers/chains → complete area → unlock next area.
+## Four simultaneous goals
+Every session gives the player four layers of purpose:
+- Board decision: merge, store, or preserve an item.
+- Order decision: Quick, Standard, or Story order.
+- Exploration decision: build merge progress toward the next buried tile.
+- Meta decision: spend Coins/Light/items on restoration, storage, or producer upgrades.
 
-## Board pressure
-The 8×8 board is intentionally constrained. Space management matters, but progression must never depend on lucky drops.
+## Board expansion
+- Initial screen is still visually full: 62 buried cells + 2 Seeds.
+- First merge opens a central working clearing: Ancient Tree + four intentional empty cells.
+- Later merges award 1 Exploration point.
+- Buried cells open only when Exploration reaches a threshold.
+- Threshold starts at 3 merges per explored crate and slowly rises as more of the board is uncovered.
+- Emergency safety openings happen only when production would otherwise have no two-cell working capacity.
+- Therefore the board is a long-lived space-management puzzle, not a 62-merge countdown.
 
-Rules:
-1. Producers are deterministic enough to guarantee progression.
-2. Orders only request unlocked chains.
-3. At least one active order is always achievable with current producers.
-4. When no merge pair exists, at least two empty cells must remain available for production.
-5. Crates reveal controlled rewards, not arbitrary junk.
-6. No automatic matching-item rescue injection.
+## Item depth
+Each chain now has 10 tiers:
+- Leaf: Seed → … → Heartwood Relic
+- Water: Drop → … → Lunar Chalice
+- Magic: Spark → … → Heart Star
 
-## Producers and chains
-### Ancient Tree
-Leaf chain:
-Seed → Sprout → Herb → Fern → Bloom → Moon Flower → Ancient Blossom → Spirit Wreath
+## Orders
+Three parallel slots create different decisions:
+- Quick: one lower-tier item.
+- Standard: two copies of a mid-tier item.
+- Story: a high-tier item plus a second requirement; after more producers unlock this becomes cross-chain.
 
-### Moon Spring
-Water chain:
-Drop → Dew → Flask → Elixir → Moonwater → Crystal Vial → Sacred Water → Moonwell
-
-### Wisp Nest
-Magic chain:
-Spark → Wisp → Glow Orb → Star Dust → Star Shard → Aurora → Spirit Flame → Celestial Core
-
-## Order board
-Three parallel order slots:
-- Quick: low tier, fast reward
-- Standard: mid tier, stronger reward
-- Story: high tier or mixed-chain request tied to progression
-
-Orders regenerate deterministically from the current unlock tier and cannot request unavailable producers.
+Orders scale with completed work and only use unlocked producers.
 
 ## Progression
-Lost Clearing contains 12 restoration nodes. Each restoration spends Coins + Forest Light + crafted items.
-
-Example progression:
-1. Wake the Garden
-2. Clear the Path
-3. Repair the Well
-4. Repair the Bridge
-5. Restore the Lanterns
-6. Rebuild the Workshop
-7. Restore the Pond
-8. Rebuild the Cottage
-9. Restore the Shrine
-10. Open the Moon Gate
-11. Restore the Sanctuary
-12. Restore Mivra's Shelter
-
-Milestones unlock:
-- Node 3: Moon Spring
-- Node 6: Wisp Nest
-- Node 12: Moonlit Grove
+12 Lost Clearing restoration nodes remain the main chapter spine.
+- Node 3 unlocks Moon Spring.
+- Node 6 unlocks Wisp Nest.
+- Later restoration costs require increasingly higher tiers.
+- Storage and producer upgrades compete for the same Coins/Light, so spending choices matter.
 
 ## Economy
-Energy: producer taps.
-Coins: orders → restoration/upgrades/storage.
-Forest Light: orders/story progression threshold.
-Storage: purchased with Coins.
-Producer upgrades: purchased with Coins + Light.
+Energy → producer taps.
+Coins → restoration, storage, producer upgrades.
+Forest Light → progression and producer upgrades.
+Discovery rewards → small bonus, not the main economy.
 
-## Retention systems
-After core stability:
-- discovery book
-- daily tasks
-- timed bonus orders
-- chests
-- events
-- collection rewards
-- cosmetic restoration options
+## Test philosophy
+V3 tests now explicitly verify:
+- 3 different order shapes
+- first clearing capacity
+- no crate opening on every merge
+- exploration threshold opening
+- order refill/economy
+- 180-action state stability
 
-These are layered on later. They must not be required to keep the base loop alive.
+The next milestone is balancing and adding producer upgrades/storage UI before expanding to Moonlit Grove.
