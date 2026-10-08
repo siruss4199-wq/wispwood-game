@@ -19,27 +19,42 @@
       <span>⚡ <b id="energy"></b></span>
       <span>🪙 <b id="coins"></b></span>
       <span>✨ <b id="light"></b></span>
+      <button id="soundToggle" class="soundToggle" type="button" aria-label="Toggle sound" aria-pressed="true">🔊</button>
     </div>
   </header>
 
-  <section class="milestone" aria-label="Current expedition milestone">
-    <div class="milestoneCopy">
-      <small>CURRENT RESTORATION</small>
-      <strong id="milestoneTitle"></strong>
-      <div id="milestoneReq" class="milestoneReq"></div>
+  <section id="questRibbon" class="goalDock" aria-label="Active goal">
+    <div class="goalMain">
+      <span id="questIcon" class="questIcon">✨</span>
+      <div class="goalCopy">
+        <small>ACTIVE GOAL</small>
+        <b id="questTitle">Wake the clearing</b>
+        <span id="questText">Merge a glowing pair to begin.</span>
+      </div>
+      <button id="completeOrder" class="goalAction" type="button" disabled>Build</button>
     </div>
+    <div id="goalReq" class="goalReq"></div>
+    <div class="goalNav">
+      <button id="goalPrev" type="button" aria-label="Previous order">‹</button>
+      <span><b id="goalPosition">—</b><small>FOREST ORDERS</small></span>
+      <button id="goalNext" type="button" aria-label="Next order">›</button>
+    </div>
+  </section>
+
+  <section class="milestone journeyStrip" aria-label="Current restoration">
+    <div class="journeyTitle">
+      <span>🌿</span>
+      <div><small>RESTORATION</small><strong id="milestoneTitle"></strong></div>
+    </div>
+    <div id="milestoneReq" class="milestoneReq"></div>
     <div class="progress">
       <b id="milestoneStep"></b>
       <span id="progressBar" aria-label="Chapter progress"><i></i></span>
     </div>
+    <button id="completeMilestone" class="restoreAction" type="button" disabled>Restore</button>
   </section>
 
   <section class="boardSection" aria-label="Merge Garden">
-    <div id="questRibbon" class="questRibbon">
-      <span id="questIcon" class="questIcon">✨</span>
-      <div><small>FOREST WHISPER</small><b id="questTitle">Wake the clearing</b><span id="questText">Merge a glowing pair to make space.</span></div>
-      <strong id="questStep">1/3</strong>
-    </div>
     <div class="boardHead">
       <div>
         <b>Merge Garden</b>
@@ -67,26 +82,24 @@
       <span id="inspectUse" class="inspectUse"></span>
     </section>
 
-    <div id="actions" class="actions">
-      <button id="completeOrder" disabled>Deliver order</button>
-      <button id="completeMilestone" disabled>Restore milestone</button>
+    <div id="actions" class="actions itemActions">
       <button id="store" disabled>Store item</button>
     </div>
     <p id="hint" class="hint">Find a matching pair to create your first free space.</p>
   </section>
 
   <section class="ordersSection">
-    <div class="sectionHead"><b>Forest Orders</b><small>Pick a goal to highlight useful items</small></div>
+    <div class="sectionHead"><b>More Orders</b><small>Swipe to switch goals</small></div>
     <div id="orders" class="orders"></div>
   </section>
 
   <section class="sourcesSection">
-    <div class="sectionHead"><b>Sources</b><small>See what your producers will make next</small></div>
+    <div class="sectionHead"><b>Sources</b><small>Next drops</small></div>
     <div id="sources" class="sources"></div>
   </section>
 
   <section class="storageWrap">
-    <div class="sectionHead"><b>Backpack</b><small>Save space for harder merges</small></div>
+    <div class="sectionHead"><b>Backpack</b><small>Save rare pieces</small></div>
     <div id="storage" class="storage"></div>
   </section>
 </main>

@@ -40,10 +40,21 @@ function event(events=[]){
   }
 }
 
+function audioMuted(){
+  if(globalThis.location?.search?.includes('muteAudio=true'))return true;
+  return !!sdk()?.game?.settings?.muteAudio;
+}
+function onAudioSettingChange(listener){
+  const s=sdk();if(!s?.game?.addSettingsChangeListener)return ()=>{};
+  const wrapped=settings=>listener(!!settings?.muteAudio);
+  s.game.addSettingsChangeListener(wrapped);
+  return ()=>s.game.removeSettingsChangeListener?.(wrapped);
+}
+
 async function save(serialized){
   // Standalone saves remain local. Full Launch can opt into CrazyGames Data after acceptance.
   // Keeping this adapter means platform storage can be added without touching game rules.
   return serialized;
 }
 
-export const platform={init,startGameplay,event,save};
+export const platform={init,startGameplay,event,save,audioMuted,onAudioSettingChange};

@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#edf3e8">
 <title>Wispwood — Lost Clearing · CrazyGames</title>
-<link rel="stylesheet" href="./style.css">\n<script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
+<link rel="stylesheet" href="./style.css">
+<script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
 </head>
 <body>
 <main class="shell">
@@ -19,19 +20,39 @@
       <span>⚡ <b id="energy"></b></span>
       <span>🪙 <b id="coins"></b></span>
       <span>✨ <b id="light"></b></span>
+      <button id="soundToggle" class="soundToggle" type="button" aria-label="Toggle sound" aria-pressed="true">🔊</button>
     </div>
   </header>
 
-  <section class="milestone" aria-label="Current expedition milestone">
-    <div class="milestoneCopy">
-      <small>CURRENT RESTORATION</small>
-      <strong id="milestoneTitle"></strong>
-      <div id="milestoneReq" class="milestoneReq"></div>
+  <section id="questRibbon" class="goalDock" aria-label="Active goal">
+    <div class="goalMain">
+      <span id="questIcon" class="questIcon">✨</span>
+      <div class="goalCopy">
+        <small>ACTIVE GOAL</small>
+        <b id="questTitle">Wake the clearing</b>
+        <span id="questText">Merge a glowing pair to begin.</span>
+      </div>
+      <button id="completeOrder" class="goalAction" type="button" disabled>Build</button>
     </div>
+    <div id="goalReq" class="goalReq"></div>
+    <div class="goalNav">
+      <button id="goalPrev" type="button" aria-label="Previous order">‹</button>
+      <span><b id="goalPosition">—</b><small>FOREST ORDERS</small></span>
+      <button id="goalNext" type="button" aria-label="Next order">›</button>
+    </div>
+  </section>
+
+  <section class="milestone journeyStrip" aria-label="Current restoration">
+    <div class="journeyTitle">
+      <span>🌿</span>
+      <div><small>RESTORATION</small><strong id="milestoneTitle"></strong></div>
+    </div>
+    <div id="milestoneReq" class="milestoneReq"></div>
     <div class="progress">
       <b id="milestoneStep"></b>
       <span id="progressBar" aria-label="Chapter progress"><i></i></span>
     </div>
+    <button id="completeMilestone" class="restoreAction" type="button" disabled>Restore</button>
   </section>
 
   <section class="boardSection" aria-label="Merge Garden">
@@ -40,9 +61,18 @@
         <b>Merge Garden</b>
         <small id="boardStatus"></small>
       </div>
-      <div class="boardLegend"><span>Match</span><span>Plan</span></div>
+      <div class="frontierBadge"><span>NEXT FRONTIER</span><b id="frontierName">Mossy Verge</b></div>
     </div>
-    <div id="board" class="board" role="grid" aria-label="8 by 8 Wispwood merge board"></div>
+    <div class="rushBar" aria-label="Wisp Rush progress">
+      <span>✦ WISP RUSH</span>
+      <div><i id="rushFill"></i></div>
+      <b id="rushCount">0/5</b>
+      <small>5 merges = +2 ✨ + bonus drop</small>
+    </div>
+    <div class="boardFrame">
+      <span class="ambientWisp w1">✦</span><span class="ambientWisp w2">✧</span><span class="ambientWisp w3">✦</span>
+      <div id="board" class="board" role="grid" aria-label="8 by 8 Wispwood merge board"></div>
+    </div>
 
     <section id="inspect" class="inspect" hidden aria-live="polite">
       <span id="inspectIcon" class="inspectIcon"></span>
@@ -53,26 +83,24 @@
       <span id="inspectUse" class="inspectUse"></span>
     </section>
 
-    <div id="actions" class="actions">
-      <button id="completeOrder" disabled>Deliver order</button>
-      <button id="completeMilestone" disabled>Restore milestone</button>
+    <div id="actions" class="actions itemActions">
       <button id="store" disabled>Store item</button>
     </div>
     <p id="hint" class="hint">Find a matching pair to create your first free space.</p>
   </section>
 
   <section class="ordersSection">
-    <div class="sectionHead"><b>Forest Orders</b><small>Pick a goal to highlight useful items</small></div>
+    <div class="sectionHead"><b>More Orders</b><small>Swipe to switch goals</small></div>
     <div id="orders" class="orders"></div>
   </section>
 
   <section class="sourcesSection">
-    <div class="sectionHead"><b>Sources</b><small>See what your producers will make next</small></div>
+    <div class="sectionHead"><b>Sources</b><small>Next drops</small></div>
     <div id="sources" class="sources"></div>
   </section>
 
   <section class="storageWrap">
-    <div class="sectionHead"><b>Backpack</b><small>Save space for harder merges</small></div>
+    <div class="sectionHead"><b>Backpack</b><small>Save rare pieces</small></div>
     <div id="storage" class="storage"></div>
   </section>
 </main>

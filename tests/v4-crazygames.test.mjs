@@ -32,3 +32,12 @@ test('desktop styling explicitly supports the common embedded viewport',()=>{
   assert.match(css,/grid-template-areas/);
   assert.match(css,/width:min\(100%,430px\)/);
 });
+
+
+test('audio respects CrazyGames muteAudio settings',()=>{
+ const adapter=read('platform.mjs');
+ const audio=read('audio.mjs');
+ assert.match(adapter,/muteAudio/);
+ assert.match(adapter,/addSettingsChangeListener/);
+ assert.match(audio,/bindPlatformMute/);
+});
