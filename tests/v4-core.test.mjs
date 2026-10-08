@@ -280,7 +280,7 @@ test('commercial visual pass adds colorful HUD resources and NPC request portrai
  const css=fs.readFileSync(new URL('../v4/style.css',import.meta.url),'utf8');
  assert.match(html,/id="playerLevel"/);
  assert.match(html,/id="requestPortrait"/);
- assert.match(app,/REQUEST_FACES/);
+ assert.match(app,/REQUEST_NPCS/);
  assert.match(app,/requestFace/);
  assert.match(css,/levelBadge/);
  assert.match(css,/requestPortrait/);
