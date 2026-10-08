@@ -1258,3 +1258,64 @@ body{
   100%{opacity:0;transform:translate(calc(-50% + var(--orb-x)),calc(-50% + var(--orb-y))) scale(.8)}
 }
 @media(prefers-reduced-motion:reduce){.boardRewardOrb{display:none;animation:none}}
+
+
+/* Board art hierarchy + quick producer shelf. */
+.sourceShelfWrap{margin:0 6px 7px}
+.sourceShelfHead{display:flex;align-items:center;justify-content:space-between;padding:0 3px 4px;color:#6d4e3e}
+.sourceShelfHead span{font-size:7px;font-weight:1000;letter-spacing:.7px}.sourceShelfHead small{font-size:6px;opacity:.7}
+.sourceShelf{display:flex;gap:6px;overflow-x:auto;padding:1px 2px 5px;scrollbar-width:none}
+.sourceShelf::-webkit-scrollbar{display:none}
+.sourceShelfCard{
+  flex:0 0 min(185px,52vw);min-height:58px;display:grid;grid-template-columns:47px minmax(0,1fr) auto;align-items:center;gap:6px;padding:6px 7px;
+  border-radius:16px;border:2px solid #fff;background:linear-gradient(180deg,#fff6d8,#e9d8b0);
+  box-shadow:0 4px 0 #b7905f,0 7px 13px rgba(81,57,35,.17);color:#5e4335;text-align:left
+}
+.sourceShelfCard:active{transform:translateY(2px);box-shadow:0 2px 0 #b7905f,0 4px 8px rgba(81,57,35,.14)}
+.sourceShelfCard.disabled{filter:saturate(.6);opacity:.58}
+.shelfSourceIcon{
+  width:45px;height:45px;display:grid;place-items:center;border-radius:14px;font-size:31px;
+  background:radial-gradient(circle at 50% 35%,#fff7b9,#9ed878 66%,#6daf60);border:2px solid #fff;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.65),0 3px 0 #6d9d5d
+}
+.shelfSourceCopy{min-width:0}.shelfSourceCopy b{display:block;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.shelfSourceCopy small{display:block;font-size:7px;margin-top:2px;color:#846958}
+.shelfDrops{display:flex;gap:2px}.shelfDrops i{width:25px;height:25px;display:grid;place-items:center;border-radius:8px;background:rgba(255,255,255,.72);border:1px solid rgba(120,87,53,.15);font-style:normal;font-size:17px}
+
+.boardFrame{overflow:visible!important;position:relative}
+.boardScenery{
+  position:absolute;z-index:7;pointer-events:none;display:grid;place-items:center;width:31px;height:31px;border-radius:50%;
+  background:radial-gradient(circle,#fff5ce 0 42%,#e2bd78 44% 70%,transparent 72%);font-size:21px;
+  filter:drop-shadow(0 3px 2px rgba(71,43,26,.3))
+}
+.sceneryBasket{left:-13px;top:14%}.sceneryLantern{right:-13px;top:26%}.sceneryMushroom{left:-12px;bottom:13%}.sceneryChest{right:-13px;bottom:9%}
+
+.tile.item{position:relative}
+.itemPedestal{
+  position:absolute;left:50%;bottom:5px;transform:translateX(-50%);width:70%;height:20%;border-radius:50%;
+  background:radial-gradient(ellipse,rgba(109,62,30,.28),rgba(109,62,30,.08) 58%,transparent 70%);filter:blur(.3px);pointer-events:none
+}
+.itemSparkles{
+  position:absolute;right:3px;top:1px;font-size:11px;color:#fff2a1;text-shadow:0 0 5px #ffd65c,0 1px 1px rgba(92,55,25,.3);
+  animation:itemSparkle 1.5s ease-in-out infinite;pointer-events:none
+}
+.tile.item.rarity-common .emoji{transform:translateY(0) scale(1.02)!important}
+.tile.item.rarity-uncommon .emoji{transform:translateY(-1px) scale(1.10)!important}
+.tile.item.rarity-rare{
+  background:radial-gradient(circle at 50% 48%,rgba(255,241,151,.27),transparent 64%)!important
+}
+.tile.item.rarity-rare .emoji{transform:translateY(-2px) scale(1.17)!important;filter:drop-shadow(0 5px 2px rgba(87,50,25,.32)) drop-shadow(0 0 5px rgba(255,233,139,.45))!important}
+.tile.item.rarity-mythic{
+  background:radial-gradient(circle at 50% 45%,rgba(243,193,255,.35),rgba(255,236,140,.18) 42%,transparent 68%)!important
+}
+.tile.item.rarity-mythic:after{
+  content:"";position:absolute;inset:3px;border-radius:50%;border:1px solid rgba(255,241,160,.72);box-shadow:0 0 10px rgba(226,163,255,.6);pointer-events:none
+}
+.tile.item.rarity-mythic .emoji{transform:translateY(-3px) scale(1.23)!important;filter:drop-shadow(0 6px 2px rgba(87,50,25,.34)) drop-shadow(0 0 7px rgba(236,181,255,.72))!important}
+@keyframes itemSparkle{50%{opacity:.45;transform:scale(.72) rotate(18deg)}}
+
+@media(max-width:560px){
+  .sourceShelfWrap{margin-left:3px;margin-right:3px}.sourceShelfCard{flex-basis:148px;grid-template-columns:40px minmax(0,1fr) auto;min-height:52px;padding:5px}
+  .shelfSourceIcon{width:38px;height:38px;font-size:27px}.shelfDrops i{width:22px;height:22px;font-size:15px}.shelfSourceCopy b{font-size:8px}
+  .boardScenery{width:27px;height:27px;font-size:18px}.sceneryBasket,.sceneryMushroom{left:-9px}.sceneryLantern,.sceneryChest{right:-9px}
+}
+@media(prefers-reduced-motion:reduce){.itemSparkles{animation:none}}
