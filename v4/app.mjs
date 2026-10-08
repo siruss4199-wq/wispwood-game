@@ -12,7 +12,7 @@ const milestoneTitle=$('#milestoneTitle'),milestoneReq=$('#milestoneReq'),milest
 const boardStatus=$('#boardStatus'),frontierNameEl=$('#frontierName'),rushFill=$('#rushFill'),rushCount=$('#rushCount'),questRibbon=$('#questRibbon'),questIcon=$('#questIcon'),requestPortrait=$('#requestPortrait'),questTitle=$('#questTitle'),questText=$('#questText'),goalReq=$('#goalReq'),goalPosition=$('#goalPosition'),goalPrev=$('#goalPrev'),goalNext=$('#goalNext'),deliveryCoach=$('#deliveryCoach'),soundToggle=$('#soundToggle'),inspect=$('#inspect'),inspectIcon=$('#inspectIcon'),inspectName=$('#inspectName'),inspectMeta=$('#inspectMeta'),inspectUse=$('#inspectUse');
 const completeOrderBtn=$('#completeOrder'),completeMilestoneBtn=$('#completeMilestone'),storeBtn=$('#store'),hint=$('#hint'),toast=$('#toast');
 const panelButtons=[...document.querySelectorAll('[data-open-panel]')],gamePanels=[...document.querySelectorAll('.gamePanel')],ordersBadge=$('#ordersBadge'),storageBadge=$('#storageBadge'),collectionBadge=$('#collectionBadge'),collectionCount=$('#collectionCount'),collectionProgress=$('#collectionProgress'),parcelFill=$('#parcelFill'),parcelCount=$('#parcelCount'),mapSummary=$('#mapSummary');
-const activityMilestoneIcon=$('#activityMilestoneIcon'),activityMilestoneTitle=$('#activityMilestoneTitle'),activityMilestoneStep=$('#activityMilestoneStep'),activityRequestPortrait=$('#activityRequestPortrait'),activityRequestTitle=$('#activityRequestTitle'),activityRequestProgress=$('#activityRequestProgress'),activityBookCount=$('#activityBookCount'),activitySourceCount=$('#activitySourceCount'),worldNodes=[...document.querySelectorAll('[data-world-node]')];
+const activityMilestoneIcon=$('#activityMilestoneIcon'),activityMilestoneTitle=$('#activityMilestoneTitle'),activityMilestoneStep=$('#activityMilestoneStep'),activityParcelFill=$('#activityParcelFill'),activityParcelCount=$('#activityParcelCount'),requestMiniCards=[...document.querySelectorAll('[data-order-slot]')],worldNodes=[...document.querySelectorAll('[data-world-node]')];
 
 const restored=restore(localStorage.getItem(KEY));
 let state=restored?reviveSparseBoard(restored):initializePlayableState(createInitialState());
@@ -171,6 +171,13 @@ function apply(r){
    setTimeout(()=>el?.classList.remove('bonus-pop'),700);
   },160+n*100);
  });
+ const produced=events.find(x=>x.type==='produced');
+ if(produced){
+  const source=board.querySelector(`[data-index="${produced.producerIndex}"]`),drop=board.querySelector(`[data-index="${produced.index}"]`);
+  source?.classList.add('producer-tap');drop?.classList.add('produce-pop');
+  setTimeout(()=>source?.classList.remove('producer-tap'),420);
+  setTimeout(()=>drop?.classList.remove('produce-pop'),650);
+ }
 }
 function clickTile(i){
  if(performance.now()<suppressClickUntil)return;
@@ -336,7 +343,9 @@ function render(){
   if(cell.terrain==='open'&&cell.content?.type==='producer'){
     const d=PRODUCERS[cell.content.producerId];
     b.classList.add('producer','source-awake');
-    b.innerHTML=`<span class="producerBolt">⚡</span><span class="emoji">${d.emoji}</span><span class="producerLevel">Lv${state.producerLevels[d.id]}</span>`;
+    if(state.energy>0&&state.cells.some(c=>c.terrain==='open'&&!c.content))b.classList.add('producer-ready');
+    b.dataset.producerId=d.id;
+    b.innerHTML=`<span class="producerSpark">✦</span><span class="producerBolt">⚡</span><span class="emoji">${d.emoji}</span><span class="producerLevel">Lv${state.producerLevels[d.id]}</span>`;
   }
 
   b.addEventListener('click',()=>clickTile(i));
@@ -388,13 +397,12 @@ function render(){
  boardStatus.textContent=`${explored}/64 explored · ${openItems} items · ${empties} free`;
  const rush=(state.mergeCount??0)%5;rushCount.textContent=`${rush}/5`;rushFill.style.width=(rush/5*100)+'%';
  const parcel=(state.ordersCompleted??0)%3;parcelCount.textContent=`${parcel}/3`;parcelFill.style.width=(parcel/3*100)+'%';
+ activityParcelCount.textContent=`${parcel}/3`;activityParcelFill.style.width=(parcel/3*100)+'%';
  renderRestorationMap();
 
  ordersBadge.textContent=String(state.activeOrders.length);
  storageBadge.textContent=String(state.storage.filter(Boolean).length);
  const discoveryTotal=Object.keys(state.discovered).length;
- activityBookCount.textContent=`${discoveryTotal}/48 found`;
- activitySourceCount.textContent=`${Object.values(state.producerLevels).filter(v=>v>0).length}/3 awake`;
  collectionBadge.textContent=String(discoveryTotal);
  collectionCount.textContent=`${discoveryTotal}/48`;
  collectionProgress.style.width=(discoveryTotal/48*100)+'%';
@@ -433,13 +441,19 @@ function render(){
  activityMilestoneIcon.textContent=m?.icon??'🌳';
  activityMilestoneTitle.textContent=m?.title??'Forest Restored';
  activityMilestoneStep.textContent=`${state.milestoneIndex}/${MILESTONES.length}`;
- const quickOrder=focusOrder??state.activeOrders[0];
- if(quickOrder){
-  const npc=requestNPC(quickOrder),prog=requirementProgress(state,quickOrder.requirements),done=prog.reduce((n,r)=>n+Math.min(r.current,r.count),0),need=prog.reduce((n,r)=>n+r.count,0);
-  activityRequestPortrait.textContent=npc.face;activityRequestTitle.textContent=npc.name;
-  activityRequestProgress.textContent=orderReady(state,quickOrder)?'READY TO DELIVER':`${done}/${need} items`;
-  document.querySelector('.requestQuickCard')?.classList.toggle('ready',orderReady(state,quickOrder));
- }
+ requestMiniCards.forEach((card,slot)=>{
+  const o=state.activeOrders[slot];
+  card.hidden=!o;if(!o)return;
+  const npc=requestNPC(o),prog=requirementProgress(state,o.requirements),ready=orderReady(state,o);
+  card.dataset.orderId=o.id;card.classList.toggle('ready',ready);card.classList.toggle('active',selectedOrder===o.id);
+  card.querySelector('.requestMiniPortrait').textContent=npc.face;
+  card.querySelector('.requestMiniName').textContent=npc.name;
+  card.querySelector('.requestMiniItems').innerHTML=prog.slice(0,2).map(r=>{
+   const d=itemDef(r.chain,r.tier),done=r.current>=r.count;
+   return `<span class="${done?'done':''}" title="${d.name}">${d.emoji}<b>${Math.min(r.current,r.count)}/${r.count}</b></span>`;
+  }).join('');
+  card.querySelector('.requestMiniReward').textContent=ready?'READY · DELIVER':`+${o.rewardCoins} 🪙 · +${o.rewardLight} ✨`;
+ });
  milestoneTitle.textContent=m?.title??'Lost Clearing restored';
  if(m){
   const reqs=requirementProgress(state,m.requirements);
@@ -519,6 +533,11 @@ completeOrderBtn.addEventListener('click',()=>{audio.unlock();if(selectedOrder)a
 completeMilestoneBtn.addEventListener('click',()=>{audio.unlock();apply(finishMilestone(state));});
 storeBtn.addEventListener('click',()=>{audio.unlock();Number.isInteger(selected)&&apply(storeItem(state,selected));});
 panelButtons.forEach(b=>b.addEventListener('click',()=>togglePanel(b.dataset.openPanel)));
+requestMiniCards.forEach(card=>card.addEventListener('click',()=>{
+ const id=card.dataset.orderId;if(!id)return;
+ selectedOrder=id;selected=null;closePanels();audio.play('select');render();
+ questRibbon.scrollIntoView({behavior:'smooth',block:'center'});
+}));
 gamePanels.forEach(p=>p.querySelector('.panelHandle')?.addEventListener('click',closePanels));
 goalPrev.addEventListener('click',()=>selectOrderByOffset(-1));
 goalNext.addEventListener('click',()=>selectOrderByOffset(1));
