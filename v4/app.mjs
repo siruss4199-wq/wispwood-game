@@ -1,4 +1,4 @@
-import {CHAIN_MARKS,CHAINS,MILESTONES,PRODUCERS,itemDef} from './core/catalog.mjs';
+import {CHAINS,MILESTONES,PRODUCERS,itemDef} from './core/catalog.mjs';
 import {createInitialState,restore,serialize} from './core/state.mjs';
 import {platform} from './platform.mjs';
 import {audio} from './audio.mjs';
@@ -244,7 +244,7 @@ function render(){
     const d=itemDef(cell.content.chain,cell.content.tier);
     b.classList.add('item','chain-'+cell.content.chain,'tier-'+cell.content.tier);
     if(wanted.has(cell.content.chain+':'+cell.content.tier))b.classList.add('wanted');
-    b.innerHTML=`<span class="chainTag">${CHAIN_MARKS[cell.content.chain]}</span><span class="emoji">${d.emoji}</span><span class="tag">T${cell.content.tier+1}</span>${cell.terrain==='cobweb'?'<span class="web">🕸️</span>':''}`;
+    b.innerHTML=`<span class="emoji">${d.emoji}</span><span class="tag">T${cell.content.tier+1}</span>${cell.terrain==='cobweb'?'<span class="web">🕸️</span>':''}`;
   }
   if(cell.terrain==='open'&&cell.content?.type==='producer'){
     const d=PRODUCERS[cell.content.producerId];
