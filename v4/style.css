@@ -757,3 +757,156 @@ body{
   display:none!important;
 }
 .chainTag{display:none!important}
+
+
+/* Colorful commercial-game pass: brighter HUD, juicy resource pills, lively board and NPC request framing. */
+body{
+  background:
+    radial-gradient(circle at 18% 2%,rgba(255,232,161,.58),transparent 24%),
+    radial-gradient(circle at 82% 4%,rgba(161,218,255,.52),transparent 25%),
+    linear-gradient(180deg,#70bff1 0 138px,#d9f0d0 138px 100%);
+}
+.gameHud{
+  background:
+    radial-gradient(circle at 18% 12%,rgba(255,228,138,.28),transparent 26%),
+    radial-gradient(circle at 88% 18%,rgba(123,219,255,.28),transparent 25%),
+    linear-gradient(135deg,#4a83c7,#5668bd 44%,#5f4b9a 72%,#325f50)!important;
+  border-radius:0 0 26px 26px;
+  border-bottom:2px solid rgba(255,255,255,.24);
+}
+.levelRow{display:flex;align-items:center;gap:7px}
+.levelBadge{
+  display:inline-flex;align-items:center;gap:3px;padding:4px 7px;border-radius:12px;
+  background:linear-gradient(180deg,#ffe46b,#f2b930);color:#6e4218;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.72),0 3px 8px rgba(57,45,20,.2);
+  font-size:9px;font-weight:1000
+}
+.gameHud .wallet span{
+  position:relative;border:2px solid rgba(255,255,255,.72)!important;border-radius:16px!important;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.72),0 4px 10px rgba(31,48,78,.18)!important;
+  font-weight:1000
+}
+.gameHud .wallet span:nth-child(1){background:linear-gradient(180deg,#fff4a7,#ffd75c)!important;color:#6b4b16!important}
+.gameHud .wallet span:nth-child(2){background:linear-gradient(180deg,#fff0b2,#f4bf51)!important;color:#674414!important}
+.gameHud .wallet span:nth-child(3){background:linear-gradient(180deg,#efd6ff,#c48af5)!important;color:#55356f!important}
+.soundToggle{background:linear-gradient(180deg,#dff7ff,#9fdff6)!important;border:2px solid rgba(255,255,255,.7)!important}
+
+.worldStrip{
+  background:
+    radial-gradient(circle at 90% 10%,rgba(255,228,151,.35),transparent 26%),
+    linear-gradient(135deg,#fff4c9,#e8f7d9 54%,#d9efff)!important;
+  border:2px solid rgba(255,255,255,.82)!important;
+  box-shadow:0 6px 0 #b8cda9,0 12px 22px rgba(45,70,50,.12)!important
+}
+.worldNode:nth-child(1){background:#8fd878}
+.worldNode:nth-child(3){background:#9fd8ff}
+.worldNode:nth-child(5){background:#d9b6ff}
+.worldNode:nth-child(7){background:#ffd987}
+.worldPath i{background:linear-gradient(90deg,#a7df8e,#c9df9c,#b6d9ff,#dac1f4)}
+
+.goalDock{
+  border:2px solid rgba(255,255,255,.24)!important;
+  background:
+    radial-gradient(circle at 10% 15%,rgba(255,198,235,.3),transparent 27%),
+    radial-gradient(circle at 91% 22%,rgba(99,220,190,.24),transparent 24%),
+    linear-gradient(135deg,#6b4ba7,#5b4d9a 46%,#397a72)!important;
+  box-shadow:0 7px 0 rgba(58,45,91,.38),0 14px 28px rgba(52,41,72,.18)!important
+}
+.goalMain{grid-template-columns:auto auto 1fr auto!important}
+.questIcon{background:linear-gradient(180deg,#fff6c8,#edc95d)!important;color:#6e4d19!important}
+.requestPortrait{
+  width:44px;height:44px;border-radius:50%;display:grid;place-items:center;
+  font-size:27px;background:linear-gradient(180deg,#fff2c9,#ffd08a);
+  border:3px solid #fff;box-shadow:0 3px 0 #c98e62,0 6px 12px rgba(33,27,53,.2);
+}
+.goalAction,.restoreAction{
+  border:2px solid rgba(255,255,255,.72)!important;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.52),0 4px 0 rgba(73,59,95,.22),0 7px 14px rgba(46,40,58,.18)!important
+}
+.goalAction:not(:disabled){background:linear-gradient(180deg,#a8ee73,#66bf52)!important;color:#234727!important}
+.restoreAction:not(:disabled){background:linear-gradient(180deg,#d89bff,#8a61c9)!important}
+.goalReq .reqChip{background:rgba(255,255,255,.18)!important;border-color:rgba(255,255,255,.35)!important}
+
+.rushBar{
+  background:linear-gradient(90deg,#7d51c7,#785ac4 36%,#39a797)!important;
+  border:2px solid rgba(255,255,255,.38)!important;
+  box-shadow:0 4px 0 rgba(71,54,102,.24),0 8px 15px rgba(59,50,80,.12)!important
+}
+.rushBar i{background:linear-gradient(90deg,#ffb7ed,#ffe76f,#b9ff8f)!important}
+
+.boardFrame{
+  background:linear-gradient(180deg,#7dc06e,#589457)!important;
+  border:3px solid #f2df99!important;
+  box-shadow:0 0 0 4px #477a4e,0 7px 0 #315b3c,0 14px 25px rgba(34,58,42,.2)!important
+}
+.boardFrame .board{
+  background:linear-gradient(145deg,#8cc477,#6aa75f)!important;
+}
+.tile.open{
+  background:linear-gradient(145deg,#fff3c2,#eadf9b)!important;
+  border-color:rgba(175,132,66,.35)!important;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.58),0 2px 0 rgba(86,99,50,.18)!important
+}
+.tile.open:nth-child(3n){background:linear-gradient(145deg,#dff4bb,#c5e799)!important}
+.tile.open:nth-child(4n){background:linear-gradient(145deg,#d9eefc,#badcec)!important}
+.tile.item.chain-leaf{background:linear-gradient(145deg,#e8ffd2,#bfe995)!important}
+.tile.item.chain-wood{background:linear-gradient(145deg,#ffe8bf,#e2b97e)!important}
+.tile.item.chain-water{background:linear-gradient(145deg,#daf5ff,#a6dff3)!important}
+.tile.item.chain-crystal{background:linear-gradient(145deg,#f0ddff,#c8a5ef)!important}
+.tile.item.chain-magic{background:linear-gradient(145deg,#ffdff3,#f3a9d3)!important}
+.tile.item.chain-relic{background:linear-gradient(145deg,#fff0bd,#dfc274)!important}
+.tile.item{
+  border:2px solid rgba(255,255,255,.88)!important;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.75),0 4px 0 rgba(78,72,55,.17),0 6px 10px rgba(54,60,47,.15)!important
+}
+.tile.item .emoji{filter:drop-shadow(0 2px 1px rgba(54,46,32,.2));transform:scale(1.05)}
+.tile.selected{box-shadow:0 0 0 4px #8a61d1,0 0 0 7px rgba(255,255,255,.72),0 5px 12px rgba(78,52,123,.28)!important}
+.tile.wanted{box-shadow:0 0 0 3px #ffcf43,0 0 16px rgba(255,208,67,.75)!important}
+.tile.merge-match{box-shadow:0 0 0 3px #6ad978,0 0 18px rgba(92,222,111,.7)!important}
+.tile.producer{
+  background:linear-gradient(145deg,#fff2a5,#9de389)!important;
+  border:3px solid #fff3a7!important;
+  box-shadow:0 0 0 3px #61a85f,0 0 20px rgba(139,231,112,.6)!important
+}
+.tile.locked{
+  background:
+    radial-gradient(circle at 30% 20%,rgba(132,199,126,.18),transparent 28%),
+    linear-gradient(145deg,#315f4d,#23483d)!important;
+}
+.frontierBadge{
+  background:linear-gradient(180deg,#41a56d,#26795a)!important;
+  border:2px solid #d8f7b7!important;
+  box-shadow:0 4px 0 #1b5c43,0 7px 14px rgba(25,80,57,.16)!important
+}
+
+.gameDock{
+  background:linear-gradient(180deg,#3d6f59,#254b3e)!important;
+  border:2px solid rgba(255,255,255,.32)!important;
+  box-shadow:0 5px 0 #193b30,0 10px 25px rgba(25,41,34,.3)!important
+}
+.dockBtn:nth-child(1)>span{filter:drop-shadow(0 2px 0 rgba(0,0,0,.18))}
+.dockBtn:nth-child(2)>span{filter:drop-shadow(0 2px 0 rgba(0,0,0,.18))}
+.dockBtn:nth-child(3)>span{filter:drop-shadow(0 2px 0 rgba(0,0,0,.18))}
+.dockBtn:nth-child(4)>span{filter:drop-shadow(0 2px 0 rgba(0,0,0,.18))}
+.dockBtn.active{background:linear-gradient(180deg,#8e6bc4,#6a4d9a)!important;box-shadow:inset 0 2px 0 rgba(255,255,255,.25)}
+.dockBtn em{background:linear-gradient(180deg,#ff85cc,#cf4aa4)!important;border:1px solid #fff}
+
+.gamePanel{
+  background:linear-gradient(180deg,#fffdf4,#eef8e7)!important;
+  border:2px solid #fff!important;
+  box-shadow:0 -5px 0 #b9cfad,0 -14px 36px rgba(25,43,32,.22)!important
+}
+.order{
+  border:2px solid #dfc7ff!important;
+  background:linear-gradient(145deg,#fff7ff,#f2e7ff)!important;
+  box-shadow:0 3px 0 #c8addf!important
+}
+.order.ready{border-color:#9ed674!important;background:linear-gradient(145deg,#f6ffe8,#dff6bc)!important}
+.source{background:linear-gradient(145deg,#eaffd8,#d8f4b8)!important;border:2px solid #b6d998!important}
+.storage .slot{background:linear-gradient(145deg,#e9f5ff,#cbe7f7)!important;border:2px solid #b6d8eb!important}
+.toast{background:linear-gradient(180deg,#6c4ca8,#4d3a7e)!important;border:2px solid rgba(255,255,255,.5)!important}
+
+@media(max-width:560px){
+  .requestPortrait{width:38px;height:38px;font-size:23px}
+  .gameHud .wallet span{border-radius:13px!important}
+}
