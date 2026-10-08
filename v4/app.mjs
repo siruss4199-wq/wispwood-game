@@ -1,5 +1,6 @@
 import {CHAIN_MARKS,CHAINS,MILESTONES,PRODUCERS,itemDef} from './core/catalog.mjs';
 import {createInitialState,restore,serialize} from './core/state.mjs';
+import {platform} from './platform.mjs';
 import {chapterProgress,completeMilestone as finishMilestone,completeOrder as finishOrder,currentMilestone,fillOrdersInPlace,initializePlayableState,merge,milestoneReady,move,orderReady,producerPreview,requirementProgress,retrieveItem,storeItem,tapProducer} from './core/engine.mjs';
 
 const KEY='wispwood-v4';
@@ -13,7 +14,7 @@ const completeOrderBtn=$('#completeOrder'),completeMilestoneBtn=$('#completeMile
 let state=restore(localStorage.getItem(KEY))??initializePlayableState(createInitialState());
 let selected=null,selectedOrder=null,drag=null,timer=null,suppressClickUntil=0;
 
-function save(){localStorage.setItem(KEY,serialize(state));}
+function save(){localStorage.setItem(KEY,serialize(state));platform.save?.(serialize(state));}
 function haptic(pattern=12){try{navigator.vibrate?.(pattern);}catch{}}
 function msg(t){
  toast.textContent=t;
@@ -78,6 +79,7 @@ function apply(r){
  if(events.some(x=>x.type==='order_completed'))selectedOrder=null;
  else if(previousOrder&&state.activeOrders.some(o=>o.id===previousOrder))selectedOrder=previousOrder;
  const big=events.some(x=>x.type==='milestone_completed'||x.type==='order_completed'||x.type==='producer_unlocked');
+ platform.event?.(events);
  haptic(big?[18,30,18]:10);
  msg(
   events.some(x=>x.type==='milestone_completed')?'🌿 Restoration complete — the clearing opens further!':
@@ -90,6 +92,7 @@ function apply(r){
   'Done'
  );
  render();
+platform.startGameplay?.();
 }
 function clickTile(i){
  if(performance.now()<suppressClickUntil)return;
