@@ -1319,3 +1319,77 @@ body{
   .boardScenery{width:27px;height:27px;font-size:18px}.sceneryBasket,.sceneryMushroom{left:-9px}.sceneryLantern,.sceneryChest{right:-9px}
 }
 @media(prefers-reduced-motion:reduce){.itemSparkles{animation:none}}
+
+
+/* Compact objective rail + stage-specific board source boxes. */
+.stage-producer{
+  background:transparent!important;border:0!important;box-shadow:none!important;overflow:visible!important;
+}
+.stageBoxSkin{
+  position:absolute;left:9%;right:9%;top:16%;bottom:10%;border-radius:7px 7px 9px 9px;
+  background:linear-gradient(180deg,#d79753 0 27%,#a95f31 28% 100%);
+  border:2px solid #6f3d23;box-shadow:inset 0 2px 0 rgba(255,241,181,.58),0 4px 0 rgba(91,48,27,.42),0 7px 10px rgba(73,44,26,.2)
+}
+.stageBoxSkin:before{
+  content:"";position:absolute;left:-4px;right:-4px;top:-7px;height:24%;border-radius:7px 7px 4px 4px;
+  background:linear-gradient(180deg,#f1c56f,#c47a39);border:2px solid #70401f;box-shadow:inset 0 2px 0 rgba(255,255,255,.4)
+}
+.stageBoxSkin:after{
+  content:"";position:absolute;left:12%;right:12%;top:42%;height:8%;border-radius:4px;background:rgba(255,224,138,.5);
+  box-shadow:0 11px 0 rgba(77,39,22,.2)
+}
+.stageBoxSkin i{
+  position:absolute;left:50%;top:29%;width:12px;height:15px;transform:translateX(-50%);border-radius:3px;
+  background:linear-gradient(180deg,#ffe28a,#c68c2f);border:1px solid #79511e;z-index:2
+}
+.stageBoxMark{
+  position:absolute;left:50%;top:47%;transform:translate(-50%,-50%);z-index:4;font-size:clamp(18px,5.7vw,31px);
+  filter:drop-shadow(0 2px 1px rgba(58,35,21,.35))
+}
+.stageBoxZone{
+  position:absolute;left:-2px;top:-4px;z-index:5;width:20px;height:20px;display:grid;place-items:center;border-radius:50%;
+  background:#f8efc5;border:2px solid #fff;font-size:10px;box-shadow:0 2px 0 rgba(69,53,34,.28)
+}
+.stage-zone-1 .stageBoxSkin{background:linear-gradient(180deg,#9a9bd7 0 27%,#665fa8 28% 100%);border-color:#49447c}
+.stage-zone-1 .stageBoxSkin:before{background:linear-gradient(180deg,#d7d1ff,#9188ca);border-color:#514b86}
+.stage-zone-2 .stageBoxSkin{background:linear-gradient(180deg,#79c6b3 0 27%,#478f7e 28% 100%);border-color:#30685d}
+.stage-zone-2 .stageBoxSkin:before{background:linear-gradient(180deg,#bdebd8,#72bba6);border-color:#3d776a}
+.stage-zone-3 .stageBoxSkin{background:linear-gradient(180deg,#ba9a76 0 27%,#755b49 28% 100%);border-color:#4d3c32}
+.stage-zone-3 .stageBoxSkin:before{background:linear-gradient(180deg,#dfc8a8,#a7815f);border-color:#66503c}
+.stage-zone-4 .stageBoxSkin{background:linear-gradient(180deg,#be79a8 0 27%,#804f7f 28% 100%);border-color:#5b3a5d}
+.stage-zone-4 .stageBoxSkin:before{background:linear-gradient(180deg,#f0add3,#ae6ba0);border-color:#6a456b}
+.stage-zone-5 .stageBoxSkin{background:linear-gradient(180deg,#7482c4 0 27%,#465390 28% 100%);border-color:#323d70}
+.stage-zone-5 .stageBoxSkin:before{background:linear-gradient(180deg,#c0c9ff,#7785c7);border-color:#45518a}
+.producer-ready .stageBoxSkin{box-shadow:inset 0 2px 0 rgba(255,255,255,.55),0 4px 0 rgba(61,46,29,.38),0 0 15px rgba(255,235,111,.9)}
+.producer-tap .stageBoxSkin:before{animation:boxLidTap .38s cubic-bezier(.2,.8,.2,1)}
+@keyframes boxLidTap{35%{transform:translateY(-5px) rotate(-4deg)}75%{transform:translateY(1px) rotate(2deg)}}
+.stage-producer .producerLevel{bottom:-2px!important}.stage-producer .producerBolt{right:-4px!important;bottom:-4px!important}
+
+@media(max-width:560px){
+  .worldStrip{
+    position:relative!important;min-height:58px!important;padding:6px 7px!important;margin:0!important;
+    display:grid!important;grid-template-columns:minmax(0,1fr) auto auto!important;grid-template-rows:auto auto!important;
+    column-gap:6px!important;row-gap:3px!important
+  }
+  .worldMoon,.worldPath,.mapAction{display:none!important}
+  .worldCopy{grid-column:1;grid-row:1;min-width:0}.worldCopy small{font-size:6px!important}.worldCopy b{font-size:11px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .compactProgress{grid-column:2;grid-row:1;min-width:62px!important}.compactProgress>b{font-size:7px!important}.compactProgress span{height:5px!important}
+  .restoreAction{grid-column:3;grid-row:1/3;height:42px!important;min-width:73px!important;padding:5px 8px!important;font-size:10px!important}
+  .worldReq{grid-column:1/3!important;grid-row:2!important;display:flex!important;gap:3px!important;overflow:hidden!important;flex-wrap:nowrap!important;margin:0!important}
+  .worldReq .reqChip{min-width:auto!important;padding:2px 5px!important;font-size:7px!important;gap:2px!important;white-space:nowrap!important}
+  .worldReq .reqName{display:none!important}.worldReq .reqIcon{font-size:11px!important}.worldReq .reqChip b{font-size:7px!important}
+
+  .goalDock{min-height:55px!important;padding:5px 7px!important;margin:0!important;border-radius:13px!important}
+  .goalMain{grid-template-columns:auto minmax(0,1fr) auto!important;gap:7px!important;align-items:center!important}
+  .questIcon,.goalReq,.goalNav{display:none!important}
+  .requestPortrait{width:38px!important;height:38px!important;font-size:23px!important}
+  .goalCopy{min-width:0}.goalCopy small{display:none!important}.goalCopy b{font-size:11px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .goalCopy span{font-size:7px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;display:block!important;max-width:100%!important}
+  .goalAction{height:38px!important;min-width:79px!important;padding:5px 10px!important;font-size:10px!important;border-radius:12px!important}
+  .deliveryCoach{grid-column:1/-1!important;margin-top:4px!important;padding:5px!important}.deliveryCoach small{font-size:7px!important}
+  .boardHead{margin-top:1px!important}
+
+  .stageBoxMark{font-size:clamp(19px,6.6vw,29px)}
+  .stageBoxZone{width:18px;height:18px;font-size:9px}
+}
+@media(prefers-reduced-motion:reduce){.producer-tap .stageBoxSkin:before{animation:none!important}}
