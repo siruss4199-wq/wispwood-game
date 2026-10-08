@@ -440,17 +440,18 @@ test('board art hierarchy distinguishes item tiers without text labels',()=>{
  assert.match(css,/rarity-mythic/);
 });
 
-test('quick source shelf exposes unlocked producers and next drops near the board',()=>{
+test('stage-specific producer boxes live directly on the merge board',()=>{
  const html=fs.readFileSync(new URL('../v4/index.html',import.meta.url),'utf8');
  const app=fs.readFileSync(new URL('../v4/app.mjs',import.meta.url),'utf8');
  const css=fs.readFileSync(new URL('../v4/style.css',import.meta.url),'utf8');
- assert.match(html,/id="sourceShelf"/);
- assert.match(app,/producerIndices\(state\)/);
- assert.match(app,/className='sourceShelfCard'/);
- assert.match(app,/producerPreview\(state,p\.id,2\)/);
- assert.match(app,/tapProducer\(state,index\)/);
- assert.match(css,/sourceShelfCard/);
- assert.match(css,/shelfDrops/);
+ assert.doesNotMatch(html,/id="sourceShelf"/);
+ assert.match(app,/STAGE_BOX_THEMES/);
+ assert.match(app,/stageBoxTheme/);
+ assert.match(app,/stage-producer/);
+ assert.match(app,/data\.stageBox/);
+ assert.match(app,/stageBoxSkin/);
+ assert.match(css,/stage-zone-5/);
+ assert.match(css,/boxLidTap/);
 });
 
 test('board frame carries decorative forest reward props outside the playable grid',()=>{
@@ -459,4 +460,13 @@ test('board frame carries decorative forest reward props outside the playable gr
  assert.equal((html.match(/class="boardScenery/g)??[]).length,4);
  assert.match(css,/boardScenery/);
  assert.match(css,/pointer-events:none/);
+});
+
+
+test('mobile objective area is compact and removes redundant request navigation',()=>{
+ const css=fs.readFileSync(new URL('../v4/style.css',import.meta.url),'utf8');
+ assert.match(css,/\.worldMoon,\.worldPath,\.mapAction\{display:none!important\}/);
+ assert.match(css,/\.questIcon,\.goalReq,\.goalNav\{display:none!important\}/);
+ assert.match(css,/min-height:55px!important/);
+ assert.match(css,/\.worldReq \.reqName\{display:none!important\}/);
 });
