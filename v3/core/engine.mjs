@@ -142,8 +142,23 @@ export function move(s,from,to){
  return out(n,[{type:'moved',from,to}]);
 }
 export function merge(s,from,to){
- if(!isOpen(s,from)||!isOpen(s,to)||from===to)return out(s,[],false,'Drag one matching item onto the other.');
+ if(!isOpen(s,from)||!Number.isInteger(to)||to<0||to>=CELL_COUNT||from===to)return out(s,[],false,'Drag one matching item onto the other.');
  const a=s.cells[from].content,b=s.cells[to].content;
+ if(s.cells[to].terrain==='cobweb'){
+  if(!a||!b||a.type!=='item'||b.type!=='item'||a.chain!==b.chain||a.tier!==b.tier){
+   return out(s,[],false,'Match this item to free it from the vines.');
+  }
+  const n=cloneState(s),events=[];
+  n.cells[from].content=null;
+  n.cells[to].terrain='open';
+  n.moves++;
+  n.energy=Math.min(n.maxEnergy,n.energy+1);
+  events.push({type:'cobweb_cleared',from,to,item:structuredClone(n.cells[to].content)});
+  advanceExplorationInPlace(n,to,events);
+  ensureCapacityInPlace(n,to,events);fillOrdersInPlace(n);
+  return out(n,events);
+ }
+ if(!isOpen(s,to))return out(s,[],false,'That space is still buried.');
  if(!a||!b||a.type!=='item'||b.type!=='item'||a.chain!==b.chain||a.tier!==b.tier||a.tier>=MAX_TIER){
   return out(s,[],false,'Only identical merge items can combine.');
  }
@@ -248,6 +263,7 @@ export function validateState(s){
  if(s.energy<0||s.energy>s.maxEnergy)errors.push('energy');
  if(s.coins<0||s.forestLight<0)errors.push('currency');
  if(s.activeOrders.length>3)errors.push('orders');
+ for(let i=0;i<s.cells.length;i++){const c=s.cells[i];if(!['crate','open','cobweb'].includes(c.terrain))errors.push('terrain:'+i);if(c.terrain==='cobweb'&&c.content?.type!=='item')errors.push('cobweb:'+i);}
  if(s.restorationIndex<0||s.restorationIndex>RESTORATION_NODES.length)errors.push('restoration');
  if(!Number.isInteger(s.explorationPoints)||s.explorationPoints<0)errors.push('exploration');
  return errors;
