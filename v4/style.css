@@ -1234,3 +1234,27 @@ body{
 @media(prefers-reduced-motion:reduce){
   .producer-ready,.producer-ready .producerBolt,.producer-tap,.produce-pop{animation:none!important}
 }
+
+
+/* Instant ready-request delivery and board reward juice. */
+.requestMiniCard.ready:after{
+  content:"✓";position:absolute;right:5px;top:5px;width:18px;height:18px;display:grid;place-items:center;
+  border-radius:50%;background:#5dbc50;color:#fff;border:2px solid #fff;font-size:9px;font-weight:1000;
+  box-shadow:0 2px 0 #3c8c36
+}
+.requestMiniCard.ready .requestMiniReward{
+  display:inline-flex!important;align-items:center;justify-content:center;min-height:16px;padding:2px 5px;border-radius:8px;
+  background:#62bd52;color:#fff!important;border:1px solid rgba(255,255,255,.75);box-shadow:0 2px 0 #438d3c
+}
+.boardRewardOrb{
+  position:fixed;z-index:145;pointer-events:none;transform:translate(-50%,-50%);font-size:21px;
+  filter:drop-shadow(0 3px 2px rgba(61,45,35,.28));
+  animation:boardRewardOrb .72s cubic-bezier(.16,.82,.28,1) forwards
+}
+@keyframes boardRewardOrb{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.35)}
+  22%{opacity:1;transform:translate(-50%,-65%) scale(1.25)}
+  78%{opacity:1}
+  100%{opacity:0;transform:translate(calc(-50% + var(--orb-x)),calc(-50% + var(--orb-y))) scale(.8)}
+}
+@media(prefers-reduced-motion:reduce){.boardRewardOrb{display:none;animation:none}}
