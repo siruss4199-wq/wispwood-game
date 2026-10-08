@@ -8,11 +8,11 @@ const $=s=>document.querySelector(s);
 const board=$('#board'),ordersEl=$('#orders'),sourcesEl=$('#sources'),storageEl=$('#storage');
 const energy=$('#energy'),coins=$('#coins'),light=$('#light'),discovered=$('#discovered');
 const milestoneTitle=$('#milestoneTitle'),milestoneReq=$('#milestoneReq'),milestoneStep=$('#milestoneStep'),progressBar=$('#progressBar i');
-const boardStatus=$('#boardStatus'),inspect=$('#inspect'),inspectIcon=$('#inspectIcon'),inspectName=$('#inspectName'),inspectMeta=$('#inspectMeta'),inspectUse=$('#inspectUse');
+const boardStatus=$('#boardStatus'),questRibbon=$('#questRibbon'),questIcon=$('#questIcon'),questTitle=$('#questTitle'),questText=$('#questText'),questStep=$('#questStep'),inspect=$('#inspect'),inspectIcon=$('#inspectIcon'),inspectName=$('#inspectName'),inspectMeta=$('#inspectMeta'),inspectUse=$('#inspectUse');
 const completeOrderBtn=$('#completeOrder'),completeMilestoneBtn=$('#completeMilestone'),storeBtn=$('#store'),hint=$('#hint'),toast=$('#toast');
 
 let state=restore(localStorage.getItem(KEY))??initializePlayableState(createInitialState());
-let selected=null,selectedOrder=null,drag=null,timer=null,suppressClickUntil=0;
+let selected=null,selectedOrder=null,drag=null,timer=null,suppressClickUntil=0,effectIndex=null,effectKind=null;
 
 function save(){localStorage.setItem(KEY,serialize(state));platform.save?.(serialize(state));}
 function haptic(pattern=12){try{navigator.vibrate?.(pattern);}catch{}}
@@ -79,6 +79,8 @@ function apply(r){
  if(events.some(x=>x.type==='order_completed'))selectedOrder=null;
  else if(previousOrder&&state.activeOrders.some(o=>o.id===previousOrder))selectedOrder=previousOrder;
  const big=events.some(x=>x.type==='milestone_completed'||x.type==='order_completed'||x.type==='producer_unlocked');
+ const fx=events.find(x=>x.type==='merged'||x.type==='produced'||x.type==='cobweb_cleared'||x.type==='producer_unlocked');
+ effectIndex=fx?.to??fx?.index??null;effectKind=fx?.type??null;
  platform.event?.(events);
  haptic(big?[18,30,18]:10);
  msg(
@@ -92,6 +94,11 @@ function apply(r){
   'Done'
  );
  render();
+ if(Number.isInteger(effectIndex)){
+  const index=effectIndex,kind=effectKind;
+  requestAnimationFrame(()=>board.querySelector(`[data-index="${index}"]`)?.classList.add(kind==='cobweb_cleared'?'burst-clear':'burst'));
+  setTimeout(()=>board.querySelector(`[data-index="${index}"]`)?.classList.remove('burst','burst-clear'),650);
+ }
 }
 function clickTile(i){
  if(performance.now()<suppressClickUntil)return;
@@ -121,6 +128,30 @@ function selectionUseLabel(item){
  const hasMatch=state.cells.some((c,i)=>i!==selected&&c.content?.type==='item'&&c.content.chain===item.chain&&c.content.tier===item.tier&&(c.terrain==='open'||c.terrain==='cobweb'));
  return hasMatch?'MATCH READY':'KEEP OR STORE';
 }
+function suggestedIndices(){
+ if(state.moves>=4)return new Set();
+ const groups=new Map();
+ state.cells.forEach((c,i)=>{
+  const x=c.content;
+  if(c.terrain!=='open'||x?.type!=='item'||x.tier>=7)return;
+  const k=x.chain+':'+x.tier;
+  if(!groups.has(k))groups.set(k,[]);
+  groups.get(k).push(i);
+ });
+ const out=new Set();
+ for(const indices of groups.values()){
+  if(indices.length<2)continue;
+  out.add(indices[0]);out.add(indices[1]);
+  if(out.size>=4)break;
+ }
+ return out;
+}
+function tutorialState(){
+ if(state.moves===0)return {icon:'✨',title:'Make your first merge',text:'Two matching relics are glowing. Combine one pair to open a space.',step:'1/3'};
+ if(state.ordersCompleted===0)return {icon:'📜',title:'Choose a Forest Order',text:'Pick one request below — the board will mark exactly what helps.',step:'2/3'};
+ if(state.milestoneIndex===0)return {icon:'🌿',title:'Wake the clearing',text:'Complete orders, build the restoration items, then restore your first landmark.',step:'3/3'};
+ return {icon:'🌙',title:'The clearing is yours',text:'Build chains, free vine targets and push deeper into Wispwood.',step:'EXPLORE'};
+}
 function tileAria(cell,i){
  if(cell.terrain==='locked')return `Locked forest cell ${i+1}`;
  if(cell.content?.type==='producer'){
@@ -143,6 +174,7 @@ function render(){
   return a[0]+':'+a[1];
  }));
  const chosen=selectedContent();
+ const suggested=suggestedIndices();
 
  state.cells.forEach((cell,i)=>{
   const b=document.createElement('button');
@@ -153,18 +185,20 @@ function render(){
   b.setAttribute('aria-label',tileAria(cell,i));
 
   if(i===selected)b.classList.add('selected');
+  if(suggested.has(i)&&!Number.isInteger(selected))b.classList.add('suggested');
+  if(cell.terrain==='locked')b.dataset.decor=['🌲','🍄','🌿','✦'][i%4];
   if(chosen?.type==='item'&&i!==selected&&cell.content?.type==='item'&&cell.content.chain===chosen.chain&&cell.content.tier===chosen.tier&&(cell.terrain==='open'||cell.terrain==='cobweb'))b.classList.add('merge-match');
 
   if(cell.content?.type==='item'&&(cell.terrain==='open'||cell.terrain==='cobweb')){
     const d=itemDef(cell.content.chain,cell.content.tier);
-    b.classList.add('item','chain-'+cell.content.chain);
+    b.classList.add('item','chain-'+cell.content.chain,'tier-'+cell.content.tier);
     if(wanted.has(cell.content.chain+':'+cell.content.tier))b.classList.add('wanted');
     b.innerHTML=`<span class="chainTag">${CHAIN_MARKS[cell.content.chain]}</span><span class="emoji">${d.emoji}</span><span class="tag">T${cell.content.tier+1}</span>${cell.terrain==='cobweb'?'<span class="web">🕸️</span>':''}`;
   }
   if(cell.terrain==='open'&&cell.content?.type==='producer'){
     const d=PRODUCERS[cell.content.producerId];
-    b.classList.add('producer');
-    b.innerHTML=`<span class="emoji">${d.emoji}</span><span class="tag">LV${state.producerLevels[d.id]}</span>`;
+    b.classList.add('producer','source-awake');
+    b.innerHTML=`<span class="tapCue">TAP</span><span class="emoji">${d.emoji}</span><span class="tag">LV${state.producerLevels[d.id]}</span>`;
   }
 
   b.addEventListener('click',()=>clickTile(i));
@@ -197,6 +231,9 @@ function render(){
   board.appendChild(b);
  });
 
+ const tutorial=tutorialState();
+ questIcon.textContent=tutorial.icon;questTitle.textContent=tutorial.title;questText.textContent=tutorial.text;questStep.textContent=tutorial.step;
+ questRibbon.classList.toggle('complete',state.milestoneIndex>0);
  const openItems=state.cells.filter(c=>c.terrain==='open'&&c.content?.type==='item').length;
  const empties=state.cells.filter(c=>c.terrain==='open'&&!c.content).length;
  const webs=state.cells.filter(c=>c.terrain==='cobweb').length;

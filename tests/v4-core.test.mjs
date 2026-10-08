@@ -91,3 +91,17 @@ test('production UI keeps the merge board primary and supports guided mobile pla
  assert.match(css,/font-size:12px/);
  assert.match(css,/prefers-reduced-motion/);
 });
+
+test('first minute UX visibly guides players into the board loop',()=>{
+ const html=fs.readFileSync(new URL('../v4/index.html',import.meta.url),'utf8');
+ const app=fs.readFileSync(new URL('../v4/app.mjs',import.meta.url),'utf8');
+ const css=fs.readFileSync(new URL('../v4/style.css',import.meta.url),'utf8');
+ assert.match(html,/id="questRibbon"/);
+ assert.match(html,/class="boardFrame"/);
+ assert.match(app,/suggestedIndices/);
+ assert.match(app,/tutorialState/);
+ assert.match(app,/burst-clear/);
+ assert.match(css,/firstMerge/);
+ assert.match(css,/mergeBurst/);
+ assert.match(css,/sourceBreath/);
+});
