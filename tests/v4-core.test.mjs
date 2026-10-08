@@ -360,7 +360,7 @@ test('commercial board layout uses profile HUD activity cards and bottom info ba
  const css=fs.readFileSync(new URL('../v4/style.css',import.meta.url),'utf8');
  assert.match(html,/class="playerProfile"/);
  assert.match(html,/class="activityTray"/);
- assert.match(html,/id="activityRequestProgress"/);
+ assert.match(html,/data-order-slot="0"/);
  assert.match(html,/class="dockHint"/);
  assert.match(html,/id="hint"/);
  assert.match(app,/activityMilestoneTitle/);
