@@ -448,7 +448,7 @@ test('stage-specific producer boxes live directly on the merge board',()=>{
  assert.match(app,/STAGE_BOX_THEMES/);
  assert.match(app,/stageBoxTheme/);
  assert.match(app,/stage-producer/);
- assert.match(app,/data\.stageBox/);
+ assert.match(app,/dataset\.stageBox/);
  assert.match(app,/stageBoxSkin/);
  assert.match(css,/stage-zone-5/);
  assert.match(css,/boxLidTap/);
