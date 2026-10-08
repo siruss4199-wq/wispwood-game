@@ -36,3 +36,7 @@ jobs:
         run: node --test tests/v4-simulation.test.mjs
       - name: Check V4 UI module syntax
         run: node --check v4/app.mjs
+      - name: Check CrazyGames platform adapter
+        run: node --check v4/platform.mjs
+      - name: Run CrazyGames readiness checks
+        run: node --test tests/v4-crazygames.test.mjs
