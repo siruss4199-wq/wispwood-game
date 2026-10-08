@@ -1,6 +1,6 @@
-import {CELL_COUNT,PRODUCERS,QUESTS} from './catalog.mjs';
+import {CELL_COUNT,PRODUCERS} from './catalog.mjs';
 
-export const SCHEMA=1;
+export const SCHEMA=2;
 export const STARTER_SEEDS=[26,34];
 export const FIRST_REVEALS={producer:33,empty:35};
 
@@ -13,8 +13,18 @@ export function createInitialState(){
  }
  cells[FIRST_REVEALS.producer].reveal={type:'producer',producerId:PRODUCERS.ancientTree.id};
  return {
-  schema:SCHEMA,phase:'first_merge',energy:20,maxEnergy:20,moves:0,cratesOpened:0,
-  quest:{id:QUESTS.firstHerb.id,completed:false},cells
+  schema:SCHEMA,
+  phase:'first_merge',
+  energy:20,
+  maxEnergy:20,
+  moves:0,
+  cratesOpened:0,
+  chapterQuestIndex:0,
+  completedQuestIds:[],
+  rescued:false,
+  orderIndex:0,
+  ordersCompleted:0,
+  cells
  };
 }
 

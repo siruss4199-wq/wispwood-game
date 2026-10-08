@@ -1,4 +1,4 @@
-import {CELL_COUNT,CHAINS,MAX_TIER,PRODUCERS,QUESTS,SIZE} from './catalog.mjs';
+import {CELL_COUNT,CHAINS,CHAPTER_QUESTS,FOREST_ORDERS,MAX_TIER,PRODUCERS,SIZE} from './catalog.mjs';
 import {FIRST_REVEALS,cloneState} from './state.mjs';
 
 const out=(state,events=[],ok=true,reason=null)=>({ok,reason,state,events});
@@ -38,7 +38,9 @@ function revealCellInPlace(state,index){
  return {type:'crate_opened',index,reveal};
 }
 function openOneFrontierEmptyInPlace(state,near){
- const list=frontierCrates(state).filter(i=>state.cells[i].reveal?.type!=='producer').sort((a,b)=>manhattan(a,near)-manhattan(b,near)||a-b);
+ const list=frontierCrates(state)
+  .filter(i=>state.cells[i].reveal?.type!=='producer')
+  .sort((a,b)=>manhattan(a,near)-manhattan(b,near)||a-b);
  return list.length?revealCellInPlace(state,list[0]):null;
 }
 function ensureCapacityInPlace(state,near){
@@ -50,6 +52,19 @@ function ensureCapacityInPlace(state,near){
   events.push({...e,safety:true});
  }
  return events;
+}
+
+export function currentRequest(state){
+ if(!state.rescued){
+  return CHAPTER_QUESTS[Math.min(state.chapterQuestIndex,CHAPTER_QUESTS.length-1)]??null;
+ }
+ return FOREST_ORDERS[state.orderIndex%FOREST_ORDERS.length]??null;
+}
+
+export function requestProgress(state){
+ return state.rescued
+  ? {mode:'orders',current:(state.orderIndex%FOREST_ORDERS.length)+1,total:FOREST_ORDERS.length,completed:state.ordersCompleted}
+  : {mode:'chapter',current:Math.min(state.chapterQuestIndex+1,CHAPTER_QUESTS.length),total:CHAPTER_QUESTS.length,completed:state.completedQuestIds.length};
 }
 
 export function move(state,from,to){
@@ -70,7 +85,11 @@ export function merge(state,from,to){
  next.cells[from].content=null;
  next.cells[to].content={type:'item',chain:b.chain,tier:b.tier+1};
  next.moves++;
- const events=[{type:'merged',from,to,item:structuredClone(next.cells[to].content)}];
+ next.energy=Math.min(next.maxEnergy,next.energy+1);
+ const events=[
+  {type:'merged',from,to,item:structuredClone(next.cells[to].content)},
+  {type:'energy_recovered',amount:1}
+ ];
 
  if(next.phase==='first_merge'){
   const p=revealCellInPlace(next,FIRST_REVEALS.producer);
@@ -100,12 +119,34 @@ export function tapProducer(state,index){
 
 export function deliver(state,index){
  if(!isOpen(state,index))return out(state,[],false,'Select an open item.');
- const item=state.cells[index].content,q=QUESTS[state.quest.id];
- if(!item||item.type!=='item'||item.chain!==q.chain||item.tier!==q.tier)return out(state,[],false,'That item does not complete the quest.');
+ const item=state.cells[index].content,q=currentRequest(state);
+ if(!q||!item||item.type!=='item'||item.chain!==q.chain||item.tier!==q.tier){
+  return out(state,[],false,'That item does not complete the current request.');
+ }
  const next=cloneState(state);
- next.cells[index].content=null;next.quest.completed=true;next.phase='first_quest_complete';
- next.energy=Math.min(next.maxEnergy,next.energy+3);
- return out(next,[{type:'quest_completed',questId:q.id},{type:'energy_reward',amount:3}]);
+ next.cells[index].content=null;
+ const events=[{type:'request_completed',requestId:q.id}];
+
+ if(!next.rescued){
+  next.completedQuestIds=[...next.completedQuestIds,q.id];
+  next.chapterQuestIndex++;
+  next.energy=Math.min(next.maxEnergy,next.energy+q.rewardEnergy);
+  events.push({type:'energy_reward',amount:q.rewardEnergy});
+  if(next.chapterQuestIndex>=CHAPTER_QUESTS.length){
+   next.rescued=true;
+   next.phase='orders';
+   next.chapterQuestIndex=CHAPTER_QUESTS.length;
+   events.push({type:'mivra_rescued'});
+  }
+ }else{
+  next.ordersCompleted++;
+  next.orderIndex=(next.orderIndex+1)%FOREST_ORDERS.length;
+  next.energy=Math.min(next.maxEnergy,next.energy+q.rewardEnergy);
+  events.push({type:'energy_reward',amount:q.rewardEnergy});
+ }
+
+ events.push(...ensureCapacityInPlace(next,index));
+ return out(next,events);
 }
 
 export function recycle(state,index){
@@ -115,12 +156,20 @@ export function recycle(state,index){
 }
 
 export function boardStatus(state){
- return {open:state.cells.filter(c=>c.terrain==='open').length,crates:state.cells.filter(c=>c.terrain==='crate').length,empty:openEmptyIndices(state).length,producers:producerIndices(state).length,pair:mergeablePair(state)};
+ return {
+  open:state.cells.filter(c=>c.terrain==='open').length,
+  crates:state.cells.filter(c=>c.terrain==='crate').length,
+  empty:openEmptyIndices(state).length,
+  producers:producerIndices(state).length,
+  pair:mergeablePair(state)
+ };
 }
 export function validateState(state){
  const errors=[];
  if(!Array.isArray(state.cells)||state.cells.length!==CELL_COUNT)errors.push('board-size');
  if(state.energy<0||state.energy>state.maxEnergy)errors.push('energy-range');
+ if(!Number.isInteger(state.chapterQuestIndex)||state.chapterQuestIndex<0||state.chapterQuestIndex>CHAPTER_QUESTS.length)errors.push('quest-index');
+ if(!Array.isArray(state.completedQuestIds))errors.push('quest-history');
  state.cells.forEach((c,i)=>{
   if(!['crate','open'].includes(c.terrain))errors.push('terrain:'+i);
   if(c.content?.type==='item'&&!CHAINS[c.content.chain]?.[c.content.tier])errors.push('item:'+i);

@@ -1,52 +1,55 @@
 # Wispwood V2 — Clean Merge Architecture
 
 ## Why rebuild
-The current prototype has UI, merge rules, progression, migrations, crate logic and tests coupled inside one large file. V2 keeps the current live game intact and rebuilds the merge loop separately under /v2.
+The old prototype mixed UI, merge rules, progression, migrations, crate logic and CSS-sensitive tests in one file. V2 is split into catalog, state, engine, UI and behavior tests.
 
-## Product rules
+## Non-negotiable core rules
 1. Drag identical items together to merge.
 2. Start with one chain only: Leaf.
-3. Ancient Tree is the deterministic source of Seeds and costs 1 Energy per tap.
-4. The board starts visually full: 62 crates + 2 visible Seeds.
-5. The first Seed merge reveals the Ancient Tree plus one empty space.
+3. Ancient Tree is the deterministic Seed source and costs 1 Energy per tap.
+4. Board starts visually full: 62 crates + 2 Seeds.
+5. First Seed merge reveals the Tree plus one empty tile.
 6. Every later merge opens one additional empty frontier crate.
-7. Deadlock prevention is structural: when no pair exists, the player must have a producer and at least two empty open cells. Do not inject a random “matching” rescue item.
-8. New chains unlock only after the previous loop is understood.
-9. Core rules never touch the DOM.
-10. Tests assert gameplay behavior, not exact CSS strings.
+7. Merges recover 1 Energy, so crafting cannot quietly consume the player into a hard stop.
+8. When no pair exists, the engine must preserve a producer plus at least two open spaces while crates remain.
+9. Core engine never reads or writes the DOM.
+10. Behavior tests simulate full progression and long-run liveness.
 
-## Deterministic onboarding
-- Seed + Seed -> Sprout.
-- Reveal Ancient Tree + one empty tile.
-- Tap Tree twice -> two Seeds.
-- Seed + Seed -> Sprout + one new empty tile.
-- Sprout + Sprout -> Herb + one new empty tile.
-- Deliver Herb -> first quest complete.
+## Continuous chapter flow
+Chapter One is no longer a one-quest demo:
+- Healing Herb (tier 2)
+- Forest Bloom (tier 3)
+- Moon Flower (tier 4)
+- Completing all three rescues Mivra.
+- After rescue, rotating Forest Orders continue indefinitely so the game does not hit a content wall.
 
-## Structure
-```
-v2/
-  index.html
-  style.css
-  app.mjs
-  core/
-    catalog.mjs
-    state.mjs
-    engine.mjs
-tests/
-  v2-core.test.mjs
-```
-
-Each board cell owns its own state:
+## State model
+Each cell owns:
 - terrain: crate | open
-- reveal: future content while closed
+- reveal: future crate content
 - content: null | item | producer
 
-This replaces parallel arrays that can drift out of sync.
+Game-wide state owns:
+- Energy
+- Moves
+- Chapter quest index/history
+- Rescue state
+- Endless order index/count
+- Save schema
 
-## Expansion sequence
-Foundation: Leaf chain, Tree producer, first Herb quest, drag merge, energy, deterministic crate opening.
-Chapter 1: 3 Leaf quests + Mivra rescue.
-Chapter 2: Dew producer + vines/cobwebs.
-Chapter 3: Glow producer + companion abilities.
-Economy/ads/events only after the base loop is stable.
+## Tests
+The V2 test suite covers:
+- full-board two-Seed start
+- first merge reveal
+- producer/energy loop
+- all 3 chapter requests
+- post-rescue endless orders
+- 120 automated actions without a dead end
+- save schema validation
+
+Next expansion only after this loop feels good:
+- Mivra scene/reward presentation
+- Dew chain
+- vine blockers
+- second producer
+- economy/ads/events later
