@@ -1,5 +1,5 @@
 import {CHAINS,CELL_COUNT,MAX_TIER,PRODUCERS,RESTORATION_NODES,SIZE,STORAGE_UPGRADES,itemDef} from './catalog.mjs';
-import {FIRST_EMPTY,FIRST_TREE,cloneState} from './state.mjs';
+import {FIRST_CLEARING,FIRST_TREE,cloneState} from './state.mjs';
 
 const out=(state,events=[],ok=true,reason=null)=>({ok,reason,state,events});
 export const isOpen=(s,i)=>Number.isInteger(i)&&i>=0&&i<CELL_COUNT&&s.cells[i].terrain==='open';
@@ -28,6 +28,9 @@ export function mergeablePair(s){
 }
 export function unlockedProducerIds(s){
  return Object.values(PRODUCERS).filter(p=>s.restorationIndex>=p.unlockNode).map(p=>p.id);
+}
+export function explorationCost(s){
+ return Math.min(8,3+Math.floor(s.exploredCrates/5));
 }
 function unlockProducersInPlace(s,events){
  for(const id of unlockedProducerIds(s)){
@@ -65,6 +68,19 @@ function ensureCapacityInPlace(s,near,events){
   const e=revealInPlace(s,index);if(e)events.push({...e,safety:true});
  }
 }
+function advanceExplorationInPlace(s,near,events){
+ s.explorationPoints++;
+ events.push({type:'exploration_gained',amount:1});
+ const cost=explorationCost(s);
+ if(s.explorationPoints<cost||!frontierCrates(s).length)return;
+ s.explorationPoints-=cost;
+ const index=nearestFrontier(s,near);
+ const e=revealInPlace(s,index);
+ if(e){
+  s.exploredCrates++;
+  events.push({...e,exploration:true});
+ }
+}
 function discoverInPlace(s,item,events){
  const k=item.chain+':'+item.tier;
  if(!s.discovered[k]){
@@ -74,27 +90,35 @@ function discoverInPlace(s,item,events){
  }
 }
 function orderTierFor(s,slot){
- const base=Math.min(4,1+Math.floor(s.ordersCompleted/4));
- return Math.max(1,base+(slot===2?1:0));
+ const base=Math.min(6,1+Math.floor(s.ordersCompleted/5));
+ return Math.min(MAX_TIER-1,Math.max(1,base+(slot===2?1:0)));
 }
 function orderChainsFor(s){
- const ids=unlockedProducerIds(s);
- return ids.map(id=>PRODUCERS[id].chain);
+ return unlockedProducerIds(s).map(id=>PRODUCERS[id].chain);
 }
 function buildOrder(s,slot){
- const chains=orderChainsFor(s);
- const chain=chains[(s.nextOrderSerial+slot)%chains.length];
- const tier=Math.min(MAX_TIER-1,orderTierFor(s,slot));
- const serial=s.nextOrderSerial++;
- const item=itemDef(chain,tier);
- const multiplier=slot===0?1:slot===1?1.4:2;
+ const chains=orderChainsFor(s),serial=s.nextOrderSerial++;
+ const primaryChain=chains[(serial+slot)%chains.length];
+ const tier=orderTierFor(s,slot);
+ const reqs=[];
+ if(slot===0){
+  reqs.push({chain:primaryChain,tier,count:1});
+ }else if(slot===1){
+  reqs.push({chain:primaryChain,tier:Math.max(1,tier-1),count:2});
+ }else{
+  reqs.push({chain:primaryChain,tier,count:1});
+  const secondChain=chains.length>1?chains[(chains.indexOf(primaryChain)+1)%chains.length]:primaryChain;
+  reqs.push({chain:secondChain,tier:Math.max(1,tier-2),count:1});
+ }
+ const power=reqs.reduce((sum,r)=>sum+r.count*Math.pow(2,r.tier),0);
+ const multiplier=slot===0?1:slot===1?1.25:1.65;
  return {
   id:'order-'+serial,slot,
   label:slot===0?'Quick':slot===1?'Standard':'Story',
-  requirements:[{chain,tier,count:1}],
-  rewardCoins:Math.round((12+Math.pow(2,tier)*4)*multiplier),
-  rewardLight:Math.max(1,Math.round((tier+1)*multiplier)),
-  title:item.name+' Request'
+  requirements:reqs,
+  rewardCoins:Math.round((10+power*3)*multiplier),
+  rewardLight:Math.max(1,Math.round((2+power/3)*multiplier)),
+  title:slot===2?'Story Request':itemDef(primaryChain,tier).name+' Request'
  };
 }
 export function fillOrdersInPlace(s){
@@ -106,9 +130,7 @@ export function fillOrdersInPlace(s){
  return s;
 }
 export function initializePlayableState(s){
- const next=cloneState(s);
- fillOrdersInPlace(next);
- return next;
+ const next=cloneState(s);fillOrdersInPlace(next);return next;
 }
 export function currentRestoration(s){return RESTORATION_NODES[s.restorationIndex]??null;}
 export function restorationProgress(s){return Math.round((s.completedRestorations.length/RESTORATION_NODES.length)*100);}
@@ -131,10 +153,11 @@ export function merge(s,from,to){
  discoverInPlace(n,n.cells[to].content,events);
  events.unshift({type:'merged',from,to,item:structuredClone(n.cells[to].content)});
  if(n.phase==='first_merge'){
-  const p=revealInPlace(n,FIRST_TREE),e=revealInPlace(n,FIRST_EMPTY);
-  if(p)events.push(p);if(e)events.push(e);n.phase='core';
- }else if(frontierCrates(n).length){
-  const e=revealInPlace(n,nearestFrontier(n,to));if(e)events.push(e);
+  const p=revealInPlace(n,FIRST_TREE);if(p)events.push(p);
+  for(const i of FIRST_CLEARING){const e=revealInPlace(n,i);if(e)events.push(e);}
+  n.phase='core';
+ }else{
+  advanceExplorationInPlace(n,to,events);
  }
  ensureCapacityInPlace(n,to,events);fillOrdersInPlace(n);
  return out(n,events);
@@ -156,9 +179,6 @@ export function tapProducer(s,index){
  discoverInPlace(n,n.cells[target].content,[]);
  return out(n,[{type:'produced',producerId:p.id,index:target,item:structuredClone(n.cells[target].content)}]);
 }
-function findBoardItem(s,req){
- return s.cells.findIndex(c=>c.content?.type==='item'&&c.content.chain===req.chain&&c.content.tier===req.tier);
-}
 export function completeOrder(s,orderId){
  const order=s.activeOrders.find(o=>o.id===orderId);
  if(!order)return out(s,[],false,'Order not found.');
@@ -173,8 +193,7 @@ export function completeOrder(s,orderId){
  const n=cloneState(s);
  for(const i of indices)n.cells[i].content=null;
  n.coins+=order.rewardCoins;n.forestLight+=order.rewardLight;n.ordersCompleted++;
- n.activeOrders=n.activeOrders.filter(o=>o.id!==orderId);
- fillOrdersInPlace(n);
+ n.activeOrders=n.activeOrders.filter(o=>o.id!==orderId);fillOrdersInPlace(n);
  const events=[{type:'order_completed',orderId,coins:order.rewardCoins,light:order.rewardLight}];
  ensureCapacityInPlace(n,indices[0]??0,events);
  return out(n,events);
@@ -190,8 +209,7 @@ export function restoreNode(s,itemIndex){
  n.cells[itemIndex].content=null;n.coins-=node.coinCost;
  n.completedRestorations.push(node.id);n.restorationIndex++;
  events.push({type:'restored',nodeId:node.id,progress:restorationProgress(n)});
- unlockProducersInPlace(n,events);
- ensureCapacityInPlace(n,itemIndex,events);
+ unlockProducersInPlace(n,events);ensureCapacityInPlace(n,itemIndex,events);
  return out(n,events);
 }
 export function upgradeProducer(s,producerId){
@@ -231,5 +249,6 @@ export function validateState(s){
  if(s.coins<0||s.forestLight<0)errors.push('currency');
  if(s.activeOrders.length>3)errors.push('orders');
  if(s.restorationIndex<0||s.restorationIndex>RESTORATION_NODES.length)errors.push('restoration');
+ if(!Number.isInteger(s.explorationPoints)||s.explorationPoints<0)errors.push('exploration');
  return errors;
 }
