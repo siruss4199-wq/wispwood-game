@@ -1,4 +1,4 @@
-import {MILESTONES,PRODUCERS,itemDef} from './core/catalog.mjs';
+import {CHAIN_MARKS,MILESTONES,PRODUCERS,itemDef} from './core/catalog.mjs';
 import {createInitialState,restore,serialize} from './core/state.mjs';
 import {chapterProgress,completeMilestone as finishMilestone,completeOrder as finishOrder,countItems,currentMilestone,fillOrdersInPlace,initializePlayableState,merge,milestoneReady,move,orderReady,producerPreview,requirementProgress,retrieveItem,storeItem,tapProducer} from './core/engine.mjs';
 
@@ -32,7 +32,7 @@ function render(){
  state.cells.forEach((cell,i)=>{
   const b=document.createElement('button');b.type='button';b.className='tile '+cell.terrain;b.dataset.index=i;
   if(i===selected)b.classList.add('selected');
-  if(cell.content?.type==='item'&&(cell.terrain==='open'||cell.terrain==='cobweb')){const d=itemDef(cell.content.chain,cell.content.tier);b.classList.add('item');if(wanted.has(cell.content.chain+':'+cell.content.tier))b.classList.add('wanted');b.innerHTML=`<span class="emoji">${d.emoji}</span><span class="tag">T${cell.content.tier+1}</span>${cell.terrain==='cobweb'?'<span class="web">🕸️</span>':''}`;}
+  if(cell.content?.type==='item'&&(cell.terrain==='open'||cell.terrain==='cobweb')){const d=itemDef(cell.content.chain,cell.content.tier);b.classList.add('item');if(wanted.has(cell.content.chain+':'+cell.content.tier))b.classList.add('wanted');b.innerHTML=`<span class="chainTag">${CHAIN_MARKS[cell.content.chain]}</span><span class="emoji">${d.emoji}</span><span class="tag">T${cell.content.tier+1}</span>${cell.terrain==='cobweb'?'<span class="web">🕸️</span>':''}`;}
   if(cell.terrain==='open'&&cell.content?.type==='producer'){const d=PRODUCERS[cell.content.producerId];b.classList.add('producer');b.innerHTML=`<span class="emoji">${d.emoji}</span><span class="tag">LV${state.producerLevels[d.id]}</span>`;}
   b.addEventListener('click',()=>clickTile(i));
   b.addEventListener('pointerdown',e=>{if(cell.terrain!=='open'||cell.content?.type!=='item')return;drag={id:e.pointerId,from:i,x:e.clientX,y:e.clientY,lastX:e.clientX,lastY:e.clientY,moved:false};b.setPointerCapture?.(e.pointerId);});
