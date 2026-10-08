@@ -227,3 +227,18 @@ test('runtime audio is original synthesized WebAudio with a player mute control'
  assert.match(audio,/Oscillator/);
  assert.match(audio,/wispwood-audio/);
 });
+
+
+test('mobile presentation uses a game HUD, world strip and bottom dock instead of a webpage stack',()=>{
+ const html=fs.readFileSync(new URL('../v4/index.html',import.meta.url),'utf8');
+ const app=fs.readFileSync(new URL('../v4/app.mjs',import.meta.url),'utf8');
+ const css=fs.readFileSync(new URL('../v4/style.css',import.meta.url),'utf8');
+ assert.match(html,/class="topbar gameHud"/);
+ assert.match(html,/class="worldStrip"/);
+ assert.match(html,/class="gameDock"/);
+ assert.match(html,/data-open-panel="orders"/);
+ assert.match(app,/togglePanel/);
+ assert.match(app,/closePanels/);
+ assert.match(css,/position:fixed;left:50%;bottom:max/);
+ assert.match(css,/gamePanel\.open/);
+});
