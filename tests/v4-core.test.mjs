@@ -168,7 +168,7 @@ test('board exposes a visible Wisp Rush loop and pins the first order after the 
  const app=fs.readFileSync(new URL('../v4/app.mjs',import.meta.url),'utf8');
  assert.match(html,/WISP RUSH/);
  assert.match(html,/id="rushFill"/);
- assert.match(app,/state\.moves>0&&state\.ordersCompleted===0&&!selectedOrder/);
+ assert.match(app,/state\.moves>0&&\(!selectedOrder\|\|!state\.activeOrders\.some/);
  assert.match(app,/wisp_burst/);
 });
 
@@ -241,4 +241,23 @@ test('mobile presentation uses a game HUD, world strip and bottom dock instead o
  assert.match(app,/closePanels/);
  assert.match(css,/position:fixed;left:50%;bottom:max/);
  assert.match(css,/gamePanel\.open/);
+});
+
+
+test('first completed request teaches delivery instead of silently consuming items',()=>{
+ const html=fs.readFileSync(new URL('../v4/index.html',import.meta.url),'utf8');
+ const app=fs.readFileSync(new URL('../v4/app.mjs',import.meta.url),'utf8');
+ const css=fs.readFileSync(new URL('../v4/style.css',import.meta.url),'utf8');
+ assert.match(html,/id="deliveryCoach"/);
+ assert.match(app,/firstDelivery=focusedReady&&state\.ordersCompleted===0/);
+ assert.match(app,/deliveryCoach\.hidden=!firstDelivery/);
+ assert.match(app,/ready-to-deliver/);
+ assert.match(app,/Deliver →/);
+ assert.match(css,/deliverPulse/);
+ assert.match(css,/deliveryTutorial/);
+});
+
+test('after delivery the next request is automatically focused',()=>{
+ const app=fs.readFileSync(new URL('../v4/app.mjs',import.meta.url),'utf8');
+ assert.match(app,/order_completed'\)\)selectedOrder=\(state\.activeOrders\.find\(o=>orderReady\(state,o\)\)\?\?state\.activeOrders\[0\]\)/);
 });
