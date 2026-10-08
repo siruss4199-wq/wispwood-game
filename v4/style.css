@@ -521,3 +521,52 @@ h1{font-size:28px;line-height:1;margin:4px 0 4px;letter-spacing:-.7px}
   0%,100%{filter:brightness(1);transform:scale(1)}
   50%{filter:brightness(1.16);transform:scale(1.025)}
 }
+
+
+/* Goal dock: keep the player's next action close to the board. */
+.soundToggle{
+  width:38px;height:38px;border-radius:13px;border:1px solid rgba(225,229,221,.95);
+  background:rgba(255,255,255,.9);font-size:17px;box-shadow:0 5px 18px rgba(64,77,64,.06);
+}
+.goalDock{
+  color:#f8f4ff;background:linear-gradient(135deg,#3a2d53,#4b3a65 58%,#30463f);
+  border-radius:18px;padding:10px 11px;margin-bottom:7px;box-shadow:0 8px 22px rgba(54,39,76,.15);
+}
+.goalMain{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:9px}
+.goalCopy{min-width:0}.goalCopy small{display:block;font-size:8px;letter-spacing:1px;opacity:.68;font-weight:1000}
+.goalCopy b{display:block;font-size:14px;line-height:1.1;margin:2px 0}
+.goalCopy span{display:block;font-size:10px;line-height:1.2;opacity:.82;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.goalAction{
+  min-width:68px;min-height:38px;border:0;border-radius:12px;background:#f5efd9;color:#3d3550;font-weight:1000;font-size:11px;
+}
+.goalAction:disabled{opacity:.42}
+.goalReq{display:flex;gap:4px;overflow-x:auto;margin-top:7px;padding-bottom:1px;scrollbar-width:none}
+.goalReq::-webkit-scrollbar{display:none}.goalReq .reqChip{flex:0 0 auto;background:rgba(255,255,255,.11);border-color:rgba(255,255,255,.14);color:#fff}
+.goalReq .reqChip.done{background:rgba(188,231,171,.18);border-color:rgba(188,231,171,.32)}
+.goalReward{flex:0 0 auto;font-size:9px;font-weight:900;display:flex;align-items:center;padding:4px 7px;background:rgba(255,255,255,.08);border-radius:999px}
+.goalNav{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:6px}
+.goalNav button{width:30px;height:26px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.08);color:#fff;font-size:20px;line-height:1}
+.goalNav span{display:flex;align-items:center;gap:5px}.goalNav b{font-size:9px}.goalNav small{font-size:7px;letter-spacing:.8px;opacity:.58;font-weight:900}
+
+.journeyStrip{
+  display:grid!important;grid-template-columns:auto 1fr auto auto;align-items:center;gap:7px;
+  border-radius:14px!important;padding:7px 9px!important;margin-bottom:8px!important;
+}
+.journeyTitle{display:flex;align-items:center;gap:6px;min-width:0}.journeyTitle>span{font-size:18px}
+.journeyTitle small{display:block;font-size:7px!important;letter-spacing:.8px!important}.journeyTitle strong{display:block;font-size:11px!important;white-space:nowrap}
+.journeyStrip .milestoneReq{margin:0!important;display:flex;gap:3px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
+.journeyStrip .milestoneReq::-webkit-scrollbar{display:none}
+.journeyStrip .reqChip{font-size:8px;padding:3px 5px;white-space:nowrap}
+.journeyStrip .progress{flex:0 0 58px!important;font-size:8px!important}.journeyStrip .progress>span{width:58px!important;height:6px!important;margin-top:3px!important}
+.restoreAction{min-height:34px;border:0;border-radius:10px;padding:0 9px;background:#6e5898;color:#fff;font-size:9px;font-weight:1000}
+.restoreAction:disabled{opacity:.28}
+.itemActions{justify-content:center}.itemActions button{max-width:170px}
+.ordersSection .order{min-height:88px}
+
+@media(max-width:560px){
+  .goalDock{padding:9px;margin-bottom:6px}.goalCopy b{font-size:13px}.goalAction{min-width:62px}
+  .journeyStrip{grid-template-columns:auto 1fr auto!important}
+  .journeyStrip .milestoneReq{grid-column:1/-1;order:3}
+  .journeyStrip .progress{display:none}
+  .wallet{gap:4px}.soundToggle{width:34px;height:34px}
+}
