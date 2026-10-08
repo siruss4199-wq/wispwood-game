@@ -11,23 +11,44 @@
 <body>
 <main class="shell gameShell">
   <header class="topbar gameHud">
-    <div class="titleBlock">
-      <div class="levelRow"><span class="levelBadge">★ <b id="playerLevel">1</b></span><small>WISPWOOD · CHAPTER I</small></div>
-      <h1>Lost Clearing</h1>
-      <div class="discovery">📖 <b id="discovered"></b>/48 discoveries</div>
-    </div>
+    <button class="playerProfile" data-open-panel="collection" type="button" aria-label="Open collection">
+      <span class="playerAvatar">🧝‍♀️</span>
+      <span class="playerLevelStar">★ <b id="playerLevel">1</b></span>
+      <span class="playerChapter"><small>WISPWOOD</small><b>Lost Clearing</b></span>
+    </button>
     <div class="wallet" aria-label="Resources">
-      <span>⚡ <b id="energy"></b></span>
-      <span>🪙 <b id="coins"></b></span>
-      <span>✨ <b id="light"></b></span>
-      <button id="soundToggle" class="soundToggle" type="button" aria-label="Toggle sound" aria-pressed="true">🔊</button>
+      <span class="energyPill"><i>⚡</i><b id="energy"></b><em>+</em></span>
+      <span class="coinPill"><i>🪙</i><b id="coins"></b></span>
+      <span class="lightPill"><i>💎</i><b id="light"></b><em>+</em></span>
     </div>
+    <button class="hudShop" data-open-panel="sources" type="button" aria-label="Open sources"><span>🏪</span><small>SOURCES</small></button>
+    <button id="soundToggle" class="soundToggle" type="button" aria-label="Toggle sound" aria-pressed="true">🔊</button>
+    <span class="hudDiscovery" hidden>📖 <b id="discovered"></b>/48 discoveries</span>
   </header>
+
+  <section class="activityTray" aria-label="Wispwood activities">
+    <button class="activityCard restoreCard" data-open-panel="map" type="button">
+      <span id="activityMilestoneIcon" class="activityIcon">🌱</span>
+      <span class="activityCopy"><small>RESTORE</small><b id="activityMilestoneTitle">Wake the Garden</b><em id="activityMilestoneStep">0/18</em></span>
+    </button>
+    <button class="activityCard requestQuickCard" data-open-panel="orders" type="button">
+      <span id="activityRequestPortrait" class="activityPortrait">🧚</span>
+      <span class="activityCopy"><small>REQUEST</small><b id="activityRequestTitle">Luma</b><em id="activityRequestProgress">0/1 items</em></span>
+    </button>
+    <button class="activityCard bookQuickCard" data-open-panel="collection" type="button">
+      <span class="activityIcon">📖</span>
+      <span class="activityCopy"><small>COLLECTION</small><b>Discovery Book</b><em id="activityBookCount">1/48 found</em></span>
+    </button>
+    <button class="activityCard sourceQuickCard" data-open-panel="sources" type="button">
+      <span class="activityIcon">🌳</span>
+      <span class="activityCopy"><small>SOURCES</small><b>Forest Producers</b><em id="activitySourceCount">1/3 awake</em></span>
+    </button>
+  </section>
 
   <section class="worldStrip" aria-label="Forest journey">
     <div class="worldMoon">☾</div>
     <div class="worldPath">
-      <span class="worldNode active">🌱</span><i></i><span class="worldNode">🪨</span><i></i><span class="worldNode">🌙</span><i></i><span class="worldNode">🏛️</span>
+      <span class="worldNode active" data-world-node="0">🌱</span><i></i><span class="worldNode" data-world-node="1">🪨</span><i></i><span class="worldNode" data-world-node="2">🌙</span><i></i><span class="worldNode" data-world-node="3">🏛️</span>
     </div>
     <div class="worldCopy"><small>RESTORING</small><b id="milestoneTitle"></b></div>
     <div class="progress compactProgress">
@@ -91,7 +112,6 @@
     <div id="actions" class="actions itemActions">
       <button id="store" disabled>🎒 Store</button>
     </div>
-    <p id="hint" class="hint">Find a matching pair to create your first free space.</p>
   </section>
 
   <section id="mapPanel" class="gamePanel mapPanel" data-panel="map">
@@ -130,10 +150,10 @@
   </section>
 
   <nav class="gameDock" aria-label="Game menu">
-    <button class="dockBtn" data-open-panel="orders" type="button"><span>📜</span><b>Requests</b><em id="ordersBadge">4</em></button>
-    <button class="dockBtn" data-open-panel="collection" type="button"><span>📖</span><b>Book</b><em id="collectionBadge">1</em></button>
-    <button class="dockBtn" data-open-panel="sources" type="button"><span>🌳</span><b>Sources</b></button>
-    <button class="dockBtn" data-open-panel="storage" type="button"><span>🎒</span><b>Bag</b><em id="storageBadge">0</em></button>
+    <button class="dockBtn dockBook" data-open-panel="collection" type="button"><span>📖</span><b>Book</b><em id="collectionBadge">1</em></button>
+    <div class="dockHint"><span>ⓘ</span><b id="hint">Find a matching pair to create your first free space.</b></div>
+    <button class="dockBtn dockRequests" data-open-panel="orders" type="button"><span>📜</span><b>Requests</b><em id="ordersBadge">4</em></button>
+    <button class="dockBtn dockBag" data-open-panel="storage" type="button"><span>🎒</span><b>Bag</b><em id="storageBadge">0</em></button>
   </nav>
 </main>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
