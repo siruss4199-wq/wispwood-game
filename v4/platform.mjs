@@ -7,7 +7,8 @@ function sdk(){
 
 async function init(){
   const s=sdk();
-  if(!s||initialized)return false;
+  if(initialized)return true;
+  if(!s)return false;
   try{
     await s.init();
     initialized=true;
