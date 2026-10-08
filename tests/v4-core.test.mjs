@@ -18,6 +18,12 @@ test('V4 starts as an item-rich permanent workspace',()=>{
  assert.deepEqual(validateState(s),[]);
 });
 
+test('every merge item has a distinct visual icon across all six chains',()=>{
+ const icons=Object.values(CHAINS).flatMap(c=>c.items.map(i=>i.emoji));
+ assert.equal(icons.length,48);
+ assert.equal(new Set(icons).size,48,'duplicate item emoji found');
+});
+
 test('full starting workspace immediately offers several meaningful merge choices',()=>{
  const s=start();
  const counts=new Map();
