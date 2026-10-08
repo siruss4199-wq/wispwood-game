@@ -910,3 +910,62 @@ body{
   .requestPortrait{width:38px;height:38px;font-size:23px}
   .gameHud .wallet span{border-radius:13px!important}
 }
+
+
+/* Commercial meta layer: NPC requests, discovery book and reward flights. */
+.npcOrder{display:grid!important;grid-template-columns:54px 1fr;align-items:center;text-align:left;gap:8px;padding:9px!important;position:relative}
+.orderPortrait{
+  width:50px;height:50px;display:grid;place-items:center;border-radius:50%;font-size:31px;
+  background:linear-gradient(180deg,#fff5ce,#ffd28d);border:3px solid #fff;
+  box-shadow:0 3px 0 #c99863,0 5px 10px rgba(55,45,45,.16)
+}
+.orderCopy{min-width:0}.orderCopy>small{display:block;font-size:7px;letter-spacing:.7px;color:#866d94;font-weight:1000}
+.orderCopy>strong{display:inline;font-size:13px;color:#453858}.orderCopy>em{font-size:9px;color:#8a8191;font-style:normal;margin-left:5px}
+.npcOrder.ready .orderPortrait{background:linear-gradient(180deg,#efffbd,#a6e478);box-shadow:0 3px 0 #72a952,0 0 14px rgba(143,224,100,.45)}
+.npcOrder.ready:after{content:"✓";position:absolute;right:8px;top:7px;width:20px;height:20px;display:grid;place-items:center;border-radius:50%;background:#65be56;color:white;font-weight:1000}
+
+.collectionHero{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 2px 9px}
+.collectionHero small{display:block;font-size:7px;letter-spacing:1px;color:#8f74a6;font-weight:1000}
+.collectionHero b{display:block;font-size:16px;color:#443653}.collectionHero span{display:block;font-size:9px;color:#837a86}
+.collectionHero strong{font-size:18px;padding:7px 10px;border-radius:13px;background:linear-gradient(180deg,#ffe37a,#f2ba43);color:#704711;border:2px solid #fff;box-shadow:0 3px 0 #c49335}
+.collectionProgress{height:8px;background:#d9e2d2;border-radius:99px;overflow:hidden;margin-bottom:8px;box-shadow:inset 0 1px 2px rgba(60,70,55,.15)}
+.collectionProgress i{display:block;height:100%;width:0;background:linear-gradient(90deg,#8ad96f,#58bddc,#aa76df,#f2c75b);border-radius:99px;transition:width .35s ease}
+.collectionGrid{display:grid;gap:9px}
+.collectionChain{padding:8px;border-radius:14px;background:rgba(255,255,255,.75);border:1px solid #d9dfd2}
+.collectionChainHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.collectionChainHead b{font-size:11px}.collectionChainHead span{font-size:9px;font-weight:1000;color:#766682}
+.collectionItems{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.collectionItem{min-width:0;min-height:65px;border-radius:11px;border:2px solid rgba(255,255,255,.9);padding:4px 2px;background:#e7e9e2;box-shadow:0 2px 0 rgba(80,80,70,.12)}
+.collectionItem span{display:block;font-size:24px;line-height:1.1}.collectionItem b{display:block;font-size:7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.collectionItem small{display:block;font-size:6px;opacity:.65}
+.collectionItem.locked{filter:grayscale(1);opacity:.55;background:#d8ddd5}.collectionItem.locked span{font-size:19px;color:#869087}
+.collectionItem.found{background:linear-gradient(145deg,#fff8d6,#dff3c3)}
+.collectionChain.chain-water .collectionItem.found{background:linear-gradient(145deg,#e6f8ff,#bfe8fa)}
+.collectionChain.chain-crystal .collectionItem.found{background:linear-gradient(145deg,#f5eaff,#d7bff1)}
+.collectionChain.chain-magic .collectionItem.found{background:linear-gradient(145deg,#ffe9f8,#f7bedf)}
+.collectionChain.chain-relic .collectionItem.found{background:linear-gradient(145deg,#fff1c9,#e7d092)}
+.collectionChain.chain-wood .collectionItem.found{background:linear-gradient(145deg,#ffedcb,#dfc08b)}
+
+.rewardFly{
+  position:fixed;z-index:140;transform:translate(-50%,-50%);pointer-events:none;
+  padding:5px 8px;border-radius:999px;background:#fff;color:#4d4057;font-size:11px;font-weight:1000;
+  border:2px solid rgba(255,255,255,.85);box-shadow:0 4px 14px rgba(39,36,44,.24);
+  animation:rewardFlight .9s cubic-bezier(.18,.8,.3,1) forwards
+}
+@keyframes rewardFlight{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.55)}
+  18%{opacity:1;transform:translate(-50%,-75%) scale(1.12)}
+  75%{opacity:1}
+  100%{opacity:0;transform:translate(calc(-50% + var(--reward-x)),calc(-50% + var(--reward-y))) scale(.7)}
+}
+.discoveryPop{
+  position:fixed;left:50%;top:22%;z-index:150;transform:translate(-50%,-15px) scale(.8);opacity:0;
+  min-width:180px;text-align:center;padding:11px 16px;border-radius:20px;
+  background:linear-gradient(160deg,#6f50ad,#4e8a7d);color:#fff;border:3px solid #fff2a1;
+  box-shadow:0 8px 0 rgba(71,50,101,.35),0 16px 36px rgba(43,36,54,.3);transition:.22s ease
+}
+.discoveryPop.show{opacity:1;transform:translate(-50%,0) scale(1)}
+.discoveryPop small{display:block;font-size:8px;letter-spacing:1.4px;color:#ffe98f;font-weight:1000}
+.discoveryPop span{display:block;font-size:42px;margin:3px}.discoveryPop b{display:block;font-size:15px}.discoveryPop em{display:block;font-size:10px;font-style:normal;margin-top:3px;color:#fff3a8}
+.dockBtn.attention{animation:bookAttention .45s ease-in-out 3;background:linear-gradient(180deg,#b06fd0,#7850aa)!important}
+@keyframes bookAttention{50%{transform:translateY(-5px) scale(1.06)}}
+@media(prefers-reduced-motion:reduce){.rewardFly{animation:none;display:none}.dockBtn.attention{animation:none}}
