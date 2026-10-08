@@ -83,8 +83,10 @@ function apply(r){
  effectIndex=fx?.to??fx?.index??null;effectKind=fx?.type??null;
  platform.event?.(events);
  haptic(big?[18,30,18]:10);
+ const expanded=events.some(x=>x.type==='cell_unlocked');
  msg(
-  events.some(x=>x.type==='milestone_completed')?'🌿 Restoration complete — the clearing opens further!':
+  events.some(x=>x.type==='milestone_completed')?'🌿 Restoration complete — the clearing expands!':
+  events.some(x=>x.type==='order_completed')&&expanded?'📜 Order delivered — the forest pushed outward!':
   events.some(x=>x.type==='order_completed')?'📜 Order delivered — rewards added!':
   events.some(x=>x.type==='producer_unlocked')?'✨ A new source awakened!':
   events.some(x=>x.type==='cobweb_cleared')?'🕸️ Vines cleared — item recovered!':
@@ -99,6 +101,13 @@ function apply(r){
   requestAnimationFrame(()=>board.querySelector(`[data-index="${index}"]`)?.classList.add(kind==='cobweb_cleared'?'burst-clear':'burst'));
   setTimeout(()=>board.querySelector(`[data-index="${index}"]`)?.classList.remove('burst','burst-clear'),650);
  }
+ events.filter(x=>x.type==='cell_unlocked').forEach((x,n)=>{
+  setTimeout(()=>{
+   const el=board.querySelector(`[data-index="${x.index}"]`);
+   el?.classList.add('unlock-wave');
+   setTimeout(()=>el?.classList.remove('unlock-wave'),850);
+  },n*90);
+ });
 }
 function clickTile(i){
  if(performance.now()<suppressClickUntil)return;
@@ -237,7 +246,8 @@ function render(){
  const openItems=state.cells.filter(c=>c.terrain==='open'&&c.content?.type==='item').length;
  const empties=state.cells.filter(c=>c.terrain==='open'&&!c.content).length;
  const webs=state.cells.filter(c=>c.terrain==='cobweb').length;
- boardStatus.textContent=`${openItems} items · ${empties} free · ${webs} vine targets`;
+ const explored=state.cells.filter(c=>c.terrain!=='locked').length;
+ boardStatus.textContent=`${explored}/64 explored · ${empties} free · ${webs} vine targets`;
 
  ordersEl.innerHTML='';
  for(const o of state.activeOrders){

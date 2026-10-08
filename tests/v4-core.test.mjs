@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {CHAINS,MILESTONES} from '../v4/core/catalog.mjs';
 import {COBWEBS,OPEN_START,STARTING_ITEMS,createInitialState} from '../v4/core/state.mjs';
-import {currentMilestone,fillOrdersInPlace,initializePlayableState,merge,milestoneReady,producerIndices,tapProducer,unlockedChains,validateState} from '../v4/core/engine.mjs';
+import {completeOrder,currentMilestone,fillOrdersInPlace,initializePlayableState,merge,milestoneReady,producerIndices,tapProducer,unlockedChains,validateState} from '../v4/core/engine.mjs';
 
 const start=()=>initializePlayableState(createInitialState());
 
@@ -104,4 +104,27 @@ test('first minute UX visibly guides players into the board loop',()=>{
  assert.match(css,/firstMerge/);
  assert.match(css,/mergeBurst/);
  assert.match(css,/sourceBreath/);
+});
+
+
+test('early completed orders visibly expand the board toward the outer edge',()=>{
+ const s=start(),n=structuredClone(s);
+ n.activeOrders[0].requirements=[];
+ const before=n.cells.filter(c=>c.terrain==='locked').length;
+ const r=completeOrder(n,n.activeOrders[0].id);
+ assert.equal(r.ok,true,r.reason);
+ assert.equal(r.state.cells.filter(c=>c.terrain==='locked').length,before-1);
+ const unlocked=r.events.find(e=>e.type==='cell_unlocked');
+ assert.ok(unlocked,'first orders should visibly expand the clearing');
+ const row=Math.floor(unlocked.index/8),col=unlocked.index%8;
+ assert.ok(row===0||row===7||col===0||col===7,'first expansion should visibly reach an outer edge');
+});
+
+test('board UI shows exploration progress and unlock animation',()=>{
+ const app=fs.readFileSync(new URL('../v4/app.mjs',import.meta.url),'utf8');
+ const css=fs.readFileSync(new URL('../v4/style.css',import.meta.url),'utf8');
+ assert.match(app,/64 explored/);
+ assert.match(app,/cell_unlocked/);
+ assert.match(css,/unlock-wave/);
+ assert.match(css,/unlockWave/);
 });

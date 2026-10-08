@@ -144,22 +144,44 @@ export function tapProducer(s,index){
  const events=[{type:'produced',producerId:id,index:target,item:structuredClone(n.cells[target].content)}];discoverInPlace(n,n.cells[target].content,events);
  return result(n,events);
 }
-export function completeOrder(s,orderId){
- const order=s.activeOrders.find(o=>o.id===orderId);if(!order)return result(s,[],false,'Order not found.');
- if(!orderReady(s,order))return result(s,[],false,'Order items are not ready.');
- const n=cloneState(s);consumeRequirementsInPlace(n,order.requirements);
- n.coins+=order.rewardCoins;n.forestLight+=order.rewardLight;n.energy=Math.min(n.maxEnergy,n.energy+order.rewardEnergy);n.ordersCompleted++;
- n.activeOrders=n.activeOrders.filter(o=>o.id!==orderId);fillOrdersInPlace(n);
- return result(n,[{type:'order_completed',orderId,coins:order.rewardCoins,light:order.rewardLight}]);
+function edgeDepth(i){
+ const r=Math.floor(i/SIZE),c=i%SIZE;
+ return Math.min(r,c,SIZE-1-r,SIZE-1-c);
 }
-function lockedByDistance(s){
+function touchesRevealed(s,i){
+ const r=Math.floor(i/SIZE),c=i%SIZE;
+ for(const [dr,dc] of [[-1,0],[1,0],[0,-1],[0,1]]){
+  const rr=r+dr,cc=c+dc;
+  if(rr<0||rr>=SIZE||cc<0||cc>=SIZE)continue;
+  if(s.cells[rr*SIZE+cc].terrain!=='locked')return true;
+ }
+ return false;
+}
+function lockedByExpansion(s){
  return s.cells.flatMap((c,i)=>c.terrain==='locked'?[i]:[]).sort((a,b)=>{
+  const af=touchesRevealed(s,a)?0:1,bf=touchesRevealed(s,b)?0:1;
+  if(af!==bf)return af-bf;
+  const ae=edgeDepth(a),be=edgeDepth(b);
+  if(ae!==be)return ae-be;
   const ar=Math.floor(a/SIZE),ac=a%SIZE,br=Math.floor(b/SIZE),bc=b%SIZE;
   return (Math.abs(ar-3.5)+Math.abs(ac-3.5))-(Math.abs(br-3.5)+Math.abs(bc-3.5))||a-b;
  });
 }
-function unlockBoardCellsInPlace(s,count,events){
- for(const i of lockedByDistance(s).slice(0,count)){s.cells[i].terrain='open';s.unlockedCells++;events.push({type:'cell_unlocked',index:i});}
+function unlockBoardCellsInPlace(s,count,events,source='milestone'){
+ for(const i of lockedByExpansion(s).slice(0,count)){
+  s.cells[i].terrain='open';s.unlockedCells++;
+  events.push({type:'cell_unlocked',index:i,source});
+ }
+}
+export function completeOrder(s,orderId){
+ const order=s.activeOrders.find(o=>o.id===orderId);if(!order)return result(s,[],false,'Order not found.');
+ if(!orderReady(s,order))return result(s,[],false,'Order items are not ready.');
+ const n=cloneState(s),events=[{type:'order_completed',orderId,coins:order.rewardCoins,light:order.rewardLight}];
+ consumeRequirementsInPlace(n,order.requirements);
+ n.coins+=order.rewardCoins;n.forestLight+=order.rewardLight;n.energy=Math.min(n.maxEnergy,n.energy+order.rewardEnergy);n.ordersCompleted++;
+ if(n.ordersCompleted<=4)unlockBoardCellsInPlace(n,1,events,'order');
+ n.activeOrders=n.activeOrders.filter(o=>o.id!==orderId);fillOrdersInPlace(n);
+ return result(n,events);
 }
 function unlockProducerInPlace(s,id,events){
  if(!id||s.producerLevels[id]>0)return;
@@ -171,7 +193,7 @@ export function completeMilestone(s){
  const m=currentMilestone(s);if(!m)return result(s,[],false,'Lost Clearing chapter is complete.');
  if(!milestoneReady(s,m))return result(s,[],false,'Milestone requirements are not ready.');
  const n=cloneState(s),events=[];consumeRequirementsInPlace(n,m.requirements);n.coins-=m.coinCost;n.completedMilestones.push(m.id);n.milestoneIndex++;
- unlockBoardCellsInPlace(n,2+(n.milestoneIndex%3===0?1:0),events);unlockProducerInPlace(n,m.unlock,events);
+ unlockBoardCellsInPlace(n,2+(n.milestoneIndex%3===0?1:0),events,'milestone');unlockProducerInPlace(n,m.unlock,events);
  events.unshift({type:'milestone_completed',milestoneId:m.id,progress:chapterProgress(n)});
  fillOrdersInPlace(n);return result(n,events);
 }
