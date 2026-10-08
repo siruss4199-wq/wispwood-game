@@ -1,17 +1,18 @@
 import {CHAIN_MARKS,CHAINS,MILESTONES,PRODUCERS,itemDef} from './core/catalog.mjs';
 import {createInitialState,restore,serialize} from './core/state.mjs';
 import {platform} from './platform.mjs';
-import {chapterProgress,completeMilestone as finishMilestone,completeOrder as finishOrder,currentMilestone,fillOrdersInPlace,initializePlayableState,merge,milestoneReady,move,orderReady,producerPreview,requirementProgress,retrieveItem,storeItem,tapProducer} from './core/engine.mjs';
+import {chapterProgress,completeMilestone as finishMilestone,completeOrder as finishOrder,currentMilestone,fillOrdersInPlace,initializePlayableState,merge,milestoneReady,move,orderReady,producerPreview,requirementProgress,retrieveItem,reviveSparseBoard,storeItem,tapProducer} from './core/engine.mjs';
 
 const KEY='wispwood-v4';
 const $=s=>document.querySelector(s);
 const board=$('#board'),ordersEl=$('#orders'),sourcesEl=$('#sources'),storageEl=$('#storage');
 const energy=$('#energy'),coins=$('#coins'),light=$('#light'),discovered=$('#discovered');
 const milestoneTitle=$('#milestoneTitle'),milestoneReq=$('#milestoneReq'),milestoneStep=$('#milestoneStep'),progressBar=$('#progressBar i');
-const boardStatus=$('#boardStatus'),questRibbon=$('#questRibbon'),questIcon=$('#questIcon'),questTitle=$('#questTitle'),questText=$('#questText'),questStep=$('#questStep'),inspect=$('#inspect'),inspectIcon=$('#inspectIcon'),inspectName=$('#inspectName'),inspectMeta=$('#inspectMeta'),inspectUse=$('#inspectUse');
+const boardStatus=$('#boardStatus'),rushFill=$('#rushFill'),rushCount=$('#rushCount'),questRibbon=$('#questRibbon'),questIcon=$('#questIcon'),questTitle=$('#questTitle'),questText=$('#questText'),questStep=$('#questStep'),inspect=$('#inspect'),inspectIcon=$('#inspectIcon'),inspectName=$('#inspectName'),inspectMeta=$('#inspectMeta'),inspectUse=$('#inspectUse');
 const completeOrderBtn=$('#completeOrder'),completeMilestoneBtn=$('#completeMilestone'),storeBtn=$('#store'),hint=$('#hint'),toast=$('#toast');
 
-let state=restore(localStorage.getItem(KEY))??initializePlayableState(createInitialState());
+const restored=restore(localStorage.getItem(KEY));
+let state=restored?reviveSparseBoard(restored):initializePlayableState(createInitialState());
 let selected=null,selectedOrder=null,drag=null,timer=null,suppressClickUntil=0,effectIndex=null,effectKind=null;
 
 function save(){localStorage.setItem(KEY,serialize(state));platform.save?.(serialize(state));}
@@ -79,13 +80,14 @@ function apply(r){
  if(events.some(x=>x.type==='order_completed'))selectedOrder=null;
  else if(previousOrder&&state.activeOrders.some(o=>o.id===previousOrder))selectedOrder=previousOrder;
  const big=events.some(x=>x.type==='milestone_completed'||x.type==='order_completed'||x.type==='producer_unlocked');
- const fx=events.find(x=>x.type==='merged'||x.type==='produced'||x.type==='cobweb_cleared'||x.type==='producer_unlocked');
+ const fx=events.find(x=>x.type==='wisp_burst')??events.find(x=>x.type==='merged'||x.type==='produced'||x.type==='cobweb_cleared'||x.type==='producer_unlocked');
  effectIndex=fx?.to??fx?.index??null;effectKind=fx?.type??null;
  platform.event?.(events);
  haptic(big?[18,30,18]:10);
  const expanded=events.some(x=>x.type==='cell_unlocked');
  msg(
-  events.some(x=>x.type==='milestone_completed')?'🌿 Restoration complete — the clearing expands!':
+  events.some(x=>x.type==='milestone_completed')?'🌿 Restoration complete — gifts are growing on the board!':
+  events.some(x=>x.type==='wisp_burst')?'✦ WISP RUSH! +2 Light and a bonus drop!':
   events.some(x=>x.type==='order_completed')&&expanded?'📜 Order delivered — the forest pushed outward!':
   events.some(x=>x.type==='order_completed')?'📜 Order delivered — rewards added!':
   events.some(x=>x.type==='producer_unlocked')?'✨ A new source awakened!':
@@ -157,9 +159,13 @@ function suggestedIndices(){
 }
 function tutorialState(){
  if(state.moves===0)return {icon:'✨',title:'Make your first merge',text:'Two matching relics are glowing. Combine one pair to open a space.',step:'1/3'};
- if(state.ordersCompleted===0)return {icon:'📜',title:'Choose a Forest Order',text:'Pick one request below — the board will mark exactly what helps.',step:'2/3'};
- if(state.milestoneIndex===0)return {icon:'🌿',title:'Wake the clearing',text:'Complete orders, build the restoration items, then restore your first landmark.',step:'3/3'};
- return {icon:'🌙',title:'The clearing is yours',text:'Build chains, free vine targets and push deeper into Wispwood.',step:'EXPLORE'};
+ if(state.ordersCompleted===0){
+  const o=state.activeOrders.find(x=>x.id===selectedOrder)??state.activeOrders[0];
+  const need=o?.requirements?.map(r=>itemText(r.chain,r.tier,r.count)).join(' + ')??'the highlighted pieces';
+  return {icon:'📜',title:o?.title??'First Forest Order',text:`Build ${need}. Useful pieces are already outlined.`,step:'2/3'};
+ }
+ if(state.milestoneIndex===0)return {icon:'🌿',title:'Wake the clearing',text:'Orders give Light. Finish the restoration items and wake your first landmark.',step:'3/3'};
+ return {icon:'🌙',title:'The clearing is yours',text:'Build chains, trigger Wisp Rush and push deeper into Wispwood.',step:'EXPLORE'};
 }
 function tileAria(cell,i){
  if(cell.terrain==='locked')return `Locked forest cell ${i+1}`;
@@ -175,6 +181,7 @@ function tileAria(cell,i){
 }
 function render(){
  fillOrdersInPlace(state);
+ if(state.moves>0&&state.ordersCompleted===0&&!selectedOrder)selectedOrder=state.activeOrders[0]?.id??null;
  board.innerHTML='';
 
  const focusOrder=state.activeOrders.find(o=>o.id===selectedOrder);
@@ -247,7 +254,8 @@ function render(){
  const empties=state.cells.filter(c=>c.terrain==='open'&&!c.content).length;
  const webs=state.cells.filter(c=>c.terrain==='cobweb').length;
  const explored=state.cells.filter(c=>c.terrain!=='locked').length;
- boardStatus.textContent=`${explored}/64 explored · ${empties} free · ${webs} vine targets`;
+ boardStatus.textContent=`${explored}/64 explored · ${openItems} items · ${empties} free`;
+ const rush=(state.mergeCount??0)%5;rushCount.textContent=`${rush}/5`;rushFill.style.width=(rush/5*100)+'%';
 
  ordersEl.innerHTML='';
  for(const o of state.activeOrders){
@@ -321,7 +329,7 @@ function render(){
 
  if(state.moves===0&&empties===0)hint.textContent='Start here: merge any glowing matching pair to create your first free space.';
  else if(selectedOrder)hint.textContent='Order selected — useful items are outlined. Build the missing tiers and deliver when READY appears.';
- else if(state.ordersCompleted===0)hint.textContent='Pick a Forest Order below. The board will highlight items that help that goal.';
+ else if(state.ordersCompleted===0)hint.textContent='Your first order is pinned above — merge the outlined pieces and keep the Wisp Rush meter moving.';
  else if(state.milestoneIndex===0)hint.textContent='Orders fund restoration. Keep one eye on the Current Restoration requirements above.';
  else if(empties<=1)hint.textContent='Space is tight — merge a pair or move a valuable singleton into the Backpack.';
  else hint.textContent='Choose your next goal: order rewards, vine targets, or the current restoration milestone.';

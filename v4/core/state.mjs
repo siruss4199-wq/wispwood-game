@@ -26,7 +26,7 @@ export function createInitialState(){
   schema:SCHEMA,
   energy:80,maxEnergy:100,
   coins:0,forestLight:0,
-  moves:0,ordersCompleted:0,
+  moves:0,mergeCount:0,giftSerial:0,densitySeeded:true,ordersCompleted:0,
   milestoneIndex:0,completedMilestones:[],
   producerLevels:{ancientTree:1,moonSpring:0,wispNest:0},
   producerTapCounts:{ancientTree:0,moonSpring:0,wispNest:0},

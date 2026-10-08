@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {CHAINS,MILESTONES} from '../v4/core/catalog.mjs';
 import {COBWEBS,OPEN_START,STARTING_ITEMS,createInitialState} from '../v4/core/state.mjs';
-import {completeOrder,currentMilestone,fillOrdersInPlace,initializePlayableState,merge,milestoneReady,producerIndices,tapProducer,unlockedChains,validateState} from '../v4/core/engine.mjs';
+import {completeOrder,currentMilestone,fillOrdersInPlace,initializePlayableState,merge,milestoneReady,producerIndices,reviveSparseBoard,tapProducer,unlockedChains,validateState} from '../v4/core/engine.mjs';
 
 const start=()=>initializePlayableState(createInitialState());
 
@@ -127,4 +127,47 @@ test('board UI shows exploration progress and unlock animation',()=>{
  assert.match(app,/cell_unlocked/);
  assert.match(css,/unlock-wave/);
  assert.match(css,/unlockWave/);
+});
+
+
+test('clearing vines regrows bonus items so the board does not drain empty',()=>{
+ let s=start(),target=COBWEBS[0],idx=target[0];
+ s=merge(s,28,35).state;
+ const n=structuredClone(s),empty=n.cells.findIndex(c=>c.terrain==='open'&&!c.content);
+ n.cells[empty].content={type:'item',chain:target[1],tier:target[2]};
+ const before=n.cells.filter(c=>c.terrain==='open'&&c.content?.type==='item').length;
+ const r=merge(n,empty,idx);
+ assert.equal(r.ok,true,r.reason);
+ assert.ok(r.events.filter(e=>e.type==='bonus_spawned').length>=1);
+ assert.ok(r.state.cells.filter(c=>c.terrain==='open'&&c.content?.type==='item').length>=before);
+});
+
+test('every fifth merge triggers Wisp Rush with Light and a bonus drop',()=>{
+ let s=start();
+ s.mergeCount=4;
+ const r=merge(s,28,35);
+ assert.equal(r.ok,true,r.reason);
+ assert.ok(r.events.some(e=>e.type==='wisp_burst'));
+ assert.equal(r.state.forestLight,s.forestLight+2);
+ assert.ok(r.events.some(e=>e.type==='bonus_spawned'&&e.source==='rush'));
+});
+
+test('legacy sparse saves are refilled once to a playable board density',()=>{
+ let s=start();
+ s.densitySeeded=undefined;
+ for(const c of s.cells)if(c.terrain==='open'&&c.content?.type==='item')c.content=null;
+ const before=s.cells.filter(c=>c.terrain==='open'&&!c.content).length;
+ assert.ok(before>10);
+ const r=reviveSparseBoard(s,8);
+ assert.ok(r.cells.filter(c=>c.terrain==='open'&&!c.content).length<=8);
+ assert.equal(r.densitySeeded,true);
+});
+
+test('board exposes a visible Wisp Rush loop and pins the first order after the first merge',()=>{
+ const html=fs.readFileSync(new URL('../v4/index.html',import.meta.url),'utf8');
+ const app=fs.readFileSync(new URL('../v4/app.mjs',import.meta.url),'utf8');
+ assert.match(html,/WISP RUSH/);
+ assert.match(html,/id="rushFill"/);
+ assert.match(app,/state\.moves>0&&state\.ordersCompleted===0&&!selectedOrder/);
+ assert.match(app,/wisp_burst/);
 });
