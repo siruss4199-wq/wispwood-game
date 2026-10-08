@@ -1,6 +1,6 @@
 import {CELL_COUNT,PRODUCERS} from './catalog.mjs';
 
-export const SCHEMA=2;
+export const SCHEMA=3;
 export const STARTER_SEEDS=[26,34];
 export const FIRST_REVEALS={producer:33,empty:35};
 
@@ -17,13 +17,16 @@ export function createInitialState(){
   phase:'first_merge',
   energy:20,
   maxEnergy:20,
+  coins:0,
+  forestLight:0,
   moves:0,
   cratesOpened:0,
-  chapterQuestIndex:0,
-  completedQuestIds:[],
-  rescued:false,
   orderIndex:0,
   ordersCompleted:0,
+  projectIndex:0,
+  completedProjectIds:[],
+  rescued:false,
+  nextAreaUnlocked:false,
   cells
  };
 }

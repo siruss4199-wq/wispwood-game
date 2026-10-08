@@ -1,4 +1,4 @@
-import {CELL_COUNT,CHAINS,CHAPTER_QUESTS,FOREST_ORDERS,MAX_TIER,PRODUCERS,SIZE} from './catalog.mjs';
+import {AREA,CELL_COUNT,CHAINS,FOREST_ORDERS,MAX_TIER,PRODUCERS,RESTORATION_PROJECTS,SIZE} from './catalog.mjs';
 import {FIRST_REVEALS,cloneState} from './state.mjs';
 
 const out=(state,events=[],ok=true,reason=null)=>({ok,reason,state,events});
@@ -55,16 +55,24 @@ function ensureCapacityInPlace(state,near){
 }
 
 export function currentRequest(state){
- if(!state.rescued){
-  return CHAPTER_QUESTS[Math.min(state.chapterQuestIndex,CHAPTER_QUESTS.length-1)]??null;
- }
  return FOREST_ORDERS[state.orderIndex%FOREST_ORDERS.length]??null;
 }
-
-export function requestProgress(state){
- return state.rescued
-  ? {mode:'orders',current:(state.orderIndex%FOREST_ORDERS.length)+1,total:FOREST_ORDERS.length,completed:state.ordersCompleted}
-  : {mode:'chapter',current:Math.min(state.chapterQuestIndex+1,CHAPTER_QUESTS.length),total:CHAPTER_QUESTS.length,completed:state.completedQuestIds.length};
+export function currentProject(state){
+ return RESTORATION_PROJECTS[state.projectIndex]??null;
+}
+export function areaProgress(state){
+ return Math.min(100,state.completedProjectIds.length*25);
+}
+export function restorationStatus(state){
+ const p=currentProject(state);
+ if(!p)return {complete:true,progress:100,project:null,coinsReady:true,lightReady:true};
+ return {
+  complete:false,
+  progress:areaProgress(state),
+  project:p,
+  coinsReady:state.coins>=p.coinCost,
+  lightReady:state.forestLight>=p.lightRequired
+ };
 }
 
 export function move(state,from,to){
@@ -121,30 +129,53 @@ export function deliver(state,index){
  if(!isOpen(state,index))return out(state,[],false,'Select an open item.');
  const item=state.cells[index].content,q=currentRequest(state);
  if(!q||!item||item.type!=='item'||item.chain!==q.chain||item.tier!==q.tier){
-  return out(state,[],false,'That item does not complete the current request.');
+  return out(state,[],false,'That item does not complete the current order.');
  }
  const next=cloneState(state);
  next.cells[index].content=null;
- const events=[{type:'request_completed',requestId:q.id}];
+ next.ordersCompleted++;
+ next.orderIndex=(next.orderIndex+1)%FOREST_ORDERS.length;
+ next.coins+=q.rewardCoins;
+ next.forestLight+=q.rewardLight;
+ next.energy=Math.min(next.maxEnergy,next.energy+q.rewardEnergy);
+ const events=[
+  {type:'order_completed',orderId:q.id},
+  {type:'coins_earned',amount:q.rewardCoins},
+  {type:'light_earned',amount:q.rewardLight},
+  {type:'energy_reward',amount:q.rewardEnergy}
+ ];
+ events.push(...ensureCapacityInPlace(next,index));
+ return out(next,events);
+}
 
- if(!next.rescued){
-  next.completedQuestIds=[...next.completedQuestIds,q.id];
-  next.chapterQuestIndex++;
-  next.energy=Math.min(next.maxEnergy,next.energy+q.rewardEnergy);
-  events.push({type:'energy_reward',amount:q.rewardEnergy});
-  if(next.chapterQuestIndex>=CHAPTER_QUESTS.length){
-   next.rescued=true;
-   next.phase='orders';
-   next.chapterQuestIndex=CHAPTER_QUESTS.length;
-   events.push({type:'mivra_rescued'});
-  }
- }else{
-  next.ordersCompleted++;
-  next.orderIndex=(next.orderIndex+1)%FOREST_ORDERS.length;
-  next.energy=Math.min(next.maxEnergy,next.energy+q.rewardEnergy);
-  events.push({type:'energy_reward',amount:q.rewardEnergy});
+export function restoreProject(state,index){
+ const project=currentProject(state);
+ if(!project)return out(state,[],false,AREA.title+' is already fully restored.');
+ if(!isOpen(state,index))return out(state,[],false,'Select the required crafted item.');
+ const item=state.cells[index].content;
+ if(!item||item.type!=='item'||item.chain!==project.chain||item.tier!==project.tier){
+  return out(state,[],false,'This restoration needs the required crafted item.');
  }
+ if(state.coins<project.coinCost)return out(state,[],false,'Earn '+(project.coinCost-state.coins)+' more Coins.');
+ if(state.forestLight<project.lightRequired)return out(state,[],false,'Earn '+(project.lightRequired-state.forestLight)+' more Forest Light.');
 
+ const next=cloneState(state);
+ next.cells[index].content=null;
+ next.coins-=project.coinCost;
+ next.completedProjectIds=[...next.completedProjectIds,project.id];
+ next.projectIndex++;
+ const progress=areaProgress(next);
+ const events=[
+  {type:'project_restored',projectId:project.id,title:project.title,icon:project.icon,progress},
+  {type:'coins_spent',amount:project.coinCost}
+ ];
+ if(next.projectIndex>=RESTORATION_PROJECTS.length){
+  next.rescued=true;
+  next.nextAreaUnlocked=true;
+  next.phase='area_complete';
+  events.push({type:'area_restored',areaId:AREA.id,nextArea:AREA.nextArea});
+  events.push({type:'mivra_rescued'});
+ }
  events.push(...ensureCapacityInPlace(next,index));
  return out(next,events);
 }
@@ -168,8 +199,10 @@ export function validateState(state){
  const errors=[];
  if(!Array.isArray(state.cells)||state.cells.length!==CELL_COUNT)errors.push('board-size');
  if(state.energy<0||state.energy>state.maxEnergy)errors.push('energy-range');
- if(!Number.isInteger(state.chapterQuestIndex)||state.chapterQuestIndex<0||state.chapterQuestIndex>CHAPTER_QUESTS.length)errors.push('quest-index');
- if(!Array.isArray(state.completedQuestIds))errors.push('quest-history');
+ if(state.coins<0)errors.push('coins-range');
+ if(state.forestLight<0)errors.push('light-range');
+ if(!Number.isInteger(state.projectIndex)||state.projectIndex<0||state.projectIndex>RESTORATION_PROJECTS.length)errors.push('project-index');
+ if(!Array.isArray(state.completedProjectIds))errors.push('project-history');
  state.cells.forEach((c,i)=>{
   if(!['crate','open'].includes(c.terrain))errors.push('terrain:'+i);
   if(c.content?.type==='item'&&!CHAINS[c.content.chain]?.[c.content.tier])errors.push('item:'+i);

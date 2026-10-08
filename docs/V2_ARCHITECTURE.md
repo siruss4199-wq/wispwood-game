@@ -1,55 +1,41 @@
-# Wispwood V2 — Clean Merge Architecture
+# Wispwood V2 — Merge + Economy + Restoration Architecture
 
-## Why rebuild
-The old prototype mixed UI, merge rules, progression, migrations, crate logic and CSS-sensitive tests in one file. V2 is split into catalog, state, engine, UI and behavior tests.
+## Player promise
+Every merge should visibly move the player toward restoring Wispwood. Coins are not a score. Crafted items are not disposable clutter. Both are resources the player spends to change the world.
 
-## Non-negotiable core rules
-1. Drag identical items together to merge.
-2. Start with one chain only: Leaf.
-3. Ancient Tree is the deterministic Seed source and costs 1 Energy per tap.
-4. Board starts visually full: 62 crates + 2 Seeds.
-5. First Seed merge reveals the Tree plus one empty tile.
-6. Every later merge opens one additional empty frontier crate.
-7. Merges recover 1 Energy, so crafting cannot quietly consume the player into a hard stop.
-8. When no pair exists, the engine must preserve a producer plus at least two open spaces while crates remain.
-9. Core engine never reads or writes the DOM.
-10. Behavior tests simulate full progression and long-run liveness.
+## Core loop
+Producer → merge items → complete Forest Orders → earn Coins + Forest Light → craft restoration item → spend Coins + item → visibly restore the area → unlock story/next area.
 
-## Continuous chapter flow
-Chapter One is no longer a one-quest demo:
-- Healing Herb (tier 2)
-- Forest Bloom (tier 3)
-- Moon Flower (tier 4)
-- Completing all three rescues Mivra.
-- After rescue, rotating Forest Orders continue indefinitely so the game does not hit a content wall.
+## Three resources only
+- Energy: pays for producer taps.
+- Coins: earned from Forest Orders and spent on restoration projects.
+- Forest Light: earned from Orders and acts as a story/restoration threshold. It is not consumed.
+- Crafted items: high-value project materials; the selected required item is consumed when a project is restored.
 
-## State model
-Each cell owns:
-- terrain: crate | open
-- reveal: future crate content
-- content: null | item | producer
+## Lost Clearing story
+Four projects create the first complete chapter:
+1. Wake the Garden — 40 Coins + Herb + 3 Light.
+2. Repair the Bridge — 90 Coins + Bloom + 8 Light.
+3. Light the Lanterns — 150 Coins + Moon Flower + 15 Light.
+4. Restore Mivra's Shelter — 240 Coins + Ancient Blossom + 25 Light.
 
-Game-wide state owns:
-- Energy
-- Moves
-- Chapter quest index/history
-- Rescue state
-- Endless order index/count
-- Save schema
+Each project adds 25% to the area. Completing the fourth reaches 100%, rescues Mivra, and unlocks Moonlit Grove.
 
-## Tests
-The V2 test suite covers:
-- full-board two-Seed start
-- first merge reveal
-- producer/energy loop
-- all 3 chapter requests
-- post-rescue endless orders
-- 120 automated actions without a dead end
-- save schema validation
+## Feedback hierarchy
+Immediate: merge animation / item tier increases.
+Session goal: order reward shows Coins + Light gained.
+Medium goal: restoration card shows exact Coin/Light/item requirement and 0–100% area progress.
+Major goal: project completion changes the restoration visual and reports 25/50/75/100%.
+Chapter goal: 100% Lost Clearing → Mivra rescued → Moonlit Grove unlocked.
 
-Next expansion only after this loop feels good:
-- Mivra scene/reward presentation
-- Dew chain
-- vine blockers
-- second producer
-- economy/ads/events later
+## Structural rules
+- Board remains 8×8.
+- Start remains 62 crates + 2 Seeds.
+- First merge reveals Ancient Tree and an empty tile.
+- Every normal merge opens another frontier crate while crates remain.
+- When no merge pair exists, producer capacity is preserved.
+- Orders continue even after an area is complete.
+- Core engine owns rules; UI only dispatches actions and renders state.
+
+## Next expansion
+Moonlit Grove should introduce Dew + Moon Spring only after this first-area economy feels good. Do not add more currencies before the Coin/Light/restoration loop is proven.
