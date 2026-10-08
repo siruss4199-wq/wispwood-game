@@ -12,9 +12,9 @@
 <main class="shell gameShell">
   <header class="topbar gameHud">
     <div class="titleBlock">
-      <small>WISPWOOOD · CHAPTER I</small>
+      <div class="levelRow"><span class="levelBadge">★ <b id="playerLevel">1</b></span><small>WISPWOOD · CHAPTER I</small></div>
       <h1>Lost Clearing</h1>
-      <div class="discovery">📖 <b id="discovered"></b>/48</div>
+      <div class="discovery">📖 <b id="discovered"></b>/48 discoveries</div>
     </div>
     <div class="wallet" aria-label="Resources">
       <span>⚡ <b id="energy"></b></span>
@@ -41,6 +41,7 @@
   <section id="questRibbon" class="goalDock" aria-label="Active goal">
     <div class="goalMain">
       <span id="questIcon" class="questIcon">✨</span>
+      <span id="requestPortrait" class="requestPortrait" aria-hidden="true">🧚</span>
       <div class="goalCopy">
         <small>FOREST REQUEST</small>
         <b id="questTitle">Wake the clearing</b>
