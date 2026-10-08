@@ -1,9 +1,82 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Wispwood V4</title><link rel="stylesheet" href="./style.css"></head><body><main class="shell">
-<header><div><small>WISPWOOOD · EXPEDITION BUILD</small><h1>Lost Clearing</h1><div class="discovery">📖 <b id="discovered"></b>/48 discovered</div></div><div class="wallet"><span>⚡ <b id="energy"></b></span><span>🪙 <b id="coins"></b></span><span>✨ <b id="light"></b></span></div></header>
-<section class="milestone"><div><small>EXPEDITION MILESTONE</small><strong id="milestoneTitle"></strong><p id="milestoneReq"></p></div><div class="progress"><b id="milestoneStep"></b><span id="progressBar"><i></i></span></div></section>
-<section><div class="sectionHead"><b>Orders</b><small>Choose what to build toward</small></div><div id="orders" class="orders"></div></section><section><div class="sectionHead"><b>Sources</b><small>Preview the next drops</small></div><div id="sources" class="sources"></div></section>
-<div id="board" class="board" aria-label="Wispwood merge board"></div>
-<div id="actions" class="actions"><button id="completeOrder" disabled>Complete order</button><button id="completeMilestone" disabled>Complete milestone</button><button id="store" disabled>Store item</button></div>
-<section class="storageWrap"><div class="sectionHead"><b>Backpack</b><small>Tap a stored item to return it</small></div><div id="storage" class="storage"></div></section>
-<p id="hint" class="hint">The board starts full. Merge a matching pair to create your first free space.</p>
-</main><div id="toast" class="toast"></div><script type="module" src="./app.mjs"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#edf3e8">
+<title>Wispwood — Lost Clearing</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<main class="shell">
+  <header class="topbar">
+    <div class="titleBlock">
+      <small>WISPWOOD · CHAPTER I</small>
+      <h1>Lost Clearing</h1>
+      <div class="discovery">📖 <b id="discovered"></b>/48 discoveries</div>
+    </div>
+    <div class="wallet" aria-label="Resources">
+      <span>⚡ <b id="energy"></b></span>
+      <span>🪙 <b id="coins"></b></span>
+      <span>✨ <b id="light"></b></span>
+    </div>
+  </header>
+
+  <section class="milestone" aria-label="Current expedition milestone">
+    <div class="milestoneCopy">
+      <small>CURRENT RESTORATION</small>
+      <strong id="milestoneTitle"></strong>
+      <div id="milestoneReq" class="milestoneReq"></div>
+    </div>
+    <div class="progress">
+      <b id="milestoneStep"></b>
+      <span id="progressBar" aria-label="Chapter progress"><i></i></span>
+    </div>
+  </section>
+
+  <section class="boardSection" aria-label="Merge Garden">
+    <div class="boardHead">
+      <div>
+        <b>Merge Garden</b>
+        <small id="boardStatus"></small>
+      </div>
+      <div class="boardLegend"><span>Match</span><span>Plan</span></div>
+    </div>
+    <div id="board" class="board" role="grid" aria-label="8 by 8 Wispwood merge board"></div>
+
+    <section id="inspect" class="inspect" hidden aria-live="polite">
+      <span id="inspectIcon" class="inspectIcon"></span>
+      <div class="inspectCopy">
+        <b id="inspectName"></b>
+        <small id="inspectMeta"></small>
+      </div>
+      <span id="inspectUse" class="inspectUse"></span>
+    </section>
+
+    <div id="actions" class="actions">
+      <button id="completeOrder" disabled>Deliver order</button>
+      <button id="completeMilestone" disabled>Restore milestone</button>
+      <button id="store" disabled>Store item</button>
+    </div>
+    <p id="hint" class="hint">Find a matching pair to create your first free space.</p>
+  </section>
+
+  <section class="ordersSection">
+    <div class="sectionHead"><b>Forest Orders</b><small>Pick a goal to highlight useful items</small></div>
+    <div id="orders" class="orders"></div>
+  </section>
+
+  <section>
+    <div class="sectionHead"><b>Sources</b><small>See what your producers will make next</small></div>
+    <div id="sources" class="sources"></div>
+  </section>
+
+  <section class="storageWrap">
+    <div class="sectionHead"><b>Backpack</b><small>Save space for harder merges</small></div>
+    <div id="storage" class="storage"></div>
+  </section>
+</main>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script type="module" src="./app.mjs"></script>
+</body>
+</html>
