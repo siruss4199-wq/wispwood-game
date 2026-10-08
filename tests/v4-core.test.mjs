@@ -375,7 +375,7 @@ test('top activity shelf surfaces two real requests plus parcel progress',()=>{
  const html=fs.readFileSync(new URL('../v4/index.html',import.meta.url),'utf8');
  const app=fs.readFileSync(new URL('../v4/app.mjs',import.meta.url),'utf8');
  const css=fs.readFileSync(new URL('../v4/style.css',import.meta.url),'utf8');
- assert.equal((html.match(/data-order-slot=/g)??[]).length,2);
+ assert.equal((html.match(/data-order-slot=/g)??[]).length,3);
  assert.match(html,/id="activityParcelFill"/);
  assert.match(app,/requestMiniCards/);
  assert.match(app,/requestMiniItems/);
@@ -404,4 +404,24 @@ test('board producer presentation has ready and tap feedback without text TAP la
  assert.match(css,/producerReady/);
  assert.match(css,/producerTap/);
  assert.match(css,/producePop/);
+});
+
+
+test('request shelf exposes three live orders and one-tap delivery after onboarding',()=>{
+ const html=fs.readFileSync(new URL('../v4/index.html',import.meta.url),'utf8');
+ const app=fs.readFileSync(new URL('../v4/app.mjs',import.meta.url),'utf8');
+ assert.equal((html.match(/data-order-slot=/g)??[]).length,3);
+ assert.match(app,/state\.ordersCompleted>0/);
+ assert.match(app,/lastRewardOrigin=card/);
+ assert.match(app,/finishOrder\(state,id\)/);
+});
+
+test('reward feedback can burst from board and request origins',()=>{
+ const app=fs.readFileSync(new URL('../v4/app.mjs',import.meta.url),'utf8');
+ const css=fs.readFileSync(new URL('../v4/style.css',import.meta.url),'utf8');
+ assert.match(app,/boardRewardBurst/);
+ assert.match(app,/rewardFly\('⚡',1,energy/);
+ assert.match(app,/lastRewardOrigin\?\?questRibbon/);
+ assert.match(css,/boardRewardOrb/);
+ assert.match(css,/boardRewardOrb \.72s/);
 });
