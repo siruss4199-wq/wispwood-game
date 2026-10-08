@@ -16,7 +16,7 @@ const activityMilestoneIcon=$('#activityMilestoneIcon'),activityMilestoneTitle=$
 
 const restored=restore(localStorage.getItem(KEY));
 let state=restored?reviveSparseBoard(restored):initializePlayableState(createInitialState());
-let selected=null,selectedOrder=null,drag=null,timer=null,suppressClickUntil=0,effectIndex=null,effectKind=null;
+let selected=null,selectedOrder=null,drag=null,timer=null,suppressClickUntil=0,effectIndex=null,effectKind=null,lastRewardOrigin=null;
 
 function save(){localStorage.setItem(KEY,serialize(state));platform.save?.(serialize(state));}
 function haptic(pattern=12){try{navigator.vibrate?.(pattern);}catch{}}
@@ -34,6 +34,16 @@ function rewardFly(icon,amount,target,origin=questRibbon,delay=0){
  el.style.left=x+'px';el.style.top=y+'px';el.style.setProperty('--reward-x',(tx-x)+'px');el.style.setProperty('--reward-y',(ty-y)+'px');
  el.style.animationDelay=delay+'ms';document.body.appendChild(el);setTimeout(()=>el.remove(),1050+delay);
 }
+function boardRewardBurst(origin,icons=['🪙','✨','⚡']){
+ if(!origin)return;
+ const r=origin.getBoundingClientRect();
+ icons.forEach((icon,i)=>{
+  const el=document.createElement('span');el.className='boardRewardOrb';el.textContent=icon;
+  el.style.left=(r.left+r.width/2)+'px';el.style.top=(r.top+r.height/2)+'px';
+  el.style.setProperty('--orb-x',((i-1)*34)+'px');el.style.setProperty('--orb-y',(-38-Math.abs(i-1)*8)+'px');
+  el.style.animationDelay=(i*55)+'ms';document.body.appendChild(el);setTimeout(()=>el.remove(),850+i*55);
+ });
+}
 function discoveryPop(event){
  const item=event?.item;if(!item)return;
  const d=itemDef(item.chain,item.tier),el=document.createElement('div');
@@ -44,17 +54,30 @@ function discoveryPop(event){
 function rewardEffects(events){
  const order=events.find(e=>e.type==='order_completed');
  if(order){
-  rewardFly('🪙',order.coins,coins,questRibbon,0);
-  rewardFly('✨',order.light,light,questRibbon,90);
-  rewardFly('⚡',order.energy,energy,questRibbon,180);
+  const origin=lastRewardOrigin??questRibbon;
+  boardRewardBurst(origin);
+  rewardFly('🪙',order.coins,coins,origin,0);
+  rewardFly('✨',order.light,light,origin,90);
+  rewardFly('⚡',order.energy,energy,origin,180);
+ }
+ const merged=events.find(e=>e.type==='merged');
+ if(merged){
+  const origin=board.querySelector(`[data-index="${merged.to}"]`)??board;
+  rewardFly('⚡',1,energy,origin,40);
  }
  const rush=events.find(e=>e.type==='wisp_burst');
- if(rush)rewardFly('✨',rush.light,light,board,60);
+ if(rush){
+  const origin=board.querySelector(`[data-index="${rush.index}"]`)??board;
+  boardRewardBurst(origin,['✨','✨','🪙']);
+  rewardFly('✨',rush.light,light,origin,60);
+ }
  const parcel=events.find(e=>e.type==='forest_parcel');
  if(parcel){
-  rewardFly('🪙',parcel.coins,coins,questRibbon,20);
-  rewardFly('✨',parcel.light,light,questRibbon,110);
-  rewardFly('⚡',parcel.energy,energy,questRibbon,200);
+  const origin=lastRewardOrigin??questRibbon;
+  boardRewardBurst(origin,['🎁','🪙','✨']);
+  rewardFly('🪙',parcel.coins,coins,origin,20);
+  rewardFly('✨',parcel.light,light,origin,110);
+  rewardFly('⚡',parcel.energy,energy,origin,200);
   const el=document.createElement('div');el.className='parcelPop';el.innerHTML='<small>3 DELIVERIES!</small><span>🎁</span><b>Forest Parcel</b><em>Bonus gifts dropped on the board</em>';
   document.body.appendChild(el);setTimeout(()=>el.classList.add('show'),20);setTimeout(()=>el.remove(),1650);
  }
@@ -152,6 +175,7 @@ function apply(r){
  );
  render();
  requestAnimationFrame(()=>rewardEffects(events));
+ setTimeout(()=>{lastRewardOrigin=null;},1200);
  if(Number.isInteger(effectIndex)){
   const index=effectIndex,kind=effectKind;
   requestAnimationFrame(()=>board.querySelector(`[data-index="${index}"]`)?.classList.add(kind==='cobweb_cleared'?'burst-clear':'burst'));
@@ -529,13 +553,20 @@ function render(){
  save();
 }
 
-completeOrderBtn.addEventListener('click',()=>{audio.unlock();if(selectedOrder)apply(finishOrder(state,selectedOrder));});
+completeOrderBtn.addEventListener('click',()=>{audio.unlock();if(selectedOrder){lastRewardOrigin=questRibbon;apply(finishOrder(state,selectedOrder));}});
 completeMilestoneBtn.addEventListener('click',()=>{audio.unlock();apply(finishMilestone(state));});
 storeBtn.addEventListener('click',()=>{audio.unlock();Number.isInteger(selected)&&apply(storeItem(state,selected));});
 panelButtons.forEach(b=>b.addEventListener('click',()=>togglePanel(b.dataset.openPanel)));
 requestMiniCards.forEach(card=>card.addEventListener('click',()=>{
  const id=card.dataset.orderId;if(!id)return;
- selectedOrder=id;selected=null;closePanels();audio.play('select');render();
+ const order=state.activeOrders.find(o=>o.id===id);if(!order)return;
+ selectedOrder=id;selected=null;closePanels();audio.play('select');
+ if(orderReady(state,order)&&state.ordersCompleted>0){
+  lastRewardOrigin=card;
+  apply(finishOrder(state,id));
+  return;
+ }
+ render();
  questRibbon.scrollIntoView({behavior:'smooth',block:'center'});
 }));
 gamePanels.forEach(p=>p.querySelector('.panelHandle')?.addEventListener('click',closePanels));
