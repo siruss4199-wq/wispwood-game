@@ -30,7 +30,13 @@ test('full starting workspace immediately offers several meaningful merge choice
 });
 
 test('Ancient Tree deterministically produces two chains',()=>{
- let s=start();const p=producerIndices(s)[0],seen=new Set();
+ let s=start();
+ const first=merge(s,28,35);assert.equal(first.ok,true,first.reason);s=first.state;
+ const p=producerIndices(s)[0],seen=new Set();
+ for(let i=0;i<s.cells.length;i++){
+  if(i===p)continue;
+  if(s.cells[i].terrain==='open')s.cells[i].content=null;
+ }
  for(let i=0;i<8;i++){const r=tapProducer(s,p);assert.equal(r.ok,true,r.reason);s=r.state;seen.add(r.events[0].item.chain);}
  assert.deepEqual([...seen].sort(),['leaf','wood']);
 });
@@ -49,7 +55,9 @@ test('cobweb targets require the exact crafted item',()=>{
  let s=start(),target=COBWEBS[0],idx=target[0];
  const bad=s.cells.findIndex(c=>c.terrain==='open'&&c.content?.type==='item');
  assert.equal(merge(s,bad,idx).ok,false);
+ s=merge(s,28,35).state;
  const n=structuredClone(s),empty=n.cells.findIndex(c=>c.terrain==='open'&&!c.content);
+ assert.ok(empty>=0,'opening merge should create working space');
  n.cells[empty].content={type:'item',chain:target[1],tier:target[2]};
  const r=merge(n,empty,idx);assert.equal(r.ok,true,r.reason);assert.equal(r.state.cells[idx].terrain,'open');
 });
