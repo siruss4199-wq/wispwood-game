@@ -202,3 +202,28 @@ test('UI previews the next frontier before it unlocks',()=>{
  assert.match(app,/frontier-next/);
  assert.match(css,/frontierPulse/);
 });
+
+
+test('task UX keeps one active order and restoration close to the board',()=>{
+ const html=fs.readFileSync(new URL('../v4/index.html',import.meta.url),'utf8');
+ const app=fs.readFileSync(new URL('../v4/app.mjs',import.meta.url),'utf8');
+ assert.match(html,/class="goalDock"/);
+ assert.match(html,/id="goalPrev"/);
+ assert.match(html,/id="goalNext"/);
+ assert.match(html,/class="milestone journeyStrip"/);
+ assert.ok(html.indexOf('id="completeOrder"')<html.indexOf('id="board"'));
+ assert.ok(html.indexOf('id="completeMilestone"')<html.indexOf('id="board"'));
+ assert.match(app,/selectOrderByOffset/);
+ assert.match(app,/goalPosition/);
+});
+
+test('runtime audio is original synthesized WebAudio with a player mute control',()=>{
+ const html=fs.readFileSync(new URL('../v4/index.html',import.meta.url),'utf8');
+ const app=fs.readFileSync(new URL('../v4/app.mjs',import.meta.url),'utf8');
+ const audio=fs.readFileSync(new URL('../v4/audio.mjs',import.meta.url),'utf8');
+ assert.match(html,/id="soundToggle"/);
+ assert.match(app,/audio\.playEvents/);
+ assert.match(audio,/AudioContext/);
+ assert.match(audio,/Oscillator/);
+ assert.match(audio,/wispwood-audio/);
+});
