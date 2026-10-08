@@ -2,11 +2,11 @@ import {CHAINS,MILESTONES,PRODUCERS,PRODUCER_MAX_LEVEL,itemDef} from './core/cat
 import {createInitialState,restore,serialize} from './core/state.mjs';
 import {platform} from './platform.mjs';
 import {audio} from './audio.mjs';
-import {chapterProgress,completeMilestone as finishMilestone,completeOrder as finishOrder,currentMilestone,fillOrdersInPlace,frontierName as getFrontierName,initializePlayableState,merge,milestoneReady,move,nextFrontierIndices,orderReady,producerPreview,producerUpgradeCost,requirementProgress,retrieveItem,reviveSparseBoard,storeItem,tapProducer,upgradeProducer} from './core/engine.mjs';
+import {chapterProgress,completeMilestone as finishMilestone,completeOrder as finishOrder,currentMilestone,fillOrdersInPlace,frontierName as getFrontierName,initializePlayableState,merge,milestoneReady,move,nextFrontierIndices,orderReady,producerIndices,producerPreview,producerUpgradeCost,requirementProgress,retrieveItem,reviveSparseBoard,storeItem,tapProducer,upgradeProducer} from './core/engine.mjs';
 
 const KEY='wispwood-v4';
 const $=s=>document.querySelector(s);
-const board=$('#board'),ordersEl=$('#orders'),sourcesEl=$('#sources'),storageEl=$('#storage'),collectionEl=$('#collectionGrid'),restorationMap=$('#restorationMap');
+const board=$('#board'),ordersEl=$('#orders'),sourcesEl=$('#sources'),storageEl=$('#storage'),collectionEl=$('#collectionGrid'),restorationMap=$('#restorationMap'),sourceShelf=$('#sourceShelf');
 const energy=$('#energy'),coins=$('#coins'),light=$('#light'),discovered=$('#discovered'),playerLevel=$('#playerLevel');
 const milestoneTitle=$('#milestoneTitle'),milestoneReq=$('#milestoneReq'),milestoneStep=$('#milestoneStep'),progressBar=$('#progressBar i');
 const boardStatus=$('#boardStatus'),frontierNameEl=$('#frontierName'),rushFill=$('#rushFill'),rushCount=$('#rushCount'),questRibbon=$('#questRibbon'),questIcon=$('#questIcon'),requestPortrait=$('#requestPortrait'),questTitle=$('#questTitle'),questText=$('#questText'),goalReq=$('#goalReq'),goalPosition=$('#goalPosition'),goalPrev=$('#goalPrev'),goalNext=$('#goalNext'),deliveryCoach=$('#deliveryCoach'),soundToggle=$('#soundToggle'),inspect=$('#inspect'),inspectIcon=$('#inspectIcon'),inspectName=$('#inspectName'),inspectMeta=$('#inspectMeta'),inspectUse=$('#inspectUse');
@@ -359,10 +359,11 @@ function render(){
   if(chosen?.type==='item'&&i!==selected&&cell.content?.type==='item'&&cell.content.chain===chosen.chain&&cell.content.tier===chosen.tier&&(cell.terrain==='open'||cell.terrain==='cobweb'))b.classList.add('merge-match');
 
   if(cell.content?.type==='item'&&(cell.terrain==='open'||cell.terrain==='cobweb')){
-    const d=itemDef(cell.content.chain,cell.content.tier);
-    b.classList.add('item','chain-'+cell.content.chain,'tier-'+cell.content.tier);
-    if(wanted.has(cell.content.chain+':'+cell.content.tier))b.classList.add('wanted');
-    b.innerHTML=`<span class="emoji">${d.emoji}</span>${cell.terrain==='cobweb'?'<span class="web">🕸️</span>':''}`;
+    const d=itemDef(cell.content.chain,cell.content.tier),tier=cell.content.tier;
+    const rarity=tier>=6?'mythic':tier>=4?'rare':tier>=2?'uncommon':'common';
+    b.classList.add('item','chain-'+cell.content.chain,'tier-'+tier,'rarity-'+rarity);
+    if(wanted.has(cell.content.chain+':'+tier))b.classList.add('wanted');
+    b.innerHTML=`<span class="itemPedestal"></span>${tier>=4?'<span class="itemSparkles">✦</span>':''}<span class="emoji">${d.emoji}</span>${cell.terrain==='cobweb'?'<span class="web">🕸️</span>':''}`;
   }
   if(cell.terrain==='open'&&cell.content?.type==='producer'){
     const d=PRODUCERS[cell.content.producerId];
@@ -491,6 +492,19 @@ function render(){
  coins.textContent=state.coins;
  light.textContent=state.forestLight;
  discovered.textContent=Object.keys(state.discovered).length;
+
+ sourceShelf.innerHTML='';
+ const pIndices=producerIndices(state);
+ for(const index of pIndices){
+  const content=state.cells[index]?.content;if(content?.type!=='producer')continue;
+  const p=PRODUCERS[content.producerId],level=state.producerLevels[p.id]??0,preview=producerPreview(state,p.id,2);
+  const card=document.createElement('button');card.type='button';card.className='sourceShelfCard';
+  if(state.energy<=0||!state.cells.some(c=>c.terrain==='open'&&!c.content))card.classList.add('disabled');
+  card.innerHTML=`<span class="shelfSourceIcon">${p.emoji}</span><span class="shelfSourceCopy"><b>${p.name}</b><small>Lv${level} · 1 ⚡</small></span><span class="shelfDrops">${preview.map(x=>`<i>${itemDef(x.chain,x.tier).emoji}</i>`).join('')}</span>`;
+  card.setAttribute('aria-label',`${p.name}, level ${level}. Tap to produce for 1 energy.`);
+  card.addEventListener('click',()=>{audio.unlock();apply(tapProducer(state,index));});
+  sourceShelf.appendChild(card);
+ }
 
  sourcesEl.innerHTML='';
  for(const [id,p] of Object.entries(PRODUCERS)){
