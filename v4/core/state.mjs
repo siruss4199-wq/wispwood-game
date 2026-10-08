@@ -1,6 +1,7 @@
+import {RESIDENTS} from './requests.mjs';
 import {CELL_COUNT,PRODUCERS,STORAGE_UPGRADES} from './catalog.mjs';
 
-export const SCHEMA=2;
+export const SCHEMA=3;
 export const OPEN_START=[18,19,20,21,26,27,28,29,34,35,36,37,42,43,44,45];
 export const STARTER_SEEDS=[28,35];
 export const TREE_INDEX=27;
@@ -41,5 +42,9 @@ export function createInitialState(){
 export const cloneState=s=>structuredClone(s);
 export const serialize=s=>JSON.stringify(s);
 export function restore(raw){
- try{const s=JSON.parse(raw);return s?.schema===SCHEMA&&Array.isArray(s.cells)&&s.cells.length===CELL_COUNT?s:null;}catch{return null;}
+ try{const s=JSON.parse(raw);if(!s||![2,SCHEMA].includes(s.schema)||!Array.isArray(s.cells)||s.cells.length!==CELL_COUNT)return null;
+ if(s.schema===2){s.schema=SCHEMA;
+  s.activeOrders=(s.activeOrders??[]).map(o=>({...o,kind:o.slot===3?'special':'normal',npc:o.slot,narrative:RESIDENTS[o.slot]?.purpose??RESIDENTS[0].purpose,bonusUntil:null,bonusCoins:0}));}
+ return s;}catch{return null;}
 }
+

@@ -1,0 +1,60 @@
+/* V4.5 craft surface: one shared presentation for standalone and Basic Launch. */
+.craftArt{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none;filter:none}
+.tile .emoji{inset:2px!important;position:absolute!important;width:auto!important;height:auto!important;transform:none!important;display:block!important;font-size:inherit!important}
+.tile .craftArt{filter:drop-shadow(0 2px 1px #173c3320)}
+.tile .workshopArt{position:absolute;inset:0;width:100%;height:100%}
+.stage-producer{background:#e2d8af!important;border:2px solid #587c60!important}
+.stage-producer .producerLevel{font-size:9px!important;right:0!important;bottom:0!important;background:#244d45!important;color:#fff!important;border-radius:4px!important;padding:1px 3px!important}
+.stage-producer .producerBolt{font-size:14px!important;right:auto!important;left:0!important;bottom:0!important}
+.producer-ready .workshopArt{filter:drop-shadow(0 0 4px #ffe8a1)}
+.producer-tap .workshopArt{animation:workshopWork .35s ease-out}
+@keyframes workshopWork{40%{transform:translateY(-3px) rotate(-4deg)}80%{transform:rotate(3deg)}}
+.reqIcon{display:inline-block;width:28px;height:28px;flex-shrink:0}
+.sourceIcon{width:64px;height:64px;flex-shrink:0}
+.dropPreview>span{display:inline-block;width:36px;height:36px}
+.collectionItem>span{display:block;width:48px;height:48px;margin:auto}
+.collectionItems{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+.slot .craftArt{width:44px;height:44px;margin:auto}
+.inspectIcon{width:42px;height:42px}
+.discoveryPop>span,.producerPop>span{display:block;width:64px;height:64px;margin:auto}
+.requestPurpose{font-size:12px;line-height:1.4;color:#49665c;margin:4px 0}
+.requestPortrait,.orderPortrait{font-family:Georgia,serif;font-weight:700;background:#dbe8d0!important;color:#315d50!important;font-size:18px!important;border-radius:45% 45% 32% 32%!important;box-shadow:none!important}
+.requestMiniItems .craftArt{width:24px;height:24px}
+.gameShell{max-width:520px!important;display:flex!important;flex-direction:column!important;gap:6px!important;background:#f3f0df!important;padding:8px!important}
+body{background:#1b3935!important}
+.gameHud{min-height:52px!important;padding:4px 6px!important;background:#e3ead8!important;border:0!important;box-shadow:none!important;border-radius:12px!important}
+.playerAvatar{font-family:Georgia,serif;background:#325e51!important;color:#f0e6bd!important;font-size:20px!important;box-shadow:none!important}
+.hudShop{background:transparent!important;box-shadow:none!important}
+.activityTray,.worldPath,.worldMoon,.boardScenery,.forestCanopy,.ambientWisp,.itemPedestal,.itemSparkles,.dockHint,.boardHead,.questIcon{display:none!important}
+.worldStrip{background:#e4e8d5!important;box-shadow:none!important;border:0!important;border-radius:10px!important}
+.goalDock{background:#fbf9ef!important;border:1px solid #bccbb0!important;box-shadow:none!important;padding:8px!important;min-height:0!important}
+.goalCopy b{font-size:13px!important}.goalCopy span{font-size:11px!important}
+.goalReq{display:flex!important;gap:4px!important;flex-wrap:wrap!important;margin:5px 0 0!important}
+.goalReq .reqChip{padding:2px 5px!important;font-size:11px!important;background:#eaf0e0!important}
+.goalReq .reqName{display:none!important}.goalReward{font-size:11px!important}
+.goalNav{display:flex!important;justify-content:flex-end!important;gap:8px!important;position:static!important}
+.goalNav button{min-width:44px;min-height:32px}.goalNav span{font-size:11px!important}.goalNav small{display:none}
+.boardSection{width:100%!important;padding:0!important;margin:0!important;background:transparent!important;box-shadow:none!important;border:0!important}
+.boardFrame{padding:4px!important;margin:0!important;background:#395c4f!important;border:0!important;border-radius:12px!important;box-shadow:none!important}
+.board{width:100%!important;aspect-ratio:1;gap:3px!important;padding:3px!important;background:#395c4f!important;border:0!important;box-shadow:none!important}
+.tile{border-radius:7px!important;box-shadow:none!important;min-width:0!important;min-height:0!important;touch-action:none}
+.tile.open{background:#e9e6cd!important;border:1px solid #cbd1ad!important}
+.tile.cobweb{background:#93ae87!important;border:1px solid #789973!important}
+.tile.locked{background:#466b58!important;border:1px solid #3c604e!important;opacity:1!important}
+.tile.locked:before{font-size:20px!important;color:#73957a!important;text-shadow:none!important}
+.tile:after{box-shadow:none!important}.tile.wanted{outline:2px solid #d5a74e!important;outline-offset:-2px}
+.tile.selected,.tile.target{outline:3px solid #fff4b8!important;outline-offset:-3px}
+.rushBar{height:22px!important;padding:2px 6px!important;background:transparent!important;border:0!important;box-shadow:none!important}.rushBar small{display:none!important}
+.gameDock{position:static!important;display:flex!important;justify-content:space-around!important;background:#e3ead8!important;border:0!important;box-shadow:none!important;min-height:52px!important;padding:4px!important}
+.dockBtn{min-width:64px!important;min-height:44px!important;background:transparent!important;box-shadow:none!important}.dockBtn span{font-size:18px!important}.dockBtn b{font-size:11px!important}
+.gamePanel{z-index:100!important;max-height:76dvh!important;overflow:auto!important}
+.gamePanel.open{position:fixed!important;left:50%!important;transform:translateX(-50%)!important;bottom:0!important;width:min(100%,520px)!important}
+.itemActions{margin:2px!important}.itemActions button{min-height:36px}
+@media(min-width:760px){.gameShell{margin:12px auto!important;width:min(100%,520px)!important}}
+@media(max-width:560px){.worldReq .reqIcon{width:20px;height:20px}.goalCopy span{display:none!important}.worldStrip{min-height:52px!important}.goalMain{gap:6px!important}.goalNav{margin-top:2px}.requestPortrait{width:30px!important;height:30px!important}.worldReq .reqChip b{font-size:10px!important}}
+@media(prefers-reduced-motion:reduce){.producer-tap .workshopArt{animation:none}}
+.goalCopy,.goalCopy b,.goalCopy span,.goalNav,.worldCopy,.worldCopy b,.rushBar{color:#254d40!important;text-shadow:none!important}
+.boardFrame:before,.boardFrame:after,.goalDock:before{display:none!important}
+.tile.locked:before{content:attr(data-decor)!important}
+.tile.merge-match{outline:2px dashed #fff7bf!important;outline-offset:-3px}
+.dropPreview>span{position:relative}.dropPreview b{position:absolute;right:0;bottom:0;font-size:10px;color:#805a20}

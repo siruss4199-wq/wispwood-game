@@ -1,4 +1,5 @@
-import {CELL_COUNT,CHAINS,MAX_TIER,MILESTONES,PRODUCERS,PRODUCER_MAX_LEVEL,SIZE,STORAGE_UPGRADES,itemDef,producerForChain} from './catalog.mjs';
+import {createRequest,requestBonus} from './requests.mjs';
+import {CELL_COUNT,CHAINS,MAX_TIER,MILESTONES,PRODUCERS,PRODUCER_MAX_LEVEL,SIZE,STORAGE_UPGRADES,itemDef,producerForChain,producerDrop} from './catalog.mjs';
 import {cloneState} from './state.mjs';
 
 const result=(state,events=[],ok=true,reason=null)=>({state,events,ok,reason});
@@ -33,33 +34,7 @@ function discoverInPlace(s,item,events){
   events.push({type:'discovered',key,item:structuredClone(item),coins});
  }
 }
-function orderTier(s,slot){
- const stage=Math.floor(s.ordersCompleted/6);
- const caps=[2,3,4,5];
- return Math.min(caps[slot],1+Math.floor(stage/2)+(slot>=2?1:0));
-}
-function req(chain,tier,count=1){return {chain,tier:Math.max(0,Math.min(MAX_TIER,tier)),count};}
-function makeOrder(s,slot){
- const serial=s.nextOrderSerial++;
- const chains=unlockedChains(s),tier=orderTier(s,slot);
- const a=chains[(serial+slot)%chains.length],b=chains[(serial+slot+1)%chains.length],c=chains[(serial+slot+2)%chains.length];
- let requirements;
- if(slot===0)requirements=[req(a,tier,1)];
- else if(slot===1)requirements=[req(a,Math.max(1,tier-1),2)];
- else if(slot===2)requirements=[req(a,tier,1),req(b,Math.max(1,tier-1),1)];
- else requirements=[req(a,tier,1),req(b,Math.max(1,tier-1),1),req(c,Math.max(1,tier-2),1)];
- const power=requirements.reduce((n,r)=>n+r.count*Math.pow(2,r.tier),0);
- const mult=[1,1.2,1.45,1.8][slot];
- return {
-  id:'order-'+serial,slot,
-  label:['Quick','Supply','Trade','Story'][slot],
-  title:['Quick Request','Supply Run','Forest Trade','Story Task'][slot],
-  requirements,
-  rewardCoins:Math.round((14+power*7)*mult),
-  rewardLight:Math.max(1,Math.round((2+power/2)*mult)),
-  rewardEnergy:[4,6,8,12][slot]
- };
-}
+function makeOrder(s,slot){return createRequest(s,slot,unlockedChains(s));}
 export function fillOrdersInPlace(s){
  while(s.activeOrders.length<4){
   const used=new Set(s.activeOrders.map(o=>o.slot));
@@ -85,14 +60,14 @@ export function requirementProgress(s,requirements){
 export function producerPreview(s,id,count=3){
  const p=PRODUCERS[id],tap=s.producerTapCounts[id]??0,level=s.producerLevels[id]??0;
  if(!p||level<=0)return [];
- const bonus=Math.floor((level-1)/2),out=[];
- for(let i=0;i<count;i++){
-  const [chain,tier]=p.cycle[(tap+i)%p.cycle.length];out.push({chain,tier:Math.min(MAX_TIER,tier+bonus)});
- }
+ const out=[];
+ for(let i=0;i<count;i++)out.push(producerDrop(s,id,tap+i));
  return out;
 }
 export function orderReady(s,order){
- return order.requirements.every(r=>countItems(s,r.chain,r.tier)>=r.count);
+ const totals=new Map();
+ for(const r of order.requirements){const key=r.chain+':'+r.tier;totals.set(key,(totals.get(key)??0)+r.count);}
+ return [...totals].every(([key,count])=>{const [chain,tier]=key.split(':');return countItems(s,chain,Number(tier))>=count;});
 }
 export function milestoneReady(s,m=currentMilestone(s)){
  return !!m&&s.coins>=m.coinCost&&s.forestLight>=m.lightRequired&&m.requirements.every(([chain,tier,count])=>countItems(s,chain,tier)>=count);
@@ -179,12 +154,11 @@ export function tapProducer(s,index){
  if(level<=0)return result(s,[],false,'Producer is locked.');
  if(s.energy<=0)return result(s,[],false,'Energy is empty.');
  const empty=openEmptyIndices(s);if(!empty.length)return result(s,[],false,'Board is full — merge or store items.');
- const n=cloneState(s),tap=n.producerTapCounts[id]??0,base=p.cycle[tap%p.cycle.length];
+ const n=cloneState(s),tap=n.producerTapCounts[id]??0;
+ const {chain,tier,special}=producerDrop(s,id,tap);
  n.producerTapCounts[id]=tap+1;
- let [chain,tier]=base;
- tier=Math.min(MAX_TIER,tier+Math.floor((level-1)/2));
  const target=empty[0];n.cells[target].content={type:'item',chain,tier};n.energy--;
- const events=[{type:'produced',producerId:id,producerIndex:index,index:target,energySpent:1,item:structuredClone(n.cells[target].content)}];discoverInPlace(n,n.cells[target].content,events);
+ const events=[{type:'produced',producerId:id,producerIndex:index,index:target,energySpent:1,special,item:structuredClone(n.cells[target].content)}];discoverInPlace(n,n.cells[target].content,events);
  return result(n,events);
 }
 function edgeDepth(i){
@@ -225,12 +199,13 @@ function unlockBoardCellsInPlace(s,count,events,source='milestone'){
   events.push({type:'cell_unlocked',index:i,source});
  }
 }
-export function completeOrder(s,orderId){
+export function completeOrder(s,orderId,now=Date.now()){
  const order=s.activeOrders.find(o=>o.id===orderId);if(!order)return result(s,[],false,'Order not found.');
  if(!orderReady(s,order))return result(s,[],false,'Order items are not ready.');
- const n=cloneState(s),events=[{type:'order_completed',orderId,coins:order.rewardCoins,light:order.rewardLight,energy:order.rewardEnergy}];
+ const bonus=requestBonus(order,now);
+ const n=cloneState(s),events=[{type:'order_completed',orderId,bonus,coins:order.rewardCoins+bonus,light:order.rewardLight,energy:order.rewardEnergy}];
  consumeRequirementsInPlace(n,order.requirements);
- n.coins+=order.rewardCoins;n.forestLight+=order.rewardLight;n.energy=Math.min(n.maxEnergy,n.energy+order.rewardEnergy);n.ordersCompleted++;
+ n.coins+=order.rewardCoins+bonus;n.forestLight+=order.rewardLight;n.energy=Math.min(n.maxEnergy,n.energy+order.rewardEnergy);n.ordersCompleted++;
  if(n.ordersCompleted<=4)unlockBoardCellsInPlace(n,2,events,'order');
  spawnForestGiftsInPlace(n,Math.min(3,1+order.requirements.length),events,'order');
  if(n.ordersCompleted%3===0){
@@ -302,3 +277,4 @@ export function validateState(s){
  for(const o of s.activeOrders)for(const r of o.requirements)if(!unlockedChains(s).includes(r.chain))errors.push('locked-order-chain');
  return errors;
 }
+
