@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {CHAINS,MILESTONES} from '../v4/core/catalog.mjs';
+import {CHAINS,MILESTONES,PRODUCER_MAX_LEVEL} from '../v4/core/catalog.mjs';
 import {COBWEBS,OPEN_START,STARTING_ITEMS,createInitialState} from '../v4/core/state.mjs';
-import {completeOrder,currentMilestone,fillOrdersInPlace,frontierName,initializePlayableState,merge,milestoneReady,nextFrontierIndices,producerIndices,reviveSparseBoard,tapProducer,unlockedChains,validateState} from '../v4/core/engine.mjs';
+import {completeOrder,currentMilestone,fillOrdersInPlace,frontierName,initializePlayableState,merge,milestoneReady,nextFrontierIndices,producerIndices,producerUpgradeCost,reviveSparseBoard,tapProducer,unlockedChains,upgradeProducer,validateState} from '../v4/core/engine.mjs';
 
 const start=()=>initializePlayableState(createInitialState());
 
@@ -313,4 +313,42 @@ test('commercial meta layer includes NPC request cards, collection book and rewa
  assert.match(css,/rewardFlight/);
  assert.match(css,/collectionItem/);
  assert.doesNotMatch(html,/id="focusGoal"/);
+});
+
+
+test('every third delivery grants a Forest Parcel with extra board gifts',()=>{
+ const s=start(),n=structuredClone(s);
+ n.ordersCompleted=2;n.activeOrders[0].requirements=[];
+ const r=completeOrder(n,n.activeOrders[0].id);
+ assert.equal(r.ok,true,r.reason);
+ const parcel=r.events.find(e=>e.type==='forest_parcel');
+ assert.ok(parcel);
+ assert.equal(parcel.streak,3);
+ assert.ok(parcel.energy>0&&parcel.light>0&&parcel.coins>0);
+ assert.ok(r.events.some(e=>e.type==='bonus_spawned'&&e.source==='parcel'));
+});
+
+test('producer progression has a capped upgrade path and increasing cost',()=>{
+ let s=start();s.coins=99999;s.forestLight=99999;
+ assert.deepEqual(producerUpgradeCost(s,'ancientTree'),{coins:220,light:12});
+ for(let level=1;level<PRODUCER_MAX_LEVEL;level++){const r=upgradeProducer(s,'ancientTree');assert.equal(r.ok,true,r.reason);s=r.state;}
+ assert.equal(s.producerLevels.ancientTree,PRODUCER_MAX_LEVEL);
+ assert.equal(producerUpgradeCost(s,'ancientTree'),null);
+ assert.equal(upgradeProducer(s,'ancientTree').ok,false);
+});
+
+test('UI exposes source upgrades, a restoration map and Forest Parcel progress',()=>{
+ const html=fs.readFileSync(new URL('../v4/index.html',import.meta.url),'utf8');
+ const app=fs.readFileSync(new URL('../v4/app.mjs',import.meta.url),'utf8');
+ const css=fs.readFileSync(new URL('../v4/style.css',import.meta.url),'utf8');
+ assert.match(html,/data-panel="map"/);
+ assert.match(html,/id="restorationMap"/);
+ assert.match(html,/id="parcelFill"/);
+ assert.match(app,/renderRestorationMap/);
+ assert.match(app,/producerUpgradeCost/);
+ assert.match(app,/upgradeProducer/);
+ assert.match(app,/forest_parcel/);
+ assert.match(css,/sourceUpgradeBtn/);
+ assert.match(css,/mapZone/);
+ assert.match(css,/parcelPop/);
 });

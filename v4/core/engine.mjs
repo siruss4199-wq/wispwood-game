@@ -1,4 +1,4 @@
-import {CELL_COUNT,CHAINS,MAX_TIER,MILESTONES,PRODUCERS,SIZE,STORAGE_UPGRADES,itemDef,producerForChain} from './catalog.mjs';
+import {CELL_COUNT,CHAINS,MAX_TIER,MILESTONES,PRODUCERS,PRODUCER_MAX_LEVEL,SIZE,STORAGE_UPGRADES,itemDef,producerForChain} from './catalog.mjs';
 import {cloneState} from './state.mjs';
 
 const result=(state,events=[],ok=true,reason=null)=>({state,events,ok,reason});
@@ -233,6 +233,12 @@ export function completeOrder(s,orderId){
  n.coins+=order.rewardCoins;n.forestLight+=order.rewardLight;n.energy=Math.min(n.maxEnergy,n.energy+order.rewardEnergy);n.ordersCompleted++;
  if(n.ordersCompleted<=4)unlockBoardCellsInPlace(n,2,events,'order');
  spawnForestGiftsInPlace(n,Math.min(3,1+order.requirements.length),events,'order');
+ if(n.ordersCompleted%3===0){
+  const parcelCoins=18+Math.min(42,n.ordersCompleted*2),parcelLight=2,parcelEnergy=6;
+  n.coins+=parcelCoins;n.forestLight+=parcelLight;n.energy=Math.min(n.maxEnergy,n.energy+parcelEnergy);
+  spawnForestGiftsInPlace(n,2,events,'parcel');
+  events.push({type:'forest_parcel',coins:parcelCoins,light:parcelLight,energy:parcelEnergy,streak:n.ordersCompleted});
+ }
  n.activeOrders=n.activeOrders.filter(o=>o.id!==orderId);fillOrdersInPlace(n);
  return result(n,events);
 }
@@ -266,10 +272,16 @@ export function upgradeStorage(s){
  const cost=160*Math.pow(2,s.storageLevel);if(s.coins<cost)return result(s,[],false,'Not enough Coins.');
  const n=cloneState(s);n.coins-=cost;n.storageLevel++;while(n.storage.length<nextSlots)n.storage.push(null);return result(n,[{type:'storage_upgraded',slots:nextSlots}]);
 }
+export function producerUpgradeCost(s,id){
+ const level=s.producerLevels[id]??0;
+ if(!PRODUCERS[id]||level<=0||level>=PRODUCER_MAX_LEVEL)return null;
+ return {coins:220*level,light:12*level};
+}
 export function upgradeProducer(s,id){
  const p=PRODUCERS[id],level=s.producerLevels[id]??0;if(!p||level<=0)return result(s,[],false,'Producer is locked.');
- const cost=220*level,light=12*level;if(s.coins<cost||s.forestLight<light)return result(s,[],false,'Not enough upgrade resources.');
- const n=cloneState(s);n.coins-=cost;n.forestLight-=light;n.producerLevels[id]=level+1;return result(n,[{type:'producer_upgraded',producerId:id,level:level+1}]);
+ if(level>=PRODUCER_MAX_LEVEL)return result(s,[],false,'Producer is max level.');
+ const cost=producerUpgradeCost(s,id);if(s.coins<cost.coins||s.forestLight<cost.light)return result(s,[],false,'Not enough upgrade resources.');
+ const n=cloneState(s);n.coins-=cost.coins;n.forestLight-=cost.light;n.producerLevels[id]=level+1;return result(n,[{type:'producer_upgraded',producerId:id,level:level+1}]);
 }
 export function bestProducerIndexForChain(s,chain){
  const p=producerForChain(chain);if(!p)return -1;

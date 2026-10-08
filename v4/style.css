@@ -969,3 +969,24 @@ body{
 .dockBtn.attention{animation:bookAttention .45s ease-in-out 3;background:linear-gradient(180deg,#b06fd0,#7850aa)!important}
 @keyframes bookAttention{50%{transform:translateY(-5px) scale(1.06)}}
 @media(prefers-reduced-motion:reduce){.rewardFly{animation:none;display:none}.dockBtn.attention{animation:none}}
+
+
+/* Producer progression, restoration map and delivery-streak rewards. */
+.mapAction{width:34px;height:34px;border-radius:11px;border:2px solid #fff;background:linear-gradient(180deg,#9fdcff,#66afd8);box-shadow:0 3px 0 #4c8fab;color:#25495f;font-size:16px;font-weight:1000}
+.worldStrip{grid-template-columns:auto 1fr auto auto auto}
+.mapHero{padding:4px 2px 9px}.mapHero small{display:block;font-size:7px;letter-spacing:1px;color:#88709c;font-weight:1000}.mapHero b{display:block;font-size:16px;color:#433553}.mapHero span{display:block;font-size:9px;color:#7e7684;margin-top:2px}
+.restorationMap{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}
+.mapZone{position:relative;display:grid;grid-template-columns:42px 1fr;align-items:center;gap:7px;min-height:70px;padding:8px;text-align:left;border-radius:15px;border:2px solid #fff;background:linear-gradient(145deg,#edf1ea,#dfe5dc);box-shadow:0 3px 0 #c5cec0;overflow:hidden}
+.mapZoneIcon{width:40px;height:40px;display:grid;place-items:center;border-radius:50%;background:#d6ddd3;font-size:24px}
+.mapZone small{display:block;font-size:6px;letter-spacing:.7px;font-weight:1000;color:#8a7c8d}.mapZone b{display:block;font-size:10px;color:#4c4054}.mapZone em{display:block;font-style:normal;font-size:7px;color:#89818b;margin-top:2px}
+.mapZone>i{position:absolute;left:0;right:0;bottom:0;height:4px;background:#cfd7cb}
+.mapZone.current{background:linear-gradient(145deg,#fff2bb,#ddf0b7);border-color:#fff0a6;box-shadow:0 3px 0 #bca45a,0 0 14px rgba(235,207,106,.35)}.mapZone.current .mapZoneIcon{background:linear-gradient(180deg,#fff09b,#d6e67d)}.mapZone.current>i{background:linear-gradient(90deg,#e9be44,#86ce63)}
+.mapZone.complete{background:linear-gradient(145deg,#dff6ce,#bde5a6);box-shadow:0 3px 0 #8eb77b}.mapZone.complete .mapZoneIcon{background:#91d077}.mapZone.complete>i{background:#65b75c}.mapZone.locked{filter:grayscale(.8);opacity:.55}
+.parcelMeter{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:7px;margin:5px 0 8px;padding:7px 8px;border-radius:12px;background:linear-gradient(90deg,#fff0be,#e8dbff);border:1px solid #dbc8df}
+.parcelMeter>span{font-size:7px;font-weight:1000;color:#795d75}.parcelMeter>div{height:7px;border-radius:99px;background:#d4cad6;overflow:hidden}.parcelMeter i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ffca59,#db7dd6);transition:width .25s ease}.parcelMeter>b{font-size:8px;color:#654e65}
+.sourceUpgrade{display:grid!important;grid-template-columns:auto 1fr auto;align-items:center;gap:8px}.sourceInfo{min-width:0}.sourcePips{display:flex;gap:3px;margin:3px 0 4px}.sourcePips i{width:12px;height:5px;border-radius:99px;background:#c6d1bf}.sourcePips i.on{background:linear-gradient(90deg,#71c95e,#d3e65e)}
+.sourceUpgradeBtn{min-width:78px;border:2px solid #fff;border-radius:12px;padding:7px 6px;background:linear-gradient(180deg,#b4ec7d,#6fc45a);color:#2e542f;font-size:9px;font-weight:1000;box-shadow:0 3px 0 #579748}.sourceUpgradeBtn small{font-size:6px}.sourceUpgradeBtn:disabled{background:#d7ddd2;color:#889087;box-shadow:0 2px 0 #bec5bb}
+.parcelPop{position:fixed;left:50%;top:22%;z-index:151;transform:translate(-50%,-15px) scale(.8);opacity:0;min-width:190px;text-align:center;padding:12px 16px;border-radius:21px;background:linear-gradient(160deg,#b56cbf,#5da484);color:#fff;border:3px solid #fff2a1;box-shadow:0 8px 0 rgba(80,53,102,.3),0 16px 36px rgba(43,36,54,.3);transition:.22s ease}
+.parcelPop.show{opacity:1;transform:translate(-50%,0) scale(1)}.parcelPop small{display:block;font-size:8px;letter-spacing:1.2px;color:#fff0a2;font-weight:1000}.parcelPop span{display:block;font-size:44px}.parcelPop b{display:block;font-size:15px}.parcelPop em{display:block;font-size:9px;font-style:normal;margin-top:3px}.producerPop{background:linear-gradient(160deg,#4f9b70,#5577b4)}
+@media(max-width:560px){.worldStrip{grid-template-columns:auto 1fr auto auto}.mapAction{grid-column:auto}.restorationMap{grid-template-columns:1fr 1fr}.sourceUpgradeBtn{min-width:70px}}
+@media(prefers-reduced-motion:reduce){.parcelPop{transition:none}}

@@ -35,6 +35,7 @@
       <span id="progressBar" aria-label="Chapter progress"><i></i></span>
     </div>
     <button id="completeMilestone" class="restoreAction" type="button" disabled>Restore</button>
+    <button class="mapAction" data-open-panel="map" type="button" aria-label="Open restoration map">🗺️</button>
     <div id="milestoneReq" class="milestoneReq worldReq"></div>
   </section>
 
@@ -93,9 +94,16 @@
     <p id="hint" class="hint">Find a matching pair to create your first free space.</p>
   </section>
 
+  <section id="mapPanel" class="gamePanel mapPanel" data-panel="map">
+    <div class="panelHandle"></div>
+    <div class="mapHero"><small>RESTORATION MAP</small><b>Path to the Heartwood</b><span id="mapSummary">0/18 restored</span></div>
+    <div id="restorationMap" class="restorationMap"></div>
+  </section>
+
   <section id="ordersPanel" class="gamePanel ordersSection" data-panel="orders">
     <div class="panelHandle"></div>
-    <div class="sectionHead"><b>📜 Forest Requests</b><small>Choose a target</small></div>
+    <div class="sectionHead"><b>📜 Forest Requests</b><small>Every 3 deliveries brings a Forest Parcel</small></div>
+    <div class="parcelMeter" aria-label="Forest Parcel progress"><span>🎁 FOREST PARCEL</span><div><i id="parcelFill"></i></div><b id="parcelCount">0/3</b></div>
     <div id="orders" class="orders"></div>
   </section>
 

@@ -1,6 +1,7 @@
 export const SIZE=8;
 export const CELL_COUNT=64;
 export const MAX_TIER=7;
+export const PRODUCER_MAX_LEVEL=5;
 
 const chain=(id,name,items)=>({id,name,items:items.map(([name,emoji],tier)=>({name,emoji,tier}))});
 export const CHAINS={
