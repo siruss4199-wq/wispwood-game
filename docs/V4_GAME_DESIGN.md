@@ -42,7 +42,10 @@ Milestones unlock:
 
 ## Board
 8×8.
-The central workspace starts open.
+The board now starts **visually full**: every central playable cell already contains a producer or merge item, while the surrounding cells are cobweb targets or locked forest. The first decision is which matching pair to collapse to create working space.
+
+The opening workspace deliberately contains multiple valid pairs and several high-tier singletons, so the first minute is about prioritization rather than following one forced Seed tutorial.
+
 Several surrounding cells contain visible cobweb items.
 The remaining cells are locked forest, opened in batches by expedition milestones.
 Clearing every initial obstruction is not the win condition; orders and expedition continue afterward.
@@ -58,3 +61,10 @@ The simulation must verify:
 - all generated order requirements come from unlocked chains.
 
 The simulation is intentionally deterministic so regressions reproduce exactly.
+
+## Engagement polish
+- Order cards show live item progress and a READY state.
+- Selecting an order highlights relevant board items.
+- The expedition milestone shows live crafted-item progress.
+- Each unlocked producer shows its next three deterministic drops, making space and producer choices plan-able rather than opaque.
+- Discovery count gives a persistent collection goal across all 48 items.
