@@ -33,6 +33,7 @@ Chapter goal: 100% Lost Clearing → Mivra rescued → Moonlit Grove unlocked.
 - Start remains 62 crates + 2 Seeds.
 - First merge reveals Ancient Tree and an empty tile.
 - Every normal merge opens another frontier crate while crates remain.
+- Ordinary frontier crates reveal a useful Seed in Lost Clearing instead of opening as unexplained empty cells. The first tutorial clearing is the only intentional empty reveal.
 - When no merge pair exists, producer capacity is preserved.
 - Orders continue even after an area is complete.
 - Core engine owns rules; UI only dispatches actions and renders state.
