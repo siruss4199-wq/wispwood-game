@@ -14,8 +14,9 @@ test('CrazyGames entry uses the current v3 SDK and enters gameplay directly',()=
 
 test('platform adapter reports gameplay start without enabling Basic Launch ads',()=>{
   const adapter=read('platform.mjs');
-  assert.match(adapter,/SDK\.init/);
+  assert.match(adapter,/await s\.init\(\)/);
   assert.match(adapter,/gameplayStart/);
+  assert.match(adapter,/if\(initialized\)return true/);
   assert.doesNotMatch(adapter,/requestAd|ad\.request|rewardedAd|midgame/);
 });
 
