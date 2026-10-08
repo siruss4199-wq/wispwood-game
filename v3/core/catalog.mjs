@@ -1,16 +1,16 @@
 export const SIZE=8;
 export const CELL_COUNT=SIZE*SIZE;
-export const MAX_TIER=7;
+export const MAX_TIER=9;
 
 export const CHAINS={
  leaf:{id:'leaf',name:'Forest Growth',producerId:'ancientTree',items:[
-  ['Seed','🌰'],['Sprout','🌱'],['Herb','🌿'],['Fern','🍃'],['Bloom','🌸'],['Moon Flower','🌺'],['Ancient Blossom','🪷'],['Spirit Wreath','🌿']
+  ['Seed','🌰'],['Sprout','🌱'],['Herb','🌿'],['Fern','🍃'],['Bloom','🌸'],['Moon Flower','🌺'],['Ancient Blossom','🪷'],['Spirit Wreath','🌿'],['Elder Crown','👑'],['Heartwood Relic','🪵']
  ]},
  water:{id:'water',name:'Moon Water',producerId:'moonSpring',items:[
-  ['Drop','💧'],['Dew','🫧'],['Flask','🧴'],['Elixir','🧪'],['Moonwater','🔹'],['Crystal Vial','💎'],['Sacred Water','🩵'],['Moonwell','🌊']
+  ['Drop','💧'],['Dew','🫧'],['Flask','🧴'],['Elixir','🧪'],['Moonwater','🔹'],['Crystal Vial','💎'],['Sacred Water','🩵'],['Moonwell','🌊'],['Tidal Sigil','🔷'],['Lunar Chalice','🏺']
  ]},
  magic:{id:'magic',name:'Wisp Light',producerId:'wispNest',items:[
-  ['Spark','✨'],['Wisp','🟣'],['Glow Orb','🔮'],['Star Dust','🌟'],['Star Shard','💠'],['Aurora','🌌'],['Spirit Flame','🔥'],['Celestial Core','💫']
+  ['Spark','✨'],['Wisp','🟣'],['Glow Orb','🔮'],['Star Dust','🌟'],['Star Shard','💠'],['Aurora','🌌'],['Spirit Flame','🔥'],['Celestial Core','💫'],['Constellation','🌠'],['Heart Star','⭐']
  ]}
 };
 
@@ -36,10 +36,7 @@ export const RESTORATION_NODES=[
 ].map(([id,title,icon,coinCost,lightRequired,chain,tier],index)=>({id,title,icon,coinCost,lightRequired,chain,tier,index}));
 
 export const STORAGE_UPGRADES=[
- {slots:5,cost:0},
- {slots:7,cost:120},
- {slots:9,cost:260},
- {slots:12,cost:520}
+ {slots:5,cost:0},{slots:7,cost:120},{slots:9,cost:260},{slots:12,cost:520}
 ];
 
 export function itemDef(chain,tier){
