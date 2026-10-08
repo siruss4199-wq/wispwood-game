@@ -110,6 +110,32 @@ function consumeRequirementsInPlace(s,requirements){
  }
  return true;
 }
+function giftSource(s){
+ const available=Object.values(PRODUCERS).filter(p=>(s.producerLevels[p.id]??0)>0);
+ if(!available.length)return null;
+ const serial=s.giftSerial??0,p=available[serial%available.length],level=s.producerLevels[p.id]??1;
+ const [chain,baseTier]=p.cycle[(serial+(s.ordersCompleted??0))%p.cycle.length];
+ s.giftSerial=serial+1;
+ return {type:'item',chain,tier:Math.min(MAX_TIER,baseTier+Math.floor((level-1)/2))};
+}
+function spawnForestGiftsInPlace(s,count,events,source='forest'){
+ for(let n=0;n<count;n++){
+  const index=openEmptyIndices(s)[0];if(!Number.isInteger(index))break;
+  const item=giftSource(s);if(!item)break;
+  s.cells[index].content=item;
+  events.push({type:'bonus_spawned',source,index,item:structuredClone(item)});
+ }
+}
+export function reviveSparseBoard(s,targetFree=8){
+ const n=cloneState(s);
+ n.mergeCount??=0;n.giftSerial??=0;
+ if(n.densitySeeded!==true){
+  const free=openEmptyIndices(n).length;
+  if(free>10)spawnForestGiftsInPlace(n,Math.max(0,free-targetFree),[],'returning');
+  n.densitySeeded=true;
+ }
+ return n;
+}
 export function move(s,from,to){
  if(!isOpen(s,from)||!isOpen(s,to)||from===to)return result(s,[],false,'Choose two different open cells.');
  if(!s.cells[from].content||s.cells[to].content)return result(s,[],false,'Move an item into an empty cell.');
@@ -122,12 +148,19 @@ export function merge(s,from,to){
  if(s.cells[to].terrain==='cobweb'){
   if(a?.type!=='item'||b?.type!=='item'||a.chain!==b.chain||a.tier!==b.tier)return result(s,[],false,'Craft the matching item to clear these vines.');
   const n=cloneState(s);n.cells[from].content=null;n.cells[to].terrain='open';n.moves++;n.coins+=8+b.tier*4;
-  return result(n,[{type:'cobweb_cleared',from,to}]);
+  const events=[{type:'cobweb_cleared',from,to}];
+  spawnForestGiftsInPlace(n,2,events,'vines');
+  return result(n,events);
  }
  if(!isOpen(s,to))return result(s,[],false,'That forest cell is still locked.');
  if(a?.type!=='item'||b?.type!=='item'||a.chain!==b.chain||a.tier!==b.tier||a.tier>=MAX_TIER)return result(s,[],false,'Only identical items merge.');
- const n=cloneState(s);n.cells[from].content=null;n.cells[to].content={type:'item',chain:b.chain,tier:b.tier+1};n.moves++;n.energy=Math.min(n.maxEnergy,n.energy+1);
+ const n=cloneState(s);n.cells[from].content=null;n.cells[to].content={type:'item',chain:b.chain,tier:b.tier+1};n.moves++;n.mergeCount=(n.mergeCount??0)+1;n.energy=Math.min(n.maxEnergy,n.energy+1);
  const events=[{type:'merged',from,to,item:structuredClone(n.cells[to].content)}];discoverInPlace(n,n.cells[to].content,events);
+ if(n.mergeCount%5===0){
+  n.forestLight+=2;
+  events.push({type:'wisp_burst',index:to,light:2});
+  spawnForestGiftsInPlace(n,1,events,'rush');
+ }
  return result(n,events);
 }
 export function tapProducer(s,index){
@@ -180,6 +213,7 @@ export function completeOrder(s,orderId){
  consumeRequirementsInPlace(n,order.requirements);
  n.coins+=order.rewardCoins;n.forestLight+=order.rewardLight;n.energy=Math.min(n.maxEnergy,n.energy+order.rewardEnergy);n.ordersCompleted++;
  if(n.ordersCompleted<=4)unlockBoardCellsInPlace(n,1,events,'order');
+ spawnForestGiftsInPlace(n,Math.min(3,1+order.requirements.length),events,'order');
  n.activeOrders=n.activeOrders.filter(o=>o.id!==orderId);fillOrdersInPlace(n);
  return result(n,events);
 }
@@ -194,6 +228,7 @@ export function completeMilestone(s){
  if(!milestoneReady(s,m))return result(s,[],false,'Milestone requirements are not ready.');
  const n=cloneState(s),events=[];consumeRequirementsInPlace(n,m.requirements);n.coins-=m.coinCost;n.completedMilestones.push(m.id);n.milestoneIndex++;
  unlockBoardCellsInPlace(n,2+(n.milestoneIndex%3===0?1:0),events,'milestone');unlockProducerInPlace(n,m.unlock,events);
+ spawnForestGiftsInPlace(n,3,events,'milestone');
  events.unshift({type:'milestone_completed',milestoneId:m.id,progress:chapterProgress(n)});
  fillOrdersInPlace(n);return result(n,events);
 }
