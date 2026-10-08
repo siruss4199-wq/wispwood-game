@@ -287,3 +287,30 @@ test('commercial visual pass adds colorful HUD resources and NPC request portrai
  assert.match(css,/chain-crystal/);
  assert.match(css,/linear-gradient\(180deg,#70bff1/);
 });
+
+
+test('discovery events carry item and coin data for collection feedback',()=>{
+ const s=start();
+ const r=merge(s,28,35);
+ assert.equal(r.ok,true,r.reason);
+ const fresh=r.events.find(e=>e.type==='discovered');
+ assert.ok(fresh);
+ assert.ok(fresh.item?.chain);
+ assert.ok(Number.isInteger(fresh.coins)&&fresh.coins>0);
+});
+
+test('commercial meta layer includes NPC request cards, collection book and reward flights',()=>{
+ const html=fs.readFileSync(new URL('../v4/index.html',import.meta.url),'utf8');
+ const app=fs.readFileSync(new URL('../v4/app.mjs',import.meta.url),'utf8');
+ const css=fs.readFileSync(new URL('../v4/style.css',import.meta.url),'utf8');
+ assert.match(html,/data-panel="collection"/);
+ assert.match(html,/id="collectionGrid"/);
+ assert.match(html,/id="collectionBadge"/);
+ assert.match(app,/REQUEST_NPCS/);
+ assert.match(app,/collectionItems/);
+ assert.match(app,/rewardEffects/);
+ assert.match(app,/discoveryPop/);
+ assert.match(css,/rewardFlight/);
+ assert.match(css,/collectionItem/);
+ assert.doesNotMatch(html,/id="focusGoal"/);
+});
