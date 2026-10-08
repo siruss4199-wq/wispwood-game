@@ -26,3 +26,7 @@ jobs:
         run: node --test tests/v2-core.test.mjs
       - name: Check V2 UI module syntax
         run: node --check v2/app.mjs
+      - name: Run V3 core tests
+        run: node --test tests/v3-core.test.mjs
+      - name: Check V3 UI module syntax
+        run: node --check v3/app.mjs
