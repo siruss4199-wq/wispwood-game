@@ -27,9 +27,10 @@ export function unlockedChains(s){
 function discoverInPlace(s,item,events){
  const key=item.chain+':'+item.tier;
  if(!s.discovered[key]){
+  const coins=4+item.tier*2;
   s.discovered[key]=true;
-  s.coins+=4+item.tier*2;
-  events.push({type:'discovered',key});
+  s.coins+=coins;
+  events.push({type:'discovered',key,item:structuredClone(item),coins});
  }
 }
 function orderTier(s,slot){
@@ -227,7 +228,7 @@ function unlockBoardCellsInPlace(s,count,events,source='milestone'){
 export function completeOrder(s,orderId){
  const order=s.activeOrders.find(o=>o.id===orderId);if(!order)return result(s,[],false,'Order not found.');
  if(!orderReady(s,order))return result(s,[],false,'Order items are not ready.');
- const n=cloneState(s),events=[{type:'order_completed',orderId,coins:order.rewardCoins,light:order.rewardLight}];
+ const n=cloneState(s),events=[{type:'order_completed',orderId,coins:order.rewardCoins,light:order.rewardLight,energy:order.rewardEnergy}];
  consumeRequirementsInPlace(n,order.requirements);
  n.coins+=order.rewardCoins;n.forestLight+=order.rewardLight;n.energy=Math.min(n.maxEnergy,n.energy+order.rewardEnergy);n.ordersCompleted++;
  if(n.ordersCompleted<=4)unlockBoardCellsInPlace(n,2,events,'order');

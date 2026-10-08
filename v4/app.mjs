@@ -6,12 +6,12 @@ import {chapterProgress,completeMilestone as finishMilestone,completeOrder as fi
 
 const KEY='wispwood-v4';
 const $=s=>document.querySelector(s);
-const board=$('#board'),ordersEl=$('#orders'),sourcesEl=$('#sources'),storageEl=$('#storage');
+const board=$('#board'),ordersEl=$('#orders'),sourcesEl=$('#sources'),storageEl=$('#storage'),collectionEl=$('#collectionGrid');
 const energy=$('#energy'),coins=$('#coins'),light=$('#light'),discovered=$('#discovered'),playerLevel=$('#playerLevel');
 const milestoneTitle=$('#milestoneTitle'),milestoneReq=$('#milestoneReq'),milestoneStep=$('#milestoneStep'),progressBar=$('#progressBar i');
 const boardStatus=$('#boardStatus'),frontierNameEl=$('#frontierName'),rushFill=$('#rushFill'),rushCount=$('#rushCount'),questRibbon=$('#questRibbon'),questIcon=$('#questIcon'),requestPortrait=$('#requestPortrait'),questTitle=$('#questTitle'),questText=$('#questText'),goalReq=$('#goalReq'),goalPosition=$('#goalPosition'),goalPrev=$('#goalPrev'),goalNext=$('#goalNext'),deliveryCoach=$('#deliveryCoach'),soundToggle=$('#soundToggle'),inspect=$('#inspect'),inspectIcon=$('#inspectIcon'),inspectName=$('#inspectName'),inspectMeta=$('#inspectMeta'),inspectUse=$('#inspectUse');
 const completeOrderBtn=$('#completeOrder'),completeMilestoneBtn=$('#completeMilestone'),storeBtn=$('#store'),hint=$('#hint'),toast=$('#toast');
-const panelButtons=[...document.querySelectorAll('[data-open-panel]')],gamePanels=[...document.querySelectorAll('.gamePanel')],focusGoal=$('#focusGoal'),ordersBadge=$('#ordersBadge'),storageBadge=$('#storageBadge');
+const panelButtons=[...document.querySelectorAll('[data-open-panel]')],gamePanels=[...document.querySelectorAll('.gamePanel')],ordersBadge=$('#ordersBadge'),storageBadge=$('#storageBadge'),collectionBadge=$('#collectionBadge'),collectionCount=$('#collectionCount'),collectionProgress=$('#collectionProgress');
 
 const restored=restore(localStorage.getItem(KEY));
 let state=restored?reviveSparseBoard(restored):initializePlayableState(createInitialState());
@@ -24,6 +24,39 @@ function msg(t){
  toast.classList.add('show');
  clearTimeout(timer);
  timer=setTimeout(()=>toast.classList.remove('show'),1450);
+}
+function rewardFly(icon,amount,target,origin=questRibbon,delay=0){
+ if(!target||!origin||!amount)return;
+ const a=origin.getBoundingClientRect(),b=target.getBoundingClientRect(),el=document.createElement('span');
+ el.className='rewardFly';el.textContent=`${icon} +${amount}`;
+ const x=a.left+a.width/2,y=a.top+a.height/2,tx=b.left+b.width/2,ty=b.top+b.height/2;
+ el.style.left=x+'px';el.style.top=y+'px';el.style.setProperty('--reward-x',(tx-x)+'px');el.style.setProperty('--reward-y',(ty-y)+'px');
+ el.style.animationDelay=delay+'ms';document.body.appendChild(el);setTimeout(()=>el.remove(),1050+delay);
+}
+function discoveryPop(event){
+ const item=event?.item;if(!item)return;
+ const d=itemDef(item.chain,item.tier),el=document.createElement('div');
+ el.className='discoveryPop';
+ el.innerHTML=`<small>NEW DISCOVERY</small><span>${d.emoji}</span><b>${d.name}</b><em>+${event.coins??0} 🪙</em>`;
+ document.body.appendChild(el);setTimeout(()=>el.classList.add('show'),20);setTimeout(()=>el.remove(),1500);
+}
+function rewardEffects(events){
+ const order=events.find(e=>e.type==='order_completed');
+ if(order){
+  rewardFly('🪙',order.coins,coins,questRibbon,0);
+  rewardFly('✨',order.light,light,questRibbon,90);
+  rewardFly('⚡',order.energy,energy,questRibbon,180);
+ }
+ const rush=events.find(e=>e.type==='wisp_burst');
+ if(rush)rewardFly('✨',rush.light,light,board,60);
+ const fresh=events.find(e=>e.type==='discovered');
+ if(fresh){
+  discoveryPop(fresh);
+  const origin=Number.isInteger(effectIndex)?board.querySelector(`[data-index="${effectIndex}"]`):board;
+  rewardFly('🪙',fresh.coins,coins,origin,120);
+  const book=document.querySelector('[data-open-panel="collection"]');
+  book?.classList.add('attention');setTimeout(()=>book?.classList.remove('attention'),1400);
+ }
 }
 function itemText(chain,tier,count=1){
  const d=itemDef(chain,tier);
@@ -101,6 +134,7 @@ function apply(r){
   'Done'
  );
  render();
+ requestAnimationFrame(()=>rewardEffects(events));
  if(Number.isInteger(effectIndex)){
   const index=effectIndex,kind=effectKind;
   requestAnimationFrame(()=>board.querySelector(`[data-index="${index}"]`)?.classList.add(kind==='cobweb_cleared'?'burst-clear':'burst'));
@@ -184,19 +218,26 @@ function selectOrderByOffset(delta){
  const next=(current+delta+orders.length)%orders.length;
  selectedOrder=orders[next].id;selected=null;audio.play('select');render();
 }
-const REQUEST_FACES=['🧚','🐿️','🦉','🦌'];
-function requestFace(order){
- const i=Math.max(0,state.activeOrders.findIndex(o=>o.id===order?.id));
- return REQUEST_FACES[i%REQUEST_FACES.length];
+const REQUEST_NPCS=[
+ {face:'🧚',name:'Luma',role:'Garden Wisp'},
+ {face:'🐿️',name:'Pip',role:'Trail Runner'},
+ {face:'🦉',name:'Orin',role:'Old Archivist'},
+ {face:'🦌',name:'Elowen',role:'Grove Keeper'}
+];
+function requestNPC(order){
+ const slot=Number.isInteger(order?.slot)?order.slot:Math.max(0,state.activeOrders.findIndex(o=>o.id===order?.id));
+ return REQUEST_NPCS[slot%REQUEST_NPCS.length];
 }
+function requestFace(order){return requestNPC(order).face;}
 function tutorialState(){
  if(state.moves===0)return {icon:'✨',title:'Make your first merge',text:'Combine one glowing pair to open space and reveal your first request.',step:'1/3'};
  const o=state.activeOrders.find(x=>x.id===selectedOrder)??state.activeOrders[0];
  if(o){
   const ready=orderReady(state,o);
   const need=o.requirements.map(r=>itemText(r.chain,r.tier,r.count)).join(' + ');
-  if(ready&&state.ordersCompleted===0)return {icon:'🎁',title:'Request ready!',text:'Your items are complete. Tap Deliver to send them and collect the reward.',step:'3/3'};
-  return {icon:'📜',title:o.title,text:`Build ${need}. Matching pieces are highlighted on the board.`,step:'2/3'};
+  const npc=requestNPC(o);
+  if(ready&&state.ordersCompleted===0)return {icon:'🎁',title:`${npc.name}'s request is ready!`,text:'Tap Deliver to send the items and collect the reward.',step:'3/3'};
+  return {icon:'📜',title:`${npc.name} · ${o.title}`,text:`Build ${need} for ${npc.name}. Matching pieces are highlighted.`,step:'2/3'};
  }
  return {icon:'🌙',title:`Push into ${getFrontierName(state)}`,text:'Keep merging and restoring to reveal the next part of Wispwood.',step:'EXPLORE'};
 }
@@ -308,15 +349,36 @@ function render(){
 
  ordersBadge.textContent=String(state.activeOrders.length);
  storageBadge.textContent=String(state.storage.filter(Boolean).length);
+ const discoveryTotal=Object.keys(state.discovered).length;
+ collectionBadge.textContent=String(discoveryTotal);
+ collectionCount.textContent=`${discoveryTotal}/48`;
+ collectionProgress.style.width=(discoveryTotal/48*100)+'%';
+ collectionEl.innerHTML='';
+ for(const [chainId,chain] of Object.entries(CHAINS)){
+  const section=document.createElement('section');section.className='collectionChain chain-'+chainId;
+  const found=chain.items.filter(item=>state.discovered[chainId+':'+item.tier]).length;
+  section.innerHTML=`<div class="collectionChainHead"><b>${chain.name}</b><span>${found}/8</span></div><div class="collectionItems"></div>`;
+  const grid=section.querySelector('.collectionItems');
+  for(const d of chain.items){
+   const unlocked=!!state.discovered[chainId+':'+d.tier],cell=document.createElement('button');
+   cell.type='button';cell.className='collectionItem'+(unlocked?' found':' locked');
+   cell.innerHTML=unlocked?`<span>${d.emoji}</span><b>${d.name}</b><small>T${d.tier+1}</small>`:`<span>?</span><b>Unknown</b><small>T${d.tier+1}</small>`;
+   if(unlocked)cell.addEventListener('click',()=>msg(`${d.emoji} ${d.name} · ${chain.name} · Tier ${d.tier+1}`));
+   else cell.disabled=true;
+   grid.appendChild(cell);
+  }
+  collectionEl.appendChild(section);
+ }
+
  ordersEl.innerHTML='';
  for(const o of state.activeOrders){
-  const ready=orderReady(state,o),prog=requirementProgress(state,o.requirements);
+  const ready=orderReady(state,o),prog=requirementProgress(state,o.requirements),npc=requestNPC(o);
   const el=document.createElement('button');
   el.type='button';
-  el.className='order'+(selectedOrder===o.id?' active':'')+(ready?' ready':'');
+  el.className='order npcOrder'+(selectedOrder===o.id?' active':'')+(ready?' ready':'');
   el.setAttribute('aria-pressed',selectedOrder===o.id?'true':'false');
-  el.innerHTML=`<small>${o.label.toUpperCase()} ${ready?'· READY':''}</small><strong>${o.title}</strong><div class="req">${prog.map(r=>`<span class="${r.current>=r.count?'done':''}">${itemText(r.chain,r.tier,r.count)} · ${Math.min(r.current,r.count)}/${r.count}</span>`).join('')}</div><div class="reward">+${o.rewardCoins} 🪙 · +${o.rewardLight} ✨ · +${o.rewardEnergy} ⚡</div>`;
-  el.addEventListener('click',()=>{selectedOrder=selectedOrder===o.id?null:o.id;selected=null;render();});
+  el.innerHTML=`<span class="orderPortrait">${npc.face}</span><div class="orderCopy"><small>${npc.role.toUpperCase()} · ${ready?'READY':o.label.toUpperCase()}</small><strong>${npc.name}</strong><em>${o.title}</em><div class="req">${prog.map(r=>`<span class="${r.current>=r.count?'done':''}">${itemText(r.chain,r.tier,r.count)} · ${Math.min(r.current,r.count)}/${r.count}</span>`).join('')}</div><div class="reward">+${o.rewardCoins} 🪙 · +${o.rewardLight} ✨ · +${o.rewardEnergy} ⚡</div></div>`;
+  el.addEventListener('click',()=>{selectedOrder=o.id;selected=null;closePanels();render();questRibbon.scrollIntoView({behavior:'smooth',block:'center'});});
   ordersEl.appendChild(el);
  }
 
@@ -400,7 +462,6 @@ completeMilestoneBtn.addEventListener('click',()=>{audio.unlock();apply(finishMi
 storeBtn.addEventListener('click',()=>{audio.unlock();Number.isInteger(selected)&&apply(storeItem(state,selected));});
 panelButtons.forEach(b=>b.addEventListener('click',()=>togglePanel(b.dataset.openPanel)));
 gamePanels.forEach(p=>p.querySelector('.panelHandle')?.addEventListener('click',closePanels));
-focusGoal.addEventListener('click',()=>{closePanels();questRibbon.scrollIntoView({behavior:'smooth',block:'center'});audio.play('select');});
 goalPrev.addEventListener('click',()=>selectOrderByOffset(-1));
 goalNext.addEventListener('click',()=>selectOrderByOffset(1));
 soundToggle.addEventListener('click',()=>{
