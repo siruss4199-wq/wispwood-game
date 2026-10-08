@@ -4,13 +4,15 @@ export const MAX_TIER=7;
 
 const chain=(id,name,items)=>({id,name,items:items.map(([name,emoji],tier)=>({name,emoji,tier}))});
 export const CHAINS={
- leaf:chain('leaf','Forest Growth',[['Seed','🌰'],['Sprout','🌱'],['Herb','🌿'],['Fern','🍃'],['Bloom','🌸'],['Moon Flower','🌺'],['Ancient Blossom','🪷'],['Elder Crown','👑']]),
- wood:chain('wood','Ancient Wood',[['Twig','🪵'],['Branch','🌿'],['Bundle','🧺'],['Carved Wood','🪚'],['Totem','🗿'],['Spirit Totem','🧿'],['Heartwood','🟤'],['Worldroot','🌳']]),
- water:chain('water','Moon Water',[['Drop','💧'],['Dew','🫧'],['Flask','🧴'],['Elixir','🧪'],['Moonwater','🔹'],['Sacred Water','🩵'],['Moonwell','🌊'],['Lunar Chalice','🏺']]),
- crystal:chain('crystal','Crystal Stone',[['Pebble','🪨'],['Shard','🔹'],['Gem','💎'],['Prism','🔷'],['Moon Gem','🔮'],['Star Crystal','💠'],['Soul Crystal','🧊'],['Crown Crystal','👑']]),
- magic:chain('magic','Wisp Light',[['Spark','✨'],['Wisp','🟣'],['Glow Orb','🔮'],['Star Dust','🌟'],['Star Shard','💫'],['Aurora','🌌'],['Spirit Flame','🔥'],['Heart Star','⭐']]),
- relic:chain('relic','Lost Relics',[['Scrap','⚙️'],['Rune','🪬'],['Charm','📿'],['Idol','🗿'],['Tablet','📜'],['Moon Relic','🌙'],['Ancient Key','🗝️'],['Forest Heart','💜']])
+ leaf:chain('leaf','Forest Growth',[['Seed','🌰'],['Sprout','🌱'],['Herb','🌿'],['Fern','🍃'],['Bloom','🌸'],['Moon Flower','🌺'],['Ancient Blossom','🪷'],['Elder Crown','🍀']]),
+ wood:chain('wood','Ancient Wood',[['Twig','🪵'],['Branch','🌾'],['Bundle','🧺'],['Carved Wood','🪚'],['Totem','🗿'],['Spirit Totem','🧿'],['Heartwood','🟤'],['Worldroot','🌳']]),
+ water:chain('water','Moon Water',[['Drop','💧'],['Dew','🫧'],['Flask','🧴'],['Elixir','🧪'],['Moonwater','🌀'],['Sacred Water','🩵'],['Moonwell','🌊'],['Lunar Chalice','🏺']]),
+ crystal:chain('crystal','Crystal Stone',[['Pebble','🪨'],['Shard','🔹'],['Gem','💎'],['Prism','🔷'],['Moon Gem','♦️'],['Star Crystal','💠'],['Soul Crystal','🧊'],['Crown Crystal','👑']]),
+ magic:chain('magic','Wisp Light',[['Spark','✨'],['Wisp','🟣'],['Glow Orb','🪩'],['Star Dust','🌟'],['Star Shard','💫'],['Aurora','🌌'],['Spirit Flame','🔥'],['Heart Star','⭐']]),
+ relic:chain('relic','Lost Relics',[['Scrap','⚙️'],['Rune','🪬'],['Charm','📿'],['Idol','🪆'],['Tablet','📜'],['Moon Relic','🌙'],['Ancient Key','🗝️'],['Forest Heart','💜']])
 };
+
+export const CHAIN_MARKS={leaf:'FG',wood:'WD',water:'WT',crystal:'CR',magic:'MG',relic:'RL'};
 
 export const PRODUCERS={
  ancientTree:{
