@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createInitialState} from '../v3/core/state.mjs';
+import {COBWEB_ITEMS,createInitialState} from '../v3/core/state.mjs';
 import {completeOrder,explorationCost,fillOrdersInPlace,initializePlayableState,merge,mergeablePair,openEmptyIndices,producerIndices,tapProducer,unlockedProducerIds,validateState} from '../v3/core/engine.mjs';
 
 function start(){return initializePlayableState(createInitialState());}
@@ -16,6 +16,39 @@ test('V3 starts with three meaningfully different orders',()=>{
  assert.equal(openEmptyIndices(s).length,0);
  assert.equal(unlockedProducerIds(s)[0],'ancientTree');
  assert.deepEqual(validateState(s),[]);
+});
+
+test('starting board shows meaningful locked items instead of only anonymous boxes',()=>{
+ const s=start();
+ assert.equal(COBWEB_ITEMS.length,12);
+ const cobwebs=s.cells.filter(c=>c.terrain==='cobweb');
+ assert.equal(cobwebs.length,12);
+ assert.ok(new Set(cobwebs.map(c=>c.content.tier)).size>=4);
+ assert.ok(cobwebs.every(c=>c.content?.type==='item'));
+});
+
+test('matching an open item onto a cobweb frees the item without tiering it up',()=>{
+ let s=merge(start(),26,34).state;
+ const target=COBWEB_ITEMS.find(([,chain,tier])=>chain==='leaf'&&tier===1);
+ assert.ok(target);
+ const [,chain,tier]=target;
+ for(let guard=0;guard<200;guard++){
+  const source=s.cells.findIndex((c,i)=>i!==target[0]&&c.terrain==='open'&&c.content?.type==='item'&&c.content.chain===chain&&c.content.tier===tier);
+  if(source>=0){
+   const r=merge(s,source,target[0]);
+   assert.equal(r.ok,true,r.reason);
+   assert.equal(r.state.cells[target[0]].terrain,'open');
+   assert.equal(r.state.cells[target[0]].content.tier,tier);
+   assert.equal(r.state.cells[source].content,null);
+   return;
+  }
+  const pair=mergeablePair(s);
+  if(pair){s=merge(s,pair[0],pair[1]).state;continue;}
+  let made=false;
+  for(const i of producerIndices(s)){const r=tapProducer(s,i);if(r.ok){s=r.state;made=true;break;}}
+  assert.equal(made,true);
+ }
+ assert.fail('could not craft cobweb match');
 });
 
 test('first merge opens a real working clearing instead of consuming the board',()=>{
