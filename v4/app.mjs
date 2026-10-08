@@ -1,6 +1,7 @@
 import {CHAIN_MARKS,CHAINS,MILESTONES,PRODUCERS,itemDef} from './core/catalog.mjs';
 import {createInitialState,restore,serialize} from './core/state.mjs';
 import {platform} from './platform.mjs';
+import {audio} from './audio.mjs';
 import {chapterProgress,completeMilestone as finishMilestone,completeOrder as finishOrder,currentMilestone,fillOrdersInPlace,frontierName as getFrontierName,initializePlayableState,merge,milestoneReady,move,nextFrontierIndices,orderReady,producerPreview,requirementProgress,retrieveItem,reviveSparseBoard,storeItem,tapProducer} from './core/engine.mjs';
 
 const KEY='wispwood-v4';
@@ -8,7 +9,7 @@ const $=s=>document.querySelector(s);
 const board=$('#board'),ordersEl=$('#orders'),sourcesEl=$('#sources'),storageEl=$('#storage');
 const energy=$('#energy'),coins=$('#coins'),light=$('#light'),discovered=$('#discovered');
 const milestoneTitle=$('#milestoneTitle'),milestoneReq=$('#milestoneReq'),milestoneStep=$('#milestoneStep'),progressBar=$('#progressBar i');
-const boardStatus=$('#boardStatus'),frontierNameEl=$('#frontierName'),rushFill=$('#rushFill'),rushCount=$('#rushCount'),questRibbon=$('#questRibbon'),questIcon=$('#questIcon'),questTitle=$('#questTitle'),questText=$('#questText'),questStep=$('#questStep'),inspect=$('#inspect'),inspectIcon=$('#inspectIcon'),inspectName=$('#inspectName'),inspectMeta=$('#inspectMeta'),inspectUse=$('#inspectUse');
+const boardStatus=$('#boardStatus'),frontierNameEl=$('#frontierName'),rushFill=$('#rushFill'),rushCount=$('#rushCount'),questRibbon=$('#questRibbon'),questIcon=$('#questIcon'),questTitle=$('#questTitle'),questText=$('#questText'),goalReq=$('#goalReq'),goalPosition=$('#goalPosition'),goalPrev=$('#goalPrev'),goalNext=$('#goalNext'),soundToggle=$('#soundToggle'),inspect=$('#inspect'),inspectIcon=$('#inspectIcon'),inspectName=$('#inspectName'),inspectMeta=$('#inspectMeta'),inspectUse=$('#inspectUse');
 const completeOrderBtn=$('#completeOrder'),completeMilestoneBtn=$('#completeMilestone'),storeBtn=$('#store'),hint=$('#hint'),toast=$('#toast');
 
 const restored=restore(localStorage.getItem(KEY));
@@ -80,6 +81,7 @@ function apply(r){
  if(events.some(x=>x.type==='order_completed'))selectedOrder=null;
  else if(previousOrder&&state.activeOrders.some(o=>o.id===previousOrder))selectedOrder=previousOrder;
  const big=events.some(x=>x.type==='milestone_completed'||x.type==='order_completed'||x.type==='producer_unlocked');
+ audio.playEvents(events);
  const fx=events.find(x=>x.type==='wisp_burst')??events.find(x=>x.type==='merged'||x.type==='produced'||x.type==='cobweb_cleared'||x.type==='producer_unlocked');
  effectIndex=fx?.to??fx?.index??null;effectKind=fx?.type??null;
  platform.event?.(events);
@@ -120,6 +122,7 @@ function apply(r){
 }
 function clickTile(i){
  if(performance.now()<suppressClickUntil)return;
+ audio.unlock();
  const cell=state.cells[i];
  if(cell.terrain==='open'&&cell.content?.type==='producer'){
   if(Number.isInteger(selected)){selected=null;render();return;}
@@ -163,6 +166,12 @@ function suggestedIndices(){
   if(out.size>=4)break;
  }
  return out;
+}
+function selectOrderByOffset(delta){
+ const orders=state.activeOrders;if(!orders.length)return;
+ const current=Math.max(0,orders.findIndex(o=>o.id===selectedOrder));
+ const next=(current+delta+orders.length)%orders.length;
+ selectedOrder=orders[next].id;selected=null;audio.play('select');render();
 }
 function tutorialState(){
  if(state.moves===0)return {icon:'✨',title:'Make your first merge',text:'Two matching relics are glowing. Combine one pair to open a space.',step:'1/3'};
@@ -256,8 +265,16 @@ function render(){
  });
 
  const tutorial=tutorialState();
- questIcon.textContent=tutorial.icon;questTitle.textContent=tutorial.title;questText.textContent=tutorial.text;questStep.textContent=tutorial.step;
+ questIcon.textContent=tutorial.icon;questTitle.textContent=tutorial.title;questText.textContent=tutorial.text;
  questRibbon.classList.toggle('complete',state.milestoneIndex>0);
+ if(focusOrder){
+  const prog=requirementProgress(state,focusOrder.requirements);
+  goalReq.innerHTML=prog.map(progressChip).join('')+`<span class="goalReward">+${focusOrder.rewardCoins} 🪙 · +${focusOrder.rewardLight} ✨</span>`;
+  const pos=state.activeOrders.findIndex(o=>o.id===focusOrder.id)+1;goalPosition.textContent=`${pos}/${state.activeOrders.length}`;
+ }else{
+  goalReq.innerHTML='<span class="reqChip">✨ Merge a matching pair</span>';
+  goalPosition.textContent='—';
+ }
  const openItems=state.cells.filter(c=>c.terrain==='open'&&c.content?.type==='item').length;
  const empties=state.cells.filter(c=>c.terrain==='open'&&!c.content).length;
  const webs=state.cells.filter(c=>c.terrain==='cobweb').length;
@@ -312,8 +329,10 @@ function render(){
   inspectUse.textContent=selectionUseLabel(item);
  }else inspect.hidden=true;
 
- completeOrderBtn.disabled=!selectedOrder||!orderReady(state,state.activeOrders.find(o=>o.id===selectedOrder));
- completeOrderBtn.textContent=selectedOrder?'Deliver selected order':'Deliver order';
+ const focusedOrder=state.activeOrders.find(o=>o.id===selectedOrder);
+ const focusedReady=!!focusedOrder&&orderReady(state,focusedOrder);
+ completeOrderBtn.disabled=!focusedReady;
+ completeOrderBtn.textContent=focusedReady?'Deliver':'Build';
  completeMilestoneBtn.disabled=!milestoneReady(state,m);
  storeBtn.disabled=!(Number.isInteger(selected)&&state.cells[selected]?.content?.type==='item');
 
@@ -346,8 +365,20 @@ function render(){
  save();
 }
 
-completeOrderBtn.addEventListener('click',()=>selectedOrder&&apply(finishOrder(state,selectedOrder)));
-completeMilestoneBtn.addEventListener('click',()=>apply(finishMilestone(state)));
-storeBtn.addEventListener('click',()=>Number.isInteger(selected)&&apply(storeItem(state,selected)));
+completeOrderBtn.addEventListener('click',()=>{audio.unlock();selectedOrder&&apply(finishOrder(state,selectedOrder));});
+completeMilestoneBtn.addEventListener('click',()=>{audio.unlock();apply(finishMilestone(state));});
+storeBtn.addEventListener('click',()=>{audio.unlock();Number.isInteger(selected)&&apply(storeItem(state,selected));});
+goalPrev.addEventListener('click',()=>selectOrderByOffset(-1));
+goalNext.addEventListener('click',()=>selectOrderByOffset(1));
+soundToggle.addEventListener('click',()=>{
+ audio.unlock();
+ audio.setEnabled(!audio.enabled());
+ soundToggle.textContent=audio.enabled()?'🔊':'🔇';
+ soundToggle.setAttribute('aria-pressed',audio.enabled()?'true':'false');
+ if(audio.enabled())audio.play('select');
+});
+soundToggle.textContent=audio.enabled()?'🔊':'🔇';
+soundToggle.setAttribute('aria-pressed',audio.enabled()?'true':'false');
+audio.bindPlatformMute(platform);
 render();
 platform.startGameplay?.();
