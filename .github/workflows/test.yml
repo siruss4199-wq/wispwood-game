@@ -20,5 +20,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Run dependency-free tests
+      - name: Run legacy prototype tests
         run: node --test tests/game.test.cjs
+      - name: Run clean V2 core tests
+        run: node --test tests/v2-core.test.mjs
