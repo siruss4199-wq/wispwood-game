@@ -25,7 +25,7 @@ const {chromium}=require('playwright');
    assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('wispwood-v4')).producerTapCounts.ancientTree),1);
    await page.screenshot({path:`test-artifacts/mobile-${width}.png`,fullPage:true});
    await page.locator('[data-open-panel="sources"]').tap();assert.equal(await page.locator('#sources .source').count(),1);
-   await page.locator('#sourcesPanel .panelHandle').tap();await page.locator('[data-open-panel="orders"]').tap();assert.equal(await page.locator('#orders .order').count(),4);
+   await page.locator('#sourcesPanel .panelHandle').tap();await page.locator('.gameDock [data-open-panel="orders"]').tap();assert.equal(await page.locator('#orders .order').count(),4);
    await page.reload();assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('wispwood-v4')).mergeCount),2);
    assert.deepEqual(errors,[]);await page.close();
   }
