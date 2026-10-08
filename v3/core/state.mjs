@@ -1,9 +1,9 @@
 import {CELL_COUNT,PRODUCERS,STORAGE_UPGRADES} from './catalog.mjs';
 
-export const SCHEMA=1;
+export const SCHEMA=2;
 export const STARTER=[26,34];
 export const FIRST_TREE=33;
-export const FIRST_EMPTY=35;
+export const FIRST_CLEARING=[27,28,35,36];
 
 function crate(){
  return {terrain:'crate',reveal:{type:'item',chain:'leaf',tier:0},content:null};
@@ -13,7 +13,7 @@ export function createInitialState(){
  const cells=Array.from({length:CELL_COUNT},crate);
  for(const i of STARTER)cells[i]={terrain:'open',reveal:null,content:{type:'item',chain:'leaf',tier:0}};
  cells[FIRST_TREE].reveal={type:'producer',producerId:PRODUCERS.ancientTree.id};
- cells[FIRST_EMPTY].reveal={type:'empty'};
+ for(const i of FIRST_CLEARING)cells[i].reveal={type:'empty'};
  return {
   schema:SCHEMA,
   phase:'first_merge',
@@ -26,6 +26,8 @@ export function createInitialState(){
   activeOrders:[],
   discovered:{'leaf:0':true},
   nextOrderSerial:1,
+  explorationPoints:0,
+  exploredCrates:0,
   cells
  };
 }
