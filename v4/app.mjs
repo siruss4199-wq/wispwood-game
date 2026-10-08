@@ -12,6 +12,7 @@ const milestoneTitle=$('#milestoneTitle'),milestoneReq=$('#milestoneReq'),milest
 const boardStatus=$('#boardStatus'),frontierNameEl=$('#frontierName'),rushFill=$('#rushFill'),rushCount=$('#rushCount'),questRibbon=$('#questRibbon'),questIcon=$('#questIcon'),requestPortrait=$('#requestPortrait'),questTitle=$('#questTitle'),questText=$('#questText'),goalReq=$('#goalReq'),goalPosition=$('#goalPosition'),goalPrev=$('#goalPrev'),goalNext=$('#goalNext'),deliveryCoach=$('#deliveryCoach'),soundToggle=$('#soundToggle'),inspect=$('#inspect'),inspectIcon=$('#inspectIcon'),inspectName=$('#inspectName'),inspectMeta=$('#inspectMeta'),inspectUse=$('#inspectUse');
 const completeOrderBtn=$('#completeOrder'),completeMilestoneBtn=$('#completeMilestone'),storeBtn=$('#store'),hint=$('#hint'),toast=$('#toast');
 const panelButtons=[...document.querySelectorAll('[data-open-panel]')],gamePanels=[...document.querySelectorAll('.gamePanel')],ordersBadge=$('#ordersBadge'),storageBadge=$('#storageBadge'),collectionBadge=$('#collectionBadge'),collectionCount=$('#collectionCount'),collectionProgress=$('#collectionProgress'),parcelFill=$('#parcelFill'),parcelCount=$('#parcelCount'),mapSummary=$('#mapSummary');
+const activityMilestoneIcon=$('#activityMilestoneIcon'),activityMilestoneTitle=$('#activityMilestoneTitle'),activityMilestoneStep=$('#activityMilestoneStep'),activityRequestPortrait=$('#activityRequestPortrait'),activityRequestTitle=$('#activityRequestTitle'),activityRequestProgress=$('#activityRequestProgress'),activityBookCount=$('#activityBookCount'),activitySourceCount=$('#activitySourceCount'),worldNodes=[...document.querySelectorAll('[data-world-node]')];
 
 const restored=restore(localStorage.getItem(KEY));
 let state=restored?reviveSparseBoard(restored):initializePlayableState(createInitialState());
@@ -330,12 +331,12 @@ function render(){
     const d=itemDef(cell.content.chain,cell.content.tier);
     b.classList.add('item','chain-'+cell.content.chain,'tier-'+cell.content.tier);
     if(wanted.has(cell.content.chain+':'+cell.content.tier))b.classList.add('wanted');
-    b.innerHTML=`<span class="emoji">${d.emoji}</span><span class="tag">T${cell.content.tier+1}</span>${cell.terrain==='cobweb'?'<span class="web">🕸️</span>':''}`;
+    b.innerHTML=`<span class="emoji">${d.emoji}</span>${cell.terrain==='cobweb'?'<span class="web">🕸️</span>':''}`;
   }
   if(cell.terrain==='open'&&cell.content?.type==='producer'){
     const d=PRODUCERS[cell.content.producerId];
     b.classList.add('producer','source-awake');
-    b.innerHTML=`<span class="tapCue">TAP</span><span class="emoji">${d.emoji}</span><span class="tag">LV${state.producerLevels[d.id]}</span>`;
+    b.innerHTML=`<span class="producerBolt">⚡</span><span class="emoji">${d.emoji}</span><span class="producerLevel">Lv${state.producerLevels[d.id]}</span>`;
   }
 
   b.addEventListener('click',()=>clickTile(i));
@@ -392,6 +393,8 @@ function render(){
  ordersBadge.textContent=String(state.activeOrders.length);
  storageBadge.textContent=String(state.storage.filter(Boolean).length);
  const discoveryTotal=Object.keys(state.discovered).length;
+ activityBookCount.textContent=`${discoveryTotal}/48 found`;
+ activitySourceCount.textContent=`${Object.values(state.producerLevels).filter(v=>v>0).length}/3 awake`;
  collectionBadge.textContent=String(discoveryTotal);
  collectionCount.textContent=`${discoveryTotal}/48`;
  collectionProgress.style.width=(discoveryTotal/48*100)+'%';
@@ -425,6 +428,18 @@ function render(){
  }
 
  const m=currentMilestone(state);
+ const currentWorld=Math.min(3,Math.floor(state.milestoneIndex/5));
+ worldNodes.forEach((node,i)=>{node.classList.toggle('complete',i<currentWorld);node.classList.toggle('active',i===currentWorld);});
+ activityMilestoneIcon.textContent=m?.icon??'🌳';
+ activityMilestoneTitle.textContent=m?.title??'Forest Restored';
+ activityMilestoneStep.textContent=`${state.milestoneIndex}/${MILESTONES.length}`;
+ const quickOrder=focusOrder??state.activeOrders[0];
+ if(quickOrder){
+  const npc=requestNPC(quickOrder),prog=requirementProgress(state,quickOrder.requirements),done=prog.reduce((n,r)=>n+Math.min(r.current,r.count),0),need=prog.reduce((n,r)=>n+r.count,0);
+  activityRequestPortrait.textContent=npc.face;activityRequestTitle.textContent=npc.name;
+  activityRequestProgress.textContent=orderReady(state,quickOrder)?'READY TO DELIVER':`${done}/${need} items`;
+  document.querySelector('.requestQuickCard')?.classList.toggle('ready',orderReady(state,quickOrder));
+ }
  milestoneTitle.textContent=m?.title??'Lost Clearing restored';
  if(m){
   const reqs=requirementProgress(state,m.requirements);
