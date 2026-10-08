@@ -1,17 +1,17 @@
-import {CHAINS,MILESTONES,PRODUCERS,itemDef} from './core/catalog.mjs';
+import {CHAINS,MILESTONES,PRODUCERS,PRODUCER_MAX_LEVEL,itemDef} from './core/catalog.mjs';
 import {createInitialState,restore,serialize} from './core/state.mjs';
 import {platform} from './platform.mjs';
 import {audio} from './audio.mjs';
-import {chapterProgress,completeMilestone as finishMilestone,completeOrder as finishOrder,currentMilestone,fillOrdersInPlace,frontierName as getFrontierName,initializePlayableState,merge,milestoneReady,move,nextFrontierIndices,orderReady,producerPreview,requirementProgress,retrieveItem,reviveSparseBoard,storeItem,tapProducer} from './core/engine.mjs';
+import {chapterProgress,completeMilestone as finishMilestone,completeOrder as finishOrder,currentMilestone,fillOrdersInPlace,frontierName as getFrontierName,initializePlayableState,merge,milestoneReady,move,nextFrontierIndices,orderReady,producerPreview,producerUpgradeCost,requirementProgress,retrieveItem,reviveSparseBoard,storeItem,tapProducer,upgradeProducer} from './core/engine.mjs';
 
 const KEY='wispwood-v4';
 const $=s=>document.querySelector(s);
-const board=$('#board'),ordersEl=$('#orders'),sourcesEl=$('#sources'),storageEl=$('#storage'),collectionEl=$('#collectionGrid');
+const board=$('#board'),ordersEl=$('#orders'),sourcesEl=$('#sources'),storageEl=$('#storage'),collectionEl=$('#collectionGrid'),restorationMap=$('#restorationMap');
 const energy=$('#energy'),coins=$('#coins'),light=$('#light'),discovered=$('#discovered'),playerLevel=$('#playerLevel');
 const milestoneTitle=$('#milestoneTitle'),milestoneReq=$('#milestoneReq'),milestoneStep=$('#milestoneStep'),progressBar=$('#progressBar i');
 const boardStatus=$('#boardStatus'),frontierNameEl=$('#frontierName'),rushFill=$('#rushFill'),rushCount=$('#rushCount'),questRibbon=$('#questRibbon'),questIcon=$('#questIcon'),requestPortrait=$('#requestPortrait'),questTitle=$('#questTitle'),questText=$('#questText'),goalReq=$('#goalReq'),goalPosition=$('#goalPosition'),goalPrev=$('#goalPrev'),goalNext=$('#goalNext'),deliveryCoach=$('#deliveryCoach'),soundToggle=$('#soundToggle'),inspect=$('#inspect'),inspectIcon=$('#inspectIcon'),inspectName=$('#inspectName'),inspectMeta=$('#inspectMeta'),inspectUse=$('#inspectUse');
 const completeOrderBtn=$('#completeOrder'),completeMilestoneBtn=$('#completeMilestone'),storeBtn=$('#store'),hint=$('#hint'),toast=$('#toast');
-const panelButtons=[...document.querySelectorAll('[data-open-panel]')],gamePanels=[...document.querySelectorAll('.gamePanel')],ordersBadge=$('#ordersBadge'),storageBadge=$('#storageBadge'),collectionBadge=$('#collectionBadge'),collectionCount=$('#collectionCount'),collectionProgress=$('#collectionProgress');
+const panelButtons=[...document.querySelectorAll('[data-open-panel]')],gamePanels=[...document.querySelectorAll('.gamePanel')],ordersBadge=$('#ordersBadge'),storageBadge=$('#storageBadge'),collectionBadge=$('#collectionBadge'),collectionCount=$('#collectionCount'),collectionProgress=$('#collectionProgress'),parcelFill=$('#parcelFill'),parcelCount=$('#parcelCount'),mapSummary=$('#mapSummary');
 
 const restored=restore(localStorage.getItem(KEY));
 let state=restored?reviveSparseBoard(restored):initializePlayableState(createInitialState());
@@ -49,6 +49,20 @@ function rewardEffects(events){
  }
  const rush=events.find(e=>e.type==='wisp_burst');
  if(rush)rewardFly('✨',rush.light,light,board,60);
+ const parcel=events.find(e=>e.type==='forest_parcel');
+ if(parcel){
+  rewardFly('🪙',parcel.coins,coins,questRibbon,20);
+  rewardFly('✨',parcel.light,light,questRibbon,110);
+  rewardFly('⚡',parcel.energy,energy,questRibbon,200);
+  const el=document.createElement('div');el.className='parcelPop';el.innerHTML='<small>3 DELIVERIES!</small><span>🎁</span><b>Forest Parcel</b><em>Bonus gifts dropped on the board</em>';
+  document.body.appendChild(el);setTimeout(()=>el.classList.add('show'),20);setTimeout(()=>el.remove(),1650);
+ }
+ const upgraded=events.find(e=>e.type==='producer_upgraded');
+ if(upgraded){
+  const p=PRODUCERS[upgraded.producerId],el=document.createElement('div');el.className='parcelPop producerPop';
+  el.innerHTML=`<small>SOURCE UPGRADED</small><span>${p.emoji}</span><b>${p.name} · Lv${upgraded.level}</b><em>Higher-level drops are now possible</em>`;
+  document.body.appendChild(el);setTimeout(()=>el.classList.add('show'),20);setTimeout(()=>el.remove(),1550);
+ }
  const fresh=events.find(e=>e.type==='discovered');
  if(fresh){
   discoveryPop(fresh);
@@ -123,6 +137,8 @@ function apply(r){
  const expanded=events.some(x=>x.type==='cell_unlocked');
  msg(
   events.some(x=>x.type==='milestone_completed')?'🌿 Restoration complete — gifts are growing on the board!':
+  events.some(x=>x.type==='forest_parcel')?'🎁 Forest Parcel! Bonus rewards and gifts dropped!':
+  events.some(x=>x.type==='producer_upgraded')?'🌳 Source upgraded — stronger drops unlocked!':
   events.some(x=>x.type==='wisp_burst')?'✦ WISP RUSH! +2 Light and a bonus drop!':
   events.some(x=>x.type==='order_completed')&&expanded?'📜 Order delivered — the forest pushed outward!':
   events.some(x=>x.type==='order_completed')?'📜 Order delivered — rewards added!':
@@ -241,6 +257,30 @@ function tutorialState(){
  }
  return {icon:'🌙',title:`Push into ${getFrontierName(state)}`,text:'Keep merging and restoring to reveal the next part of Wispwood.',step:'EXPLORE'};
 }
+function renderRestorationMap(){
+ restorationMap.innerHTML='';
+ mapSummary.textContent=`${state.milestoneIndex}/${MILESTONES.length} restored`;
+ const zones=[
+  {name:'Mossy Verge',icon:'🌱',from:0,to:2},
+  {name:'Moonlit Thicket',icon:'⛲',from:3,to:5},
+  {name:'Whisper Grove',icon:'🌙',from:6,to:8},
+  {name:'Ancient Hollow',icon:'⛩️',from:9,to:11},
+  {name:'Heartwood Edge',icon:'🏛️',from:12,to:14},
+  {name:'Forest Heart',icon:'💜',from:15,to:17}
+ ];
+ for(const z of zones){
+  const done=Math.max(0,Math.min(z.to-z.from+1,state.milestoneIndex-z.from));
+  const current=state.milestoneIndex>=z.from&&state.milestoneIndex<=z.to;
+  const unlocked=state.milestoneIndex>=z.from;
+  const el=document.createElement('button');el.type='button';
+  el.className='mapZone'+(done===z.to-z.from+1?' complete':current?' current':unlocked?' unlocked':' locked');
+  const next=MILESTONES[Math.max(z.from,state.milestoneIndex)]??MILESTONES[z.to];
+  el.innerHTML=`<span class="mapZoneIcon">${z.icon}</span><div><small>${done}/${z.to-z.from+1} RESTORED</small><b>${z.name}</b><em>${done===z.to-z.from+1?'Restored':current?(next?.title??'Explore'):'Locked'}</em></div><i></i>`;
+  el.disabled=!unlocked&&!current;
+  if(current)el.addEventListener('click',()=>{closePanels();document.querySelector('.worldStrip')?.scrollIntoView({behavior:'smooth',block:'center'});});
+  restorationMap.appendChild(el);
+ }
+}
 function tileAria(cell,i){
  if(cell.terrain==='locked')return `Locked forest cell ${i+1}`;
  if(cell.content?.type==='producer'){
@@ -346,6 +386,8 @@ function render(){
  const frontier=getFrontierName(state);frontierNameEl.textContent=frontier;
  boardStatus.textContent=`${explored}/64 explored · ${openItems} items · ${empties} free`;
  const rush=(state.mergeCount??0)%5;rushCount.textContent=`${rush}/5`;rushFill.style.width=(rush/5*100)+'%';
+ const parcel=(state.ordersCompleted??0)%3;parcelCount.textContent=`${parcel}/3`;parcelFill.style.width=(parcel/3*100)+'%';
+ renderRestorationMap();
 
  ordersBadge.textContent=String(state.activeOrders.length);
  storageBadge.textContent=String(state.storage.filter(Boolean).length);
@@ -399,11 +441,12 @@ function render(){
 
  sourcesEl.innerHTML='';
  for(const [id,p] of Object.entries(PRODUCERS)){
-  if((state.producerLevels[id]??0)<=0)continue;
-  const preview=producerPreview(state,id,3);
-  const card=document.createElement('div');
-  card.className='source';
-  card.innerHTML=`<span class="sourceIcon">${p.emoji}</span><div><b>${p.name} · Lv${state.producerLevels[id]}</b><small>Next drops</small><div class="dropPreview">${preview.map(x=>{const d=itemDef(x.chain,x.tier);return `<span title="${d.name}">${d.emoji}</span>`;}).join('')}</div></div>`;
+  const level=state.producerLevels[id]??0;if(level<=0)continue;
+  const preview=producerPreview(state,id,3),cost=producerUpgradeCost(state,id),maxed=level>=PRODUCER_MAX_LEVEL;
+  const card=document.createElement('div');card.className='source sourceUpgrade';
+  const pips=Array.from({length:PRODUCER_MAX_LEVEL},(_,i)=>`<i class="${i<level?'on':''}"></i>`).join('');
+  card.innerHTML=`<span class="sourceIcon">${p.emoji}</span><div class="sourceInfo"><b>${p.name} · Lv${level}</b><div class="sourcePips">${pips}</div><small>Next drops</small><div class="dropPreview">${preview.map(x=>{const d=itemDef(x.chain,x.tier);return `<span title="${d.name}">${d.emoji}</span>`;}).join('')}</div></div><button class="sourceUpgradeBtn" type="button" ${maxed?'disabled':''}>${maxed?'MAX':`Upgrade<br><small>${cost.coins} 🪙 · ${cost.light} ✨</small>`}</button>`;
+  card.querySelector('.sourceUpgradeBtn')?.addEventListener('click',e=>{e.stopPropagation();audio.unlock();apply(upgradeProducer(state,id));});
   sourcesEl.appendChild(card);
  }
 
