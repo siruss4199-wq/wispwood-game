@@ -1171,3 +1171,66 @@ body{
   .gameShell{max-width:980px!important;grid-template-columns:minmax(540px,1.3fr) minmax(320px,.7fr)!important}
   .activityTray{grid-column:1/-1}
 }
+
+
+/* Request shelf and board-source polish: denser, more readable commercial merge-game composition. */
+.activityTray{grid-auto-columns:minmax(126px,1fr)!important}
+.requestMiniCard{
+  grid-template-columns:42px minmax(0,1fr)!important;
+  background:linear-gradient(180deg,#fff5e7,#f3dcc2)!important;
+  box-shadow:0 4px 0 #c4986c,0 7px 12px rgba(54,56,78,.16)!important
+}
+.requestMiniCard:nth-of-type(3){background:linear-gradient(180deg,#e9f7ff,#c9e7f4)!important;box-shadow:0 4px 0 #79acc2,0 7px 12px rgba(54,56,78,.16)!important}
+.requestMiniCard.ready{
+  background:linear-gradient(180deg,#f3ffd2,#c7ee9c)!important;border-color:#fff59a!important;
+  box-shadow:0 4px 0 #75ac54,0 0 0 3px rgba(255,242,112,.45),0 8px 15px rgba(54,56,78,.18)!important
+}
+.requestMiniCard.active{outline:3px solid rgba(255,215,77,.9);outline-offset:-4px}
+.requestMiniCopy{display:grid;grid-template-columns:1fr;align-content:center;gap:2px}
+.requestMiniItems{display:flex;gap:3px;min-height:25px}
+.requestMiniItems>span{
+  position:relative;width:27px;height:27px;display:grid;place-items:center;border-radius:8px;background:rgba(255,255,255,.72);
+  border:1px solid rgba(124,96,74,.18);font-size:18px;box-shadow:inset 0 1px 0 white
+}
+.requestMiniItems>span b{
+  position:absolute;right:-3px;bottom:-3px;min-width:14px;height:14px;padding:0 2px;display:grid;place-items:center;
+  border-radius:7px;background:#7b5e55;color:white;border:1px solid white;font-size:6px
+}
+.requestMiniItems>span.done{background:#dff7bf}.requestMiniItems>span.done b{background:#58ad4f}
+.requestMiniReward{font-size:6px!important;font-weight:1000!important;color:#80624f!important}
+.requestMiniCard.ready .requestMiniReward{color:#4f8c40!important}
+.parcelQuickCard{background:linear-gradient(180deg,#f8e8ff,#dbc3f1)!important;box-shadow:0 4px 0 #9c7db7,0 7px 12px rgba(54,56,78,.16)!important}
+.parcelGift{background:linear-gradient(180deg,#fff5bd,#ffd06b)!important}
+.parcelMiniTrack{height:6px;border-radius:99px;background:rgba(109,80,120,.18);overflow:hidden;margin-top:3px}
+.parcelMiniTrack i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#ffcf53,#e46db4);transition:width .25s ease}
+
+.tile.item .emoji{
+  transform:translateY(-1px) scale(1.12)!important;
+  filter:drop-shadow(0 4px 1px rgba(87,50,25,.3)) drop-shadow(0 0 1px rgba(255,255,255,.7))!important
+}
+.tile.item:active .emoji{transform:translateY(1px) scale(1.03)!important}
+.tile.producer{overflow:visible!important}
+.tile.producer .emoji{font-size:clamp(26px,8vw,45px)!important;filter:drop-shadow(0 4px 2px rgba(47,75,35,.3))}
+.producerSpark{
+  position:absolute;left:2px;top:1px;color:#fff58d;font-size:14px;z-index:3;
+  filter:drop-shadow(0 0 4px rgba(255,233,91,.9));opacity:.8
+}
+.producer-ready{
+  animation:producerReady 1.7s ease-in-out infinite!important;
+}
+.producer-ready .producerBolt{animation:boltBounce 1s ease-in-out infinite}
+@keyframes producerReady{50%{box-shadow:0 0 0 3px #fff3a4,0 3px 0 #3e713f,0 0 24px rgba(233,246,102,.95)!important}}
+@keyframes boltBounce{50%{transform:translateY(-3px) scale(1.08)}}
+.producer-tap{animation:producerTap .38s cubic-bezier(.2,.8,.2,1)!important}
+@keyframes producerTap{30%{transform:scale(.86) rotate(-3deg)}70%{transform:scale(1.08) rotate(2deg)}}
+.produce-pop{animation:producePop .6s cubic-bezier(.16,.9,.3,1)!important}
+@keyframes producePop{0%{transform:scale(.25);opacity:.25}55%{transform:scale(1.22);opacity:1}100%{transform:scale(1);opacity:1}}
+
+@media(max-width:560px){
+  .activityTray{grid-auto-columns:122px!important}
+  .requestMiniCard{grid-template-columns:38px minmax(0,1fr)!important}
+  .requestMiniItems>span{width:24px;height:24px;font-size:16px}
+}
+@media(prefers-reduced-motion:reduce){
+  .producer-ready,.producer-ready .producerBolt,.producer-tap,.produce-pop{animation:none!important}
+}

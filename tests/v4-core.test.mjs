@@ -360,7 +360,7 @@ test('commercial board layout uses profile HUD activity cards and bottom info ba
  const css=fs.readFileSync(new URL('../v4/style.css',import.meta.url),'utf8');
  assert.match(html,/class="playerProfile"/);
  assert.match(html,/class="activityTray"/);
- assert.match(html,/id="activityRequestProgress"/);
+ assert.match(html,/data-order-slot="0"/);
  assert.match(html,/class="dockHint"/);
  assert.match(html,/id="hint"/);
  assert.match(app,/activityMilestoneTitle/);
@@ -368,4 +368,40 @@ test('commercial board layout uses profile HUD activity cards and bottom info ba
  assert.match(css,/grid-template-columns:58px minmax\(0,1fr\) 58px 58px/);
  assert.match(css,/background:linear-gradient\(180deg,#c88145,#ac642f\)/);
  assert.doesNotMatch(app,/class="tag">T\$\{cell\.content\.tier\+1\}/);
+});
+
+
+test('top activity shelf surfaces two real requests plus parcel progress',()=>{
+ const html=fs.readFileSync(new URL('../v4/index.html',import.meta.url),'utf8');
+ const app=fs.readFileSync(new URL('../v4/app.mjs',import.meta.url),'utf8');
+ const css=fs.readFileSync(new URL('../v4/style.css',import.meta.url),'utf8');
+ assert.equal((html.match(/data-order-slot=/g)??[]).length,2);
+ assert.match(html,/id="activityParcelFill"/);
+ assert.match(app,/requestMiniCards/);
+ assert.match(app,/requestMiniItems/);
+ assert.match(app,/dataset.orderId/);
+ assert.match(css,/requestMiniCard.ready/);
+ assert.match(css,/parcelMiniTrack/);
+});
+
+test('producer taps expose their source index for board feedback',()=>{
+ let s=start();
+ const first=merge(s,28,35);assert.equal(first.ok,true,first.reason);s=first.state;
+ const p=producerIndices(s)[0],r=tapProducer(s,p);assert.equal(r.ok,true,r.reason);
+ const produced=r.events.find(e=>e.type==='produced');
+ assert.equal(produced.producerIndex,p);
+ assert.equal(produced.energySpent,1);
+});
+
+test('board producer presentation has ready and tap feedback without text TAP labels',()=>{
+ const app=fs.readFileSync(new URL('../v4/app.mjs',import.meta.url),'utf8');
+ const css=fs.readFileSync(new URL('../v4/style.css',import.meta.url),'utf8');
+ assert.match(app,/producer-ready/);
+ assert.match(app,/producerSpark/);
+ assert.match(app,/producer-tap/);
+ assert.match(app,/produce-pop/);
+ assert.doesNotMatch(app,/tapCue/);
+ assert.match(css,/producerReady/);
+ assert.match(css,/producerTap/);
+ assert.match(css,/producePop/);
 });

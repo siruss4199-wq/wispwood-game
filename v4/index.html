@@ -31,17 +31,20 @@
       <span id="activityMilestoneIcon" class="activityIcon">🌱</span>
       <span class="activityCopy"><small>RESTORE</small><b id="activityMilestoneTitle">Wake the Garden</b><em id="activityMilestoneStep">0/18</em></span>
     </button>
-    <button class="activityCard requestQuickCard" data-open-panel="orders" type="button">
-      <span id="activityRequestPortrait" class="activityPortrait">🧚</span>
-      <span class="activityCopy"><small>REQUEST</small><b id="activityRequestTitle">Luma</b><em id="activityRequestProgress">0/1 items</em></span>
+
+    <button class="activityCard requestMiniCard" data-order-slot="0" type="button">
+      <span class="activityPortrait requestMiniPortrait">🧚</span>
+      <span class="activityCopy requestMiniCopy"><small>REQUEST</small><b class="requestMiniName">Luma</b><span class="requestMiniItems"></span><em class="requestMiniReward">+0 🪙</em></span>
     </button>
-    <button class="activityCard bookQuickCard" data-open-panel="collection" type="button">
-      <span class="activityIcon">📖</span>
-      <span class="activityCopy"><small>COLLECTION</small><b>Discovery Book</b><em id="activityBookCount">1/48 found</em></span>
+
+    <button class="activityCard requestMiniCard" data-order-slot="1" type="button">
+      <span class="activityPortrait requestMiniPortrait">🐿️</span>
+      <span class="activityCopy requestMiniCopy"><small>REQUEST</small><b class="requestMiniName">Pip</b><span class="requestMiniItems"></span><em class="requestMiniReward">+0 🪙</em></span>
     </button>
-    <button class="activityCard sourceQuickCard" data-open-panel="sources" type="button">
-      <span class="activityIcon">🌳</span>
-      <span class="activityCopy"><small>SOURCES</small><b>Forest Producers</b><em id="activitySourceCount">1/3 awake</em></span>
+
+    <button class="activityCard parcelQuickCard" data-open-panel="orders" type="button">
+      <span class="activityIcon parcelGift">🎁</span>
+      <span class="activityCopy"><small>FOREST PARCEL</small><b>3 Deliveries</b><span class="parcelMiniTrack"><i id="activityParcelFill"></i></span><em id="activityParcelCount">0/3</em></span>
     </button>
   </section>
 
