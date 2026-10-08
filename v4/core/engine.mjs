@@ -69,11 +69,26 @@ export function fillOrdersInPlace(s){
 }
 export function initializePlayableState(s){const n=cloneState(s);fillOrdersInPlace(n);return n;}
 
-function countItems(s,chain,tier){
+export function countItems(s,chain,tier){
  let n=0;
  for(const c of s.cells)if(c.terrain==='open'&&c.content?.type==='item'&&c.content.chain===chain&&c.content.tier===tier)n++;
  for(const x of s.storage)if(x?.type==='item'&&x.chain===chain&&x.tier===tier)n++;
  return n;
+}
+export function requirementProgress(s,requirements){
+ return requirements.map(r=>{
+  const [chain,tier,count]=Array.isArray(r)?r:[r.chain,r.tier,r.count];
+  return {chain,tier,count,current:countItems(s,chain,tier)};
+ });
+}
+export function producerPreview(s,id,count=3){
+ const p=PRODUCERS[id],tap=s.producerTapCounts[id]??0,level=s.producerLevels[id]??0;
+ if(!p||level<=0)return [];
+ const bonus=Math.floor((level-1)/2),out=[];
+ for(let i=0;i<count;i++){
+  const [chain,tier]=p.cycle[(tap+i)%p.cycle.length];out.push({chain,tier:Math.min(MAX_TIER,tier+bonus)});
+ }
+ return out;
 }
 export function orderReady(s,order){
  return order.requirements.every(r=>countItems(s,r.chain,r.tier)>=r.count);
