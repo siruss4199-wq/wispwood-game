@@ -36,7 +36,10 @@ function apply(r){
  if(r.events.some(e=>e.type==='area_restored'))msg('💜 Lost Clearing restored 100% — Moonlit Grove unlocked!');
  else if(restored)msg(`${restored.icon} ${restored.title} restored · ${restored.progress}%`);
  else if(r.events.some(e=>e.type==='order_completed'))msg('📜 Order complete — Coins and Forest Light earned!');
- else if(r.events.some(e=>e.type==='merged'))msg('✨ Merge!');
+ else if(r.events.some(e=>e.type==='merged')){
+  const found=r.events.find(e=>e.type==='crate_opened'&&e.reveal?.type==='item');
+  msg(found?'✨ Merge! · 📦 Seed found!':'✨ Merge!');
+ }
  else if(r.events.some(e=>e.type==='produced'))msg('🌳 Seed created');
  else msg('Done');
  render();

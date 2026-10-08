@@ -39,6 +39,22 @@ test('first merge reveals Tree plus enough production space',()=>{
  assert.equal(s.phase,'core');
 });
 
+test('ordinary merge-hit crates reveal a useful Seed instead of opening empty',()=>{
+ let s=finishFirstMerge();
+ s=tapProducer(s,33).state;
+ s=tapProducer(s,33).state;
+ const pair=mergeablePair(s);
+ assert.ok(pair);
+ const r=merge(s,pair[0],pair[1]);
+ assert.equal(r.ok,true);
+ const opened=r.events.find(e=>e.type==='crate_opened'&&e.reveal?.type==='item');
+ assert.ok(opened,'normal crate should reveal an item');
+ assert.equal(opened.reveal.item.chain,'leaf');
+ assert.equal(opened.reveal.item.tier,0);
+ assert.equal(r.state.cells[opened.index].content.type,'item');
+ assert.equal(r.state.cells[opened.index].content.tier,0);
+});
+
 test('Forest Order consumes item and awards Coins, Light and Energy',()=>{
  let s=finishFirstMerge();
  const q=currentRequest(s),c=craftToTier(s,q.tier);
@@ -106,9 +122,9 @@ test('after area completion Forest Orders can continue indefinitely',()=>{
  assert.deepEqual(validateState(s),[]);
 });
 
-test('save schema 3 round trips and older V2 saves are rejected',()=>{
+test('save schema 4 round trips and older V2 saves are rejected',()=>{
  const s=createInitialState();
  assert.deepEqual(restore(serialize(s)),s);
- assert.equal(restore(JSON.stringify({...s,schema:2})),null);
+ assert.equal(restore(JSON.stringify({...s,schema:3})),null);
  assert.equal(restore('bad'),null);
 });

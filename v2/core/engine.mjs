@@ -34,10 +34,11 @@ function revealCellInPlace(state,index){
  const reveal=c.reveal??{type:'empty'};
  c.terrain='open';c.reveal=null;c.content=null;
  if(reveal.type==='producer')c.content={type:'producer',producerId:reveal.producerId};
+ if(reveal.type==='item')c.content={type:'item',chain:reveal.item.chain,tier:reveal.item.tier};
  state.cratesOpened++;
  return {type:'crate_opened',index,reveal};
 }
-function openOneFrontierEmptyInPlace(state,near){
+function openOneFrontierCrateInPlace(state,near){
  const list=frontierCrates(state)
   .filter(i=>state.cells[i].reveal?.type!=='producer')
   .sort((a,b)=>manhattan(a,near)-manhattan(b,near)||a-b);
@@ -47,7 +48,13 @@ function ensureCapacityInPlace(state,near){
  const events=[];
  if(!producerIndices(state).length||mergeablePair(state))return events;
  while(openEmptyIndices(state).length<2){
-  const e=openOneFrontierEmptyInPlace(state,near);
+  const candidates=frontierCrates(state)
+   .filter(i=>state.cells[i].reveal?.type!=='producer')
+   .sort((a,b)=>manhattan(a,near)-manhattan(b,near)||a-b);
+  if(!candidates.length)break;
+  const index=candidates[0];
+  state.cells[index].reveal={type:'empty'};
+  const e=revealCellInPlace(state,index);
   if(!e)break;
   events.push({...e,safety:true});
  }
@@ -105,7 +112,7 @@ export function merge(state,from,to){
   if(p)events.push(p);if(e)events.push(e);
   next.phase='core';
  }else{
-  const e=openOneFrontierEmptyInPlace(next,to);if(e)events.push(e);
+  const e=openOneFrontierCrateInPlace(next,to);if(e)events.push(e);
  }
  events.push(...ensureCapacityInPlace(next,to));
  return out(next,events);
