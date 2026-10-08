@@ -1,10 +1,10 @@
 import {CELL_COUNT,PRODUCERS} from './catalog.mjs';
 
-export const SCHEMA=3;
+export const SCHEMA=4;
 export const STARTER_SEEDS=[26,34];
 export const FIRST_REVEALS={producer:33,empty:35};
 
-function crateCell(){return {terrain:'crate',reveal:{type:'empty'},content:null};}
+function crateCell(){return {terrain:'crate',reveal:{type:'item',item:{chain:'leaf',tier:0}},content:null};}
 
 export function createInitialState(){
  const cells=Array.from({length:CELL_COUNT},crateCell);
@@ -12,6 +12,7 @@ export function createInitialState(){
   cells[index]={terrain:'open',reveal:null,content:{type:'item',chain:'leaf',tier:0}};
  }
  cells[FIRST_REVEALS.producer].reveal={type:'producer',producerId:PRODUCERS.ancientTree.id};
+ cells[FIRST_REVEALS.empty].reveal={type:'empty'};
  return {
   schema:SCHEMA,
   phase:'first_merge',
