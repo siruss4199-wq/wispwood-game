@@ -272,3 +272,18 @@ test('board pieces stay visually clean without MERGE TARGET or chain-code labels
  assert.match(css,/\.tile\.suggested:after/);
  assert.match(css,/content:none!important/);
 });
+
+
+test('commercial visual pass adds colorful HUD resources and NPC request portrait',()=>{
+ const html=fs.readFileSync(new URL('../v4/index.html',import.meta.url),'utf8');
+ const app=fs.readFileSync(new URL('../v4/app.mjs',import.meta.url),'utf8');
+ const css=fs.readFileSync(new URL('../v4/style.css',import.meta.url),'utf8');
+ assert.match(html,/id="playerLevel"/);
+ assert.match(html,/id="requestPortrait"/);
+ assert.match(app,/REQUEST_FACES/);
+ assert.match(app,/requestFace/);
+ assert.match(css,/levelBadge/);
+ assert.match(css,/requestPortrait/);
+ assert.match(css,/chain-crystal/);
+ assert.match(css,/linear-gradient\(180deg,#70bff1/);
+});
