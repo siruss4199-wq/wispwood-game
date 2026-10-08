@@ -184,7 +184,7 @@ export function tapProducer(s,index){
  let [chain,tier]=base;
  tier=Math.min(MAX_TIER,tier+Math.floor((level-1)/2));
  const target=empty[0];n.cells[target].content={type:'item',chain,tier};n.energy--;
- const events=[{type:'produced',producerId:id,index:target,item:structuredClone(n.cells[target].content)}];discoverInPlace(n,n.cells[target].content,events);
+ const events=[{type:'produced',producerId:id,producerIndex:index,index:target,energySpent:1,item:structuredClone(n.cells[target].content)}];discoverInPlace(n,n.cells[target].content,events);
  return result(n,events);
 }
 function edgeDepth(i){
