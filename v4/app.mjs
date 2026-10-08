@@ -9,7 +9,7 @@ const $=s=>document.querySelector(s);
 const board=$('#board'),ordersEl=$('#orders'),sourcesEl=$('#sources'),storageEl=$('#storage');
 const energy=$('#energy'),coins=$('#coins'),light=$('#light'),discovered=$('#discovered');
 const milestoneTitle=$('#milestoneTitle'),milestoneReq=$('#milestoneReq'),milestoneStep=$('#milestoneStep'),progressBar=$('#progressBar i');
-const boardStatus=$('#boardStatus'),frontierNameEl=$('#frontierName'),rushFill=$('#rushFill'),rushCount=$('#rushCount'),questRibbon=$('#questRibbon'),questIcon=$('#questIcon'),questTitle=$('#questTitle'),questText=$('#questText'),goalReq=$('#goalReq'),goalPosition=$('#goalPosition'),goalPrev=$('#goalPrev'),goalNext=$('#goalNext'),soundToggle=$('#soundToggle'),inspect=$('#inspect'),inspectIcon=$('#inspectIcon'),inspectName=$('#inspectName'),inspectMeta=$('#inspectMeta'),inspectUse=$('#inspectUse');
+const boardStatus=$('#boardStatus'),frontierNameEl=$('#frontierName'),rushFill=$('#rushFill'),rushCount=$('#rushCount'),questRibbon=$('#questRibbon'),questIcon=$('#questIcon'),questTitle=$('#questTitle'),questText=$('#questText'),goalReq=$('#goalReq'),goalPosition=$('#goalPosition'),goalPrev=$('#goalPrev'),goalNext=$('#goalNext'),deliveryCoach=$('#deliveryCoach'),soundToggle=$('#soundToggle'),inspect=$('#inspect'),inspectIcon=$('#inspectIcon'),inspectName=$('#inspectName'),inspectMeta=$('#inspectMeta'),inspectUse=$('#inspectUse');
 const completeOrderBtn=$('#completeOrder'),completeMilestoneBtn=$('#completeMilestone'),storeBtn=$('#store'),hint=$('#hint'),toast=$('#toast');
 const panelButtons=[...document.querySelectorAll('[data-open-panel]')],gamePanels=[...document.querySelectorAll('.gamePanel')],focusGoal=$('#focusGoal'),ordersBadge=$('#ordersBadge'),storageBadge=$('#storageBadge');
 
@@ -79,7 +79,7 @@ function apply(r){
  state=r.state;
  selected=null;
  const events=r.events;
- if(events.some(x=>x.type==='order_completed'))selectedOrder=null;
+ if(events.some(x=>x.type==='order_completed'))selectedOrder=(state.activeOrders.find(o=>orderReady(state,o))??state.activeOrders[0])?.id??null;
  else if(previousOrder&&state.activeOrders.some(o=>o.id===previousOrder))selectedOrder=previousOrder;
  const big=events.some(x=>x.type==='milestone_completed'||x.type==='order_completed'||x.type==='producer_unlocked');
  audio.playEvents(events);
@@ -185,14 +185,15 @@ function selectOrderByOffset(delta){
  selectedOrder=orders[next].id;selected=null;audio.play('select');render();
 }
 function tutorialState(){
- if(state.moves===0)return {icon:'✨',title:'Make your first merge',text:'Two matching relics are glowing. Combine one pair to open a space.',step:'1/3'};
- if(state.ordersCompleted===0){
-  const o=state.activeOrders.find(x=>x.id===selectedOrder)??state.activeOrders[0];
-  const need=o?.requirements?.map(r=>itemText(r.chain,r.tier,r.count)).join(' + ')??'the highlighted pieces';
-  return {icon:'📜',title:o?.title??'First Forest Order',text:`Build ${need}. Useful pieces are already outlined.`,step:'2/3'};
+ if(state.moves===0)return {icon:'✨',title:'Make your first merge',text:'Combine one glowing pair to open space and reveal your first request.',step:'1/3'};
+ const o=state.activeOrders.find(x=>x.id===selectedOrder)??state.activeOrders[0];
+ if(o){
+  const ready=orderReady(state,o);
+  const need=o.requirements.map(r=>itemText(r.chain,r.tier,r.count)).join(' + ');
+  if(ready&&state.ordersCompleted===0)return {icon:'🎁',title:'Request ready!',text:'Your items are complete. Tap Deliver to send them and collect the reward.',step:'3/3'};
+  return {icon:'📜',title:o.title,text:`Build ${need}. Matching pieces are highlighted on the board.`,step:'2/3'};
  }
- if(state.milestoneIndex===0)return {icon:'🌿',title:'Wake the clearing',text:'Orders give Light. Finish the restoration items and wake your first landmark.',step:'3/3'};
- return {icon:'🌙',title:`Push into ${getFrontierName(state)}`,text:'New cells reveal at the frontier with fresh pieces. Keep orders and restorations moving outward.',step:'EXPLORE'};
+ return {icon:'🌙',title:`Push into ${getFrontierName(state)}`,text:'Keep merging and restoring to reveal the next part of Wispwood.',step:'EXPLORE'};
 }
 function tileAria(cell,i){
  if(cell.terrain==='locked')return `Locked forest cell ${i+1}`;
@@ -208,7 +209,13 @@ function tileAria(cell,i){
 }
 function render(){
  fillOrdersInPlace(state);
- if(state.moves>0&&state.ordersCompleted===0&&!selectedOrder)selectedOrder=state.activeOrders[0]?.id??null;
+ if(state.moves>0&&(!selectedOrder||!state.activeOrders.some(o=>o.id===selectedOrder))){
+  selectedOrder=(state.activeOrders.find(o=>orderReady(state,o))??state.activeOrders[0])?.id??null;
+ }
+ if(state.ordersCompleted===0){
+  const ready=state.activeOrders.find(o=>orderReady(state,o));
+  if(ready)selectedOrder=ready.id;
+ }
  board.innerHTML='';
 
  const focusOrder=state.activeOrders.find(o=>o.id===selectedOrder);
@@ -344,8 +351,12 @@ function render(){
 
  const focusedOrder=state.activeOrders.find(o=>o.id===selectedOrder);
  const focusedReady=!!focusedOrder&&orderReady(state,focusedOrder);
+ const firstDelivery=focusedReady&&state.ordersCompleted===0;
  completeOrderBtn.disabled=!focusedReady;
- completeOrderBtn.textContent=focusedReady?'Deliver':'Build';
+ completeOrderBtn.textContent=focusedReady?'Deliver →':'Need items';
+ questRibbon.classList.toggle('ready-to-deliver',focusedReady);
+ deliveryCoach.hidden=!firstDelivery;
+ document.body.classList.toggle('deliveryTutorial',firstDelivery);
  completeMilestoneBtn.disabled=!milestoneReady(state,m);
  storeBtn.disabled=!(Number.isInteger(selected)&&state.cells[selected]?.content?.type==='item');
 
@@ -378,7 +389,7 @@ function render(){
  save();
 }
 
-completeOrderBtn.addEventListener('click',()=>{audio.unlock();selectedOrder&&apply(finishOrder(state,selectedOrder));});
+completeOrderBtn.addEventListener('click',()=>{audio.unlock();if(selectedOrder)apply(finishOrder(state,selectedOrder));});
 completeMilestoneBtn.addEventListener('click',()=>{audio.unlock();apply(finishMilestone(state));});
 storeBtn.addEventListener('click',()=>{audio.unlock();Number.isInteger(selected)&&apply(storeItem(state,selected));});
 panelButtons.forEach(b=>b.addEventListener('click',()=>togglePanel(b.dataset.openPanel)));
