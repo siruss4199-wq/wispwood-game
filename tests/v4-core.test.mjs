@@ -261,3 +261,14 @@ test('after delivery the next request is automatically focused',()=>{
  const app=fs.readFileSync(new URL('../v4/app.mjs',import.meta.url),'utf8');
  assert.match(app,/order_completed'\)\)selectedOrder=\(state\.activeOrders\.find\(o=>orderReady\(state,o\)\)\?\?state\.activeOrders\[0\]\)/);
 });
+
+
+test('board pieces stay visually clean without MERGE TARGET or chain-code labels',()=>{
+ const app=fs.readFileSync(new URL('../v4/app.mjs',import.meta.url),'utf8');
+ const css=fs.readFileSync(new URL('../v4/style.css',import.meta.url),'utf8');
+ assert.doesNotMatch(app,/CHAIN_MARKS/);
+ assert.doesNotMatch(app,/class="chainTag"/);
+ assert.match(css,/\.tile\.cobweb:before,/);
+ assert.match(css,/\.tile\.suggested:after/);
+ assert.match(css,/content:none!important/);
+});

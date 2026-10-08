@@ -748,3 +748,12 @@ body{
 .deliveryTutorial .goalDock{position:relative;z-index:80}
 @keyframes deliverPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.055)}}
 @media(prefers-reduced-motion:reduce){.goalDock.ready-to-deliver .goalAction{animation:none}}
+
+
+/* Keep board pieces visually clean: communicate goals with glow/outline, not text badges. */
+.tile.cobweb:before,
+.tile.suggested:after{
+  content:none!important;
+  display:none!important;
+}
+.chainTag{display:none!important}
