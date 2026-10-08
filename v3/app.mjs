@@ -1,16 +1,16 @@
 import {itemDef,PRODUCERS,RESTORATION_NODES} from './core/catalog.mjs';
 import {createInitialState,restore,serialize} from './core/state.mjs';
-import {completeOrder,currentRestoration,fillOrdersInPlace,frontierCrates,initializePlayableState,merge,move,openEmptyIndices,restoreNode,storeItem,tapProducer} from './core/engine.mjs';
+import {completeOrder,currentRestoration,explorationCost,fillOrdersInPlace,frontierCrates,initializePlayableState,merge,move,openEmptyIndices,restoreNode,storeItem,tapProducer} from './core/engine.mjs';
 
-const KEY='wispwood-v3';
-const $=s=>document.querySelector(s),board=$('#board'),orders=$('#orders'),energy=$('#energy'),coins=$('#coins'),light=$('#light'),goalTitle=$('#goalTitle'),goalText=$('#goalText'),goalProgress=$('#goalProgress'),hint=$('#hint'),orderBtn=$('#orderBtn'),restoreBtn=$('#restoreBtn'),storeBtn=$('#storeBtn'),toast=$('#toast');
+const KEY='wispwood-v3b';
+const $=s=>document.querySelector(s),board=$('#board'),orders=$('#orders'),energy=$('#energy'),coins=$('#coins'),light=$('#light'),goalTitle=$('#goalTitle'),goalText=$('#goalText'),exploreText=$('#exploreText'),goalProgress=$('#goalProgress'),hint=$('#hint'),orderBtn=$('#orderBtn'),restoreBtn=$('#restoreBtn'),storeBtn=$('#storeBtn'),toast=$('#toast');
 let state=restore(localStorage.getItem(KEY))??initializePlayableState(createInitialState()),selected=null,selectedOrder=null,drag=null,timer=null;
 
 function save(){localStorage.setItem(KEY,serialize(state));}
 function msg(t){toast.textContent=t;toast.classList.add('show');clearTimeout(timer);timer=setTimeout(()=>toast.classList.remove('show'),1100);}
 function tileIndexAt(x,y){for(const tile of board.querySelectorAll('.tile')){const r=tile.getBoundingClientRect();if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom)return Number(tile.dataset.index);}return null;}
 function clearDrag(){document.querySelectorAll('.drag-source,.drag-target').forEach(x=>x.classList.remove('drag-source','drag-target'));}
-function apply(r){if(!r.ok){msg(r.reason);return;}state=r.state;selected=null;selectedOrder=null;msg(r.events.some(e=>e.type==='restored')?'🌿 Restoration complete!':r.events.some(e=>e.type==='order_completed')?'📜 Order complete!':r.events.some(e=>e.type==='merged')?'✨ Merge!':'Done');render();}
+function apply(r){if(!r.ok){msg(r.reason);return;}state=r.state;selected=null;selectedOrder=null;const opened=r.events.find(e=>e.exploration);msg(r.events.some(e=>e.type==='restored')?'🌿 Restoration complete!':r.events.some(e=>e.type==='order_completed')?'📜 Order complete!':opened?'🗺️ New forest tile explored!':r.events.some(e=>e.type==='merged')?'✨ Merge!':'Done');render();}
 function selectedItem(){return Number.isInteger(selected)?state.cells[selected]?.content:null;}
 function render(){
  fillOrdersInPlace(state);
@@ -24,11 +24,12 @@ function render(){
   b.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;const d=drag;drag=null;clearDrag();if(d.producer&&!d.moved){apply(tapProducer(state,d.from));return;}const to=tileIndexAt(e.clientX,e.clientY)??tileIndexAt(d.lastX,d.lastY);if(!d.moved||!Number.isInteger(to)||to===d.from){selected=d.from;render();return;}apply(state.cells[to]?.terrain==='open'&&!state.cells[to].content?move(state,d.from,to):merge(state,d.from,to));});
   board.appendChild(b);
  });
- orders.innerHTML='';for(const o of state.activeOrders){const req=o.requirements[0],d=itemDef(req.chain,req.tier),el=document.createElement('button');el.className='order'+(selectedOrder===o.id?' active':'');el.innerHTML=`<small>${o.label.toUpperCase()}</small><strong>${d.emoji} ${o.title}</strong><span>+${o.rewardCoins} 🪙 · +${o.rewardLight} ✨</span>`;el.onclick=()=>{selectedOrder=o.id;selected=null;render();};orders.appendChild(el);}
+ orders.innerHTML='';for(const o of state.activeOrders){const reqText=o.requirements.map(r=>{const d=itemDef(r.chain,r.tier);return `${r.count>1?r.count+'× ':''}${d.emoji} ${d.name}`;}).join(' + ');const el=document.createElement('button');el.className='order'+(selectedOrder===o.id?' active':'');el.innerHTML=`<small>${o.label.toUpperCase()}</small><strong>${o.title}</strong><span>${reqText}</span><span>+${o.rewardCoins} 🪙 · +${o.rewardLight} ✨</span>`;el.onclick=()=>{selectedOrder=o.id;selected=null;render();};orders.appendChild(el);}
  const node=currentRestoration(state);goalTitle.textContent=node?.title??'Lost Clearing restored';goalText.textContent=node?`${node.icon} ${itemDef(node.chain,node.tier).name} · ${node.coinCost} Coins · ${node.lightRequired} Light`:'Moonlit Grove unlocked';goalProgress.textContent=`${Math.min(state.restorationIndex,RESTORATION_NODES.length)}/${RESTORATION_NODES.length}`;
+ exploreText.textContent=state.phase==='first_merge'?'First merge opens the clearing.':`Explore: ${state.explorationPoints}/${explorationCost(state)} · ${frontier.size} buried tiles remain on the frontier`;
  energy.textContent=state.energy+'/'+state.maxEnergy;coins.textContent=state.coins;light.textContent=state.forestLight;
  orderBtn.disabled=!selectedOrder;const item=selectedItem();restoreBtn.disabled=!(node&&item?.type==='item'&&item.chain===node.chain&&item.tier===node.tier);storeBtn.disabled=item?.type!=='item';
- hint.textContent=state.phase==='first_merge'?'Drag the two Seeds together.':openEmptyIndices(state).length?'Choose an order, then produce and merge toward it.':'Merge to make space.';
+ hint.textContent=state.phase==='first_merge'?'Drag the two Seeds together.':openEmptyIndices(state).length?'Choose an order and manage your board space.':'Merge or store an item to make space.';
  save();
 }
 orderBtn.onclick=()=>selectedOrder&&apply(completeOrder(state,selectedOrder));
