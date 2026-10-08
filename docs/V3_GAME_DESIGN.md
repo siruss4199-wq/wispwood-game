@@ -10,6 +10,9 @@ Every session gives the player four layers of purpose:
 - Exploration decision: build merge progress toward the next buried tile.
 - Meta decision: spend Coins/Light/items on restoration, storage, or producer upgrades.
 
+## Visible item-rich board
+The board is not just a wall of identical boxes. Twelve buried positions start as visible vine/cobweb items across several tiers. They are real future inventory: craft the matching item and drag it onto the cobweb to free it. This creates long-term targets on the board itself and makes the board visually richer without filling it with meaningless decoration.
+
 ## Board expansion
 - Initial screen is still visually full: 62 buried cells + 2 Seeds.
 - First merge opens a central working clearing: Ancient Tree + four intentional empty cells.
