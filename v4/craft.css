@@ -80,3 +80,9 @@ body{background:#1b3935!important}
 .gameHud .wallet .energyPill{flex:1.4!important}.wallet em{display:none!important}
 .gameHud .wallet b{font-size:11px!important;white-space:nowrap!important;overflow:visible!important}
 .hudShop{width:28px!important;min-width:28px!important}.hudShop span{font-size:20px!important}.hudShop small{display:none!important}
+.gameHud,.worldStrip{width:100%!important;box-sizing:border-box}
+@media(min-width:760px){
+ .gameShell{max-width:500px!important;width:min(100%,500px)!important}
+ .worldStrip{min-height:58px!important;padding:6px 8px!important;gap:4px!important}
+ .goalCopy span{display:none!important}
+}
