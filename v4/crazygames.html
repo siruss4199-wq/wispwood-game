@@ -99,6 +99,16 @@
     <div id="orders" class="orders"></div>
   </section>
 
+  <section id="collectionPanel" class="gamePanel collectionPanel" data-panel="collection">
+    <div class="panelHandle"></div>
+    <div class="collectionHero">
+      <div><small>DISCOVERY BOOK</small><b>Wispwood Collection</b><span>Reveal every merge chain.</span></div>
+      <strong id="collectionCount">1/48</strong>
+    </div>
+    <div class="collectionProgress"><i id="collectionProgress"></i></div>
+    <div id="collectionGrid" class="collectionGrid"></div>
+  </section>
+
   <section id="sourcesPanel" class="gamePanel sourcesSection" data-panel="sources">
     <div class="panelHandle"></div>
     <div class="sectionHead"><b>🌳 Sources</b><small>Next drops</small></div>
@@ -113,9 +123,9 @@
 
   <nav class="gameDock" aria-label="Game menu">
     <button class="dockBtn" data-open-panel="orders" type="button"><span>📜</span><b>Requests</b><em id="ordersBadge">4</em></button>
+    <button class="dockBtn" data-open-panel="collection" type="button"><span>📖</span><b>Book</b><em id="collectionBadge">1</em></button>
     <button class="dockBtn" data-open-panel="sources" type="button"><span>🌳</span><b>Sources</b></button>
     <button class="dockBtn" data-open-panel="storage" type="button"><span>🎒</span><b>Bag</b><em id="storageBadge">0</em></button>
-    <button class="dockBtn" id="focusGoal" type="button"><span>✨</span><b>Goal</b></button>
   </nav>
 </main>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
