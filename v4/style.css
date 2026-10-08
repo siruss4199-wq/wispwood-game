@@ -480,3 +480,22 @@ h1{font-size:28px;line-height:1;margin:4px 0 4px;letter-spacing:-.7px}
   35%{opacity:1}
   100%{opacity:0;transform:scale(1.7) rotate(20deg)}
 }
+
+
+.rushBar{
+  display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:7px;
+  margin:0 3px 7px;padding:6px 8px;border-radius:12px;
+  background:linear-gradient(90deg,rgba(80,57,111,.95),rgba(58,87,72,.95));color:#fff;
+  box-shadow:0 5px 14px rgba(55,44,76,.12);
+}
+.rushBar>span{font-size:8px;font-weight:1000;letter-spacing:.9px;white-space:nowrap}
+.rushBar>div{height:6px;background:rgba(255,255,255,.16);border-radius:99px;overflow:hidden}
+.rushBar i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#f5d9ff,#dfffbd);box-shadow:0 0 10px rgba(227,198,255,.75);transition:width .2s ease}
+.rushBar>b{font-size:9px}
+.rushBar>small{grid-column:1/-1;font-size:7px;opacity:.68;margin-top:-3px}
+.tile.bonus-pop{animation:bonusPop .6s cubic-bezier(.18,.9,.25,1)}
+@keyframes bonusPop{0%{transform:scale(.45);filter:brightness(1.7)}65%{transform:scale(1.14)}100%{transform:none;filter:none}}
+@media(max-width:560px){
+  .rushBar{padding:5px 7px;margin-bottom:6px}
+  .rushBar>small{display:none}
+}
