@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import {CHAINS,MILESTONES} from '../v4/core/catalog.mjs';
 import {COBWEBS,OPEN_START,STARTING_ITEMS,createInitialState} from '../v4/core/state.mjs';
 import {currentMilestone,fillOrdersInPlace,initializePlayableState,merge,milestoneReady,producerIndices,tapProducer,unlockedChains,validateState} from '../v4/core/engine.mjs';
@@ -74,4 +75,19 @@ test('chapter has 18 escalating milestones and does not start ready',()=>{
  assert.equal(milestoneReady(s,currentMilestone(s)),false);
  assert.ok(MILESTONES.at(-1).coinCost>MILESTONES[0].coinCost*20);
  assert.ok(MILESTONES.at(-1).requirements.some(r=>r[1]>=6));
+});
+
+
+test('production UI keeps the merge board primary and supports guided mobile play',()=>{
+ const html=fs.readFileSync(new URL('../v4/index.html',import.meta.url),'utf8');
+ const app=fs.readFileSync(new URL('../v4/app.mjs',import.meta.url),'utf8');
+ const css=fs.readFileSync(new URL('../v4/style.css',import.meta.url),'utf8');
+ assert.ok(html.indexOf('id="board"')<html.indexOf('id="orders"'),'board should appear before order list');
+ assert.match(html,/id="inspect"/);
+ assert.match(html,/role="status"/);
+ assert.match(app,/nearestCompatibleTarget/);
+ assert.match(app,/aria-label/);
+ assert.match(app,/merge-match/);
+ assert.match(css,/font-size:12px/);
+ assert.match(css,/prefers-reduced-motion/);
 });
