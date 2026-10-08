@@ -92,7 +92,6 @@ function apply(r){
   'Done'
  );
  render();
-platform.startGameplay?.();
 }
 function clickTile(i){
  if(performance.now()<suppressClickUntil)return;
@@ -287,3 +286,4 @@ completeOrderBtn.addEventListener('click',()=>selectedOrder&&apply(finishOrder(s
 completeMilestoneBtn.addEventListener('click',()=>apply(finishMilestone(state)));
 storeBtn.addEventListener('click',()=>Number.isInteger(selected)&&apply(storeItem(state,selected)));
 render();
+platform.startGameplay?.();
