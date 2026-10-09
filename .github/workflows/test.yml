@@ -31,7 +31,7 @@ jobs:
       - name: Check V3 UI module syntax
         run: node --check v3/app.mjs
       - name: Run V4 core tests
-        run: node --test tests/v4-core.test.mjs tests/v45-core.test.mjs
+        run: node --test tests/v4-core.test.mjs tests/v45-core.test.mjs tests/v46-core.test.mjs
       - name: Run V4 simulation
         run: node --test tests/v4-simulation.test.mjs
       - name: Check V4 UI module syntax
@@ -51,5 +51,5 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: v45-mobile-review
+          name: v46-mobile-review
           path: test-artifacts/

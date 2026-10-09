@@ -7,6 +7,7 @@
 <title>Wispwood — Lost Clearing</title>
 <link rel="stylesheet" href="./style.css">
 <link rel="stylesheet" href="./craft.css">
+<link rel="stylesheet" href="./board46.css">
 
 </head>
 <body>
@@ -33,17 +34,17 @@
       <span class="activityCopy"><small>RESTORE</small><b id="activityMilestoneTitle">Wake the Garden</b><em id="activityMilestoneStep">0/18</em></span>
     </button>
 
-    <button class="activityCard requestMiniCard" data-order-slot="0" type="button">
+    <button class="activityCard requestMiniCard" data-legacy-order-slot="0" type="button">
       <span class="activityPortrait requestMiniPortrait">🧚</span>
       <span class="activityCopy requestMiniCopy"><small>REQUEST</small><b class="requestMiniName">Luma</b><span class="requestMiniItems"></span><em class="requestMiniReward">+0 🪙</em></span>
     </button>
 
-    <button class="activityCard requestMiniCard" data-order-slot="1" type="button">
+    <button class="activityCard requestMiniCard" data-legacy-order-slot="1" type="button">
       <span class="activityPortrait requestMiniPortrait">🐿️</span>
       <span class="activityCopy requestMiniCopy"><small>REQUEST</small><b class="requestMiniName">Pip</b><span class="requestMiniItems"></span><em class="requestMiniReward">+0 🪙</em></span>
     </button>
 
-    <button class="activityCard requestMiniCard" data-order-slot="2" type="button">
+    <button class="activityCard requestMiniCard" data-legacy-order-slot="2" type="button">
       <span class="activityPortrait requestMiniPortrait">🦉</span>
       <span class="activityCopy requestMiniCopy"><small>REQUEST</small><b class="requestMiniName">Orin</b><span class="requestMiniItems"></span><em class="requestMiniReward">+0 🪙</em></span>
     </button>
@@ -78,15 +79,39 @@
         <b id="questTitle">Wake the clearing</b>
         <span id="questText">Merge a glowing pair to begin.</span>
       </div>
-      <button id="completeOrder" class="goalAction" type="button" disabled>Build</button>
+
     </div>
     <div id="goalReq" class="goalReq"></div>
-    <div id="deliveryCoach" class="deliveryCoach" hidden role="status" aria-live="polite"><span>1</span><div><b>Request ready!</b><small>Tap Deliver to send the items and collect your rewards.</small></div></div>
+
     <div class="goalNav">
       <button id="goalPrev" type="button" aria-label="Previous order">‹</button>
       <span><b id="goalPosition">—</b><small>REQUEST</small></span>
       <button id="goalNext" type="button" aria-label="Next order">›</button>
     </div>
+  </section>
+
+  <section id="requestShelf" class="requestShelf" aria-label="Three active forest requests">
+    <div class="requestShelfCards">
+      <button class="shelfRequest requestMiniCard" data-order-slot="0" type="button">
+        <span class="shelfResident"><span class="requestMiniPortrait"></span><span class="requestMiniName"></span><span class="shelfKind"></span></span>
+        <span class="requestMiniItems"></span>
+        <span class="shelfFooter"><span class="requestMiniReward"></span><span class="shelfStatus"></span></span>
+        <span class="shelfBonus" hidden></span>
+      </button>
+      <button class="shelfRequest requestMiniCard" data-order-slot="1" type="button">
+        <span class="shelfResident"><span class="requestMiniPortrait"></span><span class="requestMiniName"></span><span class="shelfKind"></span></span>
+        <span class="requestMiniItems"></span>
+        <span class="shelfFooter"><span class="requestMiniReward"></span><span class="shelfStatus"></span></span>
+        <span class="shelfBonus" hidden></span>
+      </button>
+      <button class="shelfRequest requestMiniCard" data-order-slot="2" type="button">
+        <span class="shelfResident"><span class="requestMiniPortrait"></span><span class="requestMiniName"></span><span class="shelfKind"></span></span>
+        <span class="requestMiniItems"></span>
+        <span class="shelfFooter"><span class="requestMiniReward"></span><span class="shelfStatus"></span></span>
+        <span class="shelfBonus" hidden></span>
+      </button>
+    </div>
+    <div id="deliveryCoach" class="shelfCoach" hidden role="status" aria-live="polite"><span>First delivery</span><button id="completeOrder" class="goalAction" type="button" disabled>Deliver</button></div>
   </section>
 
   <section class="boardSection" aria-label="Merge Garden">

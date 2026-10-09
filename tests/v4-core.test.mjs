@@ -411,7 +411,7 @@ test('request shelf exposes three live orders and one-tap delivery after onboard
  const html=fs.readFileSync(new URL('../v4/index.html',import.meta.url),'utf8');
  const app=fs.readFileSync(new URL('../v4/app.mjs',import.meta.url),'utf8');
  assert.equal((html.match(/data-order-slot=/g)??[]).length,3);
- assert.match(app,/state\.ordersCompleted>0/);
+ assert.match(app,/shelfAction\(state,order\)==='deliver'/);
  assert.match(app,/lastRewardOrigin=card/);
  assert.match(app,/finishOrder\(state,id\)/);
 });
@@ -421,7 +421,7 @@ test('reward feedback can burst from board and request origins',()=>{
  const css=fs.readFileSync(new URL('../v4/style.css',import.meta.url),'utf8');
  assert.match(app,/boardRewardBurst/);
  assert.match(app,/rewardFly\('⚡',1,energy/);
- assert.match(app,/lastRewardOrigin\?\?questRibbon/);
+ assert.match(app,/lastRewardOrigin\?\?requestShelf/);
  assert.match(css,/boardRewardOrb/);
  assert.match(css,/boardRewardOrb \.72s/);
 });

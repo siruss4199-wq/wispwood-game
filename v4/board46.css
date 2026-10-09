@@ -1,0 +1,59 @@
+/* V4.6 is limited to the request shelf, board crafts, workshops and frontier. */
+.gameShell #questRibbon,.gameShell .goalNav{display:none!important}
+.requestShelf{width:100%;min-width:0}
+.requestShelfCards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.shelfRequest{appearance:none;position:relative;display:flex;flex-direction:column;gap:3px;min-width:0;min-height:113px;padding:6px 4px 5px;border:1px solid #bdceb5;border-radius:13px;background:#fffdf1;color:#294b3c;text-align:left;box-shadow:0 2px 0 #d4dfc4;touch-action:manipulation}
+.shelfRequest.active{outline:2px solid #cfab52;outline-offset:-2px;background:#fff8de}
+.shelfRequest.ready{border-color:#528558;background:#f0f8da;box-shadow:0 2px 0 #769a66}
+.shelfRequest[data-kind="special"]{border-color:#aa87b3;background:#f3eaf1}
+.shelfRequest:focus-visible{outline:3px solid #20627b;outline-offset:1px}
+.shelfResident{display:flex;align-items:center;gap:4px;min-width:0;min-height:26px}
+.shelfResident .requestMiniPortrait{display:block;width:26px;height:26px;flex-shrink:0}
+.shelfResident .requestMiniName{font-size:11px;line-height:1.2;font-weight:800;overflow:hidden;text-overflow:ellipsis}
+.shelfKind{margin-left:auto;color:#89578f;font-size:12px}
+.requestShelf .requestMiniItems{display:flex;align-items:center;justify-content:center;gap:1px;min-height:47px;flex:1}
+.requestShelf .shelfIngredient{display:flex;flex-direction:column;align-items:center;width:31%;max-width:39px;min-width:0;position:relative;background:transparent;border:0;padding:0}
+.requestShelf .shelfIngredient .craftArt{width:100%;height:32px;object-fit:contain}
+.requestShelf .shelfIngredient b{position:static;font:700 10px/14px system-ui;color:#586452;min-width:25px;text-align:center;border-radius:6px;background:#e8eddf}
+.requestShelf .shelfIngredient.done b{background:#c9e6ac;color:#285b31}
+.shelfFooter{display:flex;align-items:center;justify-content:space-between;gap:2px;min-height:16px}
+.requestShelf .requestMiniReward{font:800 10px/16px system-ui;white-space:nowrap;color:#836019}
+.shelfStatus{font:800 8px/14px system-ui;letter-spacing:.2px;color:#687b65}
+.ready .shelfStatus{color:#fff;background:#40773e;border-radius:5px;padding:0 4px}
+.shelfBonus{font:700 9px/14px system-ui;color:#916030;background:#fff0bf;border-radius:5px;text-align:center;white-space:nowrap}
+.shelfBonus[hidden],.shelfCoach[hidden]{display:none!important}
+.shelfCoach{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:4px 7px;margin-top:4px;border-radius:9px;background:#e9edce;color:#405d3a;font-size:11px}
+.shelfCoach .goalAction{height:30px!important;min-height:30px!important;min-width:90px!important;padding:3px 9px!important;font-size:11px!important}
+.worldStrip{border-left:3px solid #809868!important}.worldCopy small{letter-spacing:1px!important}.worldCopy small:before{content:'✦ ';color:#658152}
+/* Items share consistent lighting but different material palettes and tier silhouettes. */
+.board .tile.item{background:#f0edda!important;border-color:#d6d5b8!important}
+.board .tile.item.hierarchy-treasure{background:radial-gradient(ellipse at 50% 70%,#fff6c6,#e8e9cd)!important}
+.board .tile.item.hierarchy-heirloom{background:radial-gradient(ellipse,#fff5d2 25%,#d7dcb5 80%)!important}
+.board .tile.item .emoji{inset:1px!important}.board .tile.item .craftArt{filter:drop-shadow(0 1px 1px #34523225)}
+.board .tile.item.cobweb{background:#91aa83!important}.board .tile.cobweb .emoji{opacity:.85;filter:none}
+.board .tile.cobweb .web{font-size:0!important;inset:0!important;position:absolute!important;pointer-events:none;background:linear-gradient(35deg,transparent 42%,#496c47 43% 48%,transparent 49%);border-radius:8px;opacity:.65}
+/* Workshops use a pale launch pad, structural level silhouettes and one energy cue. */
+.board .tile.producer{background:radial-gradient(ellipse at 50% 35%,#fffbe1,#d5c187)!important;border:2px solid #f9df80!important;box-shadow:inset 0 -3px 0 #93733f,0 0 0 1px #6b8b57!important;overflow:visible!important;z-index:2}
+.board .tile .workshopArt{inset:-2px!important;width:calc(100% + 4px)!important;height:calc(100% + 4px)!important;filter:drop-shadow(0 2px 1px #4c4b3645);transform-origin:50% 85%}
+.board .producerBolt{left:auto!important;right:-3px!important;bottom:-2px!important;width:15px!important;height:17px!important;font:900 13px/16px system-ui!important;color:#654712!important;background:#ffe08a!important;border:1px solid #fff8d2!important;box-shadow:0 1px 2px #3a533c50!important;z-index:4}
+.board .producerLevel{bottom:0!important;left:3px!important;right:auto!important;transform:none!important;background:#384f37!important;color:#e6dda0!important;font-size:5px!important;line-height:7px!important;padding:0 2px!important;letter-spacing:1px!important;max-width:26px}
+.sourceIcon{position:relative}.workshopStage{position:absolute;inset:3px;border-radius:35%;pointer-events:none}
+.workshopStage.stage-1{box-shadow:inset 0 0 0 2px #b4d48a}.workshopStage.stage-2{box-shadow:inset 0 0 0 2px #f9ebaa,0 0 5px #f9ebaa}
+.board .producer-ready{border-color:#fff6b0!important}.producer-ready .workshopArt{filter:drop-shadow(0 0 3px #fff3a0)!important}
+.producer-tap .workshopArt{animation:workshopRelease .38s ease-out!important}
+@keyframes workshopRelease{25%{transform:scale(1.07,.86)}55%{transform:translateY(-3px) scale(.96,1.08)}100%{transform:none}}
+.sourceFlight{position:fixed;width:40px;height:40px;pointer-events:none;z-index:160;animation:craftTransfer .5s cubic-bezier(.2,.7,.35,1) both}
+@keyframes craftTransfer{0%{transform:translate(0,0) scale(.4);opacity:0}20%{opacity:1}100%{transform:translate(var(--flight-x),var(--flight-y)) scale(.85);opacity:0}}
+.board .produce-pop .emoji{animation:craftArrive .52s ease-out!important}
+@keyframes craftArrive{0%,45%{opacity:.25;transform:scale(.55)}80%{opacity:1;transform:scale(1.1)}100%{transform:none}}
+/* Scenic cells remain lower contrast than usable crafts. No fake disabled buttons. */
+.board .tile.locked{background:#294d40!important;border:1px solid #42634e!important;overflow:hidden!important}
+.board .tile.locked:before,.board .tile.locked:after{display:none!important}
+.frontierArt{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;opacity:.85}
+.frontierFog{position:absolute;inset:0;pointer-events:none;background:linear-gradient(150deg,#b8ccbd50,transparent 45%,#102e3155);box-shadow:inset 0 0 8px #b0c4b62b}
+.board .tile.frontier-next{outline:2px solid #d1dea0;outline-offset:-2px;border-color:#c1d294!important}
+.frontier-next .frontierArt{opacity:1;filter:brightness(1.12)}
+.frontier-next .frontierFog{background:linear-gradient(145deg,#e9efb847,transparent 65%)}
+.frontierTrail{position:absolute;right:3px;top:0;color:#ffffcb;font-size:15px;text-shadow:0 0 4px #ffe38e;pointer-events:none}
+@media(min-width:760px){.shelfRequest{min-height:113px}.requestShelf .shelfIngredient{max-width:43px}.requestShelf .shelfIngredient .craftArt{height:37px}}
+@media(prefers-reduced-motion:reduce){.producer-tap .workshopArt,.board .produce-pop .emoji,.sourceFlight{animation:none!important}.sourceFlight{display:none}}
