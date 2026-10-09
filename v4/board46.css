@@ -17,7 +17,7 @@
 .requestShelf .shelfIngredient b{position:static;font:700 10px/14px system-ui;color:#586452;min-width:25px;text-align:center;border-radius:6px;background:#e8eddf}
 .requestShelf .shelfIngredient.done b{background:#c9e6ac;color:#285b31}
 .shelfFooter{display:flex;align-items:center;justify-content:space-between;gap:2px;min-height:16px}
-.requestShelf .requestMiniReward{font:800 10px/16px system-ui;white-space:nowrap;color:#836019}
+.requestShelf .requestMiniReward{font:800 10px/16px system-ui!important;white-space:nowrap;color:#836019!important}
 .shelfStatus{font:800 8px/14px system-ui;letter-spacing:.2px;color:#687b65}
 .ready .shelfStatus{color:#fff;background:#40773e;border-radius:5px;padding:0 4px}
 .shelfBonus{font:700 9px/14px system-ui;color:#916030;background:#fff0bf;border-radius:5px;text-align:center;white-space:nowrap}

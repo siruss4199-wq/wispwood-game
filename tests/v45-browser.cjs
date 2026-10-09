@@ -13,6 +13,7 @@ const {chromium}=require('playwright');
    await page.evaluate(()=>Promise.all([...document.images].map(i=>i.decode().catch(()=>{}))));
    assert.equal(await page.locator('#requestShelf .shelfRequest:visible').count(),3);
    assert.equal(await page.locator('#questRibbon').isVisible(),false);
+   assert.ok(await page.locator('#requestShelf .requestMiniReward').first().evaluate(e=>parseFloat(getComputedStyle(e).fontSize)>=10),'legible reward size');
    assert.equal(await page.locator('.goalNav').isVisible(),false);
    assert.equal(await page.locator('.frontierArt').count(),36);
    assert.equal(await page.locator('.frontierTrail').count(),3);
