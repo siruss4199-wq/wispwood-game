@@ -21,7 +21,7 @@ export const PRODUCERS={
  ancientTree:{
   id:'ancientTree',name:'Rootfold Nursery',emoji:'🌳',unlockAt:0,
   chains:['leaf','wood'],
-  cycle:[['leaf',0],['leaf',0],['wood',0],['leaf',0],['leaf',1],['wood',0],['leaf',0],['wood',1]]
+  cycle:[['leaf',0],['wood',0],['leaf',0],['wood',0],['leaf',1],['wood',0],['leaf',0],['wood',1]]
  },
  moonSpring:{
   id:'moonSpring',name:'Dewwheel Cistern',emoji:'⛲',unlockAt:3,

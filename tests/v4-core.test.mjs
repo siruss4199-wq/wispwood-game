@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {CHAINS,MILESTONES,PRODUCER_MAX_LEVEL} from '../v4/core/catalog.mjs';
+import {CHAINS,MILESTONES,PRODUCERS,PRODUCER_MAX_LEVEL} from '../v4/core/catalog.mjs';
 import {COBWEBS,OPEN_START,STARTING_ITEMS,createInitialState} from '../v4/core/state.mjs';
 import {completeOrder,currentMilestone,fillOrdersInPlace,frontierName,initializePlayableState,merge,milestoneReady,nextFrontierIndices,producerIndices,producerUpgradeCost,reviveSparseBoard,tapProducer,unlockedChains,upgradeProducer,validateState} from '../v4/core/engine.mjs';
 
@@ -471,3 +471,31 @@ test('mobile objective area is compact and removes redundant request navigation'
  assert.match(css,/\.worldReq \.reqName\{display:none!important\}/);
 });
 
+
+
+test('starter producer keeps early board color mix balanced',()=>{
+ const cycle=PRODUCERS.ancientTree.cycle;
+ assert.equal(cycle.filter(([chain])=>chain==='leaf').length,4);
+ assert.equal(cycle.filter(([chain])=>chain==='wood').length,4);
+});
+
+test('canopy assets progress through distinct seasonal palettes',()=>{
+ const palettes=new Set();
+ for(let tier=0;tier<10;tier++){
+  const svg=fs.readFileSync(new URL(`../v4/assets/leaf-${tier}.svg`,import.meta.url),'utf8');
+  assert.match(svg,/data-material="seasonal canopy"/);
+  const palette=svg.match(/data-palette="([^"]+)"/)?.[1];
+  assert.ok(palette);
+  palettes.add(palette);
+ }
+ assert.ok(palettes.size>=5);
+});
+
+test('frontier scenery is not one repeated dark-green palette',()=>{
+ const fills=[];
+ for(let i=0;i<6;i++){
+  const svg=fs.readFileSync(new URL(`../v4/assets/frontier-${i}.svg`,import.meta.url),'utf8');
+  fills.push(svg.match(/<rect[^>]+fill="([^"]+)"/)?.[1]);
+ }
+ assert.ok(new Set(fills).size>=5,'frontier variants should use varied natural palettes');
+});
