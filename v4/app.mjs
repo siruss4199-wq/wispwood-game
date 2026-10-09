@@ -1,4 +1,5 @@
-import {itemArt,producerArt,residentArt} from './art.mjs';
+import {shelfOrders,shelfAction,itemHierarchy} from './presentation.mjs';
+import {itemArt,producerArt,residentArt,frontierArt} from './art.mjs';
 import {RESIDENTS,requestBonus} from './core/requests.mjs';
 import {CHAINS,MAX_TIER,COLLECTION_TOTAL,producerForm,producerStage,MILESTONES,PRODUCERS,PRODUCER_MAX_LEVEL,itemDef} from './core/catalog.mjs';
 import {createInitialState,restore,serialize} from './core/state.mjs';
@@ -8,6 +9,7 @@ import {chapterProgress,completeMilestone as finishMilestone,completeOrder as fi
 
 const KEY='wispwood-v4';
 const $=s=>document.querySelector(s);
+const requestShelf=$('#requestShelf');
 const board=$('#board'),ordersEl=$('#orders'),sourcesEl=$('#sources'),storageEl=$('#storage'),collectionEl=$('#collectionGrid'),restorationMap=$('#restorationMap');
 const energy=$('#energy'),coins=$('#coins'),light=$('#light'),discovered=$('#discovered'),playerLevel=$('#playerLevel');
 const milestoneTitle=$('#milestoneTitle'),milestoneReq=$('#milestoneReq'),milestoneStep=$('#milestoneStep'),progressBar=$('#progressBar i');
@@ -28,7 +30,7 @@ function msg(t){
  clearTimeout(timer);
  timer=setTimeout(()=>toast.classList.remove('show'),1450);
 }
-function rewardFly(icon,amount,target,origin=questRibbon,delay=0){
+function rewardFly(icon,amount,target,origin=requestShelf,delay=0){
  if(!target||!origin||!amount)return;
  const a=origin.getBoundingClientRect(),b=target.getBoundingClientRect(),el=document.createElement('span');
  el.className='rewardFly';el.textContent=`${icon} +${amount}`;
@@ -56,7 +58,7 @@ function discoveryPop(event){
 function rewardEffects(events){
  const order=events.find(e=>e.type==='order_completed');
  if(order){
-  const origin=lastRewardOrigin??questRibbon;
+  const origin=lastRewardOrigin??requestShelf;
   boardRewardBurst(origin);
   rewardFly('🪙',order.coins,coins,origin,0);
   rewardFly('✨',order.light,light,origin,90);
@@ -75,7 +77,7 @@ function rewardEffects(events){
  }
  const parcel=events.find(e=>e.type==='forest_parcel');
  if(parcel){
-  const origin=lastRewardOrigin??questRibbon;
+  const origin=lastRewardOrigin??requestShelf;
   boardRewardBurst(origin,['🎁','🪙','✨']);
   rewardFly('🪙',parcel.coins,coins,origin,20);
   rewardFly('✨',parcel.light,light,origin,110);
@@ -202,6 +204,13 @@ function apply(r){
  if(produced){
   const source=board.querySelector(`[data-index="${produced.producerIndex}"]`),drop=board.querySelector(`[data-index="${produced.index}"]`);
   source?.classList.add('producer-tap');drop?.classList.add('produce-pop');
+  if(source&&drop&&!matchMedia('(prefers-reduced-motion: reduce)').matches){
+   const a=source.getBoundingClientRect(),b=drop.getBoundingClientRect(),flight=document.createElement('span');
+   flight.className='sourceFlight';flight.innerHTML=itemArt(produced.item.chain,produced.item.tier);
+   flight.style.left=(a.left+a.width/2-20)+'px';flight.style.top=(a.top+a.height/2-20)+'px';
+   flight.style.setProperty('--flight-x',(b.left+b.width/2-a.left-a.width/2)+'px');flight.style.setProperty('--flight-y',(b.top+b.height/2-a.top-a.height/2)+'px');
+   document.body.appendChild(flight);setTimeout(()=>flight.remove(),520);
+  }
   setTimeout(()=>source?.classList.remove('producer-tap'),420);
   setTimeout(()=>drop?.classList.remove('produce-pop'),650);
  }
@@ -312,7 +321,7 @@ function renderRestorationMap(){
  }
 }
 function tileAria(cell,i){
- if(cell.terrain==='locked')return `Locked forest cell ${i+1}`;
+ if(cell.terrain==='locked')return `${nextFrontierIndices(state,3).includes(i)?'Next to explore':'Unexplored'} forest cell ${i+1}`;
  if(cell.content?.type==='producer'){
   const p=PRODUCERS[cell.content.producerId];
   return `${producerForm(state,p.id)}. ${p.name} source, level ${state.producerLevels[p.id]}. Tap repeatedly to produce items.`;
@@ -327,10 +336,6 @@ function render(){
  fillOrdersInPlace(state);
  if(state.moves>0&&(!selectedOrder||!state.activeOrders.some(o=>o.id===selectedOrder))){
   selectedOrder=(state.activeOrders.find(o=>orderReady(state,o))??state.activeOrders[0])?.id??null;
- }
- if(state.ordersCompleted===0&&state.moves>0){
-  const ready=state.activeOrders.find(o=>orderReady(state,o));
-  if(ready)selectedOrder=ready.id;
  }
  board.innerHTML='';
 
@@ -353,13 +358,13 @@ function render(){
 
   if(i===selected)b.classList.add('selected');
   if(suggested.has(i)&&!Number.isInteger(selected))b.classList.add('suggested');
-  if(cell.terrain==='locked'){b.dataset.decor=['⌁','⋄','⌁','·'][i%4];if(frontierNext.has(i)){b.classList.add('frontier-next');b.dataset.frontier='?';}}
+  if(cell.terrain==='locked'){b.innerHTML=frontierArt(i,frontierNext.has(i));if(frontierNext.has(i)){b.classList.add('frontier-next');b.dataset.frontier='next';}}
   if(chosen?.type==='item'&&chosen.tier<MAX_TIER&&i!==selected&&cell.content?.type==='item'&&cell.content.chain===chosen.chain&&cell.content.tier===chosen.tier&&(cell.terrain==='open'||cell.terrain==='cobweb'))b.classList.add('merge-match');
 
   if(cell.content?.type==='item'&&(cell.terrain==='open'||cell.terrain==='cobweb')){
     const d=itemDef(cell.content.chain,cell.content.tier),tier=cell.content.tier;
     const rarity=tier>=6?'mythic':tier>=4?'rare':tier>=2?'uncommon':'common';
-    b.classList.add('item','chain-'+cell.content.chain,'tier-'+tier,'rarity-'+rarity);
+    b.classList.add('item','chain-'+cell.content.chain,'tier-'+tier,'rarity-'+rarity,'hierarchy-'+itemHierarchy(tier));
     if(wanted.has(cell.content.chain+':'+tier))b.classList.add('wanted');
     b.innerHTML=`<span class="itemPedestal"></span>${tier>=4?'<span class="itemSparkles">✦</span>':''}<span class="emoji">${itemArt(cell.content.chain,tier)}</span>${cell.terrain==='cobweb'?'<span class="web">⌁</span>':''}`;
   }
@@ -367,8 +372,8 @@ function render(){
     const d=PRODUCERS[cell.content.producerId],stage=producerStage(state,d.id);
     b.classList.add('producer','source-awake','stage-producer','stage-zone-'+stage);
     if(state.energy>0&&state.cells.some(c=>c.terrain==='open'&&!c.content))b.classList.add('producer-ready');
-    b.dataset.producerId=d.id;b.dataset.stageBox=producerForm(state,d.id);
-    b.innerHTML=`${producerArt(state,d.id)}<span class="producerBolt">ϟ</span><span class="producerLevel">${state.producerLevels[d.id]}</span>`;
+    b.dataset.producerId=d.id;b.dataset.upgrade=state.producerLevels[d.id];b.dataset.stageBox=producerForm(state,d.id);
+    b.innerHTML=`${producerArt(state,d.id)}<span class="producerBolt">ϟ</span><span class="producerLevel" aria-hidden="true">${'•'.repeat(state.producerLevels[d.id])}</span>`;
   }
 
   b.addEventListener('click',()=>clickTile(i));
@@ -454,7 +459,7 @@ function render(){
   el.className='order npcOrder'+(selectedOrder===o.id?' active':'')+(ready?' ready':'');
   el.setAttribute('aria-pressed',selectedOrder===o.id?'true':'false');
   el.innerHTML=`<span class="orderPortrait">${requestFace(o)}</span><div class="orderCopy"><small>${npc.role.toUpperCase()} · ${ready?'READY':o.label.toUpperCase()}</small><strong>${npc.name}</strong><em>${o.title}</em><p class="requestPurpose">${o.narrative??npc.purpose}</p><small>${o.kind==='timed'?(requestBonus(o)?'Dusk bonus: +'+requestBonus(o)+' coins · '+Math.ceil((o.bonusUntil-Date.now())/60000)+' min left':'Bonus ended · base reward stays'):''}</small><div class="req">${prog.map(r=>`<span class="${r.current>=r.count?'done':''}">${itemText(r.chain,r.tier,r.count)} · ${Math.min(r.current,r.count)}/${r.count}</span>`).join('')}</div><div class="reward">+${o.rewardCoins} 🪙 · +${o.rewardLight} ✨ · +${o.rewardEnergy} ⚡</div></div>`;
-  el.addEventListener('click',()=>{selectedOrder=o.id;selected=null;closePanels();render();questRibbon.scrollIntoView({behavior:'smooth',block:'center'});});
+  el.addEventListener('click',()=>{selectedOrder=o.id;selected=null;closePanels();render();requestShelf.scrollIntoView({behavior:'smooth',block:'nearest'});});
   ordersEl.appendChild(el);
  }
 
@@ -464,18 +469,25 @@ function render(){
  activityMilestoneIcon.textContent=m?.icon??'🌳';
  activityMilestoneTitle.textContent=m?.title??'Forest Restored';
  activityMilestoneStep.textContent=`${state.milestoneIndex}/${MILESTONES.length}`;
+ const visibleRequests=shelfOrders(state,selectedOrder);
  requestMiniCards.forEach((card,slot)=>{
-  const o=state.activeOrders[slot];
+  const o=visibleRequests[slot];
   card.hidden=!o;if(!o)return;
-  const npc=requestNPC(o),prog=requirementProgress(state,o.requirements),ready=orderReady(state,o);
-  card.dataset.orderId=o.id;card.classList.toggle('ready',ready);card.classList.toggle('active',selectedOrder===o.id);
+  const npc=requestNPC(o),prog=requirementProgress(state,o.requirements),ready=orderReady(state,o),bonus=requestBonus(o);
+  card.dataset.orderId=o.id;card.dataset.kind=o.kind??'normal';card.classList.toggle('ready',ready);card.classList.toggle('active',selectedOrder===o.id);
+  card.setAttribute('aria-pressed',String(selectedOrder===o.id));
+  card.setAttribute('aria-label',`${npc.name}: ${o.title}. ${prog.map(r=>itemText(r.chain,r.tier,r.count)+', '+Math.min(r.current,r.count)+' of '+r.count).join('; ')}. ${ready?(state.ordersCompleted?'Ready, tap to deliver':'Ready, select to confirm first delivery'):'Tap to focus'}. ${o.rewardCoins+bonus} coins, ${o.rewardLight} light, ${o.rewardEnergy} energy.`);
   card.querySelector('.requestMiniPortrait').innerHTML=requestFace(o);
   card.querySelector('.requestMiniName').textContent=npc.name;
-  card.querySelector('.requestMiniItems').innerHTML=prog.slice(0,2).map(r=>{
+  card.querySelector('.shelfKind').textContent=o.kind==='special'?'✦':'';
+  card.querySelector('.requestMiniItems').innerHTML=prog.map(r=>{
    const d=itemDef(r.chain,r.tier),done=r.current>=r.count;
-   return `<span class="${done?'done':''}" title="${d.name}">${itemArt(r.chain,r.tier)}<b>${Math.min(r.current,r.count)}/${r.count}</b></span>`;
+   return `<span class="shelfIngredient ${done?'done':''}" title="${d.name}">${itemArt(r.chain,r.tier)}<b>${Math.min(r.current,r.count)}/${r.count}</b></span>`;
   }).join('');
-  card.querySelector('.requestMiniReward').textContent=ready?'READY · DELIVER':`+${o.rewardCoins} 🪙 · +${o.rewardLight} ✨`;
+  card.querySelector('.requestMiniReward').textContent=`+${o.rewardCoins+bonus} ◉`;
+  card.querySelector('.shelfStatus').textContent=ready?'READY':o.kind==='special'?'COMMISSION':'BUILD';
+  const bonusEl=card.querySelector('.shelfBonus');bonusEl.hidden=!bonus;
+  bonusEl.textContent=bonus?`◷ ${Math.max(1,Math.ceil((o.bonusUntil-Date.now())/60000))}m · +${bonus}`:'';
  });
  milestoneTitle.textContent=m?.title??'Lost Clearing restored';
  if(m){
@@ -514,7 +526,7 @@ function render(){
 
  const focusedOrder=state.activeOrders.find(o=>o.id===selectedOrder);
  const focusedReady=!!focusedOrder&&orderReady(state,focusedOrder);
- const firstDelivery=focusedReady&&state.ordersCompleted===0;
+ const firstDelivery=focusedReady&&state.ordersCompleted===0&&state.moves>0;
  completeOrderBtn.disabled=!focusedReady;
  completeOrderBtn.textContent=focusedReady?'Deliver →':'Need items';
  questRibbon.classList.toggle('ready-to-deliver',focusedReady);
@@ -552,7 +564,7 @@ function render(){
  save();
 }
 
-completeOrderBtn.addEventListener('click',()=>{audio.unlock();if(selectedOrder){lastRewardOrigin=questRibbon;apply(finishOrder(state,selectedOrder));}});
+completeOrderBtn.addEventListener('click',()=>{audio.unlock();if(selectedOrder){lastRewardOrigin=requestShelf;apply(finishOrder(state,selectedOrder));}});
 completeMilestoneBtn.addEventListener('click',()=>{audio.unlock();apply(finishMilestone(state));});
 storeBtn.addEventListener('click',()=>{audio.unlock();Number.isInteger(selected)&&apply(storeItem(state,selected));});
 panelButtons.forEach(b=>b.addEventListener('click',()=>togglePanel(b.dataset.openPanel)));
@@ -560,13 +572,13 @@ requestMiniCards.forEach(card=>card.addEventListener('click',()=>{
  const id=card.dataset.orderId;if(!id)return;
  const order=state.activeOrders.find(o=>o.id===id);if(!order)return;
  selectedOrder=id;selected=null;closePanels();audio.play('select');
- if(orderReady(state,order)&&state.ordersCompleted>0){
+ if(shelfAction(state,order)==='deliver'){
   lastRewardOrigin=card;
   apply(finishOrder(state,id));
   return;
  }
  render();
- questRibbon.scrollIntoView({behavior:'smooth',block:'center'});
+ requestShelf.scrollIntoView({behavior:'smooth',block:'nearest'});
 }));
 gamePanels.forEach(p=>p.querySelector('.panelHandle')?.addEventListener('click',closePanels));
 goalPrev.addEventListener('click',()=>selectOrderByOffset(-1));
