@@ -480,15 +480,15 @@ test('starter producer keeps early board color mix balanced',()=>{
 });
 
 test('canopy assets progress through distinct seasonal palettes',()=>{
+ const palettes=new Set();
  for(let tier=0;tier<10;tier++){
   const svg=fs.readFileSync(new URL(`../v4/assets/leaf-${tier}.svg`,import.meta.url),'utf8');
-  assert.match(svg,new RegExp(`data-material="seasonal canopy tier-${tier+1}"`));
+  assert.match(svg,/data-material="seasonal canopy"/);
+  const palette=svg.match(/data-palette="([^"]+)"/)?.[1];
+  assert.ok(palette);
+  palettes.add(palette);
  }
- const raw=fs.readFileSync(new URL('../v4/assets/leaf-0.svg',import.meta.url),'utf8');
- const crafted=fs.readFileSync(new URL('../v4/assets/leaf-4.svg',import.meta.url),'utf8');
- const heirloom=fs.readFileSync(new URL('../v4/assets/leaf-9.svg',import.meta.url),'utf8');
- assert.notEqual(raw,crafted);
- assert.notEqual(crafted,heirloom);
+ assert.ok(palettes.size>=5);
 });
 
 test('frontier scenery is not one repeated dark-green palette',()=>{
