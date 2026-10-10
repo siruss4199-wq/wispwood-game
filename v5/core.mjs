@@ -24,10 +24,10 @@ export function fresh(now=Date.now()){
  const board=Array(36).fill(null);
  board[0]=source('rig');board[5]=source('chart');board[30]=source('flux');
  [[7,'rig',0],[8,'rig',0],[9,'chart',0],[10,'chart',0],[13,'rig',1],[14,'chart',1],[15,'flux',0],[16,'flux',0],[19,'rig',0],[20,'rig',0],[21,'chart',0],[22,'chart',0]].forEach(([i,f,t])=>board[i]=item(f,t));
- // Staged pockets retain exactly the original starter inventory and economy.
+ // Starter pockets leave nine working spaces; extra saltstone is recoverable salvage.
  for(const [from,to] of [[19,2],[20,18],[21,11],[22,33]]){board[to]=board[from];board[from]=null;}
  for(const i of [24,25,26,27,28,29])board[i]={type:'sealed'};
- board[31]={type:'rock'};board[32]={type:'rock'};board[34]={type:'crate',left:3};
+ for(const i of [20,23,31,32])board[i]={type:'rock'};board[6]=item('flux',0);board[34]={type:'crate',left:3};
  return {version:5,board,stage:0,energy:32,marks:0,moves:0,merges:0,contracts:0,serial:0,charges:{rig:7,chart:7,flux:7},taps:{rig:0,chart:0,flux:0},normal:0,opportunity:null,discovery:false,discoveryDone:false,boost:false,post:0,discovered:[],startedAt:now,lastAt:now,rations:0,history:[]};
 }
 export function goal(s){return STAGES[s.stage]??POST_GOALS[s.post]??null;}
@@ -51,6 +51,17 @@ export function nextOutput(s,id){
  return item(id, s.boost&&n%3===0?2:n%4===0?1:0);
 }
 function put(s,x){const i=s.board.indexOf(null);if(i<0)return -1;s.board[i]=x;return i;}
+// Supply rewards are finite, usable material. Never displace a kept object.
+function supplies(s,n=4,delivery=false){
+ const added=[];const families=s.stage>=2?['rig','chart','flux']:['rig','chart'];
+ for(let k=0;k<n&&s.board.filter(Boolean).length<(delivery&&k===0?30:25);k++){
+  const x=k===0?{type:'crate',left:3}:item(families[(k+s.normal)%families.length],0);
+  const i=put(s,x);if(i>=0)added.push(i);
+ }
+ return added;
+}
+// Roomy boards get a second raw part; crowded boards keep their last working spaces.
+export function burstOutput(s,id){return s.board.filter(x=>x===null).length>12||((s.taps[id]+1)%3===0&&s.board.filter(x=>x===null).length>5);}
 function remember(s,event,now){s.history.push({event,at:now});s.history=s.history.slice(-40);}
 // Mutating reducer is intentionally atomic: failed commands leave all state untouched.
 export function act(s,a,now=Date.now()){
@@ -64,7 +75,13 @@ export function act(s,a,now=Date.now()){
   if(!y){s.board[a.to]=x;s.board[a.from]=null;return done('Moved.','move',a.to);}
   if(x.type!=='item'||y.type!=='item'||x.family!==y.family||x.tier!==y.tier||x.tier>=7)return fail('Merge two identical objects.');
   s.board[a.to]=item(x.family,x.tier+1);s.board[a.from]=null;s.merges++;const bonus=s.merges%3===0?1:0;s.energy=Math.min(120,s.energy+bonus);
-  return done(`${nameOf(s.board[a.to])} discovered${bonus?' · +1 energy':''}`,'merge',a.to);
+  const crafted=s.board[a.to];
+  const firstCraft=crafted.tier>=2&&!s.discovered.includes(crafted.family+':'+crafted.tier);
+  const resupply=firstCraft&&s.stage<4?supplies(s,6):[];
+  // Large assemblies return reusable offcuts, keeping expensive merges from hollowing the tray.
+  const offcuts=!firstCraft&&crafted.tier>=3&&s.board.filter(Boolean).length<23;
+  if(offcuts){put(s,item(crafted.family,0));put(s,item(crafted.family,0));}
+  return done(`${nameOf(crafted)} discovered${resupply.length?' · expedition supplies':offcuts?' · reusable offcuts':''}${bonus?' · +1 energy':''}`,'merge',a.to);
  }
  if(a.type==='produce'){
   const p=SOURCES[a.id];if(!p||s.stage<p.unlock)return fail(`Unlock after ${a.id==='chart'?'clearing the landing':'excavating the door'}.`);
@@ -72,16 +89,18 @@ export function act(s,a,now=Date.now()){
   if(!s.charges[a.id])return fail('Service this source: a grip tool or 3 energy.');
   if(s.energy<p.cost)return fail('Deliver a contract, recycle an item, or use a field ration.');
   if(!s.board.includes(null))return fail('Board full. Merge, deliver, recycle, or clear a blocker.');
-  const x=nextOutput(s,a.id),i=put(s,x);s.energy-=p.cost;s.charges[a.id]--;s.taps[a.id]++;
+  const burst=burstOutput(s,a.id),x=nextOutput(s,a.id),i=put(s,x);if(burst)put(s,item(a.id,0));s.energy-=p.cost;s.charges[a.id]--;s.taps[a.id]++;
   if(x.type==='glyph')s.discovery=true;
-  return done(x.type==='glyph'?'Echo fragment found! A discovery awaits.':`${nameOf(x)} · ${s.charges[a.id]} charges left`,'produce',i);
+  return done(x.type==='glyph'?'Echo fragment found! A discovery awaits.':`${nameOf(x)}${burst?' + raw part':''} · ${s.charges[a.id]} charges left`,'produce',i);
  }
  if(a.type==='service'){
   if(!SOURCES[a.id]||s.stage<SOURCES[a.id].unlock||s.charges[a.id]>0)return fail('This source does not need service.');
   const r=req('rig',1);
   if(a.useTool){if(!ready(s,[r]))return fail('Make a grip tool first.');consume(s,[r]);}
   else {if(s.energy<3)return fail('Need 3 energy or a grip tool.');s.energy-=3;}
-  s.charges[a.id]=7;return done('Seven fresh charges.','service');
+  s.charges[a.id]=7;
+  const restocked=s.board.filter(Boolean).length<22;if(restocked){put(s,item(a.id,0));put(s,item(a.id,0));}
+  return done(`Seven fresh charges.${restocked?' Two spare parts unpacked.':''}`,'service');
  }
  if(a.type==='goal'){
   const g=goal(s);if(!g||!ready(s,g.needs))return fail('Make the highlighted expedition items.');
@@ -91,12 +110,13 @@ export function act(s,a,now=Date.now()){
    if(s.stage===3)s.boost=true;
    if(s.stage===4){put(s,{type:'crate',left:5});s.marks+=15;}
   }else{s.post++;s.marks+=10;}
+  supplies(s,6);
   return done(s.stage===4&&s.post===0?'The Tideglass Vault is open. The sky inside is moving.':g.next,'milestone');
  }
  if(a.type==='contract'){
   const c=normalContract(s);if(!ready(s,c.needs))return fail('Make the highlighted contract items.');
-  consume(s,c.needs);s.energy=Math.min(120,s.energy+c.energy);s.marks+=c.marks;s.normal++;s.contracts++;
-  return done(`Supplies secured · +${c.energy} energy`,'contract');
+  consume(s,c.needs);s.energy=Math.min(120,s.energy+c.energy);s.marks+=c.marks;s.normal++;s.contracts++;const shipment=supplies(s,4,true);
+  return done(`Supplies secured${shipment.length?' · field cache':''} · +${c.energy} energy`,'contract');
  }
  if(a.type==='startOpportunity'){
   if(s.stage<1||s.opportunity)return fail('One opportunity at a time.');
@@ -106,13 +126,13 @@ export function act(s,a,now=Date.now()){
   if(!s.opportunity)return fail('No active signal.');
   if(now>s.opportunity.ends){s.opportunity=null;return done('Signal passed. No items lost.');}
   if(!ready(s,s.opportunity.needs))return fail('Make the highlighted signal item.');
-  consume(s,s.opportunity.needs);s.energy=Math.min(120,s.energy+28);s.marks+=8;s.opportunity=null;s.contracts++;return done('Signal reached · +28 energy, +8 merit','contract');
+  consume(s,s.opportunity.needs);s.energy=Math.min(120,s.energy+28);s.marks+=8;s.opportunity=null;s.contracts++;supplies(s,4,true);return done('Signal reached · +28 energy, +8 merit','contract');
  }
  if(a.type==='discovery'){
   const i=s.board.findIndex(x=>x?.type==='glyph');
   if(i<0||!ready(s,[req('chart',2)]))return fail('Decode an echo fragment with a sight lens.');
   if(s.discoveryDone)return fail('Fragment already decoded. Recycle extras for energy.');
-  s.board[i]=null;consume(s,[req('chart',2)]);s.discoveryDone=true;s.boost=true;s.energy=Math.min(120,s.energy+18);s.marks+=6;
+  s.board[i]=null;consume(s,[req('chart',2)]);s.discoveryDone=true;s.boost=true;s.energy=Math.min(120,s.energy+18);s.marks+=6;supplies(s,4,true);
   return done('Hidden cache located. All sources now yield richer parts.','discovery');
  }
  if(a.type==='branch'){
@@ -129,7 +149,9 @@ export function act(s,a,now=Date.now()){
   const box=s.board[a.index],last=box.left===1;
   if(!last&&!s.board.includes(null))return fail('Free one space to open the cache.');
   const x=item(['rig','chart','flux'][box.left%3],1);
+  const extra=s.board.filter(x=>x===null).length>12;
   let i;if(last){s.board[a.index]=x;i=a.index;}else{box.left--;i=put(s,x);}
+  if(extra)put(s,item(x.family,0));
   return done('Cache opened · no energy spent','produce',i);
  }
  if(a.type==='recycle'){

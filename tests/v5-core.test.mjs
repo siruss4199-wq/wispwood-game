@@ -54,9 +54,9 @@ test('fresh-player simulation opens vault and continues through two optional dis
   console.log(JSON.stringify({sideFirst,actions,rations:s.rations,milestones}));
  }
 });
-test('staged board retains starter inventory and leaves reachable space around sources',()=>{
- const s=fresh();assert.equal(s.board.filter(x=>x===null).length,12);
- for(const [f,n] of [['rig',5],['chart',5],['flux',2]])assert.equal(s.board.filter(x=>x?.type==='item'&&x.family===f).length,n);
+test('staged board starts 75% occupied with rewarding salvage and leaves reachable space around sources',()=>{
+ const s=fresh();assert.equal(s.board.filter(x=>x===null).length,9);
+ for(const [f,n] of [['rig',5],['chart',5],['flux',3]])assert.equal(s.board.filter(x=>x?.type==='item'&&x.family===f).length,n);
  assert.equal(s.board[2].family,'rig');assert.equal(s.board[11].family,'chart');assert.equal(s.board[33].family,'chart');
  for(const i of [0,5,30])assert.ok([i-6,i+6,i-1,i+1].some(j=>j>=0&&j<36&&s.board[j]?.type!=='sealed'));
 });
@@ -66,4 +66,44 @@ test('illustrated objects use distinct materials; art boundary can accept later 
  for(const material of ['steel','paper','glass','brass','rubber','coral','violet'])assert.ok(MATERIALS.includes('vw-'+material));
  assert.match(art(item('rig',3)),/data-render="illustrated-object"/);
  SPRITE_OVERRIDES['rig-0']='assets/test-sprite.webp';assert.match(art(item('rig',0)),/<img[^>]+test-sprite.webp/);delete SPRITE_OVERRIDES['rig-0'];
+});
+
+test('producer bursts preserve deterministic rare cadence, charge cost and the final free space',()=>{
+ const s=fresh();for(let i=0;i<36;i++)if(s.board[i]?.type==='item')s.board[i]=null;
+ s.taps.rig=8;const occupied=s.board.filter(Boolean).length,energy=s.energy;
+ const r=success(s,{type:'produce',id:'rig'});assert.equal(s.board[r.index].type,'glyph');assert.equal(s.board.filter(Boolean).length,occupied+2);assert.equal(s.energy,energy-1);assert.equal(s.charges.rig,6);assert.equal(s.taps.rig,9);
+ s.board=s.board.map(x=>x??item('chart',0));s.board[1]=null;s.taps.rig=11;
+ success(s,{type:'produce',id:'rig'});assert.equal(s.board.filter(Boolean).length,36);assert.equal(s.board[1].tier,1);
+ failUnchanged(s,{type:'produce',id:'rig'});
+});
+test('deliveries and discoveries return finite supplies without overwriting kept items',()=>{
+ const s=fresh();const sources=s.board.filter(x=>x?.type==='source');success(s,{type:'contract'});assert.equal(s.board.filter(x=>x?.type==='crate').length,2);assert.deepEqual(s.board.filter(x=>x?.type==='source'),sources);
+ for(let i=0;i<36;i++)if(s.board[i]?.type==='item')s.board[i]=null;
+ s.board[7]={type:'glyph'};s.board[8]=item('chart',2);const before=s.board.filter(Boolean).length;success(s,{type:'discovery'});assert.equal(s.board.filter(Boolean).length,before+2);
+ const full=fresh();full.board=full.board.map(x=>x??item('flux',7));const kept=full.board[1];success(full,{type:'contract'});assert.deepEqual(full.board[1],kept);assert.ok(full.board.includes(null),'crowded delivery still frees a working space');
+});
+test('equipment discovery supplies cannot be farmed by repeating a low-tier merge or reload',()=>{
+ const s=fresh();for(let i=0;i<36;i++)if(s.board[i]?.type==='item')s.board[i]=null;
+ s.board[7]=item('rig',1);s.board[8]=item('rig',1);const before=s.board.filter(x=>x?.type==='crate').length;success(s,{type:'merge',from:7,to:8});assert.equal(s.board.filter(x=>x?.type==='crate').length,before+1);
+ const saved=load(JSON.stringify(s));saved.board[7]=item('rig',1);saved.board[8]=item('rig',1);success(saved,{type:'merge',from:7,to:8});assert.equal(saved.board.filter(x=>x?.type==='crate').length,before+1);
+});
+test('finite caches, sparse-board servicing and deliberate recycling remain usable',()=>{
+ const s=fresh();for(let i=0;i<36;i++)if(s.board[i]?.type==='item')s.board[i]=null;
+ const n=s.board.filter(Boolean).length;success(s,{type:'crate',index:34});assert.equal(s.board[34].left,2);assert.equal(s.board.filter(Boolean).length,n+2);
+ s.charges.rig=0;success(s,{type:'service',id:'rig'});assert.equal(s.charges.rig,7);const index=s.board.findIndex(x=>x?.type==='item'),before=s.board.filter(Boolean).length;success(s,{type:'recycle',index});assert.equal(s.board.filter(Boolean).length,before-1,'recycling does not secretly auto-fill');
+});
+test('first-session density stays active across goal-first, contract-first, cache and salvage policies',()=>{
+ for(const sideFirst of [true,false])for(const openCaches of [true,false])for(const clearSalvage of [true,false]){
+  const s=fresh(0),samples=[],checkpoints={fresh:27};let actions=0,lowRun=0,maxLowRun=0;
+  while(s.stage<4&&actions<400){
+   const cmd=choose(s,{sideFirst,openCaches,clearSalvage});if(s.stage===3&&cmd.type==='goal')checkpoints.preVault=s.board.filter(Boolean).length;
+   success(s,cmd,++actions*4500);const occupied=s.board.filter(Boolean).length;samples.push(occupied);
+   lowRun=occupied<18?lowRun+1:0;maxLowRun=Math.max(maxLowRun,lowRun);
+   if([27,67,134].includes(actions))checkpoints[actions]=occupied;
+  }
+  assert.equal(s.stage,4,'no blocker deadlock');assert.ok(actions>=134&&actions<240);
+  const mean=samples.reduce((a,b)=>a+b,0)/samples.length;assert.ok(mean>=20&&mean<=28,`mean ${mean}`);assert.ok(Math.min(...samples)>=17);assert.ok(maxLowRun<=2,'no prolonged >18-empty state');
+  for(const [point,n]of Object.entries(checkpoints))assert.ok(n>=20,`${point}: only ${n} occupied`);
+  console.log(JSON.stringify({density:true,sideFirst,openCaches,clearSalvage,actions,mean:+mean.toFixed(1),min:Math.min(...samples),maxLowRun,checkpoints}));
+ }
 });

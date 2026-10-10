@@ -10,7 +10,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
   const shot=async name=>{await page.screenshot({path:`test-artifacts/v5/${name}-${width}.png`,fullPage:true});};
   assert.equal(await page.locator('.contract').count(),2);assert.equal(await page.locator('.source').count(),3);assert.equal(await page.locator('.source.locked').count(),2);
   assert.equal(await page.locator('#goalButton').isDisabled(),true);assert.match(await page.locator('#goalTitle').textContent(),/landing/);
-  await shot('fresh');
+  await shot('fresh');assert.equal((await read()).board.filter(Boolean).length,27);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   const bounds=await page.locator('#board').boundingBox();assert.ok(bounds.width>=Math.min(width-24,370));assert.ok(bounds.y+bounds.height<830);
   // Deliver the available starter contract: deliberately trade a story ingredient for supplies.
@@ -20,6 +20,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
   await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:7});await page.mouse.up();await page.waitForTimeout(320);assert.equal((await read()).merges,1);
   // Every remaining action runs through visible UI. Policy does not mutate game state.
   let several=false,unlock=false,blocked=false,rare=false,firstUnlock=false,actions=0;
+  const density=[],captured=new Set(),timepoints=[[27,'density-2min'],[67,'density-5min'],[134,'density-10min']];
   while((await read()).stage<4&&actions++<400){
    const current=await read();
    const spanner=current.board.findIndex(x=>x?.type==='item'&&x.family==='rig'&&x.tier===2);
@@ -29,21 +30,28 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
     assert.equal((await read()).board[stone].type,'crate');await shot('blocker-cache');
     for(let j=0;j<3;j++)await page.locator('[data-action="crate"]').tap();assert.equal((await read()).board[stone].type,'item');blocked=true;
    }
-   const cmd=await page.evaluate(async()=>{const {choose}=await import('/tests/v5-policy.mjs');return choose(JSON.parse(localStorage.getItem('vaultwake-v5')));});
+   const cmd=await page.evaluate(async()=>{const {choose}=await import('/tests/v5-policy.mjs');return choose(JSON.parse(localStorage.getItem('vaultwake-v5')),{openCaches:true});});
+   if(cmd.type==='goal'&&(await read()).stage===3){assert.ok((await read()).board.filter(Boolean).length>=20);await shot('density-pre-vault');captured.add('density-pre-vault');}
    if(cmd.type==='merge'){await page.locator(`[data-index="${cmd.from}"]`).tap();await page.locator(`[data-index="${cmd.to}"]`).tap();}
    else if(cmd.type==='produce'){const s=await read();const i=s.board.findIndex(x=>x?.type==='source'&&x.id===cmd.id);await page.locator(`[data-index="${i}"]`).tap();}
    else if(cmd.type==='service'){const s=await read();const i=s.board.findIndex(x=>x?.type==='source'&&x.id===cmd.id);await page.locator(`[data-index="${i}"]`).tap();await page.locator('[data-action="service"]').tap();}
+   else if(cmd.type==='crate'){await page.locator(`[data-index="${cmd.index}"]`).tap();await page.locator('[data-action="crate"]').tap();}
    else if(cmd.type==='recycle'){await page.locator(`[data-index="${cmd.index}"]`).tap();await page.locator('[data-action="recycle"]').tap();}
    else if(cmd.type==='ration')await page.locator('#rationButton').tap();
    else if(cmd.type==='goal')await page.locator('#goalButton').tap();
    else await page.locator(`[data-contract="${cmd.type}"]`).tap();
    if(await page.locator('#celebration').isVisible())await page.locator('#celebration .continue').tap();
    const s=await read();
+   density.push({moves:s.moves,estimatedSeconds:s.moves*4.5,occupied:s.board.filter(Boolean).length,items:s.board.filter(x=>x?.type==='item').length,caches:s.board.filter(x=>x?.type==='crate').length,blockers:s.board.filter(x=>['rock','sealed'].includes(x?.type)).length});
+   for(const [move,name]of timepoints)if(s.moves>=move&&!captured.has(name)){assert.ok(s.board.filter(Boolean).length>=20,`${name} remains an active workspace`);await shot(name);captured.add(name);}
    if(s.stage===1&&!firstUnlock){await shot('first-unlock');firstUnlock=true;}
    if(s.discovery&&!rare){await shot('rare-producer');rare=true;}
    if(s.merges>=3&&!several){await shot('merges');several=true;}
    if(s.stage===2&&!unlock){assert.equal(await page.locator('.source.locked').count(),0);assert.equal(await page.locator('.tile.sealed').count(),0);await shot('producer-unlock');unlock=true;}
   }
+  for(const name of [...timepoints.map(x=>x[1]),'density-pre-vault'])assert.ok(captured.has(name),name);
+  fs.writeFileSync(`test-artifacts/v5/density-${width}.json`,JSON.stringify({assumedSecondsPerDecision:4.5,samples:density},null,2));
+  assert.ok(Math.min(...density.map(x=>x.occupied))>=17);
   assert.equal(blocked,true);assert.equal(rare,true);assert.equal((await read()).discoveryDone,true);
   assert.equal((await read()).stage,4,'chapter completable through UI');await shot('vault-open');
   assert.match(await page.locator('#scene svg').getAttribute('aria-label'),/Open vault/);
