@@ -7,7 +7,7 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
  const side=session&&s.stage===2&&!session.trade;
  const target=signal?s.opportunity:side||sideFirst&&s.contracts===0?normalContract(s):goal(s);
  if(!target)return null;
- const deliver=signal?'opportunity':side||sideFirst&&s.contracts===0?'contract':'goal';
+ const deliver=signal?'opportunity':side||sideFirst&&s.contracts===0?'contract':(target.action??'goal');
  if(ready(s,target.needs)){if(side)session.trade=true;return {type:deliver};}
  if(s.discovery&&!s.discoveryDone&&s.board.some(x=>x?.type==='glyph')&&ready(s,[{family:'chart',tier:2,count:1}]))return {type:'discovery'};
  const spaces=s.board.filter(x=>x===null).length;

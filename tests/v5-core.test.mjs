@@ -46,6 +46,13 @@ test('24 original item silhouettes, distinct producers and five actual world tra
  assert.equal(new Set(Object.keys(SOURCES).map(id=>art({type:'source',id}))).size,3);assert.equal(new Set([0,1,2,3,4].map(x=>scene(x))).size,5);
  const css=fs.readFileSync(new URL('../v5/style.css',import.meta.url),'utf8');assert.match(css,/prefers-reduced-motion/);const html=fs.readFileSync(new URL('../v5/index.html',import.meta.url),'utf8');assert.doesNotMatch(html,/v4\/.*css|rewarded|shop/i);
 });
+test('chapter objectives require expedition deployments and apex tiers stay aspirational until the vault',()=>{
+ const s=fresh();s.stage=1;s.mission={surveyed:false,ringPrimed:false,aligned:false};s.board[19]={type:'marker'};s.board[7]=item('chart',3);
+ assert.equal(goal(s).action,'survey');success(s,{type:'survey'});assert.equal(s.mission.surveyed,true);assert.equal(goal(s).action,'goal');assert.ok(s.board.some(x=>x?.type==='crate'&&x.kind==='survey'));
+ s.stage=2;s.mission.ringPrimed=false;s.board[24]={type:'lock'};s.board[8]=item('flux',4);assert.equal(goal(s).action,'prime');success(s,{type:'prime'});assert.equal(s.mission.ringPrimed,true);
+ s.stage=3;s.mission.aligned=false;s.board[9]=item('chart',5);s.board[10]=item('flux',3);assert.equal(goal(s).action,'align');success(s,{type:'align'});assert.equal(s.mission.aligned,true);
+ const gated=fresh();gated.board[7]=item('rig',5);gated.board[8]=item('rig',5);failUnchanged(gated,{type:'merge',from:7,to:8});gated.stage=4;success(gated,{type:'merge',from:7,to:8});assert.equal(gated.board[8].tier,6);
+});
 test('fresh-player simulation opens vault and continues through two optional discoveries without deadlock',()=>{
  for(const sideFirst of [true,false]){
   const s=fresh(0),milestones=[];let actions=0;
@@ -152,7 +159,7 @@ test('T4 and T6 first crafts reward charges once, without renewable merge farmin
 });
 test('first-session decisions change play before the vault without repetitive producer runs or deadlocks',()=>{
  const s=fresh(0),session={},timeline=[];let actions=0,run=0,maxRun=0,lastBeat=0,maxBeatGap=0;const changes=new Set(),choices=new Set();
- while(s.stage<4&&actions<240){
+ while(s.stage<4&&actions<360){
   const a=choose(s,{session,openCaches:s.stage>=2});
   if(a.type==='contract'&&ready(s,goal(s).needs))choices.add('deliver-story-ingredient');
   if(a.type==='contract'&&s.stage===2)choices.add('trade-lantern-for-surge');
@@ -165,7 +172,7 @@ test('first-session decisions change play before the vault without repetitive pr
   if(r.event==='discovery')changes.add('enriched-sources');
   timeline.push({action:actions,seconds:actions*4.5,command:a.type,stage:s.stage,energy:s.energy,surge:s.surge??0,occupied:s.board.filter(Boolean).length,event:r.event});
  }
- assert.equal(s.stage,4);assert.ok(actions>=120&&actions<=200,'roughly 9–15 estimated minutes');assert.ok(maxRun<=3,'no prolonged producer-only sequence');
+ assert.equal(s.stage,4);assert.ok(actions>=150&&actions<=320,'roughly 11–24 estimated minutes with multi-step objectives');assert.ok(maxRun<=3,'no prolonged producer-only sequence');
  assert.ok(choices.size>=4);assert.ok(changes.size>=4);assert.ok(session.signal&&session.trade);assert.ok(s.discoveryDone);assert.ok(maxBeatGap<=9,'small tangible payoff within 40 estimated seconds');
  assert.ok(Math.max(...timeline.filter(x=>x.stage<4).map(x=>x.energy))<120,'supply rewards do not hit the cap during the chapter');
  assert.ok(Math.min(...timeline.map(x=>x.occupied))>=18);console.log(JSON.stringify({session:true,actions,maxProducerRun:maxRun,maxPayoffGapSeconds:maxBeatGap*4.5,choices:[...choices],changes:[...changes]}));

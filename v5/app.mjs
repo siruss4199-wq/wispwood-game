@@ -18,7 +18,7 @@ function render(){
  $('#energy').textContent=state.energy;$('#marks').textContent=state.marks;
  $('#scene').innerHTML=scene(state.stage,state.post);$('#sceneLabel').textContent=STAGES[state.stage]?.scene??'The vault is open';
  $('#chapterLabel').textContent=state.stage===4?'DISCOVERY · THE SKY WITHIN':'THE SALTGLASS REACH';
- const g=goal(state);$('#goalTitle').textContent=g?.name??'Expedition complete';$('#step').textContent=state.stage<4?`${state.stage+1} / 4`:'DISCOVERED';
+ const g=goal(state);$('#goalTitle').textContent=g?.name??'Expedition complete';$('#step').textContent=state.stage<4?(g?.phase??`${state.stage+1} / 4`):'DISCOVERED';
  $('#goalNeeds').innerHTML=needsHTML(g?.needs??[]);$('#goalButton').textContent=g?.verb??'Journal';$('#goalButton').disabled=!!g&&!ready(state,g.needs);$('#nextUnlock').textContent=g?.next??'All chapter badges found. Keep collecting.';
  if(g){const close=near(state,g.needs);if(close&&close!=='READY')$('#step').textContent=close;$('.objective').classList.toggle('almost',close==='1 MERGE AWAY');}
  const goalReady=!!g&&ready(state,g.needs);$('.objective').classList.toggle('ready',goalReady);
@@ -66,6 +66,8 @@ function renderSelection(){
     buttons=state.charges[x.id]?`<button class="accent" data-action="produce">Produce · ${SOURCES[x.id].cost} ϟ</button>`:'<button data-action="serviceTool">Service · tool</button><button class="accent" data-action="service">Service · 3 ϟ</button>';
    }
   }else if(x.type==='rock'){desc='A trail brace clears this space and reveals expedition gear immediately.';buttons='<button class="accent" data-action="clear">Use brace</button>';}
+  else if(x.type==='marker')desc='A buried survey point. A Survey Scope can be committed here instead of merged toward a Star Chart.';
+  else if(x.type==='lock')desc='A dormant relic lock. Commit a Phase Lantern here instead of merging it toward an Orbit Engine.';
   else if(x.type==='sealed')desc='Excavation reveals parts, a resonance ampoule, and more saltstone.';
   else if(x.type==='crate'){desc=`${containerInfo(x).purpose} · Tap on board to reveal. Drag to keep.`;}
   else if(x.type==='glyph'){desc=state.discoveryDone?'Decoded fragment. Recycle or keep as a souvenir.':'Pair with a sight lens to decode. Richer source outputs.';buttons='<button data-action="recycle">Recycle +5 ϟ</button>';}
@@ -78,7 +80,7 @@ function renderSelection(){
 function run(a){
  const now=Date.now(),delivery=deliveryItems(state,a,now).map(v=>({...v,rect:board.querySelector(`[data-index="${v.index}"]`)?.getBoundingClientRect()}));
  const beforeBoard=state.board.map(x=>x?JSON.stringify(x):null);
- const taskSelector=a.type==='goal'?'.objective':`[data-contract="${a.type}"]`;
+ const objectiveAction=['goal','survey','prime','align'].includes(a.type);const taskSelector=objectiveAction?'.objective':`[data-contract="${a.type}"]`;
  const taskRect=$(taskSelector)?.getBoundingClientRect();
  const taskSnapshot=$(taskSelector)?.cloneNode(true);
  const energyBefore=state.energy,firstContract=state.contracts===0,surgeBefore=state.surge??0;
@@ -86,7 +88,7 @@ function run(a){
  const before=state.stage,from=a.type==='produce'?board.querySelector(`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===a.id)}"]`)?.getBoundingClientRect():null;
  const result=act(state,a,now);message.textContent=result.message;
  if(!result.ok)return result;
- platform.startGameplay();if(['milestone','contract','discovery'].includes(result.event)){focus='goal';selected=null;}if(a.type==='merge')selected=result.index;render();persist();
+ platform.startGameplay();if(['milestone','mission','contract','discovery'].includes(result.event)){focus='goal';selected=null;}if(a.type==='merge')selected=result.index;render();persist();
  if(result.event==='milestone'&&state.stage<4)message.textContent=result.message+' unlocked. '+(goal(state)?.text??'');
  if(!delivery.length)feedback({event:result.event,tile:board.querySelector(`[data-index="${result.index}"]`),x:state.board[result.index],from:rewardOrigin,energyDelta:state.energy-energyBefore,stage:state.stage,firstContract,containerKind:result.containerKind,reveal:result.reveal,bonus:result.bonus,breakthrough:result.breakthrough,surgeStarted:state.surge>surgeBefore});
  if(delivery.length){
@@ -121,7 +123,7 @@ board.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)return;
 board.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;const d=drag;drag=null;board.querySelectorAll('.dragging,.target,.picked').forEach(x=>x.classList.remove('dragging','target','picked'));if(!d.moved)return;suppressUntil=performance.now()+300;const tile=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-index]');if(tile){selected=d.from;run({type:'merge',from:d.from,to:+tile.dataset.index});}});
 board.addEventListener('pointercancel',()=>{drag=null;board.querySelectorAll('.dragging,.target,.picked').forEach(x=>x.classList.remove('dragging','target','picked'));});
 $('#selection').addEventListener('click',e=>{const type=e.target.closest('[data-action]')?.dataset.action;if(!type)return;const x=state.board[selected];run({type:type==='serviceTool'?'service':type,index:selected,id:x?.id,useTool:type==='serviceTool'});});
-$('#goalButton').onclick=()=>goal(state)?run({type:'goal'}):showJournal();
+$('#goalButton').onclick=()=>{const g=goal(state);g?run({type:g.action??'goal'}):showJournal();};
 $('#goalNeeds').onclick=()=>{focus='goal';render();message.textContent=goal(state)?.text??'Keep collecting rare discoveries.';};
 $('#contracts').onclick=e=>{const type=e.target.closest('[data-contract]')?.dataset.contract;if(!type)return;
  if(type==='startOpportunity'){run({type});focus='opportunity';render();return;}

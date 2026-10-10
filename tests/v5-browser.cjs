@@ -41,17 +41,17 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
     assert.equal((await read()).board[stone].type,'item');await shot('blocker-reveal');blocked=true;
    }
    const cmd=await page.evaluate(async()=>{const {choose}=await import('/tests/v5-policy.mjs');const s=JSON.parse(localStorage.getItem('vaultwake-v5'));window.sessionPolicy??={};return choose(s,{openCaches:s.stage>=2,session:window.sessionPolicy});});
-   if(cmd.type==='goal'){assert.equal(await page.locator('.objective.ready').count(),1);assert.equal(await page.locator('#step').textContent(),'READY');await shot('main-ready-'+(await read()).stage);}
-   if(cmd.type==='goal'&&(await read()).stage===3){assert.ok((await read()).board.filter(Boolean).length>=20);await shot('density-pre-vault');captured.add('density-pre-vault');}
+   if(['goal','survey','prime','align'].includes(cmd.type)){assert.equal(await page.locator('.objective.ready').count(),1);assert.equal(await page.locator('#step').textContent(),'READY');await shot('main-ready-'+(await read()).stage);}
+   if(['goal','survey','prime','align'].includes(cmd.type)&&(await read()).stage===3){assert.ok((await read()).board.filter(Boolean).length>=20);await shot('density-pre-vault');captured.add('density-pre-vault');}
    if(cmd.type==='merge'){await page.locator(`[data-index="${cmd.from}"]`).tap();await page.locator(`[data-index="${cmd.to}"]`).tap();}
    else if(cmd.type==='produce'){const s=await read();const i=s.board.findIndex(x=>x?.type==='source'&&x.id===cmd.id);await page.locator(`[data-index="${i}"]`).tap();}
    else if(cmd.type==='service'){const s=await read();const i=s.board.findIndex(x=>x?.type==='source'&&x.id===cmd.id);await page.locator(`[data-index="${i}"]`).tap();await page.locator('[data-action="service"]').tap();}
    else if(cmd.type==='crate'){await page.locator(`[data-index="${cmd.index}"]`).tap();assert.equal(await page.locator('[data-action="crate"]').count(),0);if(!captured.has('container-opening')){await shot('container-opening');captured.add('container-opening');}}
    else if(cmd.type==='recycle'){await page.locator(`[data-index="${cmd.index}"]`).tap();await page.locator('[data-action="recycle"]').tap();}
    else if(cmd.type==='ration')await page.locator('#rationButton').tap();
-   else if(cmd.type==='goal')await page.locator('#goalButton').tap();
+   else if(['goal','survey','prime','align'].includes(cmd.type))await page.locator('#goalButton').tap();
    else await page.locator(`[data-contract="${cmd.type}"]`).tap();
-   if(['goal','contract','discovery','opportunity'].includes(cmd.type)){await payoff(cmd.type);if(cmd.type==='goal')await shot('main-completion-'+(await read()).stage);}
+   if(['goal','survey','prime','align','contract','discovery','opportunity'].includes(cmd.type)){await payoff(cmd.type);if(['goal','survey','prime','align'].includes(cmd.type))await shot('main-completion-'+(await read()).stage+'-'+cmd.type);}
    if(await page.locator('#celebration').isVisible())await page.locator('#celebration .continue').tap();
    const s=await read();
    assert.equal(await page.locator('#board').getAttribute('data-site'),String(s.stage));

@@ -16,7 +16,7 @@ export function siteSurface(stage){
 // Uses precisely the same first-match order as the reducer's consume(). Pure and testable.
 export function deliveryItems(s,action,now=Date.now()){
  let needs;
- if(action.type==='goal')needs=goal(s)?.needs;
+ if(['goal','survey','prime','align'].includes(action.type))needs=goal(s)?.needs;
  if(action.type==='contract')needs=normalContract(s).needs;
  if(action.type==='opportunity'&&s.opportunity&&now<=s.opportunity.ends)needs=s.opportunity.needs;
  if(action.type==='discovery'&&!s.discoveryDone)needs=[{family:'chart',tier:2,count:1}];
@@ -27,6 +27,9 @@ export function deliveryItems(s,action,now=Date.now()){
  return found;
 }
 export function continuation(s,action,rewards=[]){
+ if(action.type==='survey')return 'Buried door pinned · build the excavation kit';
+ if(action.type==='prime')return 'Dormant ring awake · stabilize it with field gear';
+ if(action.type==='align')return 'Vault alignment solved · build the final access assembly';
  if(action.type==='goal'&&s.stage===1)return 'Survey Kite unlocked · choose your 3 Surge pulls';
  if(action.type==='goal'&&s.stage===2)return 'Echo Crucible unlocked · reveal the ampoule';
  if(action.type==='goal'&&s.stage===3)return 'Rings powered · prepare the vault instruments';
