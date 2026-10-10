@@ -24,6 +24,8 @@ export function fresh(now=Date.now()){
  const board=Array(36).fill(null);
  board[0]=source('rig');board[5]=source('chart');board[30]=source('flux');
  [[7,'rig',0],[8,'rig',0],[9,'chart',0],[10,'chart',0],[13,'rig',1],[14,'chart',1],[15,'flux',0],[16,'flux',0],[19,'rig',0],[20,'rig',0],[21,'chart',0],[22,'chart',0]].forEach(([i,f,t])=>board[i]=item(f,t));
+ // Staged pockets retain exactly the original starter inventory and economy.
+ for(const [from,to] of [[19,2],[20,18],[21,11],[22,33]]){board[to]=board[from];board[from]=null;}
  for(const i of [24,25,26,27,28,29])board[i]={type:'sealed'};
  board[31]={type:'rock'};board[32]={type:'rock'};board[34]={type:'crate',left:3};
  return {version:5,board,stage:0,energy:32,marks:0,moves:0,merges:0,contracts:0,serial:0,charges:{rig:7,chart:7,flux:7},taps:{rig:0,chart:0,flux:0},normal:0,opportunity:null,discovery:false,discoveryDone:false,boost:false,post:0,discovered:[],startedAt:now,lastAt:now,rations:0,history:[]};

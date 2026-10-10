@@ -1,54 +1,27 @@
 // Original Vaultwake vector illustrations. No external assets or icon font dependencies.
-const paths={
- rig:[
-  '<path d="M11 39L18 24 35 16 50 22 55 36 43 50 24 52Z"/><path d="M18 24L31 31 50 22M31 31L24 52" class="line"/><path d="M38 18L45 11 52 15 48 23" fill="#ffd08c"/>',
-  '<path d="M13 18Q18 9 27 13L31 19 25 27 34 36 43 27Q48 22 53 28L51 35 43 39 49 46 43 53 34 46 28 52 20 47 24 40 17 33 10 31 8 24Z"/><circle cx="22" cy="24" r="5" fill="#ffd8a0"/><path d="M28 31L44 47" class="shine"/>',
-  '<path d="M13 16L23 10 31 21 27 30 45 45 53 42 57 50 47 57 20 35 14 29 9 22Z"/><path d="M31 21L39 10 48 8 54 14 48 23 38 28" fill="#4b5e79"/><circle cx="23" cy="29" r="4" fill="#ffd89a"/>',
-  '<path d="M13 45L20 21H44L51 45 45 54H19Z"/><circle cx="32" cy="34" r="11" fill="#4d5f79"/><circle cx="32" cy="34" r="5" fill="#ffd787"/><path d="M44 27L54 18 58 23 49 33M17 49H47" class="line"/><path d="M22 18L27 11H37L42 18" fill="#ffd08a"/>',
-  '<path d="M12 50L18 31H24L28 19H39L43 31H49L55 50 49 56H16Z"/><path d="M26 31H41L45 45H22Z" fill="#4a5c76"/><path d="M31 18V8H38V18M19 49H50" class="line"/><circle cx="21" cy="51" r="4" fill="#ffd487"/><circle cx="47" cy="51" r="4" fill="#ffd487"/>',
-  '<path d="M8 49L15 37 22 20H42L50 37 57 49V57H8Z"/><path d="M17 38H48M22 20L32 38 42 20M14 50H52" class="line"/><path d="M6 41L17 32M58 41L47 32" stroke="#ffd78d" stroke-width="5" fill="none"/>',
-  '<path d="M7 36L17 19H42L56 36V49H6Z"/><path d="M20 21H36V34H12Z" fill="#b9eff7"/><path d="M42 22H50L56 35H42Z" fill="#ffd389"/><circle cx="17" cy="49" r="10" fill="#39475f"/><circle cx="47" cy="49" r="10" fill="#39475f"/><circle cx="17" cy="49" r="4" fill="#ffcf73"/><circle cx="47" cy="49" r="4" fill="#ffcf73"/><path d="M27 14H42" class="shine"/>',
-  '<path d="M5 29L17 12H42L58 29V45H5Z"/><path d="M20 16H39V29H12Z" fill="#c2f3fb"/><path d="M41 16L50 22V31H41Z" fill="#78d7e8"/><path d="M4 42H60V56H4Z" fill="#34475f"/><circle cx="13" cy="50" r="5" fill="#ffd27d"/><circle cx="26" cy="50" r="5" fill="#ffd27d"/><circle cx="39" cy="50" r="5" fill="#ffd27d"/><circle cx="52" cy="50" r="5" fill="#ffd27d"/><path d="M47 12V6H59V12" fill="#ffe194"/>'
- ],
- chart:[
-  '<path d="M15 15L47 12 50 45 16 51Z"/><path d="M20 22L43 19M21 29L36 27M22 36L45 33" class="line"/><path d="M30 17Q26 31 39 43" stroke="#fff3b9" stroke-width="4" fill="none"/>',
-  '<path d="M7 18L23 12 40 19 56 12V48L40 55 23 48 7 54Z"/><path d="M23 13V48M40 20V55" class="line"/><path d="M13 40L20 31 32 36 49 23" stroke="#fff3a8" fill="none" stroke-width="4"/><circle cx="49" cy="23" r="3" fill="#fff3a8"/>',
-  '<circle cx="27" cy="27" r="18"/><circle cx="27" cy="27" r="12" fill="#d5f7ff"/><path d="M19 31L27 17 34 28 40 31" fill="#71cce8"/><path d="M38 39L53 54" stroke="#d4a55d" stroke-width="8" stroke-linecap="round"/><path d="M18 20L24 16" class="shine"/>',
-  '<path d="M15 23L43 10 52 22 35 31 49 49 43 55 29 36 22 40Z"/><ellipse cx="45" cy="17" rx="7" ry="10" transform="rotate(-29 45 17)" fill="#d8f9ff"/><path d="M28 37L19 57M34 34L48 56" class="line"/><path d="M18 23L22 40" stroke="#f2cc83" stroke-width="5"/>',
-  '<circle cx="32" cy="31" r="22"/><circle cx="32" cy="31" r="16" fill="#f4f7ff"/><path d="M32 14L38 32 25 39Z" fill="#4a91b6"/><path d="M32 14L27 31 39 39Z" fill="#ffd88a"/><circle cx="32" cy="31" r="4" fill="#455b7c"/><path d="M16 49L22 56H42L48 49" fill="#e5b965"/>',
-  '<path d="M10 12Q31 5 55 13L51 51Q31 45 11 56Z"/><path d="M16 18L46 40M18 44L44 19M16 31L46 30" stroke="#d9fbff" fill="none"/><circle cx="31" cy="30" r="11" fill="none" stroke="#ffe7a0" stroke-width="4"/><path d="M8 10L7 19M56 9L55 20M10 48L9 59M52 46L51 56" stroke="#dfaa58" stroke-width="7"/>',
-  '<path d="M14 56L21 46H43L50 56Z" fill="#e2b45c"/><circle cx="32" cy="27" r="20"/><ellipse cx="32" cy="27" rx="10" ry="20" fill="none" stroke="#d2f8ff"/><ellipse cx="32" cy="27" rx="27" ry="9" transform="rotate(-27 32 27)" fill="none" stroke="#ffe6a3" stroke-width="5"/><circle cx="18" cy="20" r="4" fill="#fff5ba"/><path d="M31 47V54" class="line"/>',
-  '<path d="M8 13L31 6 56 14V53L33 60 8 53Z"/><path d="M32 10V56" class="line"/><path d="M12 18L28 14V49L12 52M36 15L52 20V49L36 47" fill="#d9f7ff"/><path d="M16 30L24 23 20 43M41 25L49 34 41 42" stroke="#4a92b3" fill="none"/><path d="M25 6L32 1 39 6 32 12Z" fill="#ffe398"/><path d="M18 8H46" stroke="#e5b561" stroke-width="5"/>'
- ],
- flux:[
-  '<path d="M29 10L43 18 46 39 28 53 16 39 20 22Z"/><path d="M29 10L32 31 46 39M32 31L28 53" class="line"/><path d="M24 17L34 14" class="shine"/>',
-  '<path d="M20 11H44L52 31 43 53H18L11 31Z"/><path d="M26 20H38L42 31 36 43H25L21 31Z" fill="#ead8ff"/><path d="M20 14L26 20M37 43L43 51" class="shine"/><circle cx="32" cy="31" r="4" fill="#fff2b3"/>',
-  '<path d="M15 16H49V50H15Z" fill="#4e607f"/><path d="M13 20Q32 8 51 20L47 26Q32 17 17 27M13 34Q32 22 51 34L47 40Q32 31 17 42" fill="none" stroke="url(#fluxPaint)" stroke-width="8"/><path d="M24 12V5M40 12V5" stroke="#ffd784" stroke-width="5"/><path d="M19 53H45" stroke="#ffd784" stroke-width="5"/>',
-  '<path d="M14 22L32 8 50 22V49L32 58 14 49Z"/><path d="M22 26L32 18 42 26V42L32 50 22 42Z" fill="#eddcff"/><path d="M7 23V46M57 23V46" stroke="#e3b76b" stroke-width="6"/><path d="M26 31H38" stroke="#fff0b0" stroke-width="4"/>',
-  '<path d="M23 15V10Q32 1 41 10V15" fill="none" stroke="#f2c87d" stroke-width="5"/><path d="M16 16H48L53 48 44 56H20L11 48Z"/><path d="M24 23H40L43 43 32 49 21 43Z" fill="#f1ddff"/><path d="M32 24L38 35 32 44 26 35Z" fill="#bc6ff0"/><path d="M15 50H49" stroke="#f5cf86" stroke-width="5"/>',
-  '<circle cx="32" cy="30" r="19"/><ellipse cx="32" cy="30" rx="28" ry="10" transform="rotate(35 32 30)" fill="none" stroke="#efbcfa" stroke-width="6"/><circle cx="32" cy="30" r="8" fill="#effaff"/><path d="M18 53L25 47H39L47 54V59H18Z" fill="#f3cc85"/><circle cx="10" cy="15" r="5" fill="#f3cc85"/><path d="M47 15L54 8" class="shine"/>',
-  '<path d="M32 4L54 20 51 44 32 59 11 44 9 20Z"/><path d="M32 13L44 24 43 40 32 49 21 39 20 24Z" fill="#eedaff"/><path d="M32 17L38 30 32 44 26 30Z" fill="#bb77ee"/><path d="M9 20L3 27 8 42M54 20L61 27 55 42" stroke="#f8d391" fill="none" stroke-width="4"/><circle cx="32" cy="31" r="4" fill="#fff2b2"/>',
-  '<path d="M12 51L22 36 26 15H38L43 36 53 51V59H12Z"/><path d="M18 50H47M24 38H41" stroke="#ffe4aa" stroke-width="5"/><circle cx="32" cy="16" r="12" fill="#f7e8ff"/><path d="M32 3V27M20 16H44" stroke="#ac64e8"/><path d="M9 17L4 11M54 17L60 11M12 31L5 33M52 31L60 33" stroke="#efb9fa" stroke-width="4"/><path d="M27 58V49H37V58" fill="#5a4b82"/>'
- ]
-};
+import {OBJECTS,MATERIALS} from './objects.mjs';
+// Optional future illustrated sprites use the same semantic keys and art() boundary.
+export const SPRITE_OVERRIDES=Object.create(null);
 const extras={
  rig:'<path d="M7 32L15 18H48L57 32V51H7Z" fill="#f67652"/><path d="M15 17V9H37V17" fill="none" stroke="#ffcb80" stroke-width="6"/><path d="M16 25H33V37H11Z" fill="#c1f4fd"/><circle cx="16" cy="50" r="10" fill="#37445d"/><circle cx="49" cy="50" r="10" fill="#37445d"/><path d="M42 25H53M42 32H55" stroke="#ffddb0"/><path d="M43 12L51 4 58 14" fill="#ffda8c"/>',
  chart:'<path d="M32 5L57 25 32 40 7 25Z" fill="#4fc9ea"/><path d="M32 5V40M7 25H57" stroke="#d5fcff"/><path d="M32 40Q17 42 30 48Q45 51 32 57" fill="none" stroke="#d6b676"/><path d="M9 50L19 42H46L56 51V59H9Z" fill="#355c80"/><circle cx="32" cy="49" r="8" fill="#a7edf4"/>',
  flux:'<path d="M13 28L22 17H42L53 28 47 53H17Z" fill="#8657d3"/><ellipse cx="32" cy="27" rx="20" ry="8" fill="#e9caff"/><path d="M32 4L43 16 32 30 22 17Z" fill="#f8e9ff"/><path d="M20 42H44M17 52H47" stroke="#f1cb8d" stroke-width="5"/><path d="M6 25L12 13M58 25L52 13" stroke="#c98bee" stroke-width="5"/>',
  rock:'<path d="M5 43L13 21 33 12 55 27 60 47 42 57 16 54Z" fill="#8991ae"/><path d="M13 21L31 34 55 27M31 34L25 55" stroke="#bbc6db" fill="none"/><path d="M42 15L46 7 53 12 53 22" fill="#edb7cd"/>',
- sealed:'<path d="M4 52L11 30 26 23 35 37 45 27 59 40V61H4Z" fill="#bac1d5"/><path d="M7 20L58 9M5 32L58 22" stroke="#e5c7ab" stroke-width="4"/>',
- crate:'<path d="M9 21L32 11 56 21V51L33 61 9 51Z" fill="#e6b35c"/><path d="M9 21L32 32 56 21M32 32V60" fill="none" stroke="#8f6348"/><path d="M18 17L43 28V56M43 16L20 28V56" fill="none" stroke="#fff0b6" stroke-width="5"/><path d="M26 36H38V47H26Z" fill="#6653a0"/>',
+ sealed:'<path d="M2 47L10 21 33 17 59 30 62 57H4Z" fill="#9ca6b8"/><path d="M10 21L29 35 59 30M29 35L24 57" stroke="#c9cfdb" stroke-width="3" fill="none"/><path d="M2 19L60 39" stroke="#e8c28b" stroke-width="6"/><path d="M13 23L16 27M29 28L32 33M45 34L48 39" stroke="#887961" stroke-width="4"/>',
+ crate:'<path d="M9 28Q8 11 29 9Q51 8 56 23L56 48 35 59 10 49Z" fill="url(#vw-brass)"/><path d="M10 29L35 39 56 27V48L35 59 10 49Z" fill="#a46e4e"/><path d="M12 36L33 44M12 44L33 52M38 43L53 35M38 51L53 43" stroke="#d39a67" stroke-width="3"/><path d="M18 14Q23 23 21 53M42 11Q49 20 47 53" stroke="#f1d395" stroke-width="6" fill="none"/><path d="M10 29L35 39 56 27" stroke="#6f5660" stroke-width="3" fill="none"/><rect x="29" y="33" width="12" height="16" rx="3" fill="url(#vw-brass)"/><circle cx="35" cy="40" r="3" fill="#5b4963"/><path d="M18 17Q32 9 45 16" stroke="#fff0c2" stroke-width="3" fill="none"/>',
  brace:'<path d="M8 51L21 11H31L20 51M36 51L44 12H52L48 51" fill="#ff9e65"/><path d="M13 38L48 24M18 22L43 43" stroke="#ffe1a0" stroke-width="7"/><path d="M6 53H54" stroke="#455570" stroke-width="7"/>',
- glyph:'<path d="M30 4L54 20 49 46 29 59 10 42 12 19Z" fill="#ffd077"/><path d="M30 16L42 25 39 38 28 46 20 36 22 25Z" fill="#a058ca"/><path d="M29 24L34 29 29 37" stroke="#fff3cc" fill="none" stroke-width="4"/>'
+ glyph:'<path d="M15 16L30 9 48 12 56 23 49 34 54 46 41 56 19 52 8 38Z" fill="url(#vw-brass)"/><path d="M18 20Q33 7 47 24L45 42Q29 56 16 37Z" fill="#8a629d"/><path d="M29 20Q45 19 40 34Q36 43 27 36Q21 29 31 27" fill="none" stroke="#f4d4a1" stroke-width="5"/><path d="M16 16L29 12M17 43L23 48" stroke="#fff2c2" stroke-width="3"/><circle cx="49" cy="18" r="2" fill="#fff0c9"/>',
+
 };
-const palette={rig:['#ffc082','#ed7154','#984957'],chart:['#b8f6ff','#44bddc','#3875a5'],flux:['#f0c9ff','#ac7be9','#694aab']};
 export function art(x,cls=''){
  if(!x)return '';
  const f=x.type==='item'?x.family:null;
- const shapes=f?paths[f][x.tier]:extras[x.type==='source'?x.id:x.type];
+ const key=f?f+'-'+x.tier:x.type==='source'?'source-'+x.id:x.type;
+ if(SPRITE_OVERRIDES[key])return `<img class="art ${cls}" src="${SPRITE_OVERRIDES[key]}" alt="" aria-hidden="true" data-art="${key}">`;
+ const shapes=f?OBJECTS[f]?.[x.tier]:x.type==='source'?OBJECTS.sources[x.id]:extras[x.type];
  if(!shapes)return '';
- const p=palette[f]??['#fff','#ccc','#444'];const id=f?f+'Paint':'extraPaint';
- return `<svg class="art ${cls}" viewBox="0 0 64 64" aria-hidden="true" data-art="${f?f+'-'+x.tier:x.type==='source'?'source-'+x.id:x.type}"><defs><linearGradient id="${id}" x2=".7" y2="1"><stop stop-color="${p[0]}"/><stop offset=".5" stop-color="${p[1]}"/><stop offset="1" stop-color="${p[2]}"/></linearGradient></defs><ellipse cx="32" cy="57" rx="23" ry="4" fill="#213957" opacity=".17"/><g fill="url(#${id})" stroke="${f?p[2]:'#3a455f'}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round">${shapes}</g>${f&&x.tier>=6?'<path d="M54 2L56 7 61 9 56 11 54 16 52 11 47 9 52 7Z" fill="#fff2b7"/>':''}</svg>`;
+ const collectible=f||x.type==='source';
+ return `<svg class="art ${cls}" viewBox="0 0 ${collectible?'100 100':'64 64'}" aria-hidden="true" data-art="${key}" data-render="illustrated-object">${MATERIALS}<ellipse cx="${collectible?50:32}" cy="${collectible?91:57}" rx="${collectible?35:23}" ry="${collectible?5:4}" fill="#263957" opacity=".18"/><g stroke="${collectible?'#36405740':'#3a455f'}" stroke-width="${collectible?1.2:2.2}" stroke-linejoin="round" stroke-linecap="round">${shapes}</g>${f&&x.tier>=6?'<path d="M85 4L88 10 95 12 88 15 85 23 82 15 75 12 82 10Z" fill="#fff1bb"/>':''}</svg>`;
 }
 export function portrait(who){return `<svg viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="14" fill="${who==='neri'?'#b5eafa':'#ffd2b0'}"/><path d="M5 40Q6 27 20 27Q34 27 35 40" fill="${who==='neri'?'#55549b':'#cf614e'}"/><path d="M11 12Q20 2 29 12V25Q20 35 11 25Z" fill="${who==='neri'?'#a86d55':'#e7a777'}"/><path d="M9 17Q6 2 23 5Q35 8 30 22L23 12 9 19" fill="#303d56"/><circle cx="15" cy="21" r="1.4" fill="#22334a"/><circle cx="25" cy="21" r="1.4" fill="#22334a"/><path d="M17 26Q21 29 24 25" fill="none" stroke="#673d41" stroke-width="1.4"/>${who==='neri'?'<path d="M8 14L31 10" stroke="#f5d17c" stroke-width="4"/>':'<path d="M7 12L15 4H27L34 15H7Z" fill="#e8c98b"/>'}</svg>`;}
 export function scene(stage,post=0){

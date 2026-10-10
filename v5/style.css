@@ -5,3 +5,42 @@
 .world.opened .worldLabel{color:#fff4e5;text-shadow:0 1px 3px #303558}.world.opened .worldLabel span{color:#e4dcff}.tile.source.useful{outline:2px solid #42adbf;outline-offset:1px}.tile.source.useful:before{content:"";position:absolute;top:3px;left:3px;width:5px;height:5px;background:#1f8b9c;border-radius:50%;z-index:2}
 
 @media(min-width:600px) and (max-height:900px){.game{max-width:400px}}
+/* Object-focused finish: warm excavation tray, soft material wells, confident machines. */
+.board{background:linear-gradient(145deg,#c8d0df,#aebdd0);box-shadow:0 3px 9px #36507125,inset 0 1px 0 #fff8;border:1px solid #b9c6d9;gap:4px}
+.tile{background:linear-gradient(145deg,#e5e9f0,#d7dfeb);box-shadow:inset 0 1px 4px #8293ad14;border-radius:12px}
+.tile.empty:after{content:'';width:5px;height:5px;border-radius:50%;background:#9aa9bf35}
+.tile.item,.tile.brace,.tile.glyph,.tile.crate{box-shadow:0 2px 3px #4a60752b,inset 0 1px 0 #fff}
+.tile.item[data-family="rig"]{background:linear-gradient(145deg,#fffaf0,#f5e7df)}
+.tile.item[data-family="chart"]{background:linear-gradient(145deg,#f7fdff,#e0eff5)}
+.tile.item[data-family="flux"]{background:linear-gradient(145deg,#fff9ff,#eae2f5)}
+.tile.item .art{width:110%;height:110%;max-width:none;flex-shrink:0;filter:drop-shadow(0 2px 1px #1c294b18)}
+.tile.source{border:1px solid #b69363;box-shadow:0 3px 5px #253a5940,inset 0 0 0 2px #fff4cf;z-index:2}
+.tile.source[data-family="rig"]{background:linear-gradient(140deg,#ffe7b5,#e9a988)}
+.tile.source[data-family="chart"]{background:linear-gradient(140deg,#d7fcfc,#85becf)}
+.tile.source[data-family="flux"]{background:linear-gradient(140deg,#eddaff,#b698d4)}
+.tile.source .art{width:116%;height:116%;transform:translateY(-3px)}
+.tile.source.locked{background:linear-gradient(145deg,#d1d9e4,#bac6d8);border-color:#b1bfd0}
+.tile.source.locked .art{opacity:.56;filter:grayscale(.35)}
+.source .charge{height:4px;bottom:2px;left:5px;right:5px}.charge i{background:#284f5d}.charge i.used{background:#4c4760;opacity:.2}
+.tile.sealed{border-radius:8px;background:#b8c1d0;box-shadow:inset 0 -2px 0 #a7b2c6}.tile.sealed .art{opacity:.8}.tile.sealed[data-variant="1"] .art{transform:scaleX(-1)}.tile.sealed[data-variant="2"]{background:#bdbac8}
+.tile.wanted:after{display:none}.useBadge{position:absolute;bottom:2px;right:2px;border-radius:5px;padding:0 3px;background:#294f62;color:#e9ffed;font:800 8px/12px system-ui;box-shadow:0 1px 2px #223f5544;pointer-events:none}.tile[data-use="both"] .useBadge{background:#866548;color:#fff2ca}
+.tile[data-use="both"]{box-shadow:inset 0 0 0 1px #dcb878,0 2px 3px #4a60752b}
+.contract{border:0;box-shadow:0 2px 6px #253e6511}.contract.ready{border:0;box-shadow:inset 0 0 0 1px #75bca9,0 2px 6px #253e6511}.contract.opportunity{border:0}
+.primary{background:linear-gradient(160deg,#8770cb,#6950b0);box-shadow:0 2px 4px #62449326;border-radius:12px}.primary:disabled{box-shadow:none;background:#e2e7ef}.objective{box-shadow:0 2px 6px #253e6510}
+.selection .copy{line-height:1.25}.selection small{font-size:9px}.mergePreview{display:flex;align-items:center;gap:1px;flex:none;color:#9aa4b6}.mergePreview .art{width:31px;height:36px}.mergePreview>span{font-size:12px}.selection .actionGroup{max-width:114px}.selection .actionGroup button{padding:7px;font-size:8px}
+.rareTrack{display:flex;gap:2px;align-items:center;margin-top:5px;max-width:155px}.rareTrack i{height:4px;flex:1;border-radius:3px;background:#d4cce2}.rareTrack i.filled{background:#a177cb}.rareTrack b{font-size:9px;white-space:nowrap;margin-left:3px;color:#8662a7}
+.tile.selected.item .art,.tile.picked .art{transform:translateY(-5px) scale(1.07);filter:drop-shadow(0 6px 3px #243d5438)}
+.tile.target{outline:3px solid #56b7ae;outline-offset:-2px;box-shadow:inset 0 0 0 5px #e1fff1}.tile.target .art{transform:scale(1.08)}.tile.dragging{opacity:.7;z-index:3}.tile.dragging .art{transform:translateY(-7px) rotate(-5deg) scale(1.1)}
+.merge-pop .art{animation:mergeObject .39s cubic-bezier(.2,.8,.3,1.2)!important}.merge-pop:before{content:'';position:absolute;inset:2px;border-radius:50%;border:2px solid #fff7d2;animation:mergeRing .38s ease-out both;pointer-events:none}
+@keyframes mergeObject{0%{transform:scale(.45,.7)}38%{transform:scale(1.18,.83)}70%{transform:translateY(-4px) scale(.94,1.1)}100%{transform:translateY(-5px) scale(1.07)}}
+@keyframes mergeRing{0%{transform:scale(.5);opacity:1}100%{transform:scale(1.45);opacity:0}}
+.impact{animation:boardImpact .2s ease-out}.tile.unlocked .art{animation:machineReveal .6s ease-out}
+@keyframes boardImpact{25%{transform:translateY(2px)}60%{transform:translateY(-1px)}100%{transform:none}}
+@keyframes machineReveal{0%{filter:brightness(2);transform:scale(.65)}55%{transform:translateY(-6px) scale(1.12)}100%{transform:translateY(-3px)}}
+.fxParticle{position:fixed;pointer-events:none;width:6px;height:6px;z-index:30;animation:scatter .48s ease-out both}.fxParticle.spark{clip-path:polygon(50% 0,62% 35%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 35%)}.fxParticle.chip{border-radius:2px}
+@keyframes scatter{0%{transform:translate(-50%,-50%) scale(.7);opacity:1}70%{opacity:.9}100%{transform:translate(var(--dx),var(--dy)) rotate(var(--turn)) scale(.2);opacity:0}}
+.rewardFlight{position:fixed;pointer-events:none;background:#ffe2a0;color:#725121;font-size:13px;font-weight:900;padding:4px 8px;border-radius:10px;z-index:40;animation:rewardTravel .64s cubic-bezier(.25,.55,.45,1) both}
+@keyframes rewardTravel{0%{transform:translate(-50%,-50%) scale(.8);opacity:0}20%{opacity:1}80%{opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(.5);opacity:0}}
+.moment{position:fixed;top:64px;left:50%;transform:translateX(-50%);max-width:310px;min-width:200px;text-align:center;padding:10px 18px;border-radius:16px;background:#253450ed;color:#fff4d6;box-shadow:0 8px 25px #14294640;pointer-events:none;z-index:50;animation:titleMoment 1.75s ease both}.moment b{display:block;font-size:15px}.moment small{display:block;font-size:10px;color:#d0def0;margin-top:2px}@keyframes titleMoment{0%{opacity:0;transform:translate(-50%,-9px) scale(.95)}15%,80%{opacity:1;transform:translate(-50%,0) scale(1)}100%{opacity:0;transform:translate(-50%,-5px)}}
+.world.changed #scene{animation:sceneShift .75s ease-out}@keyframes sceneShift{0%{transform:scale(1.07);filter:brightness(1.35)}100%{transform:scale(1);filter:none}}
+@media(prefers-reduced-motion:reduce){.tile.selected.item .art,.tile.picked .art,.tile.target .art,.tile.dragging .art{transform:none;filter:none}.merge-pop:before,.fxParticle,.rewardFlight{display:none}.moment{animation:none}.world.changed #scene{animation:none}.merge-pop .art{animation:none!important}}

@@ -6,7 +6,7 @@ function failUnchanged(s,a,t=1000){const before=JSON.stringify(s);assert.equal(a
 test('first action teaches a merge; starter has a real contract versus expedition decision',()=>{
  const s=fresh(0);assert.equal(s.board.length,36);assert.equal(new Set(s.board.filter(x=>x?.family).map(x=>x.family)).size,3);
  assert.ok(ready(s,normalContract(s).needs));success(s,{type:'contract'});assert.equal(ready(s,goal(s).needs),false);
- success(s,{type:'merge',from:7,to:8});success(s,{type:'merge',from:19,to:20});assert.ok(ready(s,goal(s).needs));success(s,{type:'goal'});assert.equal(s.stage,1);success(s,{type:'produce',id:'chart'});
+ success(s,{type:'merge',from:7,to:8});success(s,{type:'merge',from:2,to:18});assert.ok(ready(s,goal(s).needs));success(s,{type:'goal'});assert.equal(s.stage,1);success(s,{type:'produce',id:'chart'});
 });
 test('merge, movement, max tiers, protected sources and invalid indices',()=>{
  const s=fresh();failUnchanged(s,{type:'merge',from:7,to:7});failUnchanged(s,{type:'merge',from:0,to:1});failUnchanged(s,{type:'merge',from:7,to:9});failUnchanged(s,{type:'merge',from:-1,to:9});
@@ -53,4 +53,17 @@ test('fresh-player simulation opens vault and continues through two optional dis
   assert.equal(s.stage,4);assert.equal(s.post,2);assert.ok(actions<1500);assert.ok(s.rations<20);
   console.log(JSON.stringify({sideFirst,actions,rations:s.rations,milestones}));
  }
+});
+test('staged board retains starter inventory and leaves reachable space around sources',()=>{
+ const s=fresh();assert.equal(s.board.filter(x=>x===null).length,12);
+ for(const [f,n] of [['rig',5],['chart',5],['flux',2]])assert.equal(s.board.filter(x=>x?.type==='item'&&x.family===f).length,n);
+ assert.equal(s.board[2].family,'rig');assert.equal(s.board[11].family,'chart');assert.equal(s.board[33].family,'chart');
+ for(const i of [0,5,30])assert.ok([i-6,i+6,i-1,i+1].some(j=>j>=0&&j<36&&s.board[j]?.type!=='sealed'));
+});
+test('illustrated objects use distinct materials; art boundary can accept later sprites',async()=>{
+ const {MATERIALS,OBJECTS}=await import('../v5/objects.mjs');const {SPRITE_OVERRIDES}=await import('../v5/art.mjs');
+ assert.equal(new Set(Object.values(OBJECTS).filter(Array.isArray).flat()).size,24);
+ for(const material of ['steel','paper','glass','brass','rubber','coral','violet'])assert.ok(MATERIALS.includes('vw-'+material));
+ assert.match(art(item('rig',3)),/data-render="illustrated-object"/);
+ SPRITE_OVERRIDES['rig-0']='assets/test-sprite.webp';assert.match(art(item('rig',0)),/<img[^>]+test-sprite.webp/);delete SPRITE_OVERRIDES['rig-0'];
 });

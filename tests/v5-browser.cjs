@@ -19,8 +19,16 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
   const a=await page.locator('[data-index="7"]').boundingBox(),b=await page.locator('[data-index="8"]').boundingBox();
   await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:7});await page.mouse.up();await page.waitForTimeout(320);assert.equal((await read()).merges,1);
   // Every remaining action runs through visible UI. Policy does not mutate game state.
-  let several=false,unlock=false,actions=0;
+  let several=false,unlock=false,blocked=false,rare=false,firstUnlock=false,actions=0;
   while((await read()).stage<4&&actions++<400){
+   const current=await read();
+   const spanner=current.board.findIndex(x=>x?.type==='item'&&x.family==='rig'&&x.tier===2);
+   if(!blocked&&current.stage>=1&&spanner>=0){
+    await page.locator(`[data-index="${spanner}"]`).tap();await page.locator('[data-action="branch"]').tap();
+    const stone=current.board.findIndex(x=>x?.type==='rock');await page.locator(`[data-index="${stone}"]`).tap();await page.locator('[data-action="clear"]').tap();
+    assert.equal((await read()).board[stone].type,'crate');await shot('blocker-cache');
+    for(let j=0;j<3;j++)await page.locator('[data-action="crate"]').tap();assert.equal((await read()).board[stone].type,'item');blocked=true;
+   }
    const cmd=await page.evaluate(async()=>{const {choose}=await import('/tests/v5-policy.mjs');return choose(JSON.parse(localStorage.getItem('vaultwake-v5')));});
    if(cmd.type==='merge'){await page.locator(`[data-index="${cmd.from}"]`).tap();await page.locator(`[data-index="${cmd.to}"]`).tap();}
    else if(cmd.type==='produce'){const s=await read();const i=s.board.findIndex(x=>x?.type==='source'&&x.id===cmd.id);await page.locator(`[data-index="${i}"]`).tap();}
@@ -31,9 +39,12 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
    else await page.locator(`[data-contract="${cmd.type}"]`).tap();
    if(await page.locator('#celebration').isVisible())await page.locator('#celebration .continue').tap();
    const s=await read();
+   if(s.stage===1&&!firstUnlock){await shot('first-unlock');firstUnlock=true;}
+   if(s.discovery&&!rare){await shot('rare-producer');rare=true;}
    if(s.merges>=3&&!several){await shot('merges');several=true;}
    if(s.stage===2&&!unlock){assert.equal(await page.locator('.source.locked').count(),0);assert.equal(await page.locator('.tile.sealed').count(),0);await shot('producer-unlock');unlock=true;}
   }
+  assert.equal(blocked,true);assert.equal(rare,true);assert.equal((await read()).discoveryDone,true);
   assert.equal((await read()).stage,4,'chapter completable through UI');await shot('vault-open');
   assert.match(await page.locator('#scene svg').getAttribute('aria-label'),/Open vault/);
   assert.match(await page.locator('#goalTitle').textContent(),/next crossing/);
@@ -48,6 +59,8 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
   console.log(JSON.stringify({width,actions,merges:saved.merges,stage:saved.stage}));await page.close();
  }
  // CrazyGames entry works even if external SDK is unavailable, as in Basic Launch preview.
- const page=await browser.newPage();await page.route('https://sdk.crazygames.com/**',r=>r.abort());await page.goto('http://127.0.0.1:8080/v5/crazygames.html');await page.waitForFunction(()=>document.querySelectorAll('#board .tile').length===36);await page.locator('[data-index="0"]').click();assert.equal(await page.locator('.flight').count(),1);await page.waitForTimeout(550);assert.equal(await page.locator('.flight').count(),0);await page.locator('#journalButton').focus();await page.keyboard.press('Enter');assert.equal(await page.locator('#journal').isVisible(),true);await page.keyboard.press('Escape');assert.equal(await page.locator('#journal').isVisible(),false);await page.close();
+ const page=await browser.newPage();await page.route('https://sdk.crazygames.com/**',r=>r.abort());await page.goto('http://127.0.0.1:8080/v5/crazygames.html');await page.waitForFunction(()=>document.querySelectorAll('#board .tile').length===36);await page.locator('[data-index="0"]').click();assert.equal(await page.locator('.flight').count(),1);assert.equal(await page.locator('.rareTrack').getAttribute('aria-valuenow'),'1');await page.waitForTimeout(550);assert.equal(await page.locator('.flight').count(),0);
+ await page.locator('[data-index="7"]').click();await page.locator('[data-index="8"]').click();assert.ok(await page.locator('.fxParticle').count()>0);assert.equal(await page.locator('.merge-pop').count(),1);await page.waitForTimeout(600);assert.equal(await page.locator('.fxParticle').count(),0);
+ await page.locator('#soundButton').click();assert.equal(await page.locator('#soundButton').textContent(),'Sound on');await page.reload();assert.equal(await page.locator('#soundButton').textContent(),'Sound on');await page.locator('#journalButton').focus();await page.keyboard.press('Enter');assert.equal(await page.locator('#journal').isVisible(),true);await page.keyboard.press('Escape');assert.equal(await page.locator('#journal').isVisible(),false);await page.close();
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
