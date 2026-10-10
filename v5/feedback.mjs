@@ -33,6 +33,41 @@ export function rewardFlight(from,to,label){
 export function moment(title,detail='',object=null){
  document.querySelector('.moment')?.remove();const el=document.createElement('div');el.className='moment';el.setAttribute('role','status');const b=document.createElement('b'),small=document.createElement('small');b.textContent=title;small.textContent=detail;if(object){const icon=document.createElement('span');icon.style.cssText='float:left;width:42px;height:42px;margin-right:10px';icon.innerHTML=art(object);icon.firstElementChild.style.cssText='width:100%;height:100%';el.append(icon);}el.append(b,small);transient(el,reduced()?2100:1750);
 }
+// Snapshot sprites outlive the synchronous render. Rules/save settle immediately;
+// these flights never remove items, issue commands or block a second interaction.
+export function deliverFeedback({kind,delivery,rewards,taskRect,taskSnapshot,task,energy,next,stage}){
+ const main=kind==='goal',rare=kind==='discovery',signal=kind==='opportunity';
+ const board=document.querySelector('#board');
+ task?.classList.remove('taskCollected');if(task){void task.offsetWidth;task.classList.add('taskCollected');setTimeout(()=>task.classList.remove('taskCollected'),620);}
+ board.classList.remove('sitePayoff','echoPayoff');void board.offsetWidth;if(main||rare)board.classList.add(main?'sitePayoff':'echoPayoff');
+ const title=main?['','Landing secured','Door uncovered','Ring engine online','Tideglass Vault opened'][stage]:rare?'The echo answers':signal?'Signal received':'Supplies secured';
+ moment(title,next);
+ sound.play(main?'milestone':rare||signal?'rare':'contract');
+ if(reduced()){
+  // No motion: leave a brief receipt of precisely what was consumed at the task.
+  if(taskRect){const receipt=document.createElement('div');receipt.className='deliveryReceipt';receipt.dataset.kind=kind;receipt.style.cssText=`left:${taskRect.x}px;top:${taskRect.y+taskRect.height-27}px;width:${taskRect.width}px`;receipt.innerHTML=delivery.map(v=>art(v.x)).join('')+'<b>✓ Delivered</b>';transient(receipt,700);}
+  for(const v of rewards)document.querySelector(`[data-index="${v.index}"]`)?.classList.add('rewardLanded');
+  return;
+ }
+ if(taskSnapshot&&taskRect){
+  taskSnapshot.removeAttribute('id');taskSnapshot.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));
+  taskSnapshot.classList.add('deliveryTask');taskSnapshot.setAttribute('aria-hidden','true');taskSnapshot.tabIndex=-1;
+  taskSnapshot.querySelectorAll('button').forEach(el=>el.tabIndex=-1);
+  taskSnapshot.style.cssText=`position:fixed;left:${taskRect.x}px;top:${taskRect.y}px;width:${taskRect.width}px;height:${taskRect.height}px;margin:0;pointer-events:none;z-index:38`;
+  transient(taskSnapshot,480);
+ }
+ function travel(x,from,to,phase,delay=0){
+  if(!from||!to)return;const el=document.createElement('div');el.className='deliveryObject '+phase;el.dataset.kind=kind;el.dataset.art=x.type==='item'?`${x.family}-${x.tier}`:x.type;
+  el.innerHTML=art(x);el.style.cssText=`left:${from.x+from.width/2-22}px;top:${from.y+from.height/2-22}px;--dx:${to.x+to.width/2-from.x-from.width/2}px;--dy:${to.y+to.height/2-from.y-from.height/2}px;animation-delay:${delay}ms`;
+  transient(el,delay+480);
+ }
+ delivery.forEach((v,i)=>travel(v.x,v.rect,taskRect,'collect',i*35));
+ rewards.slice(0,6).forEach((v,i)=>travel(v.x,taskRect,v.rect,'return',240+i*20));
+ rewards.forEach(v=>{const tile=document.querySelector(`[data-index="${v.index}"]`);tile?.classList.add('rewardLanded');});
+ rewardFlight(taskRect,document.querySelector('.resource')?.getBoundingClientRect(),`+${energy} ϟ`);
+ burst(taskRect,rare?'flux':signal?'chart':'gold',main||rare||signal);
+ if(main||rare)burst(board.getBoundingClientRect(),rare?'flux':'gold',true);
+}
 export function feedback({event,tile,x,from,energyDelta,stage,firstContract=false,containerKind,reveal=[],bonus,breakthrough,surgeStarted}){
  const rect=tile?.getBoundingClientRect();
  if(event==='merge'){

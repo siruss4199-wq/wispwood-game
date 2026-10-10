@@ -3,6 +3,8 @@ import {SAVE_KEY,FAMILIES,SOURCES,STAGES,fresh,load,act,goal,count,ready,matches
 import {art,scene,portrait} from './art.mjs';
 import {feedback,sound,reduced} from './feedback.mjs';
 import {platform} from '../v4/platform.mjs';
+import {siteSurface,SITE_NAMES,deliveryItems,continuation} from './presentation.mjs';
+import {deliverFeedback} from './feedback.mjs';
 const $=s=>document.querySelector(s);
 let state;try{state=load(localStorage.getItem(SAVE_KEY));}catch{state=fresh();}
 let selected=null,focus='goal',drag=null,suppressUntil=0;
@@ -19,26 +21,31 @@ function render(){
  const g=goal(state);$('#goalTitle').textContent=g?.name??'Expedition complete';$('#step').textContent=state.stage<4?`${state.stage+1} / 4`:'DISCOVERED';
  $('#goalNeeds').innerHTML=needsHTML(g?.needs??[]);$('#goalButton').textContent=g?.verb??'Journal';$('#goalButton').disabled=!!g&&!ready(state,g.needs);$('#nextUnlock').textContent=g?.next??'All chapter badges found. Keep collecting.';
  if(g){const close=near(state,g.needs);if(close&&close!=='READY')$('#step').textContent=close;$('.objective').classList.toggle('almost',close==='1 MERGE AWAY');}
+ const goalReady=!!g&&ready(state,g.needs);$('.objective').classList.toggle('ready',goalReady);
+ if(goalReady){$('#step').textContent='READY';$('#goalButton').textContent='✓ '+g.verb;}
  const c=normalContract(state),cr=ready(state,c.needs),overlap=c.needs.some(r=>g?.needs.some(v=>v.family===r.family&&v.tier===r.tier));
  let cards=`<button class="contract ${cr?'ready':''} ${focus==='contract'?'active':''}" data-contract="contract" aria-label="${c.title}. ${c.needs.map(r=>nameOf(item(r.family,r.tier))+' '+count(state,r)+' of '+r.count).join(', ')}. Reward ${c.energy} energy. ${cr?'Ready to deliver.':''}"><span class="contractHead">${portrait(c.who.startsWith('Neri')?'neri':'ivo')}<span><small>SUPPLY CONTRACT</small><b>${c.title}</b></span></span><span class="contractBottom"><span class="needs">${needsHTML(c.needs)}</span><span class="reward">+${c.energy} ϟ<small>${cr?'DELIVER':'MAKE ITEMS'} · +${c.marks} ✦</small></span></span>${overlap?'<span class="choiceNote">Also needed for the expedition</span>':''}</button>`;
  if(state.discovery&&!state.discoveryDone&&!state.opportunity){const dr=state.board.some(x=>x?.type==='glyph')&&ready(state,[{family:'chart',tier:2,count:1}]);cards+=`<button class="contract discovery ${dr?'ready':''}" data-contract="discovery"><span class="contractHead"><span><small>RARE DISCOVERY</small><b>Decode the echo</b></span></span><span class="contractBottom"><span class="needs"><span class="need">${art({type:'glyph'})}<b>${state.board.some(x=>x?.type==='glyph')?'1':'0'}/1</b></span>${needsHTML([{family:'chart',tier:2,count:1}])}</span><span class="reward">+18 ϟ<small>${dr?'DECODE':'RICHER DROPS'}</small></span></span></button>`;}
  else {const op=opportunity(state),expired=op&&op.remaining===0;cards+=`<button class="contract opportunity ${op&&!expired&&ready(state,op.needs)?'ready':''}" data-contract="${op?'opportunity':'startOpportunity'}" ${state.stage<1?'disabled':''}><span class="contractHead"><span><small>OPTIONAL · ${state.stage<1?'AFTER LANDING':'NO PENALTY'}</small><b>${op?'Catch the signal':'A passing signal'}</b></span></span><span class="contractBottom">${op?`<span class="needs">${needsHTML(op.needs)}</span>`:`<span class="choiceNote">${state.stage>=2?'A resonator':'A scope'} before the signal fades</span>`}<span class="reward">+28 ϟ<small id="opClock">${op?(expired?'PASSED · DISMISS':Math.ceil(op.remaining/1000)+'s · '+(ready(state,op.needs)?'DELIVER':'MAKE')):'START 3 MIN'}</small></span></span></button>`;}
  $('#contracts').innerHTML=cards;
  const normalReward=$('[data-contract="contract"] .reward small');
- if(normalReward)normalReward.textContent=cr?'DELIVER':near(state,c.needs)==='1 MERGE AWAY'?'1 MERGE':'MAKE ITEMS';
+ if(normalReward)normalReward.textContent=cr?'✓ READY':near(state,c.needs)==='1 MERGE AWAY'?'1 MERGE':'MAKE ITEMS';
  if(c.surge)$('[data-contract="contract"] .contractHead small').textContent='SUPPLIES · 3 BOOSTS';
  const signalTitle=$('.opportunity b');if(signalTitle)signalTitle.textContent=state.opportunity?'Signal Window':'Signal Window · opt in';
  const signalNote=$('.opportunity .choiceNote');if(signalNote)signalNote.textContent='Trade a '+(state.stage>=2?'resonator':'scope')+' → 3 boosted pulls';
  const signalReward=$('.opportunity .reward');if(signalReward)signalReward.firstChild.textContent=`+${state.opportunity?.energy??12} ϟ`;
  const discoveryReward=$('.discovery .reward');if(discoveryReward)discoveryReward.firstChild.textContent='+8 ϟ';
+ for(const card of document.querySelectorAll('.contract.ready')){card.setAttribute('aria-label',`${card.querySelector('.contractHead b').textContent} · READY · tap to deliver`);const label=card.querySelector('.reward small');if(!card.classList.contains('opportunity'))label.textContent='✓ READY';}
  const selectedItem=state.board[selected];
- board.innerHTML=state.board.map((x,i)=>{
+ board.dataset.site=state.stage;board.setAttribute('aria-label',SITE_NAMES[state.stage]+' · 6 by 6 merge board');
+ board.innerHTML=siteSurface(state.stage)+state.board.map((x,i)=>{
   const isSource=x?.type==='source',locked=isSource&&state.stage<SOURCES[x.id].unlock;
   const useful=isSource&&!locked&&needed().some(r=>r.family===x.id&&count(state,r)<r.count);
   const expedition=!!g?.needs.some(r=>matches(x,r)),contract=c.needs.some(r=>matches(x,r));
   const matching=selectedItem?.type==='item'&&x?.type==='item'&&i!==selected&&x.family===selectedItem.family&&x.tier===selectedItem.tier&&x.tier<7;
   return `<button class="tile ${x?.type??'empty'} ${locked?'locked':''} ${useful?'useful':''} ${selected===i?'selected':''} ${matching?'match':''} ${needed().some(r=>matches(x,r))?'wanted':''}" data-index="${i}" ${x?.family||isSource||x?.type==='crate'?`data-family="${x.family??(isSource?x.id:containerInfo(x).family)}"`:''} data-variant="${i%3}" data-use="${expedition&&contract?'both':expedition?'expedition':contract?'contract':''}" aria-label="${nameOf(x)}${x?.type==='crate'?' · tap to reveal · '+contents(x).map(nameOf).join(', '):''}${expedition&&contract?' · needed for expedition and contract':expedition?' · needed for expedition':contract?' · useful for contract':''}${locked?' · locked':isSource?' · '+SOURCES[x.id].cost+' energy · '+state.charges[x.id]+' charges':''}. Space ${i+1}" aria-pressed="${selected===i}">${art(x)}${expedition||contract?`<span class="useBadge" aria-hidden="true">${expedition?'◆':''}${contract?'▰':''}</span>`:''}${isSource?(locked?`<span class="lockedLabel">${x.id==='chart'?'CLEAR PATH':'EXCAVATE'}</span>`:`<span class="energyCue">ϟ${SOURCES[x.id].cost}</span><span class="charge">${Array.from({length:7},(_,n)=>`<i class="${n>=state.charges[x.id]?'used':''}"></i>`).join('')}</span>`):x?.type==='crate'?`<span class="pulls">${x.left}</span>`:''}</button>`;
  }).join('');
+ for(const tile of board.querySelectorAll('.tile.item')){const x=state.board[+tile.dataset.index];tile.dataset.tier=x.tier;tile.classList.toggle('deliveryReady',(goalReady&&g.needs.some(r=>matches(x,r)))||(cr&&c.needs.some(r=>matches(x,r))));}
  $('#free').textContent=state.board.filter(x=>x===null).length+' spaces';$('#hint').textContent=hint();$('#rationButton').hidden=state.energy>3;renderSelection();
  if(state.surge>0){$('#free').textContent=`ϟ SURGE · ${state.surge} pulls`;$('#free').title='Shared by all producers. Choose which family gets improved parts. No timer.';board.dataset.event='surge';}else{delete board.dataset.event;$('#free').removeAttribute('title');}
  if(state.discovery&&!state.discoveryDone&&!state.opportunity){const label=$('.discovery .reward small');if(label&&state.board.some(x=>x?.type==='glyph')&&!ready(state,[{family:'chart',tier:2,count:1}]))label.textContent='1 LENS LEFT';}
@@ -66,14 +73,24 @@ function renderSelection(){
  $('#selection').innerHTML=`${x?`<span class="preview">${art(x)}</span>`:''}<span class="copy"><b>${title}</b><small>${desc}</small>${rare}</span>${preview}<span class="actionGroup">${buttons}</span>`;
 }
 function run(a){
+ const now=Date.now(),delivery=deliveryItems(state,a,now).map(v=>({...v,rect:board.querySelector(`[data-index="${v.index}"]`)?.getBoundingClientRect()}));
+ const beforeBoard=state.board.map(x=>x?JSON.stringify(x):null);
+ const taskSelector=a.type==='goal'?'.objective':`[data-contract="${a.type}"]`;
+ const taskRect=$(taskSelector)?.getBoundingClientRect();
+ const taskSnapshot=$(taskSelector)?.cloneNode(true);
  const energyBefore=state.energy,firstContract=state.contracts===0,surgeBefore=state.surge??0;
  const rewardOrigin=document.querySelector(a.type==='contract'||a.type==='opportunity'?'#contracts':'.objective')?.getBoundingClientRect();
  const before=state.stage,from=a.type==='produce'?board.querySelector(`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===a.id)}"]`)?.getBoundingClientRect():null;
- const result=act(state,a);message.textContent=result.message;
+ const result=act(state,a,now);message.textContent=result.message;
  if(!result.ok)return result;
  platform.startGameplay();if(['milestone','contract','discovery'].includes(result.event))focus='goal';if(a.type==='merge')selected=result.index;render();persist();
  if(result.event==='milestone'&&state.stage<4)message.textContent=result.message+' unlocked. '+(goal(state)?.text??'');
- feedback({event:result.event,tile:board.querySelector(`[data-index="${result.index}"]`),x:state.board[result.index],from:rewardOrigin,energyDelta:state.energy-energyBefore,stage:state.stage,firstContract,containerKind:result.containerKind,reveal:result.reveal,bonus:result.bonus,breakthrough:result.breakthrough,surgeStarted:state.surge>surgeBefore});
+ if(!delivery.length)feedback({event:result.event,tile:board.querySelector(`[data-index="${result.index}"]`),x:state.board[result.index],from:rewardOrigin,energyDelta:state.energy-energyBefore,stage:state.stage,firstContract,containerKind:result.containerKind,reveal:result.reveal,bonus:result.bonus,breakthrough:result.breakthrough,surgeStarted:state.surge>surgeBefore});
+ if(delivery.length){
+  const rewards=state.board.flatMap((x,index)=>x&&['item','crate'].includes(x.type)&&JSON.stringify(x)!==beforeBoard[index]?[{index,x,rect:board.querySelector(`[data-index="${index}"]`)?.getBoundingClientRect()}]:[]);
+  const next=continuation(state,a,rewards);message.textContent=next;
+  deliverFeedback({kind:a.type,delivery,rewards,taskRect,taskSnapshot,task:$(taskSelector),energy:state.energy-energyBefore,next,stage:state.stage});
+ }
  for(const i of result.reveal??[])board.querySelector(`[data-index="${i}"]`)?.classList.add('merge-pop');
  if(result.event==='milestone'&&state.stage>before){const id=state.stage===1?'chart':state.stage===2?'flux':null;if(id)board.querySelector(`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===id)}"]`)?.classList.add('unlocked');}
  if(result.index!==null&&result.event!=='merge')board.querySelector(`[data-index="${result.index}"]`)?.classList.add('pop');
@@ -84,9 +101,8 @@ function run(a){
  if(result.event==='milestone'){
   $('.world').classList.remove('changed');void $('.world').offsetWidth;$('.world').classList.add('changed');
   platform.event([{type:'milestone_completed'}]);
-  if(state.stage===4&&before<4)celebrate('The sky was buried here.', 'The vault opens onto a moving star ocean. You found the first crossing. The expedition continues: chart it, or build an aurora beacon.');
+  if(state.stage===4&&before<4){const reveal=()=>celebrate('The sky was buried here.', 'The vault opens onto a moving star ocean. You found the first crossing. The expedition continues: chart it, or build an aurora beacon.');if(reduced())reveal();else setTimeout(reveal,650);}
  }
- if(result.event==='discovery')celebrate('You learned the vault’s language.','All sources now yield a tier-three part every third pull. Rare echoes still arrive every ninth pull. Your next choice: open the vault, or take on a signal contract.');
  return result;
 }
 function clickTile(i){

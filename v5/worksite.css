@@ -1,0 +1,49 @@
+/* Continuous expedition surface. The grid remains a set of invisible hit targets. */
+.board{position:relative;isolation:isolate;padding:7px;gap:4px;background:#657784;border:3px solid #73838b;border-top-color:#aab6b6;border-bottom-color:#455766;border-radius:19px;box-shadow:0 5px 0 #3d5061,0 8px 12px #233c4e28,inset 0 0 0 2px #ced0bb}
+.siteSurface{position:absolute;inset:0;width:100%;height:100%;z-index:-1;border-radius:14px;pointer-events:none}
+#board .tile{background:transparent;box-shadow:none;border:0;border-radius:9px;padding:2px}
+#board .tile.empty:after{width:9px;height:9px;background:none;border-left:1px solid #746f5d38;border-bottom:1px solid #746f5d38;border-radius:0;position:absolute;bottom:6px;left:6px}
+#board .tile.item .art{width:102%;height:102%;filter:drop-shadow(0 3px 1px #463f3d35);position:relative;z-index:1}
+#board .tile.item[data-tier="0"] .art{width:94%;height:94%}
+#board .tile.item[data-tier="5"] .art,#board .tile.item[data-tier="6"] .art,#board .tile.item[data-tier="7"] .art{width:112%;height:112%;filter:drop-shadow(0 3px 1px #33344950)}
+#board .tile.brace .art,#board .tile.glyph .art,#board .tile.crate .art{width:99%;height:99%;filter:drop-shadow(0 3px 1px #42334a40)}
+#board .tile.source{border-radius:50%;background:radial-gradient(ellipse at 50% 75%,#677d83 0 45%,#c3baa0 47% 55%,transparent 58%);box-shadow:none;border:0}
+#board .tile.source .art{width:114%;height:114%;filter:drop-shadow(0 4px 2px #34425055)}
+#board .tile.source[data-family="chart"]{background:radial-gradient(ellipse at 50% 75%,#769aa4 0 45%,#bfd4c5 47% 55%,transparent 58%)}
+#board .tile.source[data-family="flux"]{background:radial-gradient(ellipse at 50% 75%,#85718e 0 45%,#cec1d8 47% 55%,transparent 58%)}
+#board .tile.source.locked{background:radial-gradient(ellipse at 50% 75%,#8d8b8055,transparent 66%)}
+#board .tile.rock{background:radial-gradient(ellipse at 50% 70%,#81786866 0 36%,#a8987944 50%,transparent 70%);border-radius:35% 55% 40% 50%}
+#board .tile.rock .art{width:105%;height:105%;filter:none;transform:translateY(3px)}
+#board .tile.sealed{background:radial-gradient(ellipse at 50% 70%,#b19c7f 0 40%,transparent 72%);border-radius:0}
+#board .tile.sealed .art{opacity:.85;width:110%;height:110%}
+#board[data-site="0"] .tile.rock .art{opacity:.83}
+#board[data-site="2"] .tile.rock .art,#board[data-site="3"] .tile.rock .art{filter:drop-shadow(0 1px 1px #706572)}
+#board[data-site="3"],#board[data-site="4"]{border-top-color:#9ccec8;border-right-color:#758da0;box-shadow:0 5px 0 #3d5061,0 7px 15px #4d829b30,inset 0 0 0 2px #a7d9d0}
+#board[data-event="surge"] .source:not(.locked){box-shadow:0 0 0 2px #e9b659,0 0 12px #f3ce7650}
+#board .tile.selected{outline:2px solid #586ec0;background:#ffffff25}
+#board .tile.match{outline:2px dashed #587e9f;background:#c9f9ed22}
+#board .tile.target{outline:3px solid #369c95;background:#ccfff166}
+#board .tile.deliveryReady .art{filter:drop-shadow(0 0 3px #d8fff1) drop-shadow(0 3px 1px #354d4140)}
+.objective.ready{box-shadow:inset 4px 0 #4b9c85,0 2px 8px #30867222;background:#f3fff9}
+.objective.ready #step{background:#247b67;color:white;border-radius:6px;padding:4px 6px;font-weight:900}
+.objective.ready .primary{background:linear-gradient(145deg,#369e82,#217662);box-shadow:0 3px 0 #18594c}
+.contract.ready{background:#e0f7ed;box-shadow:inset 0 0 0 2px #409780,0 3px 0 #28705f40}
+.contract.ready .reward small{background:#247b67;color:#fff;border-radius:5px;padding:3px 4px;font-size:8px}
+.contract.opportunity.ready{background:#fff0c8;box-shadow:inset 0 0 0 2px #ca913c,0 3px 0 #bb803140}
+.contract.opportunity.ready .reward small{background:#956124}
+.contract.discovery{border-radius:6px 16px 16px 16px;box-shadow:inset 3px 0 #a67ac8}
+.contract.discovery.ready{background:#ecddff;box-shadow:inset 0 0 0 2px #9262b8,0 3px 0 #78508f40}
+.contract.discovery.ready .reward small{background:#78539e}
+.deliveryObject{position:fixed;pointer-events:none;width:44px;height:44px;z-index:42;animation:collectObject .44s cubic-bezier(.3,.1,.6,1) both;filter:drop-shadow(0 4px 3px #23384b50)}
+.deliveryObject.return{animation-name:returnObject;animation-duration:.4s}
+@keyframes collectObject{0%{transform:translate(0,0) scale(1);opacity:1}30%{transform:translate(0,-10px) scale(1.15);opacity:1}85%{opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(.35);opacity:0}}
+@keyframes returnObject{0%{transform:translate(0,0) scale(.3);opacity:0}18%{opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(1);opacity:0}}
+.deliveryReceipt{position:fixed;display:flex;align-items:center;justify-content:center;height:28px;gap:2px;border-radius:8px;background:#e1f6ebf5;color:#245e51;z-index:42;pointer-events:none;font-size:9px}
+.deliveryReceipt .art{width:23px;height:23px}.deliveryReceipt[data-kind="discovery"]{background:#eee0fff5;color:#624887}
+.taskCollected{animation:taskReceive .48s ease-out}.rewardLanded .art{animation:rewardLand .6s ease-out}.sitePayoff{animation:siteWake .65s ease-out}.echoPayoff{animation:echoWake .65s ease-out}
+.deliveryTask{animation:taskDepart .48s ease-out both}@keyframes taskDepart{0%,70%{opacity:1}100%{opacity:0;transform:scale(.98)}}
+@keyframes taskReceive{30%{transform:scale(.975);filter:brightness(1.12)}60%{transform:scale(1.015)}100%{transform:none}}
+@keyframes rewardLand{0%,40%{opacity:.35;transform:scale(.65)}80%{transform:scale(1.07)}100%{opacity:1;transform:none}}
+@keyframes siteWake{35%{filter:brightness(1.2);transform:translateY(2px)}100%{filter:none;transform:none}}
+@keyframes echoWake{40%{filter:drop-shadow(0 0 10px #b281db)}100%{filter:none}}
+@media(prefers-reduced-motion:reduce){.deliveryObject{display:none}.taskCollected,.rewardLanded .art,.sitePayoff,.echoPayoff{animation:none}.tile.deliveryReady .art{animation:none}}

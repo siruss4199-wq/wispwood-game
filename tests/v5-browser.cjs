@@ -2,19 +2,29 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
 (async()=>{
  const browser=await chromium.launch({headless:true});fs.mkdirSync('test-artifacts/v5',{recursive:true});
  try{for(const width of [360,390,768]){
-  const page=await browser.newPage({viewport:{width,height:844},hasTouch:true,isMobile:width<500,reducedMotion:'reduce'});page.setDefaultTimeout(8000);
+  const motion=width===390;
+  const page=await browser.newPage({viewport:{width,height:844},hasTouch:true,isMobile:width<500,reducedMotion:motion?'no-preference':'reduce'});page.setDefaultTimeout(8000);
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://127.0.0.1:8080/v5/');
   await page.waitForFunction(()=>document.querySelectorAll('#board .tile').length===36);
   const read=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('vaultwake-v5')));
   const shot=async name=>{await page.screenshot({path:`test-artifacts/v5/${name}-${width}.png`,fullPage:true});};
+  const payoff=async(kind)=>{
+   if(motion){assert.ok(await page.locator('.deliveryObject.collect').count()>0,kind+' collects actual board objects');await page.waitForTimeout(120);await shot(kind+'-delivery');await page.waitForTimeout(750);assert.equal(await page.locator('.deliveryObject').count(),0,'delivery sprites cleaned up');assert.equal(await page.locator('.deliveryTask').count(),0);}
+   else{assert.equal(await page.locator('.deliveryObject').count(),0);assert.ok(await page.locator('.deliveryReceipt').count()>0,'reduced motion has an item receipt');await shot(kind+'-delivery');await page.waitForTimeout(710);}
+   assert.ok((await page.locator('#message').textContent()).length>10,'completion provides continuation hook');
+  };
   assert.equal(await page.locator('.contract').count(),2);assert.equal(await page.locator('.source').count(),3);assert.equal(await page.locator('.source.locked').count(),2);
   assert.equal(await page.locator('#goalButton').isDisabled(),true);assert.match(await page.locator('#goalTitle').textContent(),/landing/);
   await shot('fresh');assert.equal((await read()).board.filter(Boolean).length,27);
+  assert.equal(await page.locator('#board').getAttribute('data-site'),'0');assert.equal(await page.locator('.siteSurface').count(),1);
+  for(const family of ['rig','chart','flux']){const style=await page.locator(`.tile.item[data-family="${family}"]`).first().evaluate(el=>({background:getComputedStyle(el).backgroundColor,image:getComputedStyle(el).backgroundImage,shadow:getComputedStyle(el).boxShadow}));assert.deepEqual(style,{background:'rgba(0, 0, 0, 0)',image:'none',shadow:'none'},'normal items have no UI card');}
+  await page.locator('.tile.item').first().screenshot({path:`test-artifacts/v5/normal-object-closeup-${width}.png`});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   const bounds=await page.locator('#board').boundingBox();assert.ok(bounds.width>=Math.min(width-24,370));assert.ok(bounds.y+bounds.height<830);
   // Deliver the available starter contract: deliberately trade a story ingredient for supplies.
-  await page.locator('[data-contract="contract"]').tap();assert.equal((await read()).contracts,1);await shot('first-contract');
+  assert.match(await page.locator('[data-contract="contract"] .reward small').textContent(),/READY/);await shot('task-ready');
+  await page.locator('[data-contract="contract"]').tap();assert.equal((await read()).contracts,1);await payoff('contract');await shot('first-contract');
   // Test a physical pointer drag, not a synthetic reducer call.
   const a=await page.locator('[data-index="7"]').boundingBox(),b=await page.locator('[data-index="8"]').boundingBox();
   await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:7});await page.mouse.up();await page.waitForTimeout(320);assert.equal((await read()).merges,1);
@@ -30,6 +40,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
     assert.equal((await read()).board[stone].type,'item');await shot('blocker-reveal');blocked=true;
    }
    const cmd=await page.evaluate(async()=>{const {choose}=await import('/tests/v5-policy.mjs');const s=JSON.parse(localStorage.getItem('vaultwake-v5'));window.sessionPolicy??={};return choose(s,{openCaches:s.stage>=2,session:window.sessionPolicy});});
+   if(cmd.type==='goal'){assert.equal(await page.locator('.objective.ready').count(),1);assert.equal(await page.locator('#step').textContent(),'READY');await shot('main-ready-'+(await read()).stage);}
    if(cmd.type==='goal'&&(await read()).stage===3){assert.ok((await read()).board.filter(Boolean).length>=20);await shot('density-pre-vault');captured.add('density-pre-vault');}
    if(cmd.type==='merge'){await page.locator(`[data-index="${cmd.from}"]`).tap();await page.locator(`[data-index="${cmd.to}"]`).tap();}
    else if(cmd.type==='produce'){const s=await read();const i=s.board.findIndex(x=>x?.type==='source'&&x.id===cmd.id);await page.locator(`[data-index="${i}"]`).tap();}
@@ -39,8 +50,11 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
    else if(cmd.type==='ration')await page.locator('#rationButton').tap();
    else if(cmd.type==='goal')await page.locator('#goalButton').tap();
    else await page.locator(`[data-contract="${cmd.type}"]`).tap();
+   if(['goal','contract','discovery','opportunity'].includes(cmd.type)){await payoff(cmd.type);if(cmd.type==='goal')await shot('main-completion-'+(await read()).stage);}
    if(await page.locator('#celebration').isVisible())await page.locator('#celebration .continue').tap();
    const s=await read();
+   assert.equal(await page.locator('#board').getAttribute('data-site'),String(s.stage));
+   if(s.board.some(x=>x?.type==='item'&&x.tier>=5)&&!captured.has('high-object')){await page.locator('.tile.item[data-tier="5"],.tile.item[data-tier="6"],.tile.item[data-tier="7"]').first().screenshot({path:`test-artifacts/v5/high-object-closeup-${width}.png`});captured.add('high-object');}
    density.push({moves:s.moves,estimatedSeconds:s.moves*4.5,command:cmd.type,stage:s.stage,surge:s.surge??0,discovery:s.discoveryDone,occupied:s.board.filter(Boolean).length,items:s.board.filter(x=>x?.type==='item').length,caches:s.board.filter(x=>x?.type==='crate').length,blockers:s.board.filter(x=>['rock','sealed'].includes(x?.type)).length});
    if(s.surge>0){assert.match(await page.locator('#free').textContent(),/SURGE/);assert.equal(await page.locator('#board').getAttribute('data-event'),'surge');if(!captured.has('supply-surge')){await shot('supply-surge');captured.add('supply-surge');}}
    for(const [move,name]of timepoints)if(s.moves>=move&&!captured.has(name)){assert.ok(s.board.filter(Boolean).length>=20,`${name} remains an active workspace`);await shot(name);captured.add(name);}

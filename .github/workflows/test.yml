@@ -42,7 +42,7 @@ jobs:
         run: node --test tests/v4-crazygames.test.mjs
 
       - name: Run V5 rules and first-session simulation
-        run: node --test tests/v5-core.test.mjs
+        run: node --test tests/v5-*.test.mjs
       - name: Check V5 modules
         run: node --check v5/app.mjs && node --check v5/core.mjs && node --check v5/art.mjs
       - name: Install browser smoke dependencies
