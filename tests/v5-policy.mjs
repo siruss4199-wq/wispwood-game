@@ -9,7 +9,7 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
  const target=signal?s.opportunity:side||sideFirst&&s.contracts===0?normalContract(s):goal(s);
  if(!target)return null;
  const deliver=signal?'opportunity':side||sideFirst&&s.contracts===0?'contract':(target.action??'goal');
- if(ready(s,target.needs)){if(side)session.trade=true;return {type:deliver};
+ if(ready(s,target.needs)){if(side)session.trade=true;return {type:deliver};}
  const spaces=s.board.filter(x=>x===null).length;
  if(openCaches&&spaces>8){const box=s.board.findIndex(x=>x?.type==='crate');if(box>=0)return {type:'crate',index:box};}
  if(clearSalvage&&s.stage>=1&&spaces>6){
