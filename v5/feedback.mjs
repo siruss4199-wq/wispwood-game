@@ -62,7 +62,7 @@ export function deliverFeedback({kind,delivery,rewards,taskRect,taskSnapshot,tas
   transient(el,delay+480);
  }
  delivery.forEach((v,i)=>travel(v.x,v.rect,taskRect,'collect',i*35));
- rewards.slice(0,6).forEach((v,i)=>travel(v.x,taskRect,v.rect,'return',240+i*20));
+ rewards.slice(0,6).forEach((v,i)=>travel(v.x,taskRect,v.rect,'return',360+i*20));
  rewards.forEach(v=>{const tile=document.querySelector(`[data-index="${v.index}"]`);tile?.classList.add('rewardLanded');});
  rewardFlight(taskRect,document.querySelector('.resource')?.getBoundingClientRect(),`+${energy} ϟ`);
  burst(taskRect,rare?'flux':signal?'chart':'gold',main||rare||signal);

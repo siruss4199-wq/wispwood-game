@@ -10,9 +10,10 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
   const read=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('vaultwake-v5')));
   const shot=async name=>{await page.screenshot({path:`test-artifacts/v5/${name}-${width}.png`,fullPage:true});};
   const payoff=async(kind)=>{
-   if(motion){assert.ok(await page.locator('.deliveryObject.collect').count()>0,kind+' collects actual board objects');await page.waitForTimeout(120);await shot(kind+'-delivery');await page.waitForTimeout(750);assert.equal(await page.locator('.deliveryObject').count(),0,'delivery sprites cleaned up');assert.equal(await page.locator('.deliveryTask').count(),0);}
+   if(motion){assert.ok(await page.locator('.deliveryObject.collect').count()>0,kind+' collects actual board objects');await page.waitForTimeout(260);await shot(kind+'-delivery');await page.waitForTimeout(750);assert.equal(await page.locator('.deliveryObject').count(),0,'delivery sprites cleaned up');assert.equal(await page.locator('.deliveryTask').count(),0);}
    else{assert.equal(await page.locator('.deliveryObject').count(),0);assert.ok(await page.locator('.deliveryReceipt').count()>0,'reduced motion has an item receipt');await shot(kind+'-delivery');await page.waitForTimeout(710);}
    assert.ok((await page.locator('#message').textContent()).length>10,'completion provides continuation hook');
+   assert.equal(await page.locator('#board .selected').count(),0,'delivery clears stale consumed-item selection');
   };
   assert.equal(await page.locator('.contract').count(),2);assert.equal(await page.locator('.source').count(),3);assert.equal(await page.locator('.source.locked').count(),2);
   assert.equal(await page.locator('#goalButton').isDisabled(),true);assert.match(await page.locator('#goalTitle').textContent(),/landing/);

@@ -44,6 +44,7 @@
 .deliveryTask{animation:taskDepart .48s ease-out both}@keyframes taskDepart{0%,70%{opacity:1}100%{opacity:0;transform:scale(.98)}}
 @keyframes taskReceive{30%{transform:scale(.975);filter:brightness(1.12)}60%{transform:scale(1.015)}100%{transform:none}}
 @keyframes rewardLand{0%,40%{opacity:.35;transform:scale(.65)}80%{transform:scale(1.07)}100%{opacity:1;transform:none}}
-@keyframes siteWake{35%{filter:brightness(1.2);transform:translateY(2px)}100%{filter:none;transform:none}}
+@keyframes siteWake{35%{filter:brightness(1.08);transform:translateY(2px)}100%{filter:none;transform:none}}
+.world.changed{animation:siteFlash .65s ease-out}@keyframes siteFlash{30%{filter:brightness(1.15)}100%{filter:none}}
 @keyframes echoWake{40%{filter:drop-shadow(0 0 10px #b281db)}100%{filter:none}}
 @media(prefers-reduced-motion:reduce){.deliveryObject{display:none}.taskCollected,.rewardLanded .art,.sitePayoff,.echoPayoff{animation:none}.tile.deliveryReady .art{animation:none}}
