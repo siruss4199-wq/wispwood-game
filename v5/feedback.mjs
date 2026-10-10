@@ -1,3 +1,4 @@
+import {art} from './art.mjs';
 import {containerInfo} from './containers.mjs';
 // Presentation-only effects. No timers here mutate game state.
 import {platform} from '../v4/platform.mjs';
@@ -29,8 +30,8 @@ export function rewardFlight(from,to,label){
  if(!from||!to||reduced())return;
  const el=document.createElement('span');el.className='rewardFlight';el.textContent=label;el.style.cssText=`left:${from.x+from.width/2}px;top:${from.y+from.height/2}px;--dx:${to.x+to.width/2-from.x-from.width/2}px;--dy:${to.y+to.height/2-from.y-from.height/2}px`;transient(el,680);
 }
-export function moment(title,detail=''){
- document.querySelector('.moment')?.remove();const el=document.createElement('div');el.className='moment';el.setAttribute('role','status');const b=document.createElement('b'),small=document.createElement('small');b.textContent=title;small.textContent=detail;el.append(b,small);transient(el,reduced()?2100:1750);
+export function moment(title,detail='',object=null){
+ document.querySelector('.moment')?.remove();const el=document.createElement('div');el.className='moment';el.setAttribute('role','status');const b=document.createElement('b'),small=document.createElement('small');b.textContent=title;small.textContent=detail;if(object){const icon=document.createElement('span');icon.style.cssText='float:left;width:42px;height:42px;margin-right:10px';icon.innerHTML=art(object);icon.firstElementChild.style.cssText='width:100%;height:100%';el.append(icon);}el.append(b,small);transient(el,reduced()?2100:1750);
 }
 export function feedback({event,tile,x,from,energyDelta,stage,firstContract=false,containerKind,reveal=[],bonus}){
  const rect=tile?.getBoundingClientRect();
@@ -38,7 +39,7 @@ export function feedback({event,tile,x,from,energyDelta,stage,firstContract=fals
   tile?.classList.add('merge-pop');burst(rect,x?.family,x?.tier>=4);sound.play('merge',x?.tier??0);
   if(x?.tier>=4&&!reduced()){const b=document.querySelector('#board');b.classList.remove('impact');void b.offsetWidth;b.classList.add('impact');}
  }else if(event==='produce'&&x?.type==='glyph'){burst(rect,'flux',true);sound.play('rare');moment('Echo fragment found','Decode it, or reclaim its energy');}
- else if(event==='clear'||event==='container'){const info=containerInfo({kind:containerKind});burst(rect,info.family,true);sound.play('rare');moment(event==='clear'?'Saltbound Locker uncovered':info.name,`${reveal.length} finds revealed${containerKind==='salvage'?' · Rover charge support':''}`);}
+ else if(event==='clear'||event==='container'){const info=containerInfo({kind:containerKind});burst(rect,info.family,true);sound.play('rare');moment(event==='clear'?'Saltbound Locker uncovered':info.name,`${reveal.length} finds revealed${containerKind==='salvage'?' · Rover charge support':''}`,{type:'crate',kind:containerKind});}
  else if(event==='contract'){rewardFlight(from,document.querySelector('.resource').getBoundingClientRect(),`+${energyDelta} ϟ`);sound.play('contract');if(firstContract)moment('Supplies secured','Your first contract delivered');}
  else if(event==='milestone'){
   document.querySelector('.moment')?.remove();
