@@ -1,0 +1,97 @@
+import {SAVE_KEY,FAMILIES,SOURCES,STAGES,fresh,load,act,goal,count,ready,matches,nameOf,normalContract,opportunity,nextOutput,item} from './core.mjs';
+import {art,scene,portrait} from './art.mjs';
+import {platform} from '../v4/platform.mjs';
+const $=s=>document.querySelector(s);
+let state;try{state=load(localStorage.getItem(SAVE_KEY));}catch{state=fresh();}
+let selected=null,focus='goal',drag=null,suppressUntil=0;
+const board=$('#board'),message=$('#message');
+function persist(){try{const raw=JSON.stringify(state);localStorage.setItem(SAVE_KEY,raw);platform.save(raw);}catch{message.textContent='Storage unavailable. This session is playable, but progress cannot be saved.';}}
+function needed(){return focus==='contract'?normalContract(state).needs:focus==='opportunity'?state.opportunity?.needs??[]:focus==='discovery'?[{family:'chart',tier:2,count:1}]:goal(state)?.needs??[];}
+function needsHTML(needs){return needs.map(r=>`<span class="need ${count(state,r)>=r.count?'done':''}" title="${nameOf(item(r.family,r.tier))}">${art(item(r.family,r.tier))}<b>${Math.min(count(state,r),r.count)}/${r.count}</b></span>`).join('');}
+function hint(){if(!state.merges)return 'Tap two matching copper offcuts';const reqs=needed();if(ready(state,reqs)&&reqs.length)return focus==='goal'?'Expedition materials ready — build above':'Contract ready — choose whether to deliver';const r=reqs.find(r=>count(state,r)<r.count);return r?`${nameOf(item(r.family,r.tier))} ← ${SOURCES[r.family].name}`:'Explore, collect, or clear saltstone';}
+function render(){
+ $('#energy').textContent=state.energy;$('#marks').textContent=state.marks;
+ $('#scene').innerHTML=scene(state.stage,state.post);$('#sceneLabel').textContent=STAGES[state.stage]?.scene??'The vault is open';
+ $('#chapterLabel').textContent=state.stage===4?'DISCOVERY · THE SKY WITHIN':'THE SALTGLASS REACH';
+ const g=goal(state);$('#goalTitle').textContent=g?.name??'Expedition complete';$('#step').textContent=state.stage<4?`${state.stage+1} / 4`:'DISCOVERED';
+ $('#goalNeeds').innerHTML=needsHTML(g?.needs??[]);$('#goalButton').textContent=g?.verb??'Journal';$('#goalButton').disabled=!!g&&!ready(state,g.needs);$('#nextUnlock').textContent=g?.next??'All chapter badges found. Keep collecting.';
+ const c=normalContract(state),cr=ready(state,c.needs),overlap=c.needs.some(r=>g?.needs.some(v=>v.family===r.family&&v.tier===r.tier));
+ let cards=`<button class="contract ${cr?'ready':''} ${focus==='contract'?'active':''}" data-contract="contract" aria-label="${c.title}. ${c.needs.map(r=>nameOf(item(r.family,r.tier))+' '+count(state,r)+' of '+r.count).join(', ')}. Reward ${c.energy} energy. ${cr?'Ready to deliver.':''}"><span class="contractHead">${portrait(c.who.startsWith('Neri')?'neri':'ivo')}<span><small>SUPPLY CONTRACT</small><b>${c.title}</b></span></span><span class="contractBottom"><span class="needs">${needsHTML(c.needs)}</span><span class="reward">+${c.energy} ϟ<small>${cr?'DELIVER':'MAKE ITEMS'} · +${c.marks} ✦</small></span></span>${overlap?'<span class="choiceNote">Also needed for the expedition</span>':''}</button>`;
+ if(state.discovery&&!state.discoveryDone&&!state.opportunity){const dr=state.board.some(x=>x?.type==='glyph')&&ready(state,[{family:'chart',tier:2,count:1}]);cards+=`<button class="contract discovery ${dr?'ready':''}" data-contract="discovery"><span class="contractHead"><span><small>RARE DISCOVERY</small><b>Decode the echo</b></span></span><span class="contractBottom"><span class="needs"><span class="need">${art({type:'glyph'})}<b>${state.board.some(x=>x?.type==='glyph')?'1':'0'}/1</b></span>${needsHTML([{family:'chart',tier:2,count:1}])}</span><span class="reward">+18 ϟ<small>${dr?'DECODE':'RICHER DROPS'}</small></span></span></button>`;}
+ else {const op=opportunity(state),expired=op&&op.remaining===0;cards+=`<button class="contract opportunity ${op&&!expired&&ready(state,op.needs)?'ready':''}" data-contract="${op?'opportunity':'startOpportunity'}" ${state.stage<1?'disabled':''}><span class="contractHead"><span><small>OPTIONAL · ${state.stage<1?'AFTER LANDING':'NO PENALTY'}</small><b>${op?'Catch the signal':'A passing signal'}</b></span></span><span class="contractBottom">${op?`<span class="needs">${needsHTML(op.needs)}</span>`:`<span class="choiceNote">${state.stage>=2?'A resonator':'A scope'} before the signal fades</span>`}<span class="reward">+28 ϟ<small id="opClock">${op?(expired?'PASSED · DISMISS':Math.ceil(op.remaining/1000)+'s · '+(ready(state,op.needs)?'DELIVER':'MAKE')):'START 3 MIN'}</small></span></span></button>`;}
+ $('#contracts').innerHTML=cards;
+ const selectedItem=state.board[selected];
+ board.innerHTML=state.board.map((x,i)=>{
+  const isSource=x?.type==='source',locked=isSource&&state.stage<SOURCES[x.id].unlock;
+  const matching=selectedItem?.type==='item'&&x?.type==='item'&&i!==selected&&x.family===selectedItem.family&&x.tier===selectedItem.tier&&x.tier<7;
+  return `<button class="tile ${x?.type??'empty'} ${locked?'locked':''} ${selected===i?'selected':''} ${matching?'match':''} ${needed().some(r=>matches(x,r))?'wanted':''}" data-index="${i}" ${x?.family?`data-family="${x.family}"`:''} aria-label="${nameOf(x)}${locked?' · locked':isSource?' · '+SOURCES[x.id].cost+' energy · '+state.charges[x.id]+' charges':''}. Space ${i+1}" aria-pressed="${selected===i}">${art(x)}${isSource?(locked?`<span class="lockedLabel">${x.id==='chart'?'CLEAR PATH':'EXCAVATE'}</span>`:`<span class="energyCue">ϟ${SOURCES[x.id].cost}</span><span class="charge">${Array.from({length:7},(_,n)=>`<i class="${n>=state.charges[x.id]?'used':''}"></i>`).join('')}</span>`):x?.type==='crate'?`<span class="pulls">${x.left}</span>`:''}</button>`;
+ }).join('');
+ $('#free').textContent=state.board.filter(x=>x===null).length+' spaces';$('#hint').textContent=hint();$('#rationButton').hidden=state.energy>3;renderSelection();
+}
+function renderSelection(){
+ const x=state.board[selected];let title='Open the Tideglass Vault',desc='Merge identical objects. Choose expedition progress or supplies.',buttons='';
+ if(x){title=nameOf(x);
+  if(x.type==='item'){
+   const used=goal(state)?.needs.some(r=>matches(x,r)),cn=normalContract(state).needs.some(r=>matches(x,r));
+   desc=(used?'Needed for expedition. ':cn?'A contract wants this. ':'')+(x.tier===7?'Top discovery.':`Merge → ${FAMILIES[x.family].names[x.tier+1]}.`);
+   buttons=`${x.family==='rig'&&x.tier===2?'<button class="accent" data-action="branch">Make brace</button>':''}<button data-action="recycle">Recycle +${2**x.tier} ϟ</button>`;
+  }else if(x.type==='source'){
+   if(state.stage<SOURCES[x.id].unlock)desc=`Unlock: ${x.id==='chart'?'clear the landing':'find the buried door'}.`;
+   else {desc=`Next: ${nameOf(nextOutput(state,x.id))} · rare in ${9-state.taps[x.id]%9} pulls`;
+    buttons=state.charges[x.id]?`<button class="accent" data-action="produce">Produce · ${SOURCES[x.id].cost} ϟ</button>`:'<button data-action="serviceTool">Service · tool</button><button class="accent" data-action="service">Service · 3 ϟ</button>';
+   }
+  }else if(x.type==='rock'){desc='A trail brace clears this space and reveals a cache.';buttons='<button class="accent" data-action="clear">Use brace</button>';}
+  else if(x.type==='sealed')desc='Six spaces open when you excavate the vault entrance.';
+  else if(x.type==='crate'){desc=`${x.left} guaranteed parts. No energy needed.`;buttons='<button class="accent" data-action="crate">Open cache</button>';}
+  else if(x.type==='glyph'){desc=state.discoveryDone?'Decoded fragment. Recycle or keep as a souvenir.':'Pair with a sight lens to decode. Richer source outputs.';buttons='<button data-action="recycle">Recycle +5 ϟ</button>';}
+  else if(x.type==='brace'){desc='Tap a saltstone blocker to use this brace.';buttons='<button data-action="recycle">Recycle +3 ϟ</button>';}
+ }
+ $('#selection').innerHTML=`${x?`<span class="preview">${art(x)}</span>`:''}<span class="copy"><b>${title}</b><small>${desc}</small></span><span class="actionGroup">${buttons}</span>`;
+}
+function run(a){
+ const before=state.stage,from=a.type==='produce'?board.querySelector(`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===a.id)}"]`)?.getBoundingClientRect():null;
+ const result=act(state,a);message.textContent=result.message;
+ if(!result.ok)return result;
+ platform.startGameplay();if(a.type==='merge')selected=result.index;render();persist();
+ if(result.index!==null)board.querySelector(`[data-index="${result.index}"]`)?.classList.add('pop');
+ if(a.type==='produce'){
+  board.querySelector(`[data-index="${selected}"]`)?.classList.add('react');
+  if(from&&!matchMedia('(prefers-reduced-motion: reduce)').matches){const to=board.querySelector(`[data-index="${result.index}"]`)?.getBoundingClientRect();if(to){const el=document.createElement('div');el.className='flight';el.innerHTML=art(state.board[result.index]);el.style.cssText=`left:${from.x}px;top:${from.y}px;--dx:${to.x-from.x}px;--dy:${to.y-from.y}px`;document.body.append(el);setTimeout(()=>el.remove(),460);}}
+ }
+ if(result.event==='milestone'){
+  $('.world').classList.remove('changed');void $('.world').offsetWidth;$('.world').classList.add('changed');
+  platform.event([{type:'milestone_completed'}]);
+  if(state.stage===4&&before<4)celebrate('The sky was buried here.', 'The vault opens onto a moving star ocean. You found the first crossing. The expedition continues: chart it, or build an aurora beacon.');
+ }
+ if(result.event==='discovery')celebrate('You learned the vault’s language.','All sources now yield a tier-three part every third pull. Rare echoes still arrive every ninth pull. Your next choice: open the vault, or take on a signal contract.');
+ return result;
+}
+function clickTile(i){
+ const x=state.board[i],prev=state.board[selected];
+ if(selected!==null&&selected!==i&&prev?.type==='item'&&(!x||(x.type==='item'&&x.family===prev.family&&x.tier===prev.tier))){run({type:'merge',from:selected,to:i});return;}
+ selected=i;render();
+ if(x?.type==='source'&&state.stage>=SOURCES[x.id].unlock&&state.charges[x.id]>0)run({type:'produce',id:x.id});
+}
+board.addEventListener('click',e=>{const tile=e.target.closest('[data-index]');if(tile&&performance.now()>suppressUntil)clickTile(+tile.dataset.index);});
+board.addEventListener('pointerdown',e=>{const tile=e.target.closest('[data-index]');if(!tile||e.button!==0)return;const i=+tile.dataset.index;if(!['item','crate','brace','glyph'].includes(state.board[i]?.type))return;drag={from:i,id:e.pointerId,x:e.clientX,y:e.clientY,moved:false};board.setPointerCapture?.(e.pointerId);});
+board.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)return;if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>8)drag.moved=true;if(drag.moved){board.querySelector(`[data-index="${drag.from}"]`)?.classList.add('dragging');board.querySelectorAll('.target').forEach(x=>x.classList.remove('target'));document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-index]')?.classList.add('target');}});
+board.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;const d=drag;drag=null;board.querySelectorAll('.dragging,.target').forEach(x=>x.classList.remove('dragging','target'));if(!d.moved)return;suppressUntil=performance.now()+300;const tile=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-index]');if(tile){selected=d.from;run({type:'merge',from:d.from,to:+tile.dataset.index});}});
+board.addEventListener('pointercancel',()=>{drag=null;board.querySelectorAll('.dragging,.target').forEach(x=>x.classList.remove('dragging','target'));});
+$('#selection').addEventListener('click',e=>{const type=e.target.closest('[data-action]')?.dataset.action;if(!type)return;const x=state.board[selected];run({type:type==='serviceTool'?'service':type,index:selected,id:x?.id,useTool:type==='serviceTool'});});
+$('#goalButton').onclick=()=>goal(state)?run({type:'goal'}):showJournal();
+$('#goalNeeds').onclick=()=>{focus='goal';render();message.textContent=goal(state)?.text??'Keep collecting rare discoveries.';};
+$('#contracts').onclick=e=>{const type=e.target.closest('[data-contract]')?.dataset.contract;if(!type)return;
+ if(type==='startOpportunity'){run({type});focus='opportunity';render();return;}
+ focus=type;const can=type==='contract'?ready(state,normalContract(state).needs):type==='opportunity'?(state.opportunity&&(Date.now()>state.opportunity.ends||ready(state,state.opportunity.needs))):state.board.some(x=>x?.type==='glyph')&&ready(state,[{family:'chart',tier:2,count:1}]);
+ if(can)run({type});else{render();message.textContent=type==='discovery'?'Find a sight lens and an echo fragment.':hint();}
+};
+$('#rationButton').onclick=()=>run({type:'ration'});
+function celebrate(title,text){$('#celebrationContent').innerHTML=`${scene(state.stage,state.post)}<h2>${title}</h2><p>${text}</p>`;$('#celebration').showModal();}
+function showJournal(){
+ $('#journalContent').innerHTML=`<small>VAULTWAKE · FIELD JOURNAL</small><h2>The Tideglass expedition</h2><p>Open a vault buried in the Saltglass Reach. Inside, an ocean of stars is waiting to move again.</p><h3>Your discoveries · ${state.discovered.length}/24</h3>${Object.entries(FAMILIES).map(([f,d])=>`<h3>${d.name}</h3><div class="collection">${d.names.map((n,t)=>`<div class="${state.discovered.includes(f+':'+t)?'':'unknown'}">${art(item(f,t))}<small>${n}</small></div>`).join('')}</div>`).join('')}<p>${state.contracts} contracts · ${state.merges} merges · ${state.marks} expedition merit</p>`;$('#journal').showModal();
+}
+$('#journalButton').onclick=showJournal;
+$('#helpButton').onclick=()=>{$('#journalContent').innerHTML='<h2>Find what lies inside.</h2><ul><li>Tap an object, then its identical twin to merge. Drag also works.</li><li>The expedition panel opens the vault. Green dots mark its exact ingredients. Tap its ingredients to focus again.</li><li>Supply contracts refill energy, but may consume something the expedition needs.</li><li>Tap a source to produce. Its selected panel shows the next output. Service empty sources with a tool or energy.</li><li>A split spanner can merge into a winch, or become a brace to clear saltstone.</li><li>Rare fragments arrive every ninth source pull. Decode one with a sight lens to enrich all sources.</li><li>Signal contracts are optional. The timer begins only when you choose Start. Expiry never removes items.</li><li>Board full? Deliver, merge, recycle a selected item, or clear a blocker. Low energy? Use a free field ration.</li></ul>';$('#journal').showModal();};
+for(const dialog of document.querySelectorAll('dialog')){dialog.querySelector('.close').onclick=()=>dialog.close();dialog.querySelector('.continue')?.addEventListener('click',()=>dialog.close());dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close();});}
+setInterval(()=>{const op=opportunity(state),clock=$('#opClock');if(op&&clock)clock.textContent=op.remaining?Math.ceil(op.remaining/1000)+'s · '+(ready(state,op.needs)?'DELIVER':'MAKE'):'PASSED · DISMISS';},1000);
+render();persist();platform.init();

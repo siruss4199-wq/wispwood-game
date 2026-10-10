@@ -14,7 +14,7 @@ jobs:
   test:
     name: Game rule and markup tests
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -41,15 +41,20 @@ jobs:
       - name: Run CrazyGames readiness checks
         run: node --test tests/v4-crazygames.test.mjs
 
+      - name: Run V5 rules and first-session simulation
+        run: node --test tests/v5-core.test.mjs
+      - name: Check V5 modules
+        run: node --check v5/app.mjs && node --check v5/core.mjs && node --check v5/art.mjs
       - name: Install browser smoke dependencies
         run: npm install --no-save playwright@1.62.1 && npx playwright install --with-deps chromium
       - name: Verify mobile render, persistence and board interactions
         run: |
           python3 -m http.server 8080 > /tmp/wispwood-http.log 2>&1 &
           node tests/v45-browser.cjs
+          node tests/v5-browser.cjs
       - name: Save mobile screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: v46-mobile-review
+          name: v5-expedition-review
           path: test-artifacts/
