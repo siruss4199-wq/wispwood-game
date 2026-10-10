@@ -149,12 +149,12 @@ export function act(s,a,now=Date.now()){
   const g=goal(s);if(!g||g.action!==a.type||!ready(s,g.needs))return fail('Prepare the highlighted expedition items first.');
   consume(s,g.needs);s.mission??=defaultMission(s.stage);
   if(a.type==='survey'){
-   s.mission.surveyed=true;const i=s.board.findIndex(x=>x?.type==='marker');if(i>=0)s.board[i]=item('chart',1);else put(s,item('chart',1));
-   s.marks+=4;surge(s);return done('Survey Scope deployed · buried door coordinates locked.','mission',i>=0?i:null);
+   s.mission.surveyed=true;const i=s.board.findIndex(x=>x?.type==='marker');if(i>=0)s.board[i]=item('chart',1);else put(s,item('chart',1));put(s,item('rig',0));
+   s.marks+=4;surge(s);return done('Survey Scope deployed · buried door coordinates locked · field offcut recovered.','mission',i>=0?i:null);
   }
   if(a.type==='prime'){
-   s.mission.ringPrimed=true;const i=s.board.findIndex(x=>x?.type==='lock');if(i>=0)s.board[i]=item('flux',1);else put(s,item('flux',1));
-   s.marks+=5;surge(s);return done('Phase Lantern committed · dormant ring is awake.','mission',i>=0?i:null);
+   s.mission.ringPrimed=true;const i=s.board.findIndex(x=>x?.type==='lock');if(i>=0)s.board[i]=item('flux',1);else put(s,item('flux',1));put(s,item('chart',0));
+   s.marks+=5;surge(s);return done('Phase Lantern committed · dormant ring is awake · route scrap recovered.','mission',i>=0?i:null);
   }
   s.mission.aligned=true;s.marks+=6;surge(s);return done('Vault alignment solved · build the final access assembly.','mission');
  }
