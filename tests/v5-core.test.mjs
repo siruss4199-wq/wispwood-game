@@ -151,7 +151,7 @@ test('T4 and T6 first crafts reward charges once, without renewable merge farmin
  s.board[7]=item('rig',4);s.board[8]=item('rig',4);const energy=s.energy;success(s,{type:'merge',from:7,to:8});assert.equal(s.charges.rig,5);assert.equal(s.energy,energy+5);
 });
 test('first-session decisions change play before the vault without repetitive producer runs or deadlocks',()=>{
- const s=fresh(0),session={},timeline=[];let actions=0,run=0,maxRun=0;const changes=new Set(),choices=new Set();
+ const s=fresh(0),session={},timeline=[];let actions=0,run=0,maxRun=0,lastBeat=0,maxBeatGap=0;const changes=new Set(),choices=new Set();
  while(s.stage<4&&actions<240){
   const a=choose(s,{session,openCaches:s.stage>=2});
   if(a.type==='contract'&&ready(s,goal(s).needs))choices.add('deliver-story-ingredient');
@@ -159,11 +159,14 @@ test('first-session decisions change play before the vault without repetitive pr
   if(a.type==='opportunity')choices.add('scope-for-signal');
   if(a.type==='produce'&&s.surge>0)choices.add('allocate-'+a.id);
   const r=success(s,a,++actions*4500);run=a.type==='produce'?run+1:0;maxRun=Math.max(run,maxRun);
+  const payoff=r.breakthrough||r.bonus||['milestone','contract','discovery','container','clear'].includes(r.event)||(r.event==='merge'&&s.merges%3===0);
+  if(payoff){maxBeatGap=Math.max(maxBeatGap,actions-lastBeat);lastBeat=actions;}
   if(r.event==='milestone')changes.add('stage-'+s.stage);
   if(r.event==='discovery')changes.add('enriched-sources');
-  timeline.push({action:actions,seconds:actions*4.5,command:a.type,stage:s.stage,surge:s.surge??0,occupied:s.board.filter(Boolean).length,event:r.event});
+  timeline.push({action:actions,seconds:actions*4.5,command:a.type,stage:s.stage,energy:s.energy,surge:s.surge??0,occupied:s.board.filter(Boolean).length,event:r.event});
  }
  assert.equal(s.stage,4);assert.ok(actions>=120&&actions<=200,'roughly 9–15 estimated minutes');assert.ok(maxRun<=3,'no prolonged producer-only sequence');
- assert.ok(choices.size>=4);assert.ok(changes.size>=4);assert.ok(session.signal&&session.trade);assert.ok(s.discoveryDone);
- assert.ok(Math.min(...timeline.map(x=>x.occupied))>=18);console.log(JSON.stringify({session:true,actions,maxProducerRun:maxRun,choices:[...choices],changes:[...changes]}));
+ assert.ok(choices.size>=4);assert.ok(changes.size>=4);assert.ok(session.signal&&session.trade);assert.ok(s.discoveryDone);assert.ok(maxBeatGap<=9,'small tangible payoff within 40 estimated seconds');
+ assert.ok(Math.max(...timeline.filter(x=>x.stage<4).map(x=>x.energy))<120,'supply rewards do not hit the cap during the chapter');
+ assert.ok(Math.min(...timeline.map(x=>x.occupied))>=18);console.log(JSON.stringify({session:true,actions,maxProducerRun:maxRun,maxPayoffGapSeconds:maxBeatGap*4.5,choices:[...choices],changes:[...changes]}));
 });

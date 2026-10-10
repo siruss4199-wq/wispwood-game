@@ -9,9 +9,9 @@ export const FAMILIES={
 export const SOURCES={rig:{name:'Rivet Rover',cost:1,family:'rig',unlock:0},chart:{name:'Survey Kite',cost:1,family:'chart',unlock:1},flux:{name:'Echo Crucible',cost:2,family:'flux',unlock:2}};
 const req=(family,tier,count=1)=>({family,tier,count});
 export const STAGES=[
- {name:'Clear the landing',verb:'Clear path',scene:'Blocked approach',needs:[req('rig',1,2)],energy:6,next:'Survey Kite + expedition camp',text:'Two grip tools can lift the fallen marker.'},
- {name:'Find the buried door',verb:'Excavate',scene:'Excavation camp',needs:[req('rig',4),req('chart',3)],energy:14,next:'Echo Crucible + excavation cache',text:'A crawler jack and survey scope will uncover the entrance.'},
- {name:'Wake the ring engine',verb:'Power rings',scene:'Entrance uncovered',needs:[req('flux',4),req('rig',4)],energy:18,next:'Powered vault + enriched sources',text:'Raise the rings with a lantern and crawler jack.'},
+ {name:'Clear the landing',verb:'Clear path',scene:'Blocked approach',needs:[req('rig',1,2)],energy:4,next:'Survey Kite + expedition camp',text:'Two grip tools can lift the fallen marker.'},
+ {name:'Find the buried door',verb:'Excavate',scene:'Excavation camp',needs:[req('rig',4),req('chart',3)],energy:6,next:'Echo Crucible + excavation cache',text:'A crawler jack and survey scope will uncover the entrance.'},
+ {name:'Wake the ring engine',verb:'Power rings',scene:'Entrance uncovered',needs:[req('flux',4),req('rig',4)],energy:6,next:'Powered vault + enriched sources',text:'Raise the rings with a lantern and crawler jack.'},
  {name:'Open the Tideglass Vault',verb:'Open vault',scene:'Rings awakened',needs:[req('chart',5),req('flux',5),req('rig',3)],energy:20,next:'The chamber + relic cache',text:'Align a star chart and orbit engine to open the vault.'}
 ];
 export const POST_GOALS=[
@@ -39,7 +39,7 @@ function consume(s,needs){for(const r of needs)for(let n=0;n<r.count;n++)s.board
 export function normalContract(s){
  if(s.stage>0&&s.stage<4&&s.normal>0){
   const r=STAGES[s.stage].needs[0];
-  return {title:['','Lift the supply sled','Light the field lab','Chart a safe return'][s.stage],who:'Neri · navigator',needs:[{...r}],energy:24,marks:6,surge:true};
+  return {title:['','Lift the supply sled','Light the field lab','Chart a safe return'][s.stage],who:'Neri · navigator',needs:[{...r}],energy:12,marks:6,surge:true};
  }
  const early=[{title:'Fuel for the climb',who:'Ivo · quartermaster',needs:[req('rig',1)],energy:12,marks:2},{title:'Mark a safe route',who:'Neri · navigator',needs:[req('chart',2)],energy:16,marks:3},{title:'Anchor the tents',who:'Ivo · quartermaster',needs:[req('rig',2),req('chart',1)],energy:20,marks:4}];
  if(s.normal<3)return early[s.normal];
@@ -154,19 +154,19 @@ export function act(s,a,now=Date.now()){
  }
  if(a.type==='startOpportunity'){
   if(s.stage<1||s.opportunity)return fail('One opportunity at a time.');
-  s.opportunity={needs:[req(s.stage>=2?'flux':'chart',3)],energy:28,marks:8,ends:now+180000};return done('Signal window started · three minutes.');
+  s.opportunity={needs:[req(s.stage>=2?'flux':'chart',3)],energy:12,marks:8,ends:now+180000};return done('Signal window started · three minutes.');
  }
  if(a.type==='opportunity'){
   if(!s.opportunity)return fail('No active signal.');
   if(now>s.opportunity.ends){s.opportunity=null;return done('Signal passed. No items lost.');}
   if(!ready(s,s.opportunity.needs))return fail('Make the highlighted signal item.');
-  consume(s,s.opportunity.needs);s.energy=Math.min(120,s.energy+28);s.marks+=8;s.opportunity=null;s.contracts++;supplies(s,4,true,'survey');surge(s);return done('Signal reached · Supply Surge: choose your next 3 improved pulls','contract');
+  consume(s,s.opportunity.needs);s.energy=Math.min(120,s.energy+s.opportunity.energy);s.marks+=8;s.opportunity=null;s.contracts++;supplies(s,4,true,'survey');surge(s);return done('Signal reached · Supply Surge: choose your next 3 improved pulls','contract');
  }
  if(a.type==='discovery'){
   const i=s.board.findIndex(x=>x?.type==='glyph');
   if(i<0||!ready(s,[req('chart',2)]))return fail('Decode an echo fragment with a sight lens.');
   if(s.discoveryDone)return fail('Fragment already decoded. Recycle extras for energy.');
-  s.board[i]=null;consume(s,[req('chart',2)]);s.discoveryDone=true;s.boost=true;s.energy=Math.min(120,s.energy+18);s.marks+=6;supplies(s,4,true,'relic');
+  s.board[i]=null;consume(s,[req('chart',2)]);s.discoveryDone=true;s.boost=true;s.energy=Math.min(120,s.energy+8);s.marks+=6;supplies(s,4,true,'relic');
   return done('Hidden cache located. All sources now yield richer parts.','discovery');
  }
  if(a.type==='branch'){
@@ -212,6 +212,7 @@ export function load(raw,now=Date.now()){
   for(const k of ['normal','moves','merges','marks','contracts','rations'])if(!integer(s[k],0,1000000))return fresh(now);
   if(!Array.isArray(s.discovered)||!s.discovered.every(x=>typeof x==='string'&&/^(rig|chart|flux):[0-7]$/.test(x)))return fresh(now);
   if(s.opportunity&&(!Number.isFinite(s.opportunity.ends)||!Array.isArray(s.opportunity.needs)||s.opportunity.needs.length!==1||!['chart','flux'].includes(s.opportunity.needs[0]?.family)||s.opportunity.needs[0].tier!==3||s.opportunity.needs[0].count!==1))s.opportunity=null;
+  if(s.opportunity)s.opportunity.energy=s.opportunity.energy===28?28:12;
   s.history=Array.isArray(s.history)?s.history.filter(x=>x?.event==='milestone'&&Number.isFinite(x.at)).slice(-40):[];
   if(s.surge!==undefined&& !integer(s.surge,0,3))delete s.surge;
   return s;

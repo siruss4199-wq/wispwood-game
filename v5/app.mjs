@@ -25,9 +25,12 @@ function render(){
  else {const op=opportunity(state),expired=op&&op.remaining===0;cards+=`<button class="contract opportunity ${op&&!expired&&ready(state,op.needs)?'ready':''}" data-contract="${op?'opportunity':'startOpportunity'}" ${state.stage<1?'disabled':''}><span class="contractHead"><span><small>OPTIONAL · ${state.stage<1?'AFTER LANDING':'NO PENALTY'}</small><b>${op?'Catch the signal':'A passing signal'}</b></span></span><span class="contractBottom">${op?`<span class="needs">${needsHTML(op.needs)}</span>`:`<span class="choiceNote">${state.stage>=2?'A resonator':'A scope'} before the signal fades</span>`}<span class="reward">+28 ϟ<small id="opClock">${op?(expired?'PASSED · DISMISS':Math.ceil(op.remaining/1000)+'s · '+(ready(state,op.needs)?'DELIVER':'MAKE')):'START 3 MIN'}</small></span></span></button>`;}
  $('#contracts').innerHTML=cards;
  const normalReward=$('[data-contract="contract"] .reward small');
- if(normalReward)normalReward.textContent=`${cr?'DELIVER':near(state,c.needs)||'MAKE ITEMS'} · ${c.surge?'3 BOOSTED PULLS':'+'+c.marks+' ✦'}`;
+ if(normalReward)normalReward.textContent=cr?'DELIVER':near(state,c.needs)==='1 MERGE AWAY'?'1 MERGE':'MAKE ITEMS';
+ if(c.surge)$('[data-contract="contract"] .contractHead small').textContent='SUPPLIES · 3 BOOSTS';
  const signalTitle=$('.opportunity b');if(signalTitle)signalTitle.textContent=state.opportunity?'Signal Window':'Signal Window · opt in';
  const signalNote=$('.opportunity .choiceNote');if(signalNote)signalNote.textContent='Trade a '+(state.stage>=2?'resonator':'scope')+' → 3 boosted pulls';
+ const signalReward=$('.opportunity .reward');if(signalReward)signalReward.firstChild.textContent=`+${state.opportunity?.energy??12} ϟ`;
+ const discoveryReward=$('.discovery .reward');if(discoveryReward)discoveryReward.firstChild.textContent='+8 ϟ';
  const selectedItem=state.board[selected];
  board.innerHTML=state.board.map((x,i)=>{
   const isSource=x?.type==='source',locked=isSource&&state.stage<SOURCES[x.id].unlock;
