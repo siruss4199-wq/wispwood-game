@@ -37,6 +37,10 @@ export function ready(s,needs){return needs.every(r=>count(s,r)>=r.count);}
 export function matches(x,r){return x?.type==='item'&&x.family===r.family&&x.tier===r.tier;}
 function consume(s,needs){for(const r of needs)for(let n=0;n<r.count;n++)s.board[s.board.findIndex(x=>matches(x,r))]=null;}
 export function normalContract(s){
+ if(s.stage>0&&s.stage<4&&s.normal>0){
+  const r=STAGES[s.stage].needs[0];
+  return {title:['','Lift the supply sled','Light the field lab','Chart a safe return'][s.stage],who:'Neri · navigator',needs:[{...r}],energy:24,marks:6,surge:true};
+ }
  const early=[{title:'Fuel for the climb',who:'Ivo · quartermaster',needs:[req('rig',1)],energy:12,marks:2},{title:'Mark a safe route',who:'Neri · navigator',needs:[req('chart',2)],energy:16,marks:3},{title:'Anchor the tents',who:'Ivo · quartermaster',needs:[req('rig',2),req('chart',1)],energy:20,marks:4}];
  if(s.normal<3)return early[s.normal];
  const f=s.stage>=2?['rig','chart','flux'][s.normal%3]:['rig','chart'][s.normal%2];
@@ -49,7 +53,16 @@ export function opportunity(s,now=Date.now()){
 export function nextOutput(s,id){
  const n=s.taps[id]+1;
  if(n%9===0)return {type:'glyph'};
- return item(id, s.boost&&n%3===0?2:n%4===0?1:0);
+ return item(id, s.boost&&n%3===0?2:s.surge>0?1:n%4===0?1:0);
+}
+// Action-limited, shared across sources: spend the improved pulls where they matter.
+// Never stack or expire while the player thinks. Old saves simply have no active surge.
+function surge(s){s.surge=3;}
+export function near(s,needs){
+ const missing=needs.flatMap(r=>Array(Math.max(0,r.count-count(s,r))).fill(r));
+ if(!missing.length)return 'READY';
+ if(missing.length===1){const r=missing[0];return r.tier>0&&count(s,{family:r.family,tier:r.tier-1})>=2?'1 MERGE AWAY':'1 ITEM LEFT';}
+ return '';
 }
 function put(s,x){const i=s.board.indexOf(null);if(i<0)return -1;s.board[i]=x;return i;}
 // Supply rewards are finite, usable material. Never displace a kept object.
@@ -97,7 +110,9 @@ export function act(s,a,now=Date.now()){
   if(offcuts){put(s,item(crafted.family,0));put(s,item(crafted.family,0));}
   const chainFind=bonus&&!offcuts&&!resupply.length&&s.board.filter(Boolean).length<24;
   if(chainFind){put(s,item(crafted.family,0));put(s,item(crafted.family,0));}
-  return done(`${nameOf(crafted)} discovered${resupply.length?' · expedition supplies':offcuts?' · reusable offcuts':chainFind?' · merge run: matching parts!':''}${bonus?' · +1 energy':''}`,'merge',a.to);
+  const breakthrough=firstCraft&&crafted.tier>=3;
+  if(breakthrough){s.charges[crafted.family]=Math.min(7,s.charges[crafted.family]+2);if(crafted.tier>=5)s.energy=Math.min(120,s.energy+4);}
+  return {...done(`${nameOf(crafted)} discovered${breakthrough?' · +2 source charges':''}${resupply.length?' · expedition supplies':offcuts?' · reusable offcuts':chainFind?' · merge run: matching parts!':''}${bonus?' · +1 energy':''}`,'merge',a.to),breakthrough};
  }
  if(a.type==='produce'){
   const p=SOURCES[a.id];if(!p||s.stage<p.unlock)return fail(`Unlock after ${a.id==='chart'?'clearing the landing':'excavating the door'}.`);
@@ -105,7 +120,8 @@ export function act(s,a,now=Date.now()){
   if(!s.charges[a.id])return fail('Service this source: a grip tool or 3 energy.');
   if(s.energy<p.cost)return fail('Deliver a contract, recycle an item, or use a field ration.');
   if(!s.board.includes(null))return fail('Board full. Merge, deliver, recycle, or clear a blocker.');
-  const burst=burstOutput(s,a.id),x=nextOutput(s,a.id),i=put(s,x);const windfall=burst&&(s.taps[a.id]+1)%7===0;const bonusIndex=burst?put(s,item(a.id,windfall?1:0)):-1;s.energy-=p.cost;s.charges[a.id]--;s.taps[a.id]++;
+  const surged=s.surge>0,burst=burstOutput(s,a.id),x=nextOutput(s,a.id),i=put(s,x);const windfall=burst&&(s.taps[a.id]+1)%7===0;const bonusIndex=burst?put(s,item(a.id,windfall?1:0)):-1;s.energy-=p.cost;s.charges[a.id]--;s.taps[a.id]++;
+  if(surged&&x.type!=='glyph')s.surge--;
   if(x.type==='glyph')s.discovery=true;
   return {...done(x.type==='glyph'?'Echo fragment found! A discovery awaits.':`${nameOf(x)}${windfall?' + bonus tool!':burst?' + raw part':''} · ${s.charges[a.id]} charges left`,'produce',i),bonus:windfall?a.id:null,reveal:windfall?[i,bonusIndex]:[]};
  }
@@ -127,11 +143,13 @@ export function act(s,a,now=Date.now()){
    if(s.stage===4){const packed=s.board.find(x=>x?.type==='crate'&&x.kind==='relic');if(packed)packed.left=5;else put(s,container('relic',5));s.marks+=15;}
   }else{s.post++;s.marks+=10;}
   supplies(s,6,false,s.stage===1?'survey':s.stage===2?'relic':null);
+  if(s.stage===1||s.stage===2)surge(s);
   return done(s.stage===4&&s.post===0?'The Tideglass Vault is open. The sky inside is moving.':g.next,'milestone');
  }
  if(a.type==='contract'){
   const c=normalContract(s);if(!ready(s,c.needs))return fail('Make the highlighted contract items.');
   consume(s,c.needs);s.energy=Math.min(120,s.energy+c.energy);s.marks+=c.marks;s.normal++;s.contracts++;const shipment=supplies(s,4,true,{rig:'salvage',chart:'survey',flux:'relic'}[c.needs[0].family]);
+  if(c.surge)surge(s);
   return done(`Supplies secured${shipment.length?' · field supplies':''} · +${c.energy} energy`,'contract');
  }
  if(a.type==='startOpportunity'){
@@ -142,7 +160,7 @@ export function act(s,a,now=Date.now()){
   if(!s.opportunity)return fail('No active signal.');
   if(now>s.opportunity.ends){s.opportunity=null;return done('Signal passed. No items lost.');}
   if(!ready(s,s.opportunity.needs))return fail('Make the highlighted signal item.');
-  consume(s,s.opportunity.needs);s.energy=Math.min(120,s.energy+28);s.marks+=8;s.opportunity=null;s.contracts++;supplies(s,4,true,'survey');return done('Signal reached · +28 energy, +8 merit','contract');
+  consume(s,s.opportunity.needs);s.energy=Math.min(120,s.energy+28);s.marks+=8;s.opportunity=null;s.contracts++;supplies(s,4,true,'survey');surge(s);return done('Signal reached · Supply Surge: choose your next 3 improved pulls','contract');
  }
  if(a.type==='discovery'){
   const i=s.board.findIndex(x=>x?.type==='glyph');
@@ -159,7 +177,7 @@ export function act(s,a,now=Date.now()){
   if(!valid(a.index)||s.board[a.index]?.type!=='rock')return fail('Choose saltstone.');
   const b=s.board.findIndex(x=>x?.type==='brace');if(b<0)return fail('Convert a split spanner into a trail brace.');
   s.board[b]=null;s.board[a.index]=container('locker');
-  const revealed=unpack(s,a.index);return {...done('Saltbound Locker revealed · expedition gear recovered','clear',a.index),reveal:revealed,containerKind:'locker'};
+  const revealed=unpack(s,a.index);surge(s);return {...done('Saltbound Locker revealed · Supply Surge: 3 improved pulls','clear',a.index),reveal:revealed,containerKind:'locker'};
  }
  if(a.type==='crate'){
   if(!valid(a.index)||s.board[a.index]?.type!=='crate')return fail('Choose a reward container.');
@@ -195,6 +213,7 @@ export function load(raw,now=Date.now()){
   if(!Array.isArray(s.discovered)||!s.discovered.every(x=>typeof x==='string'&&/^(rig|chart|flux):[0-7]$/.test(x)))return fresh(now);
   if(s.opportunity&&(!Number.isFinite(s.opportunity.ends)||!Array.isArray(s.opportunity.needs)||s.opportunity.needs.length!==1||!['chart','flux'].includes(s.opportunity.needs[0]?.family)||s.opportunity.needs[0].tier!==3||s.opportunity.needs[0].count!==1))s.opportunity=null;
   s.history=Array.isArray(s.history)?s.history.filter(x=>x?.event==='milestone'&&Number.isFinite(x.at)).slice(-40):[];
+  if(s.surge!==undefined&& !integer(s.surge,0,3))delete s.surge;
   return s;
  }catch{return fresh(now);}
 }

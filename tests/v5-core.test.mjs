@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';
-import {fresh,act,load,SAVE_KEY,goal,ready,item,FAMILIES,SOURCES,nextOutput,normalContract} from '../v5/core.mjs';
+import {fresh,act,load,SAVE_KEY,goal,ready,item,FAMILIES,SOURCES,nextOutput,normalContract,near} from '../v5/core.mjs';
 import {container,contents,CONTAINERS} from '../v5/containers.mjs';
 import {art,scene} from '../v5/art.mjs';import {choose} from './v5-policy.mjs';
 function success(s,a,t=1000){const r=act(s,a,t);assert.equal(r.ok,true,r.message);return r;}
@@ -128,4 +128,42 @@ test('parts case charge support happens once and old cache saves keep all their 
 test('last-charge producer bonus is useful, finite and preserves ninth-pull rare output',()=>{
  const s=fresh();s.taps.rig=6;s.charges.rig=1;for(let i=0;i<36;i++)if(s.board[i]?.type==='item')s.board[i]=null;
  const r=success(s,{type:'produce',id:'rig'});assert.equal(r.bonus,'rig');assert.equal(r.reveal.length,2);assert.equal(s.board[r.reveal[1]].tier,1);assert.equal(s.charges.rig,0);failUnchanged(s,{type:'produce',id:'rig'});success(s,{type:'service',id:'rig'});s.taps.rig=8;assert.equal(nextOutput(s,'rig').type,'glyph');
+});
+
+test('shared surge is finite, survives reload, protects rare pulls and failed commands',()=>{
+ const s=fresh();s.stage=2;s.surge=3;
+ assert.equal(nextOutput(s,'chart').tier,1);success(s,{type:'produce',id:'chart'});assert.equal(s.surge,2);
+ const saved=load(JSON.stringify(s));assert.equal(saved.surge,2);success(saved,{type:'produce',id:'flux'});assert.equal(saved.surge,1);
+ saved.charges.rig=0;failUnchanged(saved,{type:'produce',id:'rig'});assert.equal(saved.surge,1);
+ saved.charges.rig=7;saved.taps.rig=8;success(saved,{type:'produce',id:'rig'});assert.equal(saved.surge,1,'a guaranteed rare does not waste an improved part');
+ success(saved,{type:'produce',id:'rig'});assert.equal(saved.surge,0);assert.equal(nextOutput(saved,'rig').tier,0);
+ const old=fresh();delete old.surge;assert.deepEqual(load(JSON.stringify(old)),old);
+ const corrupt={...old,surge:999};assert.equal(load(JSON.stringify(corrupt)).surge,undefined);
+});
+test('current expedition ingredients compete with finite surge contracts and honest proximity cues',()=>{
+ for(const stage of [1,2,3]){const s=fresh();s.stage=stage;s.normal=1;const c=normalContract(s);assert.deepEqual(c.needs[0],goal(s).needs[0]);s.board[7]=item(c.needs[0].family,c.needs[0].tier);success(s,{type:'contract'});assert.equal(s.surge,3);assert.equal(ready(s,goal(s).needs),false);}
+ const s=fresh(),needs=[{family:'rig',tier:2,count:1}];assert.equal(near(s,needs),'1 ITEM LEFT');s.board[7]=item('rig',1);assert.equal(near(s,needs),'1 MERGE AWAY');s.board[7]=item('rig',2);assert.equal(near(s,needs),'READY');
+});
+test('T4 and T6 first crafts reward charges once, without renewable merge farming',()=>{
+ const s=fresh();s.charges.rig=1;s.board[7]=item('rig',2);s.board[8]=item('rig',2);
+ assert.equal(success(s,{type:'merge',from:7,to:8}).breakthrough,true);assert.equal(s.charges.rig,3);
+ s.board[7]=item('rig',2);s.board[8]=item('rig',2);assert.equal(success(s,{type:'merge',from:7,to:8}).breakthrough,false);assert.equal(s.charges.rig,3);
+ s.board[7]=item('rig',4);s.board[8]=item('rig',4);const energy=s.energy;success(s,{type:'merge',from:7,to:8});assert.equal(s.charges.rig,5);assert.equal(s.energy,energy+5);
+});
+test('first-session decisions change play before the vault without repetitive producer runs or deadlocks',()=>{
+ const s=fresh(0),session={},timeline=[];let actions=0,run=0,maxRun=0;const changes=new Set(),choices=new Set();
+ while(s.stage<4&&actions<240){
+  const a=choose(s,{session,openCaches:s.stage>=2});
+  if(a.type==='contract'&&ready(s,goal(s).needs))choices.add('deliver-story-ingredient');
+  if(a.type==='contract'&&s.stage===2)choices.add('trade-lantern-for-surge');
+  if(a.type==='opportunity')choices.add('scope-for-signal');
+  if(a.type==='produce'&&s.surge>0)choices.add('allocate-'+a.id);
+  const r=success(s,a,++actions*4500);run=a.type==='produce'?run+1:0;maxRun=Math.max(run,maxRun);
+  if(r.event==='milestone')changes.add('stage-'+s.stage);
+  if(r.event==='discovery')changes.add('enriched-sources');
+  timeline.push({action:actions,seconds:actions*4.5,command:a.type,stage:s.stage,surge:s.surge??0,occupied:s.board.filter(Boolean).length,event:r.event});
+ }
+ assert.equal(s.stage,4);assert.ok(actions>=120&&actions<=200,'roughly 9–15 estimated minutes');assert.ok(maxRun<=3,'no prolonged producer-only sequence');
+ assert.ok(choices.size>=4);assert.ok(changes.size>=4);assert.ok(session.signal&&session.trade);assert.ok(s.discoveryDone);
+ assert.ok(Math.min(...timeline.map(x=>x.occupied))>=18);console.log(JSON.stringify({session:true,actions,maxProducerRun:maxRun,choices:[...choices],changes:[...changes]}));
 });

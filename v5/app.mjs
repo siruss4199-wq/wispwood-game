@@ -1,5 +1,5 @@
 import {containerInfo,contents} from './containers.mjs';
-import {SAVE_KEY,FAMILIES,SOURCES,STAGES,fresh,load,act,goal,count,ready,matches,nameOf,normalContract,opportunity,nextOutput,burstOutput,item} from './core.mjs';
+import {SAVE_KEY,FAMILIES,SOURCES,STAGES,fresh,load,act,goal,count,ready,matches,nameOf,normalContract,opportunity,nextOutput,burstOutput,item,near} from './core.mjs';
 import {art,scene,portrait} from './art.mjs';
 import {feedback,sound,reduced} from './feedback.mjs';
 import {platform} from '../v4/platform.mjs';
@@ -9,7 +9,7 @@ let selected=null,focus='goal',drag=null,suppressUntil=0;
 const board=$('#board'),message=$('#message');
 function persist(){try{const raw=JSON.stringify(state);localStorage.setItem(SAVE_KEY,raw);platform.save(raw);}catch{message.textContent='Storage unavailable. This session is playable, but progress cannot be saved.';}}
 function needed(){return focus==='contract'?normalContract(state).needs:focus==='opportunity'?state.opportunity?.needs??[]:focus==='discovery'?[{family:'chart',tier:2,count:1}]:goal(state)?.needs??[];}
-function needsHTML(needs){return needs.map(r=>`<span class="need ${count(state,r)>=r.count?'done':''}" title="${nameOf(item(r.family,r.tier))}">${art(item(r.family,r.tier))}<b>${Math.min(count(state,r),r.count)}/${r.count}</b></span>`).join('');}
+function needsHTML(needs){return needs.map(r=>`<span class="need ${count(state,r)>=r.count?'done':near(state,[r])==='1 MERGE AWAY'?'almost':''}" title="${nameOf(item(r.family,r.tier))} · ${near(state,[r])}">${art(item(r.family,r.tier))}<b>${Math.min(count(state,r),r.count)}/${r.count}</b></span>`).join('');}
 function hint(){if(!state.merges)return 'Tap two matching copper offcuts';const reqs=needed();if(ready(state,reqs)&&reqs.length)return focus==='goal'?'Expedition materials ready — build above':'Contract ready — choose whether to deliver';const r=reqs.find(r=>count(state,r)<r.count);return r?`${nameOf(item(r.family,r.tier))} ← ${SOURCES[r.family].name}`:'Explore, collect, or clear saltstone';}
 function render(){
  $('.world').classList.toggle('opened',state.stage===4);$('.destination').textContent=state.stage===4?'VAULT DISCOVERED':'OPEN THE TIDEGLASS VAULT';
@@ -18,11 +18,16 @@ function render(){
  $('#chapterLabel').textContent=state.stage===4?'DISCOVERY · THE SKY WITHIN':'THE SALTGLASS REACH';
  const g=goal(state);$('#goalTitle').textContent=g?.name??'Expedition complete';$('#step').textContent=state.stage<4?`${state.stage+1} / 4`:'DISCOVERED';
  $('#goalNeeds').innerHTML=needsHTML(g?.needs??[]);$('#goalButton').textContent=g?.verb??'Journal';$('#goalButton').disabled=!!g&&!ready(state,g.needs);$('#nextUnlock').textContent=g?.next??'All chapter badges found. Keep collecting.';
+ if(g){const close=near(state,g.needs);if(close&&close!=='READY')$('#step').textContent=close;$('.objective').classList.toggle('almost',close==='1 MERGE AWAY');}
  const c=normalContract(state),cr=ready(state,c.needs),overlap=c.needs.some(r=>g?.needs.some(v=>v.family===r.family&&v.tier===r.tier));
  let cards=`<button class="contract ${cr?'ready':''} ${focus==='contract'?'active':''}" data-contract="contract" aria-label="${c.title}. ${c.needs.map(r=>nameOf(item(r.family,r.tier))+' '+count(state,r)+' of '+r.count).join(', ')}. Reward ${c.energy} energy. ${cr?'Ready to deliver.':''}"><span class="contractHead">${portrait(c.who.startsWith('Neri')?'neri':'ivo')}<span><small>SUPPLY CONTRACT</small><b>${c.title}</b></span></span><span class="contractBottom"><span class="needs">${needsHTML(c.needs)}</span><span class="reward">+${c.energy} ϟ<small>${cr?'DELIVER':'MAKE ITEMS'} · +${c.marks} ✦</small></span></span>${overlap?'<span class="choiceNote">Also needed for the expedition</span>':''}</button>`;
  if(state.discovery&&!state.discoveryDone&&!state.opportunity){const dr=state.board.some(x=>x?.type==='glyph')&&ready(state,[{family:'chart',tier:2,count:1}]);cards+=`<button class="contract discovery ${dr?'ready':''}" data-contract="discovery"><span class="contractHead"><span><small>RARE DISCOVERY</small><b>Decode the echo</b></span></span><span class="contractBottom"><span class="needs"><span class="need">${art({type:'glyph'})}<b>${state.board.some(x=>x?.type==='glyph')?'1':'0'}/1</b></span>${needsHTML([{family:'chart',tier:2,count:1}])}</span><span class="reward">+18 ϟ<small>${dr?'DECODE':'RICHER DROPS'}</small></span></span></button>`;}
  else {const op=opportunity(state),expired=op&&op.remaining===0;cards+=`<button class="contract opportunity ${op&&!expired&&ready(state,op.needs)?'ready':''}" data-contract="${op?'opportunity':'startOpportunity'}" ${state.stage<1?'disabled':''}><span class="contractHead"><span><small>OPTIONAL · ${state.stage<1?'AFTER LANDING':'NO PENALTY'}</small><b>${op?'Catch the signal':'A passing signal'}</b></span></span><span class="contractBottom">${op?`<span class="needs">${needsHTML(op.needs)}</span>`:`<span class="choiceNote">${state.stage>=2?'A resonator':'A scope'} before the signal fades</span>`}<span class="reward">+28 ϟ<small id="opClock">${op?(expired?'PASSED · DISMISS':Math.ceil(op.remaining/1000)+'s · '+(ready(state,op.needs)?'DELIVER':'MAKE')):'START 3 MIN'}</small></span></span></button>`;}
  $('#contracts').innerHTML=cards;
+ const normalReward=$('[data-contract="contract"] .reward small');
+ if(normalReward)normalReward.textContent=`${cr?'DELIVER':near(state,c.needs)||'MAKE ITEMS'} · ${c.surge?'3 BOOSTED PULLS':'+'+c.marks+' ✦'}`;
+ const signalTitle=$('.opportunity b');if(signalTitle)signalTitle.textContent=state.opportunity?'Signal Window':'Signal Window · opt in';
+ const signalNote=$('.opportunity .choiceNote');if(signalNote)signalNote.textContent='Trade a '+(state.stage>=2?'resonator':'scope')+' → 3 boosted pulls';
  const selectedItem=state.board[selected];
  board.innerHTML=state.board.map((x,i)=>{
   const isSource=x?.type==='source',locked=isSource&&state.stage<SOURCES[x.id].unlock;
@@ -32,6 +37,8 @@ function render(){
   return `<button class="tile ${x?.type??'empty'} ${locked?'locked':''} ${useful?'useful':''} ${selected===i?'selected':''} ${matching?'match':''} ${needed().some(r=>matches(x,r))?'wanted':''}" data-index="${i}" ${x?.family||isSource||x?.type==='crate'?`data-family="${x.family??(isSource?x.id:containerInfo(x).family)}"`:''} data-variant="${i%3}" data-use="${expedition&&contract?'both':expedition?'expedition':contract?'contract':''}" aria-label="${nameOf(x)}${x?.type==='crate'?' · tap to reveal · '+contents(x).map(nameOf).join(', '):''}${expedition&&contract?' · needed for expedition and contract':expedition?' · needed for expedition':contract?' · useful for contract':''}${locked?' · locked':isSource?' · '+SOURCES[x.id].cost+' energy · '+state.charges[x.id]+' charges':''}. Space ${i+1}" aria-pressed="${selected===i}">${art(x)}${expedition||contract?`<span class="useBadge" aria-hidden="true">${expedition?'◆':''}${contract?'▰':''}</span>`:''}${isSource?(locked?`<span class="lockedLabel">${x.id==='chart'?'CLEAR PATH':'EXCAVATE'}</span>`:`<span class="energyCue">ϟ${SOURCES[x.id].cost}</span><span class="charge">${Array.from({length:7},(_,n)=>`<i class="${n>=state.charges[x.id]?'used':''}"></i>`).join('')}</span>`):x?.type==='crate'?`<span class="pulls">${x.left}</span>`:''}</button>`;
  }).join('');
  $('#free').textContent=state.board.filter(x=>x===null).length+' spaces';$('#hint').textContent=hint();$('#rationButton').hidden=state.energy>3;renderSelection();
+ if(state.surge>0){$('#free').textContent=`ϟ SURGE · ${state.surge} pulls`;$('#free').title='Shared by all producers. Choose which family gets improved parts. No timer.';board.dataset.event='surge';}else{delete board.dataset.event;$('#free').removeAttribute('title');}
+ if(state.discovery&&!state.discoveryDone&&!state.opportunity){const label=$('.discovery .reward small');if(label&&state.board.some(x=>x?.type==='glyph')&&!ready(state,[{family:'chart',tier:2,count:1}]))label.textContent='1 LENS LEFT';}
 }
 function renderSelection(){
  const x=state.board[selected];let title=state.stage<4?'Open the Tideglass Vault':'The crossing is yours',desc=state.stage<4?'Merge identical objects. Choose expedition progress or supplies.':'Chart the star ocean, clear caches, or collect an aurora beacon.',buttons='';
@@ -42,7 +49,7 @@ function renderSelection(){
    buttons=`${x.family==='rig'&&x.tier===2?'<button class="accent" data-action="branch">Make brace</button>':''}<button data-action="recycle">Recycle +${2**x.tier} ϟ</button>`;
   }else if(x.type==='source'){
    if(state.stage<SOURCES[x.id].unlock)desc=`Unlock: ${x.id==='chart'?'clear the landing':'find the buried door'}.`;
-   else {desc=`${state.charges[x.id]}/7 charges · Next: ${nameOf(nextOutput(state,x.id))}${burstOutput(state,x.id)?(state.taps[x.id]+1)%7===0?' + bonus tool':' + raw part':''}`;
+   else {desc=`${state.surge>0?'SURGE · '+state.surge+' shared pulls · ':''}${state.charges[x.id]}/7 charges · Next: ${nameOf(nextOutput(state,x.id))}${burstOutput(state,x.id)?(state.taps[x.id]+1)%7===0?' + bonus tool':' + raw part':''}`;
     buttons=state.charges[x.id]?`<button class="accent" data-action="produce">Produce · ${SOURCES[x.id].cost} ϟ</button>`:'<button data-action="serviceTool">Service · tool</button><button class="accent" data-action="service">Service · 3 ϟ</button>';
    }
   }else if(x.type==='rock'){desc='A trail brace clears this space and reveals expedition gear immediately.';buttons='<button class="accent" data-action="clear">Use brace</button>';}
@@ -56,14 +63,14 @@ function renderSelection(){
  $('#selection').innerHTML=`${x?`<span class="preview">${art(x)}</span>`:''}<span class="copy"><b>${title}</b><small>${desc}</small>${rare}</span>${preview}<span class="actionGroup">${buttons}</span>`;
 }
 function run(a){
- const energyBefore=state.energy,firstContract=state.contracts===0;
+ const energyBefore=state.energy,firstContract=state.contracts===0,surgeBefore=state.surge??0;
  const rewardOrigin=document.querySelector(a.type==='contract'||a.type==='opportunity'?'#contracts':'.objective')?.getBoundingClientRect();
  const before=state.stage,from=a.type==='produce'?board.querySelector(`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===a.id)}"]`)?.getBoundingClientRect():null;
  const result=act(state,a);message.textContent=result.message;
  if(!result.ok)return result;
  platform.startGameplay();if(['milestone','contract','discovery'].includes(result.event))focus='goal';if(a.type==='merge')selected=result.index;render();persist();
  if(result.event==='milestone'&&state.stage<4)message.textContent=result.message+' unlocked. '+(goal(state)?.text??'');
- feedback({event:result.event,tile:board.querySelector(`[data-index="${result.index}"]`),x:state.board[result.index],from:rewardOrigin,energyDelta:state.energy-energyBefore,stage:state.stage,firstContract,containerKind:result.containerKind,reveal:result.reveal,bonus:result.bonus});
+ feedback({event:result.event,tile:board.querySelector(`[data-index="${result.index}"]`),x:state.board[result.index],from:rewardOrigin,energyDelta:state.energy-energyBefore,stage:state.stage,firstContract,containerKind:result.containerKind,reveal:result.reveal,bonus:result.bonus,breakthrough:result.breakthrough,surgeStarted:state.surge>surgeBefore});
  for(const i of result.reveal??[])board.querySelector(`[data-index="${i}"]`)?.classList.add('merge-pop');
  if(result.event==='milestone'&&state.stage>before){const id=state.stage===1?'chart':state.stage===2?'flux':null;if(id)board.querySelector(`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===id)}"]`)?.classList.add('unlocked');}
  if(result.index!==null&&result.event!=='merge')board.querySelector(`[data-index="${result.index}"]`)?.classList.add('pop');

@@ -33,11 +33,12 @@ export function rewardFlight(from,to,label){
 export function moment(title,detail='',object=null){
  document.querySelector('.moment')?.remove();const el=document.createElement('div');el.className='moment';el.setAttribute('role','status');const b=document.createElement('b'),small=document.createElement('small');b.textContent=title;small.textContent=detail;if(object){const icon=document.createElement('span');icon.style.cssText='float:left;width:42px;height:42px;margin-right:10px';icon.innerHTML=art(object);icon.firstElementChild.style.cssText='width:100%;height:100%';el.append(icon);}el.append(b,small);transient(el,reduced()?2100:1750);
 }
-export function feedback({event,tile,x,from,energyDelta,stage,firstContract=false,containerKind,reveal=[],bonus}){
+export function feedback({event,tile,x,from,energyDelta,stage,firstContract=false,containerKind,reveal=[],bonus,breakthrough,surgeStarted}){
  const rect=tile?.getBoundingClientRect();
  if(event==='merge'){
   tile?.classList.add('merge-pop');burst(rect,x?.family,x?.tier>=4);sound.play('merge',x?.tier??0);
   if(x?.tier>=4&&!reduced()){const b=document.querySelector('#board');b.classList.remove('impact');void b.offsetWidth;b.classList.add('impact');}
+  if(breakthrough)moment(x.tier>=5?'Masterwork assembled':'Equipment breakthrough',`+2 source charges${x.tier>=5?' · +4 energy':''}`,x);
  }else if(event==='produce'&&x?.type==='glyph'){burst(rect,'flux',true);sound.play('rare');moment('Echo fragment found','Decode it, or reclaim its energy');}
  else if(event==='clear'||event==='container'){const info=containerInfo({kind:containerKind});burst(rect,info.family,true);sound.play('rare');moment(event==='clear'?'Saltbound Locker uncovered':info.name,`${reveal.length} finds revealed${containerKind==='salvage'?' · Rover charge support':''}`,{type:'crate',kind:containerKind});}
  else if(event==='contract'){rewardFlight(from,document.querySelector('.resource').getBoundingClientRect(),`+${energyDelta} ϟ`);sound.play('contract');if(firstContract)moment('Supplies secured','Your first contract delivered');}
@@ -48,4 +49,5 @@ export function feedback({event,tile,x,from,energyDelta,stage,firstContract=fals
  }else if(event==='discovery'){sound.play('rare');burst(document.querySelector('.world').getBoundingClientRect(),'flux',true);}
  else if(event==='produce'&&bonus){burst(rect,bonus,true);sound.play('rare');moment({rig:'Rover spare found',chart:'Survey bundle found',flux:'Charged fragment found'}[bonus],'A useful bonus from this source');}
  else if(event==='produce')sound.play('produce');
+ if(surgeStarted){const existing=document.querySelector('.moment small');if(existing)existing.textContent+=' · Supply Surge: 3 shared pulls';else moment('Supply Surge · 3 pulls','Choose a producer: improved parts, shared allowance');}
 }

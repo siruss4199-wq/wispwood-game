@@ -1,10 +1,14 @@
 // A fresh-player policy shared by simulation and real UI tests. No fixture injection.
 import {goal,ready,count,normalContract,SOURCES} from '../v5/core.mjs';
-export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false}={}){
- const target=sideFirst&&s.contracts===0?normalContract(s):goal(s);
+export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,session=null}={}){
+ // Session policy makes explicit diversions, rather than treating the story as the only goal.
+ if(session&&s.stage===1&&!session.signal){session.signal=true;return {type:'startOpportunity'};}
+ const signal=session&&s.opportunity;
+ const side=session&&s.stage===2&&!session.trade;
+ const target=signal?s.opportunity:side||sideFirst&&s.contracts===0?normalContract(s):goal(s);
  if(!target)return null;
- const deliver=sideFirst&&s.contracts===0?'contract':'goal';
- if(ready(s,target.needs))return {type:deliver};
+ const deliver=signal?'opportunity':side||sideFirst&&s.contracts===0?'contract':'goal';
+ if(ready(s,target.needs)){if(side)session.trade=true;return {type:deliver};}
  if(s.discovery&&!s.discoveryDone&&s.board.some(x=>x?.type==='glyph')&&ready(s,[{family:'chart',tier:2,count:1}]))return {type:'discovery'};
  const spaces=s.board.filter(x=>x===null).length;
  if(openCaches&&spaces>8){const box=s.board.findIndex(x=>x?.type==='crate');if(box>=0)return {type:'crate',index:box};}
