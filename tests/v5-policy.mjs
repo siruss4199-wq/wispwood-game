@@ -5,11 +5,11 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
  if(session&&s.stage===1&&!session.signal){session.signal=true;return {type:'startOpportunity'};}
  const signal=session&&s.opportunity;
  const side=session&&s.stage===2&&!session.trade;
+ if(s.discovery&&!s.discoveryDone&&s.board.some(x=>x?.type==='glyph')&&ready(s,[{family:'chart',tier:2,count:1}]))return {type:'discovery'};
  const target=signal?s.opportunity:side||sideFirst&&s.contracts===0?normalContract(s):goal(s);
  if(!target)return null;
  const deliver=signal?'opportunity':side||sideFirst&&s.contracts===0?'contract':(target.action??'goal');
- if(ready(s,target.needs)){if(side)session.trade=true;return {type:deliver};}
- if(s.discovery&&!s.discoveryDone&&s.board.some(x=>x?.type==='glyph')&&ready(s,[{family:'chart',tier:2,count:1}]))return {type:'discovery'};
+ if(ready(s,target.needs)){if(side)session.trade=true;return {type:deliver};
  const spaces=s.board.filter(x=>x===null).length;
  if(openCaches&&spaces>8){const box=s.board.findIndex(x=>x?.type==='crate');if(box>=0)return {type:'crate',index:box};}
  if(clearSalvage&&s.stage>=1&&spaces>6){
