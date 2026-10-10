@@ -1,0 +1,17 @@
+// Small, deterministic reward identities; remaining contents survive partial openings and saves.
+const part=(family,tier)=>({type:'item',family,tier});
+export const CONTAINERS={
+ salvage:{name:'Rover Parts Case',family:'rig',source:'Rover & tool deliveries',purpose:'Repair parts · +2 Rover charges',outputs:[part('rig',1),part('rig',1),part('rig',0),part('rig',1),part('rig',0)]},
+ survey:{name:'Survey Satchel',family:'chart',source:'Landing camp & survey deliveries',purpose:'A guaranteed sight lens for contracts or decoding',outputs:[part('chart',2),part('chart',0),part('chart',0),part('chart',1),part('chart',0)]},
+ relic:{name:'Resonance Ampoule',family:'flux',source:'Excavation, decoding & the vault',purpose:'A pulse coil with matching resonance fragments',outputs:[part('flux',2),part('flux',0),part('flux',0),part('flux',1),part('flux',0)]},
+ locker:{name:'Saltbound Locker',family:'gold',source:'Under cleared saltstone',purpose:'Mixed expedition gear · opens on clearing',outputs:[part('chart',1),part('flux',1),part('rig',1),part('chart',1),part('flux',1)]}
+};
+export const container=(kind,left=3)=>({type:'crate',kind,left});
+export const containerInfo=x=>CONTAINERS[x?.kind]??CONTAINERS.locker;
+export const contents=x=>containerInfo(x).outputs.slice(0,x.left).reverse().map(x=>({...x}));
+export const CONTAINER_ART={
+ salvage:`<path d="M9 29Q9 20 19 20H46Q55 20 55 29V49Q55 55 48 55H16Q9 55 9 49Z" fill="url(#vw-coral)"/><path d="M23 20V11Q23 7 28 7H37Q42 7 42 11V20" fill="none" stroke="#65798a" stroke-width="6"/><path d="M10 31H54V37H10Z" fill="url(#vw-rubber)"/><rect x="12" y="21" width="7" height="32" rx="3" fill="url(#vw-steel)"/><rect x="46" y="21" width="7" height="32" rx="3" fill="url(#vw-steel)"/><path d="M28 28L25 20 29 15V22H35V15L39 20 36 28V45Q32 50 28 45Z" fill="url(#vw-brass)"/><path d="M21 25H25M21 42H25" stroke="#ffd6a4" stroke-width="3"/>`,
+ survey:`<path d="M17 24Q2 3 35 5Q58 8 47 27" fill="none" stroke="#bb9255" stroke-width="5"/><path d="M10 25L16 16 47 18 55 28 52 51Q32 60 12 50Z" fill="url(#vw-leather)"/><path d="M15 15Q30 9 51 19L51 34 34 41 14 32Z" fill="url(#vw-blue)"/><path d="M21 14L22 6 38 9 36 18Z" fill="url(#vw-paper)"/><path d="M39 34L34 29 30 35 34 42Z" fill="url(#vw-brass)"/><path d="M16 22Q29 17 45 24" fill="none" stroke="#bceff3" stroke-width="3"/><circle cx="46" cy="43" r="9" fill="url(#vw-brass)"/><circle cx="46" cy="43" r="6" fill="url(#vw-glass)"/><path d="M43 42L48 39" stroke="#fff" stroke-width="2"/>`,
+ relic:`<path d="M20 14Q32 3 44 14L50 44Q48 57 32 58Q16 56 14 44Z" fill="url(#vw-violet)"/><path d="M24 16Q32 11 40 16L44 43Q42 52 32 52Q21 51 20 43Z" fill="url(#vw-glass)"/><path d="M32 20L38 31 32 43 26 31Z" fill="url(#vw-power)"/><ellipse cx="32" cy="13" rx="14" ry="7" fill="url(#vw-brass)"/><rect x="26" y="4" width="12" height="8" rx="3" fill="url(#vw-rubber)"/><path d="M16 42Q32 50 48 42L47 49Q32 58 17 49Z" fill="url(#vw-brass)"/><path d="M24 25L23 38" stroke="#fff" stroke-width="3" stroke-linecap="round"/>`,
+ locker:`<path d="M15 12L42 8 53 18 52 51 23 59 12 49Z" fill="url(#vw-stone)"/><path d="M15 14L43 11 45 48 17 54Z" fill="url(#vw-brass)"/><path d="M20 20L37 17 39 44 22 49Z" fill="url(#vw-rubber)"/><circle cx="30" cy="33" r="9" fill="url(#vw-steel)"/><circle cx="30" cy="33" r="4" fill="url(#vw-glass)"/><path d="M43 11L52 20 50 49 45 48Z" fill="#697187"/><path d="M9 51L15 40 22 54 31 53 35 60H10Z" fill="#ead4ae"/><path d="M20 16L35 13" stroke="#fff0bb" stroke-width="3"/>`
+};

@@ -1,5 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';
 import {fresh,act,load,SAVE_KEY,goal,ready,item,FAMILIES,SOURCES,nextOutput,normalContract} from '../v5/core.mjs';
+import {container,contents,CONTAINERS} from '../v5/containers.mjs';
 import {art,scene} from '../v5/art.mjs';import {choose} from './v5-policy.mjs';
 function success(s,a,t=1000){const r=act(s,a,t);assert.equal(r.ok,true,r.message);return r;}
 function failUnchanged(s,a,t=1000){const before=JSON.stringify(s);assert.equal(act(s,a,t).ok,false);assert.equal(JSON.stringify(s),before);}
@@ -18,9 +19,8 @@ test('source charges, energy and full-board failures are atomic; deterministic r
  s.taps.rig=8;assert.equal(nextOutput(load(JSON.stringify(s)),'rig').type,'glyph');success(s,{type:'produce',id:'rig'});assert.equal(s.discovery,true);
  s.board=s.board.map(x=>x??item('rig',0));failUnchanged(s,{type:'produce',id:'rig'});
 });
-test('branch consumes spanner rather than upgrading; brace clears blocker into finite cache',()=>{
- const s=fresh();s.board[7]=item('rig',2);success(s,{type:'branch',index:7});assert.equal(s.board[7].type,'brace');success(s,{type:'clear',index:31});assert.equal(s.board[7],null);assert.equal(s.board[31].left,3);
- for(let i=0;i<3;i++)success(s,{type:'crate',index:31});assert.equal(s.board[31].type,'item');failUnchanged(s,{type:'crate',index:31});
+test('brace clears saltstone straight into a finite mixed-gear reveal',()=>{
+ const s=fresh();s.board[7]=item('rig',2);success(s,{type:'branch',index:7});const r=success(s,{type:'clear',index:31});assert.equal(r.reveal.length,3);assert.equal(r.containerKind,'locker');assert.equal(s.board[31].type,'item');failUnchanged(s,{type:'clear',index:31});
 });
 test('contracts consume exact tiers; no double delivery or partial consumption',()=>{
  const s=fresh();success(s,{type:'contract'});failUnchanged(s,{type:'contract'});s.board[7]=item('chart',3);failUnchanged(s,{type:'contract'});s.board[7]=item('chart',2);success(s,{type:'contract'});assert.equal(s.contracts,2);
@@ -77,19 +77,19 @@ test('producer bursts preserve deterministic rare cadence, charge cost and the f
  failUnchanged(s,{type:'produce',id:'rig'});
 });
 test('deliveries and discoveries return finite supplies without overwriting kept items',()=>{
- const s=fresh();const sources=s.board.filter(x=>x?.type==='source');success(s,{type:'contract'});assert.equal(s.board.filter(x=>x?.type==='crate').length,2);assert.deepEqual(s.board.filter(x=>x?.type==='source'),sources);
+ const s=fresh();const sources=s.board.filter(x=>x?.type==='source');success(s,{type:'contract'});assert.equal(s.board.filter(x=>x?.type==='crate').length,1,'duplicate cases arrive as useful loose parts');assert.deepEqual(s.board.filter(x=>x?.type==='source'),sources);
  for(let i=0;i<36;i++)if(s.board[i]?.type==='item')s.board[i]=null;
  s.board[7]={type:'glyph'};s.board[8]=item('chart',2);const before=s.board.filter(Boolean).length;success(s,{type:'discovery'});assert.equal(s.board.filter(Boolean).length,before+2);
  const full=fresh();full.board=full.board.map(x=>x??item('flux',7));const kept=full.board[1];success(full,{type:'contract'});assert.deepEqual(full.board[1],kept);assert.ok(full.board.includes(null),'crowded delivery still frees a working space');
 });
-test('equipment discovery supplies cannot be farmed by repeating a low-tier merge or reload',()=>{
+test('equipment discoveries unpack loose supplies once without producing more boxes',()=>{
  const s=fresh();for(let i=0;i<36;i++)if(s.board[i]?.type==='item')s.board[i]=null;
- s.board[7]=item('rig',1);s.board[8]=item('rig',1);const before=s.board.filter(x=>x?.type==='crate').length;success(s,{type:'merge',from:7,to:8});assert.equal(s.board.filter(x=>x?.type==='crate').length,before+1);
- const saved=load(JSON.stringify(s));saved.board[7]=item('rig',1);saved.board[8]=item('rig',1);success(saved,{type:'merge',from:7,to:8});assert.equal(saved.board.filter(x=>x?.type==='crate').length,before+1);
+ s.board[7]=item('rig',1);s.board[8]=item('rig',1);const before=s.board.filter(Boolean).length;success(s,{type:'merge',from:7,to:8});assert.equal(s.board.filter(Boolean).length,before+5);assert.equal(s.board.filter(x=>x?.type==='crate').length,1);
+ const saved=load(JSON.stringify(s));saved.board[7]=item('rig',1);saved.board[8]=item('rig',1);saved.merges=3;const n=saved.board.filter(Boolean).length;success(saved,{type:'merge',from:7,to:8});assert.equal(saved.board.filter(Boolean).length,n-1);
 });
 test('finite caches, sparse-board servicing and deliberate recycling remain usable',()=>{
  const s=fresh();for(let i=0;i<36;i++)if(s.board[i]?.type==='item')s.board[i]=null;
- const n=s.board.filter(Boolean).length;success(s,{type:'crate',index:34});assert.equal(s.board[34].left,2);assert.equal(s.board.filter(Boolean).length,n+2);
+ const n=s.board.filter(Boolean).length;success(s,{type:'crate',index:34});assert.equal(s.board[34].type,'item');assert.equal(s.board.filter(Boolean).length,n+2);
  s.charges.rig=0;success(s,{type:'service',id:'rig'});assert.equal(s.charges.rig,7);const index=s.board.findIndex(x=>x?.type==='item'),before=s.board.filter(Boolean).length;success(s,{type:'recycle',index});assert.equal(s.board.filter(Boolean).length,before-1,'recycling does not secretly auto-fill');
 });
 test('first-session density stays active across goal-first, contract-first, cache and salvage policies',()=>{
@@ -97,13 +97,35 @@ test('first-session density stays active across goal-first, contract-first, cach
   const s=fresh(0),samples=[],checkpoints={fresh:27};let actions=0,lowRun=0,maxLowRun=0;
   while(s.stage<4&&actions<400){
    const cmd=choose(s,{sideFirst,openCaches,clearSalvage});if(s.stage===3&&cmd.type==='goal')checkpoints.preVault=s.board.filter(Boolean).length;
-   success(s,cmd,++actions*4500);const occupied=s.board.filter(Boolean).length;samples.push(occupied);
+   success(s,cmd,++actions*4500);const occupied=s.board.filter(Boolean).length;samples.push(occupied);assert.ok(s.board.filter(x=>x?.type==='crate').length<=3,'reward containers stay a small purposeful set');
    lowRun=occupied<18?lowRun+1:0;maxLowRun=Math.max(maxLowRun,lowRun);
    if([27,67,134].includes(actions))checkpoints[actions]=occupied;
   }
-  assert.equal(s.stage,4,'no blocker deadlock');assert.ok(actions>=134&&actions<240);
+  assert.equal(s.stage,4,'no blocker deadlock');assert.ok(actions<240);
   const mean=samples.reduce((a,b)=>a+b,0)/samples.length;assert.ok(mean>=20&&mean<=28,`mean ${mean}`);assert.ok(Math.min(...samples)>=17);assert.ok(maxLowRun<=2,'no prolonged >18-empty state');
   for(const [point,n]of Object.entries(checkpoints))assert.ok(n>=20,`${point}: only ${n} occupied`);
   console.log(JSON.stringify({density:true,sideFirst,openCaches,clearSalvage,actions,mean:+mean.toFixed(1),min:Math.min(...samples),maxLowRun,checkpoints}));
  }
+});
+
+test('reward containers have distinct silhouettes, deterministic identities and one-tap reveals',()=>{
+ assert.equal(new Set(Object.keys(CONTAINERS).map(k=>art(container(k)))).size,4);
+ for(const kind of Object.keys(CONTAINERS)){
+  const s=fresh();s.board[34]=container(kind);const expected=contents(s.board[34]),r=success(s,{type:'crate',index:34});
+  assert.deepEqual(r.reveal.map(i=>s.board[i]),expected);assert.equal(s.board[34].type,'item');assert.equal(r.event,'container');failUnchanged(s,{type:'crate',index:34});
+ }
+});
+test('partial opening preserves every remaining reward across save and resumes with one tap',()=>{
+ const s=fresh();s.board=s.board.map(x=>x??item('rig',7));s.board[34]=container('survey');failUnchanged(s,{type:'crate',index:34});s.board[1]=null;
+ const r=success(s,{type:'crate',index:34});assert.equal(r.reveal.length,1);assert.equal(s.board[34].left,2);
+ const saved=load(JSON.stringify(s));assert.equal(saved.board[34].kind,'survey');saved.board[2]=null;success(saved,{type:'crate',index:34});assert.deepEqual(saved.board[34],item('chart',2));
+});
+test('parts case charge support happens once and old cache saves keep all their remaining mixed gear',()=>{
+ const s=fresh();s.charges.rig=2;success(s,{type:'crate',index:34});assert.equal(s.charges.rig,4);failUnchanged(s,{type:'crate',index:34});
+ s.board[34]={type:'crate',left:2};const migrated=load(JSON.stringify(s));assert.equal(migrated.board[34].kind,'locker');assert.equal(migrated.board[34].left,2);assert.deepEqual(contents(migrated.board[34]),[item('flux',1),item('chart',1)]);
+ const bad={...fresh()};bad.board[34]={type:'crate',kind:'invalid',left:3};assert.equal(load(JSON.stringify(bad)).board[34].kind,'salvage');
+});
+test('last-charge producer bonus is useful, finite and preserves ninth-pull rare output',()=>{
+ const s=fresh();s.taps.rig=6;s.charges.rig=1;for(let i=0;i<36;i++)if(s.board[i]?.type==='item')s.board[i]=null;
+ const r=success(s,{type:'produce',id:'rig'});assert.equal(r.bonus,'rig');assert.equal(r.reveal.length,2);assert.equal(s.board[r.reveal[1]].tier,1);assert.equal(s.charges.rig,0);failUnchanged(s,{type:'produce',id:'rig'});success(s,{type:'service',id:'rig'});s.taps.rig=8;assert.equal(nextOutput(s,'rig').type,'glyph');
 });

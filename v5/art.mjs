@@ -1,3 +1,4 @@
+import {CONTAINER_ART} from './containers.mjs';
 // Original Vaultwake vector illustrations. No external assets or icon font dependencies.
 import {OBJECTS,MATERIALS} from './objects.mjs';
 // Optional future illustrated sprites use the same semantic keys and art() boundary.
@@ -16,9 +17,9 @@ const extras={
 export function art(x,cls=''){
  if(!x)return '';
  const f=x.type==='item'?x.family:null;
- const key=f?f+'-'+x.tier:x.type==='source'?'source-'+x.id:x.type;
+ const key=f?f+'-'+x.tier:x.type==='source'?'source-'+x.id:x.type==='crate'?'crate-'+(x.kind??'locker'):x.type;
  if(SPRITE_OVERRIDES[key])return `<img class="art ${cls}" src="${SPRITE_OVERRIDES[key]}" alt="" aria-hidden="true" data-art="${key}">`;
- const shapes=f?OBJECTS[f]?.[x.tier]:x.type==='source'?OBJECTS.sources[x.id]:extras[x.type];
+ const shapes=f?OBJECTS[f]?.[x.tier]:x.type==='source'?OBJECTS.sources[x.id]:x.type==='crate'?CONTAINER_ART[x.kind??'locker']:extras[x.type];
  if(!shapes)return '';
  const collectible=f||x.type==='source';
  return `<svg class="art ${cls}" viewBox="0 0 ${collectible?'100 100':'64 64'}" aria-hidden="true" data-art="${key}" data-render="illustrated-object">${MATERIALS}<ellipse cx="${collectible?50:32}" cy="${collectible?91:57}" rx="${collectible?35:23}" ry="${collectible?5:4}" fill="#263957" opacity=".18"/><g stroke="none" stroke-width="1" stroke-linejoin="round" stroke-linecap="round">${shapes}</g>${f&&x.tier>=6?'<path d="M85 4L88 10 95 12 88 15 85 23 82 15 75 12 82 10Z" fill="#fff1bb"/>':''}</svg>`;
