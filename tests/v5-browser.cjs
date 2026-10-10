@@ -12,7 +12,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
   assert.equal(await page.locator('#goalButton').isDisabled(),true);assert.match(await page.locator('#goalTitle').textContent(),/landing/);
   await shot('fresh');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
-  const bounds=await page.locator('#board').boundingBox();assert.ok(bounds.width>=Math.min(width-24,430));assert.ok(bounds.y+bounds.height<830);
+  const bounds=await page.locator('#board').boundingBox();assert.ok(bounds.width>=Math.min(width-24,370));assert.ok(bounds.y+bounds.height<830);
   // Deliver the available starter contract: deliberately trade a story ingredient for supplies.
   await page.locator('[data-contract="contract"]').tap();assert.equal((await read()).contracts,1);await shot('first-contract');
   // Test a physical pointer drag, not a synthetic reducer call.

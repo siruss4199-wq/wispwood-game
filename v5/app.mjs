@@ -31,7 +31,7 @@ function render(){
  $('#free').textContent=state.board.filter(x=>x===null).length+' spaces';$('#hint').textContent=hint();$('#rationButton').hidden=state.energy>3;renderSelection();
 }
 function renderSelection(){
- const x=state.board[selected];let title='Open the Tideglass Vault',desc='Merge identical objects. Choose expedition progress or supplies.',buttons='';
+ const x=state.board[selected];let title=state.stage<4?'Open the Tideglass Vault':'The crossing is yours',desc=state.stage<4?'Merge identical objects. Choose expedition progress or supplies.':'Chart the star ocean, clear caches, or collect an aurora beacon.',buttons='';
  if(x){title=nameOf(x);
   if(x.type==='item'){
    const used=goal(state)?.needs.some(r=>matches(x,r)),cn=normalContract(state).needs.some(r=>matches(x,r));
@@ -43,7 +43,7 @@ function renderSelection(){
     buttons=state.charges[x.id]?`<button class="accent" data-action="produce">Produce · ${SOURCES[x.id].cost} ϟ</button>`:'<button data-action="serviceTool">Service · tool</button><button class="accent" data-action="service">Service · 3 ϟ</button>';
    }
   }else if(x.type==='rock'){desc='A trail brace clears this space and reveals a cache.';buttons='<button class="accent" data-action="clear">Use brace</button>';}
-  else if(x.type==='sealed')desc='Six spaces open when you excavate the vault entrance.';
+  else if(x.type==='sealed')desc='Excavation reveals parts, a cache, and more saltstone.';
   else if(x.type==='crate'){desc=`${x.left} guaranteed parts. No energy needed.`;buttons='<button class="accent" data-action="crate">Open cache</button>';}
   else if(x.type==='glyph'){desc=state.discoveryDone?'Decoded fragment. Recycle or keep as a souvenir.':'Pair with a sight lens to decode. Richer source outputs.';buttons='<button data-action="recycle">Recycle +5 ϟ</button>';}
   else if(x.type==='brace'){desc='Tap a saltstone blocker to use this brace.';buttons='<button data-action="recycle">Recycle +3 ϟ</button>';}

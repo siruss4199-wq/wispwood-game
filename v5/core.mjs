@@ -9,7 +9,7 @@ export const SOURCES={rig:{name:'Rivet Rover',cost:1,family:'rig',unlock:0},char
 const req=(family,tier,count=1)=>({family,tier,count});
 export const STAGES=[
  {name:'Clear the landing',verb:'Clear path',scene:'Blocked approach',needs:[req('rig',1,2)],energy:6,next:'Survey Kite + expedition camp',text:'Two grip tools can lift the fallen marker.'},
- {name:'Find the buried door',verb:'Excavate',scene:'Excavation camp',needs:[req('rig',4),req('chart',3)],energy:14,next:'Echo Crucible + six spaces',text:'A crawler jack and survey scope will uncover the entrance.'},
+ {name:'Find the buried door',verb:'Excavate',scene:'Excavation camp',needs:[req('rig',4),req('chart',3)],energy:14,next:'Echo Crucible + excavation cache',text:'A crawler jack and survey scope will uncover the entrance.'},
  {name:'Wake the ring engine',verb:'Power rings',scene:'Entrance uncovered',needs:[req('flux',4),req('rig',4)],energy:18,next:'Powered vault + enriched sources',text:'Raise the rings with a lantern and crawler jack.'},
  {name:'Open the Tideglass Vault',verb:'Open vault',scene:'Rings awakened',needs:[req('chart',5),req('flux',5),req('rig',3)],energy:20,next:'The chamber + relic cache',text:'Align a star chart and orbit engine to open the vault.'}
 ];
@@ -85,7 +85,7 @@ export function act(s,a,now=Date.now()){
   const g=goal(s);if(!g||!ready(s,g.needs))return fail('Make the highlighted expedition items.');
   consume(s,g.needs);s.energy=Math.min(120,s.energy+g.energy);
   if(s.stage<4){s.stage++;
-   if(s.stage===2){for(let i=24;i<30;i++)if(s.board[i]?.type==='sealed')s.board[i]=null;}
+   if(s.stage===2){const finds=[item('rig',1),item('chart',1),item('flux',1),{type:'rock'},{type:'crate',left:3},item('flux',0)];for(let i=24;i<30;i++)if(s.board[i]?.type==='sealed')s.board[i]=finds[i-24];}
    if(s.stage===3)s.boost=true;
    if(s.stage===4){put(s,{type:'crate',left:5});s.marks+=15;}
   }else{s.post++;s.marks+=10;}
