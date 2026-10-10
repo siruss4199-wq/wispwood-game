@@ -48,7 +48,7 @@ test('24 original item silhouettes, distinct producers and five actual world tra
 });
 test('chapter objectives require expedition deployments and apex tiers stay aspirational until the vault',()=>{
  const s=fresh();s.stage=1;s.mission={surveyed:false,ringPrimed:false,aligned:false};s.board[19]={type:'marker'};s.board[7]=item('chart',3);
- assert.equal(goal(s).action,'survey');success(s,{type:'survey'});assert.equal(s.mission.surveyed,true);assert.equal(goal(s).action,'goal');assert.ok(s.board.some(x=>x?.type==='crate'&&x.kind==='survey'));
+ assert.equal(goal(s).action,'survey');success(s,{type:'survey'});assert.equal(s.mission.surveyed,true);assert.equal(goal(s).action,'goal');assert.ok(s.board.some(x=>x?.type==='item'&&x.family==='chart'&&x.tier===1));
  s.stage=2;s.mission.ringPrimed=false;s.board[24]={type:'lock'};s.board[8]=item('flux',4);assert.equal(goal(s).action,'prime');success(s,{type:'prime'});assert.equal(s.mission.ringPrimed,true);
  s.stage=3;s.mission.aligned=false;s.board[9]=item('chart',5);s.board[10]=item('flux',3);assert.equal(goal(s).action,'align');success(s,{type:'align'});assert.equal(s.mission.aligned,true);
  const gated=fresh();gated.board[7]=item('rig',5);gated.board[8]=item('rig',5);failUnchanged(gated,{type:'merge',from:7,to:8});gated.stage=4;success(gated,{type:'merge',from:7,to:8});assert.equal(gated.board[8].tier,6);
