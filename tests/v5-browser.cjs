@@ -2,7 +2,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
 (async()=>{
  const browser=await chromium.launch({headless:true});fs.mkdirSync('test-artifacts/v5',{recursive:true});
  try{for(const width of [360,390,768]){
-  const page=await browser.newPage({viewport:{width,height:900},hasTouch:true,isMobile:width<500,reducedMotion:'reduce'});page.setDefaultTimeout(8000);
+  const page=await browser.newPage({viewport:{width,height:844},hasTouch:true,isMobile:width<500,reducedMotion:'reduce'});page.setDefaultTimeout(8000);
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://127.0.0.1:8080/v5/');
   await page.waitForFunction(()=>document.querySelectorAll('#board .tile').length===36);
@@ -12,7 +12,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
   assert.equal(await page.locator('#goalButton').isDisabled(),true);assert.match(await page.locator('#goalTitle').textContent(),/landing/);
   await shot('fresh');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
-  const bounds=await page.locator('#board').boundingBox();assert.ok(bounds.width>=Math.min(width-24,470));assert.ok(bounds.y+bounds.height<880);
+  const bounds=await page.locator('#board').boundingBox();assert.ok(bounds.width>=Math.min(width-24,430));assert.ok(bounds.y+bounds.height<830);
   // Deliver the available starter contract: deliberately trade a story ingredient for supplies.
   await page.locator('[data-contract="contract"]').tap();assert.equal((await read()).contracts,1);await shot('first-contract');
   // Test a physical pointer drag, not a synthetic reducer call.
@@ -37,6 +37,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
   assert.equal((await read()).stage,4,'chapter completable through UI');await shot('vault-open');
   assert.match(await page.locator('#scene svg').getAttribute('aria-label'),/Open vault/);
   assert.match(await page.locator('#goalTitle').textContent(),/next crossing/);
+  assert.equal(await page.locator('#hint').textContent(), 'Horizon model ← Survey Kite');
   const saved=await read();await page.reload();assert.equal((await read()).stage,4);assert.equal((await read()).merges,saved.merges);
   // Opt-in timer persists. Existing discovery may occupy its slot until decoded.
   if(await page.locator('[data-contract="startOpportunity"]').count()){
@@ -47,6 +48,6 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
   console.log(JSON.stringify({width,actions,merges:saved.merges,stage:saved.stage}));await page.close();
  }
  // CrazyGames entry works even if external SDK is unavailable, as in Basic Launch preview.
- const page=await browser.newPage();await page.route('https://sdk.crazygames.com/**',r=>r.abort());await page.goto('http://127.0.0.1:8080/v5/crazygames.html');await page.waitForFunction(()=>document.querySelectorAll('#board .tile').length===36);await page.close();
+ const page=await browser.newPage();await page.route('https://sdk.crazygames.com/**',r=>r.abort());await page.goto('http://127.0.0.1:8080/v5/crazygames.html');await page.waitForFunction(()=>document.querySelectorAll('#board .tile').length===36);await page.locator('[data-index="0"]').click();assert.equal(await page.locator('.flight').count(),1);await page.waitForTimeout(550);assert.equal(await page.locator('.flight').count(),0);await page.locator('#journalButton').focus();await page.keyboard.press('Enter');assert.equal(await page.locator('#journal').isVisible(),true);await page.keyboard.press('Escape');assert.equal(await page.locator('#journal').isVisible(),false);await page.close();
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

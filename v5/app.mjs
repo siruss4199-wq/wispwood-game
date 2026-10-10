@@ -10,6 +10,7 @@ function needed(){return focus==='contract'?normalContract(state).needs:focus===
 function needsHTML(needs){return needs.map(r=>`<span class="need ${count(state,r)>=r.count?'done':''}" title="${nameOf(item(r.family,r.tier))}">${art(item(r.family,r.tier))}<b>${Math.min(count(state,r),r.count)}/${r.count}</b></span>`).join('');}
 function hint(){if(!state.merges)return 'Tap two matching copper offcuts';const reqs=needed();if(ready(state,reqs)&&reqs.length)return focus==='goal'?'Expedition materials ready — build above':'Contract ready — choose whether to deliver';const r=reqs.find(r=>count(state,r)<r.count);return r?`${nameOf(item(r.family,r.tier))} ← ${SOURCES[r.family].name}`:'Explore, collect, or clear saltstone';}
 function render(){
+ $('.world').classList.toggle('opened',state.stage===4);$('.destination').textContent=state.stage===4?'VAULT DISCOVERED':'OPEN THE TIDEGLASS VAULT';
  $('#energy').textContent=state.energy;$('#marks').textContent=state.marks;
  $('#scene').innerHTML=scene(state.stage,state.post);$('#sceneLabel').textContent=STAGES[state.stage]?.scene??'The vault is open';
  $('#chapterLabel').textContent=state.stage===4?'DISCOVERY · THE SKY WITHIN':'THE SALTGLASS REACH';
@@ -23,8 +24,9 @@ function render(){
  const selectedItem=state.board[selected];
  board.innerHTML=state.board.map((x,i)=>{
   const isSource=x?.type==='source',locked=isSource&&state.stage<SOURCES[x.id].unlock;
+  const useful=isSource&&!locked&&needed().some(r=>r.family===x.id&&count(state,r)<r.count);
   const matching=selectedItem?.type==='item'&&x?.type==='item'&&i!==selected&&x.family===selectedItem.family&&x.tier===selectedItem.tier&&x.tier<7;
-  return `<button class="tile ${x?.type??'empty'} ${locked?'locked':''} ${selected===i?'selected':''} ${matching?'match':''} ${needed().some(r=>matches(x,r))?'wanted':''}" data-index="${i}" ${x?.family?`data-family="${x.family}"`:''} aria-label="${nameOf(x)}${locked?' · locked':isSource?' · '+SOURCES[x.id].cost+' energy · '+state.charges[x.id]+' charges':''}. Space ${i+1}" aria-pressed="${selected===i}">${art(x)}${isSource?(locked?`<span class="lockedLabel">${x.id==='chart'?'CLEAR PATH':'EXCAVATE'}</span>`:`<span class="energyCue">ϟ${SOURCES[x.id].cost}</span><span class="charge">${Array.from({length:7},(_,n)=>`<i class="${n>=state.charges[x.id]?'used':''}"></i>`).join('')}</span>`):x?.type==='crate'?`<span class="pulls">${x.left}</span>`:''}</button>`;
+  return `<button class="tile ${x?.type??'empty'} ${locked?'locked':''} ${useful?'useful':''} ${selected===i?'selected':''} ${matching?'match':''} ${needed().some(r=>matches(x,r))?'wanted':''}" data-index="${i}" ${x?.family?`data-family="${x.family}"`:''} aria-label="${nameOf(x)}${locked?' · locked':isSource?' · '+SOURCES[x.id].cost+' energy · '+state.charges[x.id]+' charges':''}. Space ${i+1}" aria-pressed="${selected===i}">${art(x)}${isSource?(locked?`<span class="lockedLabel">${x.id==='chart'?'CLEAR PATH':'EXCAVATE'}</span>`:`<span class="energyCue">ϟ${SOURCES[x.id].cost}</span><span class="charge">${Array.from({length:7},(_,n)=>`<i class="${n>=state.charges[x.id]?'used':''}"></i>`).join('')}</span>`):x?.type==='crate'?`<span class="pulls">${x.left}</span>`:''}</button>`;
  }).join('');
  $('#free').textContent=state.board.filter(x=>x===null).length+' spaces';$('#hint').textContent=hint();$('#rationButton').hidden=state.energy>3;renderSelection();
 }
@@ -52,7 +54,8 @@ function run(a){
  const before=state.stage,from=a.type==='produce'?board.querySelector(`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===a.id)}"]`)?.getBoundingClientRect():null;
  const result=act(state,a);message.textContent=result.message;
  if(!result.ok)return result;
- platform.startGameplay();if(a.type==='merge')selected=result.index;render();persist();
+ platform.startGameplay();if(['milestone','contract','discovery'].includes(result.event))focus='goal';if(a.type==='merge')selected=result.index;render();persist();
+ if(result.event==='milestone'&&state.stage<4)message.textContent=result.message+' unlocked. '+(goal(state)?.text??'');
  if(result.index!==null)board.querySelector(`[data-index="${result.index}"]`)?.classList.add('pop');
  if(a.type==='produce'){
   board.querySelector(`[data-index="${selected}"]`)?.classList.add('react');

@@ -8,10 +8,10 @@ export const FAMILIES={
 export const SOURCES={rig:{name:'Rivet Rover',cost:1,family:'rig',unlock:0},chart:{name:'Survey Kite',cost:1,family:'chart',unlock:1},flux:{name:'Echo Crucible',cost:2,family:'flux',unlock:2}};
 const req=(family,tier,count=1)=>({family,tier,count});
 export const STAGES=[
- {name:'Clear the landing',verb:'Clear path',scene:'Blocked approach',needs:[req('rig',1,2)],energy:10,next:'Survey Kite + expedition camp',text:'Two grip tools can lift the fallen marker.'},
- {name:'Find the buried door',verb:'Excavate',scene:'Excavation camp',needs:[req('rig',4),req('chart',3)],energy:24,next:'Echo Crucible + six spaces',text:'A crawler jack and survey scope will uncover the entrance.'},
- {name:'Wake the ring engine',verb:'Power rings',scene:'Entrance uncovered',needs:[req('flux',4),req('rig',4)],energy:30,next:'Powered vault + enriched sources',text:'Raise the rings with a lantern and crawler jack.'},
- {name:'Open the Tideglass Vault',verb:'Open vault',scene:'Rings awakened',needs:[req('chart',5),req('flux',5),req('rig',3)],energy:36,next:'The chamber + relic cache',text:'Align a star chart and orbit engine to open the vault.'}
+ {name:'Clear the landing',verb:'Clear path',scene:'Blocked approach',needs:[req('rig',1,2)],energy:6,next:'Survey Kite + expedition camp',text:'Two grip tools can lift the fallen marker.'},
+ {name:'Find the buried door',verb:'Excavate',scene:'Excavation camp',needs:[req('rig',4),req('chart',3)],energy:14,next:'Echo Crucible + six spaces',text:'A crawler jack and survey scope will uncover the entrance.'},
+ {name:'Wake the ring engine',verb:'Power rings',scene:'Entrance uncovered',needs:[req('flux',4),req('rig',4)],energy:18,next:'Powered vault + enriched sources',text:'Raise the rings with a lantern and crawler jack.'},
+ {name:'Open the Tideglass Vault',verb:'Open vault',scene:'Rings awakened',needs:[req('chart',5),req('flux',5),req('rig',3)],energy:20,next:'The chamber + relic cache',text:'Align a star chart and orbit engine to open the vault.'}
 ];
 export const POST_GOALS=[
  {name:'Chart the next crossing',verb:'Chart crossing',scene:'Vault opened',needs:[req('chart',6),req('rig',5)],energy:35,next:'Archive expedition badge'},
@@ -61,8 +61,8 @@ export function act(s,a,now=Date.now()){
   if(!x||!['item','glyph','brace','crate'].includes(x.type))return fail('That object stays here.');
   if(!y){s.board[a.to]=x;s.board[a.from]=null;return done('Moved.','move',a.to);}
   if(x.type!=='item'||y.type!=='item'||x.family!==y.family||x.tier!==y.tier||x.tier>=7)return fail('Merge two identical objects.');
-  s.board[a.to]=item(x.family,x.tier+1);s.board[a.from]=null;s.merges++;s.energy=Math.min(120,s.energy+1);
-  return done(`${nameOf(s.board[a.to])} discovered · +1 energy`,'merge',a.to);
+  s.board[a.to]=item(x.family,x.tier+1);s.board[a.from]=null;s.merges++;const bonus=s.merges%3===0?1:0;s.energy=Math.min(120,s.energy+bonus);
+  return done(`${nameOf(s.board[a.to])} discovered${bonus?' · +1 energy':''}`,'merge',a.to);
  }
  if(a.type==='produce'){
   const p=SOURCES[a.id];if(!p||s.stage<p.unlock)return fail(`Unlock after ${a.id==='chart'?'clearing the landing':'excavating the door'}.`);
