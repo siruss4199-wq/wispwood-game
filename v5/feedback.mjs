@@ -40,6 +40,7 @@ export function feedback({event,tile,x,from,energyDelta,stage,firstContract=fals
  else if(event==='clear'){burst(rect,'rig',true);moment('Cache uncovered','Three free pulls');sound.play('rare');}
  else if(event==='contract'){rewardFlight(from,document.querySelector('.resource').getBoundingClientRect(),`+${energyDelta} ϟ`);sound.play('contract');if(firstContract)moment('Supplies secured','Your first contract delivered');}
  else if(event==='milestone'){
+  document.querySelector('.moment')?.remove();
   const world=document.querySelector('.world');burst(world.getBoundingClientRect(),'gold',true);sound.play('milestone');
   if(stage<4)moment(['','Survey Kite unlocked','Echo Crucible unlocked','The rings are awake'][stage],stage===2?'Excavation cache revealed':'Expedition advanced');
  }else if(event==='discovery'){sound.play('rare');burst(document.querySelector('.world').getBoundingClientRect(),'flux',true);}
