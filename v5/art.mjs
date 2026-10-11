@@ -21,7 +21,7 @@ export function art(x,cls=''){
  if(x.type==='site'||x.type==='route'){
   const family=x.type==='site'?{winch:'rig',scope:'chart',relay:'flux'}[x.kind]:x.id==='ridge'?'rig':'chart';
   const tier=x.type==='site'?3:2,color={rig:'#f27755',chart:'#43bfe7',flux:'#ac83fa'}[family];
-  return `<svg class="art ${cls}" viewBox="0 0 100 100" aria-hidden="true" data-art="${x.type}-${x.kind??x.id}">${MATERIALS}<ellipse cx="50" cy="87" rx="42" ry="8" fill="#263957" opacity=".22"/><path d="M9 71L22 30 70 24 91 71 79 90H20Z" fill="url(#vw-stone)"/><path d="M17 74H84" stroke="${color}" stroke-width="6"/><g transform="translate(10 0) scale(.8)" opacity="${x.type==='site'&&x.phase==='idle'?'.58':'1'}">${OBJECTS[family][tier]}</g>${x.type==='site'?[0,1].map(n=>`<circle cx="${40+n*20}" cy="85" r="5" fill="${x.progress>n?'#d4fff3':'#3c475e'}" stroke="${color}" stroke-width="2"/>`).join(''):''}</svg>`;
+  return `<svg class="art ${cls}" viewBox="0 0 100 100" aria-hidden="true" data-art="${x.type}-${x.kind??x.id}">${MATERIALS}<ellipse cx="50" cy="87" rx="42" ry="8" fill="#263957" opacity=".22"/><path d="M9 71L22 30 70 24 91 71 79 90H20Z" fill="url(#vw-stone)"/><path d="M17 74H84" stroke="${color}" stroke-width="6"/><g transform="translate(10 0) scale(.8)" opacity="${x.type==='site'&&x.phase==='idle'?'.58':'1'}">${x.reclaimed?'<g transform="translate(14 8) scale(1.1)">'+extras.glyph+'</g>':OBJECTS[family][tier]}</g>${x.type==='site'?[0,1].map(n=>`<circle cx="${40+n*20}" cy="85" r="5" fill="${x.progress>n?'#d4fff3':'#3c475e'}" stroke="${color}" stroke-width="2"/>`).join(''):''}</svg>`;
  }
  const f=x.type==='item'?x.family:null;
  const key=f?f+'-'+x.tier:x.type==='source'?'source-'+x.id:x.type==='crate'?'crate-'+(x.kind??'locker'):x.type;

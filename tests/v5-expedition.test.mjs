@@ -48,7 +48,16 @@ test('a rare fragment has mutually exclusive decoding and operating consequences
  const base=fresh();base.stage=2;base.board[7]=item('rig',3);ok(base,{type:'deploy',index:20,from:7});base.board[7]={type:'glyph'};base.board[8]=item('chart',2);
  const decode=structuredClone(base),feed=structuredClone(base);ok(decode,{type:'discovery'});ok(feed,{type:'feed',index:20,from:7});
  assert.equal(decode.boost,true);assert.equal(decode.board[20].progress,0);assert.equal(feed.boost,false);assert.equal(feed.board[20].progress,1);assert.equal(feed.board[8].tier,2);
+ assert.equal(feed.board.filter(x=>x?.family==='rig'&&x.tier===3).length,1,'imprinting returns the original winch instead of a generic material drop');
+ assert.equal(decode.board.some(x=>x?.family==='rig'&&x.tier===3),false,'permanent production enrichment keeps the equipment committed');
  reject(feed,{type:'discovery'});assert.equal(feed.expedition.log.at(-2).decodeAvailable,true);
+});
+test('imprinting returns equipment once, survives reload, and never loses it on a full board',()=>{
+ const s=fresh();s.stage=2;s.board[7]=item('chart',3);ok(s,{type:'deploy',index:23,from:7});
+ s.board=s.board.map(x=>x??item('rig',0));s.board[7]={type:'glyph'};ok(s,{type:'feed',index:23,from:7});
+ assert.equal(s.board[7].family,'chart');assert.equal(s.board[7].tier,3);assert.equal(s.board[23].progress,1);
+ const saved=load(JSON.stringify(s));assert.equal(saved.board[23].reclaimed,true);saved.board[8]={type:'glyph'};ok(saved,{type:'feed',index:23,from:8});
+ assert.equal(saved.board.filter(x=>x?.family==='chart'&&x.tier===3).length,1);assert.equal(saved.board[23].phase,'done');reject(saved,{type:'feed',index:23});
 });
 test('equipment trades change installable anchors, are finite, and return their item even on a full board',()=>{
  const s=fresh();s.stage=2;s.board=s.board.map(x=>x??item('rig',0));s.board[7]=item('rig',3);

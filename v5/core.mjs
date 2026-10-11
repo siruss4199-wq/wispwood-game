@@ -98,14 +98,14 @@ function unpack(s,index){
  return revealed;
 }
 function remember(s,event,now){s.history.push({event,at:now});s.history=s.history.slice(-40);}
-function operate(s,site,via){
+function operate(s,site,via,reclaim=false){
  const beforeSpace=s.board.filter(x=>!x).length,beforeCharges=s.charges.rig+s.charges.chart,beforeSurge=s.surge??0;let cleared=false,revealed=null;
  site.progress++;site.phase=site.progress===2?'done':'active';
  if(site.kind==='winch'){
   const stone=s.board.findIndex(x=>x?.type==='rock');
   if(stone>=0){s.board[stone]=null;cleared=true;}else s.charges.rig=Math.min(7,s.charges.rig+3);
-  const reward=item('rig',2);if(put(s,reward)>=0)revealed=reward;
- }else if(site.kind==='scope'){const reward=item(site.progress===1?'flux':'chart',2);if(put(s,reward)>=0)revealed=reward;}
+  const reward=item('rig',2);if(!reclaim&&put(s,reward)>=0)revealed=reward;
+ }else if(site.kind==='scope'){const reward=item(site.progress===1?'flux':'chart',2);if(!reclaim&&put(s,reward)>=0)revealed=reward;}
  else {s.charges.rig=Math.min(7,s.charges.rig+3);s.charges.chart=Math.min(7,s.charges.chart+3);surge(s);}
  trace(s,'operation',{kind:site.kind,via,progress:site.progress,cleared,revealed,spaceDelta:s.board.filter(x=>!x).length-beforeSpace,chargesAdded:s.charges.rig+s.charges.chart-beforeCharges,surgeAdded:(s.surge??0)-beforeSurge});
  if(s.stage===2&&completedAnchors(s)>=2){s.stage=3;s.energy=Math.min(120,s.energy+6);trace(s,'powered');return true;}
@@ -178,7 +178,14 @@ export function act(s,a,now=Date.now()){
   if(!valid(from)||(feed?s.board[from]?.type!=='glyph':!matches(s.board[from],need)))return fail(feed?'Keep a fragment, or operate with partner-family merges.':`Install a ${FAMILIES[need.family].names[3]}.`);
   const alternative=normalContract(s).needs.some(r=>matches(s.board[from],r)),mergeAvailable=!feed&&count(s,need)>=2;
   s.board[from]=null;
-  if(feed){trace(s,'fragment-spent',{kind:site.kind,decodeAvailable:!s.discoveryDone&&ready(s,[req('chart',2)])});const powered=operate(s,site,'fragment');return done(powered?'Vault rings aligned!':`${ANCHORS[site.kind].name} · fragment powers one operation`,powered?'milestone':'deployment',a.index);}
+  if(feed){
+   // The fragment imprints the installed tool. Reclaim it once, instead of the
+   // ordinary operation's material drop. Its freed cell guarantees safe return.
+   const reclaim=!site.reclaimed;site.reclaimed=true;if(reclaim)put(s,item(need.family,need.tier));
+   trace(s,'fragment-spent',{kind:site.kind,reclaimed:reclaim?need.family:null,decodeAvailable:!s.discoveryDone&&ready(s,[req('chart',2)])});
+   const powered=operate(s,site,'fragment',reclaim);
+   return done(`${powered?'Vault rings aligned':'Anchor imprinted'}${reclaim?' · '+FAMILIES[need.family].names[3]+' reclaimed':' · one operation'}`,powered?'milestone':'deployment',a.index);
+  }
   site.phase='active';put(s,item(ANCHORS[site.kind].drive,0));put(s,item(ANCHORS[site.kind].drive,0));trace(s,'deployment',{kind:site.kind,family:need.family,contractAlternative:alternative,mergeAvailable});
   return done(`${ANCHORS[site.kind].name} installed · ${ANCHORS[site.kind].short} to operate`,'deployment',a.index);
  }
@@ -256,7 +263,7 @@ export function load(raw,now=Date.now()){
    if(x.type==='item'){if(!FAMILIES[x.family]||!integer(x.tier,0,7))return fresh(now);}
    else if(x.type==='source'){if(!SOURCES[x.id])return fresh(now);}
    else if(x.type==='crate'){if(!integer(x.left,1,5)||x.kind!==undefined&&!CONTAINERS[x.kind])return fresh(now);x.kind??='locker';}
-   else if(x.type==='site'){if(!ANCHORS[x.kind]||!['idle','active','done'].includes(x.phase)||!integer(x.progress,0,2)||x.phase==='idle'&&x.progress!==0||x.phase==='done'&&x.progress!==2||x.phase==='active'&&x.progress>1)return fresh(now);}
+   else if(x.type==='site'){if(!ANCHORS[x.kind]||!['idle','active','done'].includes(x.phase)||!integer(x.progress,0,2)||x.phase==='idle'&&x.progress!==0||x.phase==='done'&&x.progress!==2||x.phase==='active'&&x.progress>1||x.reclaimed!==undefined&&typeof x.reclaimed!=='boolean')return fresh(now);}
    else if(x.type==='route'){if(!ROUTES[x.id])return fresh(now);}
    else if(!['glyph','brace','rock','sealed','marker','lock'].includes(x.type))return fresh(now);
   }
