@@ -35,8 +35,8 @@ export function fresh(now=Date.now()){
  return {version:5,board,stage:0,energy:32,marks:0,moves:0,merges:0,contracts:0,serial:0,charges:{rig:7,chart:7,flux:7},taps:{rig:0,chart:0,flux:0},normal:0,opportunity:null,discovery:false,discoveryDone:false,boost:false,post:0,discovered:[],expedition:expeditionState(),startedAt:now,lastAt:now,rations:0,history:[]};
 }
 export function goal(s){
- if(s.stage===1)return {name:'Choose your breach',verb:'Inspect routes',scene:'Survey worksite',needs:[req('rig',2),req('chart',2)],action:'inspect',next:'Either route unlocks Echo Crucible',text:'Spanner: roomy ridge. Lens: rich conduit. Spend one, keep the other.',phase:'CHOOSE ONE'};
- if(s.stage===2)return {name:'Operate any two anchors',verb:'Inspect anchors',scene:'Entrance uncovered',needs:anchors(s).filter(x=>x.phase==='idle').map(x=>equipment(x.kind)),action:'inspect',next:`${completedAnchors(s)} / 2 anchors working · vault alignment next`,text:'Install equipment. Merge in its partner family to operate it twice. Choose any two.',phase:`${completedAnchors(s)} / 2 WORKING`};
+ if(s.stage===1)return {name:'Choose your breach',verb:'Clear',scene:'Survey worksite',needs:[req('rig',2),req('chart',2)],action:'inspect',next:'Either route unlocks Echo Crucible',text:'Spanner: roomy ridge. Lens: rich conduit. Spend one, keep the other.',phase:'CHOOSE ONE'};
+ if(s.stage===2)return {name:'Wake the vault',verb:'Use equipment',scene:'Entrance uncovered',needs:anchors(s).filter(x=>x.phase==='idle').map(x=>equipment(x.kind)),action:'inspect',next:'Choose two devices · each helps a different family',text:'Use equipment in any two devices. Choose the benefit you need.',phase:`${completedAnchors(s)} OF 2 READY`};
  if(s.stage===3)return {name:'Open the Tideglass Vault',verb:'Open vault',scene:'Rings awakened',needs:s.expedition.route==='conduit'?[req('rig',4),req('chart',4)]:[req('chart',4),req('flux',4)],energy:20,next:'The chamber + relic cache',text:'Your chosen breach determines the final alignment equipment.',action:'goal'};
  return STAGES[s.stage]??POST_GOALS[s.post]??null;
 }
@@ -98,18 +98,16 @@ function unpack(s,index){
  return revealed;
 }
 function remember(s,event,now){s.history.push({event,at:now});s.history=s.history.slice(-40);}
-function operate(s,site,via,reclaim=false){
- const beforeSpace=s.board.filter(x=>!x).length,beforeCharges=s.charges.rig+s.charges.chart,beforeSurge=s.surge??0;let cleared=false,revealed=null;
- site.progress++;site.phase=site.progress===2?'done':'active';
- if(site.kind==='winch'){
-  const stone=s.board.findIndex(x=>x?.type==='rock');
-  if(stone>=0){s.board[stone]=null;cleared=true;}else s.charges.rig=Math.min(7,s.charges.rig+3);
-  const reward=item('rig',2);if(!reclaim&&put(s,reward)>=0)revealed=reward;
- }else if(site.kind==='scope'){const reward=item(site.progress===1?'flux':'chart',2);if(!reclaim&&put(s,reward)>=0)revealed=reward;}
- else {s.charges.rig=Math.min(7,s.charges.rig+3);s.charges.chart=Math.min(7,s.charges.chart+3);surge(s);}
- trace(s,'operation',{kind:site.kind,via,progress:site.progress,cleared,revealed,spaceDelta:s.board.filter(x=>!x).length-beforeSpace,chargesAdded:s.charges.rig+s.charges.chart-beforeCharges,surgeAdded:(s.surge??0)-beforeSurge});
- if(s.stage===2&&completedAnchors(s)>=2){s.stage=3;s.energy=Math.min(120,s.energy+6);trace(s,'powered');return true;}
- return false;
+function activate(s,site){
+ const opened=[],revealed=[];site.phase='done';site.progress=2;delete site.reclaimed;
+ const uncover=type=>{for(let i=0;i<36&&opened.length<2;i++)if(s.board[i]?.type===type){s.board[i]=null;opened.push(i);}};
+ if(site.kind==='winch'){uncover('rock');for(let n=0;n<2;n++){const i=put(s,item('chart',1));if(i>=0)revealed.push(i);}}
+ else if(site.kind==='scope'){uncover('sealed');for(const x of [item('flux',2),container('relic')]){const i=put(s,x);if(i>=0)revealed.push(i);}}
+ else {for(const id of Object.keys(SOURCES))s.charges[id]=7;surge(s);const i=put(s,item('rig',2));if(i>=0)revealed.push(i);}
+ for(let n=0;n<2&&s.board.filter(Boolean).length<24;n++){const i=put(s,item(ANCHORS[site.kind].drive,0));if(i>=0)revealed.push(i);}
+ trace(s,'device-used',{kind:site.kind,crossFamily:ANCHORS[site.kind].drive,opened,revealed});
+ if(s.stage===2&&completedAnchors(s)>=2){s.stage=3;s.energy=Math.min(120,s.energy+6);revealed.push(...supplies(s,4,false,s.expedition.route==='ridge'?'relic':'survey'));trace(s,'powered');}
+ return {opened,revealed};
 }
 // Mutating reducer is intentionally atomic: failed commands leave all state untouched.
 export function act(s,a,now=Date.now()){
@@ -133,9 +131,7 @@ export function act(s,a,now=Date.now()){
   const chainFind=false;
   const breakthrough=firstCraft&&crafted.tier>=3;
   if(breakthrough){s.charges[crafted.family]=Math.min(7,s.charges[crafted.family]+2);if(crafted.tier>=5)s.energy=Math.min(120,s.energy+4);}
-  const driven=crafted.tier>=2?activeAnchors(s).filter(site=>ANCHORS[site.kind].drive===crafted.family):[];
-  let powered=false;for(const site of driven)powered=operate(s,site,crafted.family)||powered;
-  return {...done(powered?'Two anchors working · the vault rings are aligned!':driven.length?`${nameOf(crafted)} · ${ANCHORS[driven[0].kind].effect}`:`${nameOf(crafted)} discovered${breakthrough?' · +2 source charges':''}${resupply.length?' · expedition supplies':offcuts?' · reusable offcuts':chainFind?' · merge run: matching parts!':''}${bonus?' · +1 energy':''}`,powered?'milestone':'merge',a.to),breakthrough,operated:driven.map(x=>s.board.indexOf(x))};
+  return {...done(`${nameOf(crafted)}${breakthrough?' · source recharged':''}${resupply.length?' · expedition supplies':''}${bonus?' · +1 energy':''}`,'merge',a.to),breakthrough};
  }
  if(a.type==='produce'){
   const p=SOURCES[a.id];if(!p||s.stage<p.unlock)return fail(`Unlock after ${a.id==='chart'?'clearing the landing':'excavating the door'}.`);
@@ -167,27 +163,15 @@ export function act(s,a,now=Date.now()){
   if(x.id==='ridge')s.board[r.start+1]=item('rig',1);
   else {s.board[r.start+1]=item('flux',2);s.board[r.start+2]=container('relic');surge(s);}
   s.energy=Math.min(120,s.energy+6);trace(s,'breach',{route:x.id});
-  return done(`${r.name} opened · Echo Crucible unlocked · fragment found. Install equipment in two anchors.`,'milestone',a.index);
+  return done(`${r.name} opened · Echo Crucible unlocked · fragment found. Choose equipment for two devices.`,'milestone',a.index);
  }
- if(a.type==='deploy'||a.type==='feed'){
-  const site=s.board[a.index];
-  if(s.stage<2||site?.type!=='site')return fail('Open a breach to reach the anchors.');
-  const need=equipment(site.kind),feed=a.type==='feed';
-  if(site.phase!==(feed?'active':'idle'))return fail(feed?'Choose an installed anchor.':'This anchor already has equipment.');
-  const from=a.from??s.board.findIndex(x=>feed?x?.type==='glyph':matches(x,need));
-  if(!valid(from)||(feed?s.board[from]?.type!=='glyph':!matches(s.board[from],need)))return fail(feed?'Keep a fragment, or operate with partner-family merges.':`Install a ${FAMILIES[need.family].names[3]}.`);
-  const alternative=normalContract(s).needs.some(r=>matches(s.board[from],r)),mergeAvailable=!feed&&count(s,need)>=2;
-  s.board[from]=null;
-  if(feed){
-   // The fragment imprints the installed tool. Reclaim it once, instead of the
-   // ordinary operation's material drop. Its freed cell guarantees safe return.
-   const reclaim=!site.reclaimed;site.reclaimed=true;if(reclaim)put(s,item(need.family,need.tier));
-   trace(s,'fragment-spent',{kind:site.kind,reclaimed:reclaim?need.family:null,decodeAvailable:!s.discoveryDone&&ready(s,[req('chart',2)])});
-   const powered=operate(s,site,'fragment',reclaim);
-   return done(`${powered?'Vault rings aligned':'Anchor imprinted'}${reclaim?' · '+FAMILIES[need.family].names[3]+' reclaimed':' · one operation'}`,powered?'milestone':'deployment',a.index);
-  }
-  site.phase='active';put(s,item(ANCHORS[site.kind].drive,0));put(s,item(ANCHORS[site.kind].drive,0));trace(s,'deployment',{kind:site.kind,family:need.family,contractAlternative:alternative,mergeAvailable});
-  return done(`${ANCHORS[site.kind].name} installed · ${ANCHORS[site.kind].short} to operate`,'deployment',a.index);
+ if(a.type==='deploy'){
+  const site=s.board[a.index];if(s.stage<2||site?.type!=='site'||site.phase!=='idle')return fail('Choose an unused device.');
+  const need=equipment(site.kind),from=a.from??s.board.findIndex(x=>matches(x,need));
+  if(!valid(from)||!matches(s.board[from],need))return fail(`Use a ${FAMILIES[need.family].names[3]}.`);
+  trace(s,'deployment',{kind:site.kind,family:need.family,contractAlternative:normalContract(s).needs.some(r=>matches(s.board[from],r)),mergeAvailable:count(s,need)>=2});
+  s.board[from]=null;const before=s.stage,change=activate(s,site);
+  return {...done(ANCHORS[site.kind].effect,s.stage>before?'milestone':'deployment',a.index),reveal:change.revealed,opened:change.opened};
  }
  if(a.type==='goal'){
   const g=goal(s);if(!g||g.action&&g.action!=='goal'||!ready(s,g.needs))return fail('Make the highlighted expedition items.');
@@ -231,7 +215,7 @@ export function act(s,a,now=Date.now()){
  }
  if(a.type==='clear'){
   if(!valid(a.index)||s.board[a.index]?.type!=='rock')return fail('Choose saltstone.');
-  const b=s.board.findIndex(x=>x?.type==='brace');if(b<0)return fail('Convert a split spanner into a trail brace.');
+  const b=s.board.findIndex(x=>x?.type==='brace'||matches(x,req('rig',2)));if(b<0)return fail('Use a split spanner to clear this stone.');
   s.board[b]=null;s.board[a.index]=container('locker');
   trace(s,'brace-clear');
   const revealed=unpack(s,a.index);surge(s);return {...done('Saltbound Locker revealed · Supply Surge: 3 improved pulls','clear',a.index),reveal:revealed,containerKind:'locker'};
@@ -277,9 +261,9 @@ export function load(raw,now=Date.now()){
   if(!s.expedition){
    s.expedition=expeditionState(s.stage);
    if(s.stage<2)for(const [id,r] of Object.entries(ROUTES))if(s.board[r.start]?.type==='sealed')s.board[r.start]={type:'route',id};
-  }else if(s.expedition.version!==1||!integer(s.expedition.trades,0,3)||s.expedition.route!==null&&!ROUTES[s.expedition.route])return fresh(now);
+  }else if(![1,2].includes(s.expedition.version)||!integer(s.expedition.trades,0,3)||s.expedition.route!==null&&!ROUTES[s.expedition.route])return fresh(now);
   s.expedition.log=Array.isArray(s.expedition.log)?s.expedition.log.filter(x=>x&&typeof x.type==='string'&&integer(x.move,0,1000000)).slice(-200):[];
-  installSites(s);delete s.mission;
+  installSites(s);if(s.expedition.version===1){for(const site of anchors(s))if(site.phase==='active')activate(s,site);s.expedition.version=2;}delete s.mission;
   return s;
  }catch{return fresh(now);}
 }

@@ -1,9 +1,8 @@
-// Equipment is consumed on installation; cross-family merges operate the site.
-// These are alternatives, not a sequence: any two working anchors open the vault.
+// One item, one immediate consequence. Any two devices prepare the vault.
 export const ANCHORS={
- winch:{name:'Counterweight lift',equipment:'rig',drive:'chart',effect:'Lift saltstone · reclaim a spanner',short:'Make a Sight lens+'},
- scope:{name:'Echo triangulator',equipment:'chart',drive:'flux',effect:'Locate a coil, then a lens',short:'Make a Pulse coil+'},
- relay:{name:'Induction bridge',equipment:'flux',drive:'rig',effect:'Recharge Rover + Kite · 3 rich pulls',short:'Make a Split spanner+'}
+ winch:{name:'Stone lift',equipment:'rig',drive:'chart',effect:'Clear two stones · find survey gear',short:'Clear stones'},
+ scope:{name:'Relic finder',equipment:'chart',drive:'flux',effect:'Uncover buried ground · find relic gear',short:'Find relics'},
+ relay:{name:'Power bridge',equipment:'flux',drive:'rig',effect:'Refill sources · 3 rich pulls · field gear',short:'Power sources'}
 };
 export const ROUTES={
  ridge:{name:'Ridge breach',family:'rig',start:24,benefit:'More working space · field equipment'},
@@ -17,7 +16,7 @@ export function trace(s,type,detail={}){
  s.expedition.log.push({type,move:s.moves,...detail});
  s.expedition.log=s.expedition.log.slice(-200);
 }
-export function expeditionState(stage=0){return {version:1,route:stage>=2?'ridge':null,trades:0,log:[]};}
+export function expeditionState(stage=0){return {version:2,route:stage>=2?'ridge':null,trades:0,log:[]};}
 export function installSites(s){
  // Migration uses only old environmental cells; never displace kept inventory.
  for(const kind of Object.keys(ANCHORS)){

@@ -1,6 +1,6 @@
 // Intent-based player styles. All actions use the public reducer / real UI.
 import {goal,ready,count,normalContract,SOURCES} from '../v5/core.mjs';
-import {ANCHORS,ROUTES,equipment,anchors,activeAnchors} from '../v5/expedition.mjs';
+import {ANCHORS,ROUTES,equipment,anchors} from '../v5/expedition.mjs';
 const req=(family,tier,count=1)=>({family,tier,count});
 export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,session=null,style='expedition'}={}){
  if(!goal(s))return null;
@@ -22,30 +22,21 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
   needs=[req(ROUTES[id].family,2)];command={type:'breach',index:s.board.findIndex(x=>x?.type==='route'&&x.id===id)};
  }else{
   // Decoding is an intent: obtain a lens, not just click if one happens to survive.
-  // Exploration deliberately spends its first fragment operating equipment instead.
   const glyph=s.board.findIndex(x=>x?.type==='glyph');
-  const spent=s.expedition.log.some(x=>x.type==='fragment-spent');
-  if(glyph>=0&&!s.discoveryDone&&(style!=='exploration'||spent)){
+  if(glyph>=0&&!s.discoveryDone){
    needs=[req('chart',2)];command={type:'discovery'};
   }else if(style==='contract'&&s.expedition.trades<2&&!(s.expedition.trades===1&&!anchors(s).some(x=>x.kind==='scope'&&x.phase!=='idle'))){
    needs=normalContract(s).needs;command={type:'contract'};
-  }else if(session&&!session.signal&&activeAnchors(s).length&&(style!=='exploration'||spent)){session.signal=true;return {type:'startOpportunity'};}
+  }else if(session&&!session.signal&&anchors(s).some(x=>x.phase==='done')){session.signal=true;return {type:'startOpportunity'};}
   else if(s.opportunity){needs=s.opportunity.needs;command={type:'opportunity'};}
   else if((clearSalvage||style==='exploration')&&!s.expedition.log.some(x=>x.type==='brace-clear')&&s.board.some(x=>x?.type==='rock')){
-   const brace=s.board.findIndex(x=>x?.type==='brace');if(brace>=0)return {type:'clear',index:s.board.findIndex(x=>x?.type==='rock')};
-   needs=[req('rig',2)];command={type:'branch',index:s.board.findIndex(x=>x?.type==='item'&&x.family==='rig'&&x.tier===2)};
+   needs=[req('rig',2)];command={type:'clear',index:s.board.findIndex(x=>x?.type==='rock')};
   }else if(s.stage===3){needs=goal(s).needs;command={type:'goal'};}
   else{
    const order=style==='expedition'?['winch','relay']:style==='exploration'?['winch','scope']:['scope','relay'];
    const site=order.map(kind=>anchors(s).find(x=>x.kind===kind)).find(x=>x.phase!=='done');
    const index=s.board.indexOf(site);
-   if(site.phase==='idle'){needs=[equipment(site.kind)];command={type:'deploy',index};}
-   else if(style==='exploration'&&glyph>=0&&!spent){needs=[req('chart',2)];command={type:'feed',index,from:glyph};}
-   else{
-    const family=ANCHORS[site.kind].drive;
-    for(let tier=3;tier>=1;tier--){const pair=s.board.flatMap((x,i)=>x?.type==='item'&&x.family===family&&x.tier===tier?[i]:[]);if(pair.length>=2)return {type:'merge',from:pair[0],to:pair[1]};}
-    needs=[req(family,2,count(s,req(family,2))+1)];command=null;
-   }
+   needs=[equipment(site.kind)];command={type:'deploy',index};
   }
  }
  if(command&&ready(s,needs))return command;

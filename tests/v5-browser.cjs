@@ -9,14 +9,15 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
   await page.waitForFunction(()=>document.querySelectorAll('#board .tile').length===36);
   const read=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('vaultwake-v5')));
   const shot=async name=>{await page.screenshot({path:`test-artifacts/v5/${style}-${name}-${width}.png`,fullPage:true});};
+  const showSide=async type=>{for(let n=0;n<4&&!await page.locator('[data-contract="'+type+'"]').count();n++)await page.locator('[data-side-next]').tap();assert.equal(await page.locator('[data-contract="'+type+'"]').count(),1);};
   const payoff=async(kind)=>{
    if(motion){assert.ok(await page.locator('.deliveryObject.collect').count()>0,kind+' collects actual board objects');await page.waitForTimeout(260);await shot(kind+'-delivery');await page.waitForTimeout(750);assert.equal(await page.locator('.deliveryObject').count(),0);assert.equal(await page.locator('.deliveryTask').count(),0);}
    else{assert.equal(await page.locator('.deliveryObject').count(),0);assert.ok(await page.locator('.deliveryReceipt').count()>0);await shot(kind+'-delivery');await page.waitForTimeout(710);}
    assert.ok((await page.locator('#message').textContent()).length>10);
    assert.equal(await page.locator('#board .selected').count(),0);
   };
-  assert.equal(await page.locator('.contract').count(),2);assert.equal(await page.locator('.source').count(),3);assert.equal(await page.locator('.source.locked').count(),2);
-  assert.equal(await page.locator('#goalButton').isDisabled(),true);assert.match(await page.locator('#goalTitle').textContent(),/landing/);
+  assert.equal(await page.locator('.contract').count(),1);assert.equal(await page.locator('.source').count(),3);assert.equal(await page.locator('.source.locked').count(),2);
+  assert.equal(await page.locator('#goalButton').isVisible(),false);assert.match(await page.locator('#goalTitle').textContent(),/landing/);
   await shot('fresh');assert.equal((await read()).board.filter(Boolean).length,27);
   assert.equal(await page.locator('.tile.site').count(),3);assert.equal(await page.locator('.tile.route').count(),2);
   for(const family of ['rig','chart','flux']){const css=await page.locator(`.tile.item[data-family="${family}"]`).first().evaluate(el=>({background:getComputedStyle(el).backgroundColor,image:getComputedStyle(el).backgroundImage,shadow:getComputedStyle(el).boxShadow}));assert.deepEqual(css,{background:'rgba(0, 0, 0, 0)',image:'none',shadow:'none'});}
@@ -44,26 +45,26 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
     if((await read()).moves===before.moves)await page.locator(`[data-action="${cmd.type}"]`).tap();
    }else if(cmd.type==='ration')await page.locator('#rationButton').tap();
    else if(cmd.type==='goal')await page.locator('#goalButton').tap();
-   else await page.locator(`[data-contract="${cmd.type}"]`).tap();
+   else {await showSide(cmd.type);await page.locator(`[data-contract="${cmd.type}"]`).tap();}
    let s=await read();assert.equal(s.moves,before.moves+1,'exactly one action: '+JSON.stringify(cmd));
    if(['goal','breach','deploy','feed','contract','discovery','opportunity'].includes(cmd.type))await payoff(cmd.type);
    if(cmd.type==='feed'&&!s.board.some(x=>x?.type==='glyph')){assert.equal(await page.locator('[data-contract="discovery"]').count(),0);assert.equal(await page.locator('[data-contract="startOpportunity"]').count(),1,'spending the clue must not strand the optional slot');}
    if(await page.locator('#celebration').isVisible())await page.locator('#celebration .continue').tap();
    assert.equal(await page.locator('#board').getAttribute('data-site'),String(s.stage));
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
-   const actionBounds=await page.locator('#goalButton').boundingBox(),goalBounds=await page.locator('.objective').boundingBox();assert.ok(actionBounds.x+actionBounds.width<=goalBounds.x+goalBounds.width,'main action must not clip inside overflow-hidden game');
+   if(await page.locator('#goalButton').isVisible()){const actionBounds=await page.locator('#goalButton').boundingBox(),goalBounds=await page.locator('.objective').boundingBox();assert.ok(actionBounds.x+actionBounds.width<=goalBounds.x+goalBounds.width);}assert.equal(await page.locator('.contract').count(),1);assert.equal(await page.locator('.world .objective').count(),1);
    const bounds=await page.locator('#board').boundingBox();assert.ok(bounds.y+bounds.height<844,'board remains visible');
    timeline.push({move:s.moves,action:cmd.type,stage:s.stage,occupied:s.board.filter(Boolean).length,energy:s.energy,charges:s.charges,log:s.expedition.log.at(-1)});
-   for(const [check,name] of [[s.merges>=3,'early-merges'],[s.stage===1,'route-choice'],[s.stage===2,'producer-unlock'],[cmd.type==='deploy','installed-equipment'],[cmd.type==='feed','fragment-choice'],[cmd.type==='discovery','rare-decoded'],[cmd.type==='clear','blocker-solution'],[s.expedition.log.some(x=>x.type==='operation'),'operating-site'],[s.stage===3,'powered-site'],[cmd.type==='crate','container-opening']]){
+   for(const [check,name] of [[s.merges>=3,'early-merges'],[s.stage===1,'route-choice'],[s.stage===2,'producer-unlock'],[cmd.type==='deploy','device-used'],[cmd.type==='feed','fragment-choice'],[cmd.type==='discovery','rare-decoded'],[cmd.type==='clear','blocker-solution'],[s.expedition.log.some(x=>x.type==='device-used'),'device-consequence'],[s.stage===3,'powered-site'],[cmd.type==='crate','container-opening']]){
     if(check&&!captured.has(name)){await shot(name);captured.add(name);}
    }
+   if(cmd.type==='deploy'){assert.equal(s.board[cmd.index].phase,'done');assert.ok(s.expedition.log.some(x=>x.type==='device-used'));await shot('device-'+s.board[cmd.index].kind);}
    if(cmd.type==='breach'){assert.equal(await page.locator('.source.locked').count(),0);assert.equal(await page.locator('.tile.sealed').count(),2,'unchosen route remains a real spatial consequence');assert.equal(await page.locator('.objective.ready').count(),0,'inspect is not a fake delivery');}
   }
   const saved=await read();assert.equal(saved.stage,4);await shot('vault-open');assert.ok(saved.discovered.length<18);assert.equal(saved.expedition.log.filter(x=>x.type==='deployment').length,2);
-  if(style==='exploration')assert.ok(saved.expedition.log.some(x=>x.type==='fragment-spent'&&x.decodeAvailable));
-  else assert.equal(saved.discoveryDone,true,'discovery cannot silently fall out of the plan');
+  assert.equal(saved.discoveryDone,true,'discovery cannot silently fall out of the plan');assert.equal(saved.expedition.log.filter(x=>x.type==='device-used').length,2);assert.equal(saved.board.some(x=>x?.type==='site'&&x.phase==='active'),false);
   assert.ok(timeline.some(x=>x.action==='opportunity'));assert.ok(new Set(timeline.map(x=>x.stage)).size>=4);
-  assert.ok(Math.min(...timeline.map(x=>x.occupied))>=18);let run=0;for(const sample of timeline){run=sample.action==='produce'?run+1:0;assert.ok(run<=3);}
+  assert.ok(Math.min(...timeline.map(x=>x.occupied))>=17);let run=0;for(const sample of timeline){run=sample.action==='produce'?run+1:0;assert.ok(run<=3);}
   fs.writeFileSync(`test-artifacts/v5/${style}-session-${width}.json`,JSON.stringify({style,timeline,decisions:saved.expedition.log,discovered:saved.discovered},null,2));
   await page.reload();assert.equal((await read()).stage,4);assert.deepEqual((await read()).expedition,saved.expedition);
   await page.locator('#journalButton').tap();assert.equal(await page.locator('#journal .art').count(),24);await shot('aspirational-journal');await page.locator('#journal .close').tap();

@@ -22,10 +22,10 @@ export function deliveryItems(s,action,now=Date.now()){
   const need={family:ROUTES[s.board[action.index].id].family,tier:2,count:1},index=action.from??s.board.findIndex(x=>matches(x,need));
   return matches(s.board[index],need)?[{index,x:{...s.board[index]}}]:[];
  }
- if(['deploy','feed'].includes(action.type)&&s.stage>=2){
-  const site=s.board[action.index];if(site?.type!=='site'||site.phase!==(action.type==='feed'?'active':'idle'))return [];
-  const index=action.from??s.board.findIndex(x=>action.type==='feed'?x?.type==='glyph':matches(x,equipment(site.kind)));
-  const x=s.board[index];if(!(action.type==='feed'?x?.type==='glyph':matches(x,equipment(site.kind))))return [];
+ if(action.type==='deploy'&&s.stage>=2){
+  const site=s.board[action.index];if(site?.type!=='site'||site.phase!=='idle')return [];
+  const index=action.from??s.board.findIndex(x=>matches(x,equipment(site.kind)));
+  const x=s.board[index];if(!matches(x,equipment(site.kind)))return [];
   return [{index,x:{...x}}];
  }
  if(action.type==='contract')needs=normalContract(s).needs;
@@ -38,7 +38,7 @@ export function deliveryItems(s,action,now=Date.now()){
  return found;
 }
 export function continuation(s,action,rewards=[]){
- if(action.type==='breach')return 'Echo Crucible unlocked · install any two anchors';
+ if(action.type==='breach')return 'Echo Crucible unlocked · choose two devices';
  if(action.type==='goal'&&s.stage===1)return 'Survey Kite unlocked · choose your 3 Surge pulls';
  if(action.type==='goal'&&s.stage===2)return 'Echo Crucible unlocked · reveal the ampoule';
  if(action.type==='goal'&&s.stage===3)return 'Rings powered · prepare the vault instruments';
