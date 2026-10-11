@@ -1,11 +1,15 @@
 import {containerInfo,contents} from './containers.mjs';
 import {SAVE_KEY,FAMILIES,SOURCES,STAGES,fresh,load,act,goal,count,ready,matches,nameOf,normalContract,opportunity,nextOutput,burstOutput,item,near} from './core.mjs';
-import {art,scene,portrait} from './art.mjs';
+import {art,scene as vectorScene,portrait} from './art.mjs';
 import {feedback,sound,reduced} from './feedback.mjs';
 import {platform} from '../v4/platform.mjs';
 import {siteSurface,SITE_NAMES,deliveryItems,continuation} from './presentation.mjs';
 import {deliverFeedback} from './feedback.mjs';
 import {ANCHORS,ROUTES,equipment,anchors,activeAnchors} from './expedition.mjs';
+import {enablePremium,prototypeScene} from './premium.mjs';
+const premium=new URLSearchParams(location.search).get('art')!=='classic';
+if(premium){enablePremium();document.body.dataset.art='premium';}
+const scene=premium?prototypeScene:vectorScene;
 const $=s=>document.querySelector(s);
 let state;try{state=load(localStorage.getItem(SAVE_KEY));}catch{state=fresh();}
 let selected=null,focus='goal',drag=null,suppressUntil=0,sideView=null;

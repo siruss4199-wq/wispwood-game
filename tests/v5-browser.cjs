@@ -5,10 +5,15 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
   const motion=width===390;
   const page=await browser.newPage({viewport:{width,height:844},hasTouch:true,isMobile:width<500,reducedMotion:motion?'no-preference':'reduce'});page.setDefaultTimeout(8000);
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  if(width<500&&style!=='aggressive'){
+   await page.goto('http://127.0.0.1:8080/v5/?art=classic');
+   await page.waitForFunction(()=>document.querySelectorAll('#board .tile').length===36);
+   await page.screenshot({path:`test-artifacts/v5/premium-before-${width}.png`,fullPage:true});
+  }
   await page.goto('http://127.0.0.1:8080/v5/');
   await page.waitForFunction(()=>document.querySelectorAll('#board .tile').length===36);
   const read=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('vaultwake-v5')));
-  const shot=async name=>{await page.screenshot({path:`test-artifacts/v5/${style}-${name}-${width}.png`,fullPage:true});};
+  const shot=async name=>{await page.evaluate(async()=>{await Promise.all([...document.images].map(img=>img.decode().catch(()=>{})));});await page.screenshot({path:`test-artifacts/v5/${style}-${name}-${width}.png`,fullPage:true});};
   const showSide=async type=>{for(let n=0;n<4&&!await page.locator('[data-contract="'+type+'"]').count();n++)await page.locator('[data-side-next]').tap();assert.equal(await page.locator('[data-contract="'+type+'"]').count(),1);};
   const payoff=async(kind)=>{
    if(motion){assert.ok(await page.locator('.deliveryObject.collect').count()>0,kind+' collects actual board objects');await page.waitForTimeout(260);await shot(kind+'-delivery');await page.waitForTimeout(750);assert.equal(await page.locator('.deliveryObject').count(),0);assert.equal(await page.locator('.deliveryTask').count(),0);}
@@ -19,6 +24,11 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
   assert.equal(await page.locator('.contract').count(),1);assert.equal(await page.locator('.source').count(),3);assert.equal(await page.locator('.source.locked').count(),2);
   assert.equal(await page.locator('#goalButton').isVisible(),false);assert.match(await page.locator('#goalTitle').textContent(),/landing/);
   await shot('fresh');assert.equal((await read()).board.filter(Boolean).length,27);
+  assert.equal(await page.locator('body').getAttribute('data-art'),'premium');
+  assert.ok(await page.locator('#board img[data-art="rig-0"]').count()>0);
+  assert.equal(await page.locator('.premiumScene').count(),1);
+  assert.equal(await page.evaluate(()=>[...document.images].every(x=>x.complete&&x.naturalWidth>0)),true);
+  for(const tile of await page.locator('#board .tile').all()){const b=await tile.boundingBox();assert.ok(b.width>=44&&b.height>=44,'touch targets stay at least 44px');}
   assert.equal(await page.locator('.tile.site').count(),3);assert.equal(await page.locator('.tile.route').count(),2);
   for(const family of ['rig','chart','flux']){const css=await page.locator(`.tile.item[data-family="${family}"]`).first().evaluate(el=>({background:getComputedStyle(el).backgroundColor,image:getComputedStyle(el).backgroundImage,shadow:getComputedStyle(el).boxShadow}));assert.deepEqual(css,{background:'rgba(0, 0, 0, 0)',image:'none',shadow:'none'});}
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
@@ -76,5 +86,6 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
  await page.evaluate(()=>{window.seenParticles=0;new MutationObserver(records=>{for(const r of records)for(const n of r.addedNodes)if(n.classList?.contains('fxParticle'))window.seenParticles++;}).observe(document.body,{childList:true});});
  const pair=await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5'));for(let i=0;i<s.board.length;i++)for(let j=i+1;j<s.board.length;j++){const a=s.board[i],b=s.board[j];if(a?.type==='item'&&b?.type==='item'&&a.family===b.family&&a.tier===b.tier&&a.tier<7)return [i,j];}return null;});assert.ok(pair,'fresh CrazyGames entry exposes a mergeable pair');const pa=await page.locator(`[data-index="${pair[0]}"]`).boundingBox(),pb=await page.locator(`[data-index="${pair[1]}"]`).boundingBox();await page.mouse.move(pa.x+pa.width/2,pa.y+pa.height/2);await page.mouse.down();await page.mouse.move(pb.x+pb.width/2,pb.y+pb.height/2,{steps:5});await page.mouse.up();await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5')).merges===1);assert.deepEqual(motionErrors,[]);assert.equal(await page.locator('.merge-pop').count(),1,'merged tile gets tactile pop feedback');assert.ok(await page.evaluate(()=>window.seenParticles)>0,'merge creates a particle burst');await page.waitForTimeout(600);assert.equal(await page.locator('.fxParticle').count(),0);
  await page.locator('#soundButton').click();assert.equal(await page.locator('#soundButton').textContent(),'Sound on');await page.reload();assert.equal(await page.locator('#soundButton').textContent(),'Sound on');await page.locator('#journalButton').focus();await page.keyboard.press('Enter');assert.equal(await page.locator('#journal').isVisible(),true);await page.keyboard.press('Escape');assert.equal(await page.locator('#journal').isVisible(),false);await page.close();
+ const review=await browser.newPage({viewport:{width:390,height:844}});await review.goto('http://127.0.0.1:8080/v5/art-review.html');await review.waitForFunction(()=>document.querySelectorAll('#after img').length===4);await review.evaluate(async()=>{await Promise.all([...document.images].map(x=>x.decode()));});assert.equal(await review.locator('#after img').count(),4);for(const img of await review.locator('#after img').all()){const b=await img.boundingBox();assert.equal(b.width,48);assert.equal(b.height,48);}await review.screenshot({path:'test-artifacts/v5/premium-art-review-390.png',fullPage:true});await review.close();
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
