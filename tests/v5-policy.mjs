@@ -29,7 +29,7 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
    needs=[req('chart',2)];command={type:'discovery'};
   }else if(style==='contract'&&s.expedition.trades<2&&!(s.expedition.trades===1&&!anchors(s).some(x=>x.kind==='scope'&&x.phase!=='idle'))){
    needs=normalContract(s).needs;command={type:'contract'};
-  }else if(session&&!session.signal&&activeAnchors(s).length){session.signal=true;return {type:'startOpportunity'};}
+  }else if(session&&!session.signal&&activeAnchors(s).length&&(style!=='exploration'||spent)){session.signal=true;return {type:'startOpportunity'};}
   else if(s.opportunity){needs=s.opportunity.needs;command={type:'opportunity'};}
   else if((clearSalvage||style==='exploration')&&!s.expedition.log.some(x=>x.type==='brace-clear')&&s.board.some(x=>x?.type==='rock')){
    const brace=s.board.findIndex(x=>x?.type==='brace');if(brace>=0)return {type:'clear',index:s.board.findIndex(x=>x?.type==='rock')};
@@ -40,7 +40,7 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
    const site=order.map(kind=>anchors(s).find(x=>x.kind===kind)).find(x=>x.phase!=='done');
    const index=s.board.indexOf(site);
    if(site.phase==='idle'){needs=[equipment(site.kind)];command={type:'deploy',index};}
-   else if(style==='exploration'&&glyph>=0&&!spent)return {type:'feed',index,from:glyph};
+   else if(style==='exploration'&&glyph>=0&&!spent){needs=[req('chart',2)];command={type:'feed',index,from:glyph};}
    else{
     const family=ANCHORS[site.kind].drive;
     for(let tier=3;tier>=1;tier--){const pair=s.board.flatMap((x,i)=>x?.type==='item'&&x.family===family&&x.tier===tier?[i]:[]);if(pair.length>=2)return {type:'merge',from:pair[0],to:pair[1]};}

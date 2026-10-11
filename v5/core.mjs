@@ -178,9 +178,9 @@ export function act(s,a,now=Date.now()){
   if(!valid(from)||(feed?s.board[from]?.type!=='glyph':!matches(s.board[from],need)))return fail(feed?'Keep a fragment, or operate with partner-family merges.':`Install a ${FAMILIES[need.family].names[3]}.`);
   const alternative=normalContract(s).needs.some(r=>matches(s.board[from],r)),mergeAvailable=!feed&&count(s,need)>=2;
   s.board[from]=null;
-  if(feed){trace(s,'fragment-spent',{kind:site.kind,decodeAvailable:!s.discoveryDone});const powered=operate(s,site,'fragment');return done(powered?'Vault rings aligned!':`${ANCHORS[site.kind].name} · fragment powers one operation`,powered?'milestone':'deployment',a.index);}
+  if(feed){trace(s,'fragment-spent',{kind:site.kind,decodeAvailable:!s.discoveryDone&&ready(s,[req('chart',2)])});const powered=operate(s,site,'fragment');return done(powered?'Vault rings aligned!':`${ANCHORS[site.kind].name} · fragment powers one operation`,powered?'milestone':'deployment',a.index);}
   site.phase='active';put(s,item(ANCHORS[site.kind].drive,0));put(s,item(ANCHORS[site.kind].drive,0));trace(s,'deployment',{kind:site.kind,family:need.family,contractAlternative:alternative,mergeAvailable});
-  return done(`${ANCHORS[site.kind].name} installed · ${ANCHORS[site.kind].short} (T3+)`,'deployment',a.index);
+  return done(`${ANCHORS[site.kind].name} installed · ${ANCHORS[site.kind].short} to operate`,'deployment',a.index);
  }
  if(a.type==='goal'){
   const g=goal(s);if(!g||g.action&&g.action!=='goal'||!ready(s,g.needs))return fail('Make the highlighted expedition items.');

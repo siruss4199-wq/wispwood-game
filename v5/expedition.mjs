@@ -1,9 +1,9 @@
 // Equipment is consumed on installation; cross-family merges operate the site.
 // These are alternatives, not a sequence: any two working anchors open the vault.
 export const ANCHORS={
- winch:{name:'Counterweight lift',equipment:'rig',drive:'chart',effect:'Lift saltstone · reclaim a spanner',short:'Survey merges lift stone'},
- scope:{name:'Echo triangulator',equipment:'chart',drive:'flux',effect:'Locate a coil, then a lens',short:'Relic merges reveal equipment'},
- relay:{name:'Induction bridge',equipment:'flux',drive:'rig',effect:'Recharge Rover + Kite · 3 rich pulls',short:'Tool merges recharge sources'}
+ winch:{name:'Counterweight lift',equipment:'rig',drive:'chart',effect:'Lift saltstone · reclaim a spanner',short:'Make a Sight lens+'},
+ scope:{name:'Echo triangulator',equipment:'chart',drive:'flux',effect:'Locate a coil, then a lens',short:'Make a Pulse coil+'},
+ relay:{name:'Induction bridge',equipment:'flux',drive:'rig',effect:'Recharge Rover + Kite · 3 rich pulls',short:'Make a Split spanner+'}
 };
 export const ROUTES={
  ridge:{name:'Ridge breach',family:'rig',start:24,benefit:'More working space · field equipment'},

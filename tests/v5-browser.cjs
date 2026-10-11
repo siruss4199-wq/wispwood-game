@@ -47,6 +47,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
    else await page.locator(`[data-contract="${cmd.type}"]`).tap();
    let s=await read();assert.equal(s.moves,before.moves+1,'exactly one action: '+JSON.stringify(cmd));
    if(['goal','breach','deploy','feed','contract','discovery','opportunity'].includes(cmd.type))await payoff(cmd.type);
+   if(cmd.type==='feed'&&!s.board.some(x=>x?.type==='glyph')){assert.equal(await page.locator('[data-contract="discovery"]').count(),0);assert.equal(await page.locator('[data-contract="startOpportunity"]').count(),1,'spending the clue must not strand the optional slot');}
    if(await page.locator('#celebration').isVisible())await page.locator('#celebration .continue').tap();
    assert.equal(await page.locator('#board').getAttribute('data-site'),String(s.stage));
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
