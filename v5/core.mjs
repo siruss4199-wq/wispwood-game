@@ -99,14 +99,15 @@ function unpack(s,index){
 }
 function remember(s,event,now){s.history.push({event,at:now});s.history=s.history.slice(-40);}
 function operate(s,site,via){
+ const beforeSpace=s.board.filter(x=>!x).length,beforeCharges=s.charges.rig+s.charges.chart,beforeSurge=s.surge??0;let cleared=false,revealed=null;
  site.progress++;site.phase=site.progress===2?'done':'active';
  if(site.kind==='winch'){
   const stone=s.board.findIndex(x=>x?.type==='rock');
-  if(stone>=0)s.board[stone]=null;else s.charges.rig=Math.min(7,s.charges.rig+3);
-  put(s,item('rig',2));
- }else if(site.kind==='scope')put(s,item(site.progress===1?'flux':'chart',2));
+  if(stone>=0){s.board[stone]=null;cleared=true;}else s.charges.rig=Math.min(7,s.charges.rig+3);
+  const reward=item('rig',2);if(put(s,reward)>=0)revealed=reward;
+ }else if(site.kind==='scope'){const reward=item(site.progress===1?'flux':'chart',2);if(put(s,reward)>=0)revealed=reward;}
  else {s.charges.rig=Math.min(7,s.charges.rig+3);s.charges.chart=Math.min(7,s.charges.chart+3);surge(s);}
- trace(s,'operation',{kind:site.kind,via,progress:site.progress});
+ trace(s,'operation',{kind:site.kind,via,progress:site.progress,cleared,revealed,spaceDelta:s.board.filter(x=>!x).length-beforeSpace,chargesAdded:s.charges.rig+s.charges.chart-beforeCharges,surgeAdded:(s.surge??0)-beforeSurge});
  if(s.stage===2&&completedAnchors(s)>=2){s.stage=3;s.energy=Math.min(120,s.energy+6);trace(s,'powered');return true;}
  return false;
 }
@@ -175,10 +176,10 @@ export function act(s,a,now=Date.now()){
   if(site.phase!==(feed?'active':'idle'))return fail(feed?'Choose an installed anchor.':'This anchor already has equipment.');
   const from=a.from??s.board.findIndex(x=>feed?x?.type==='glyph':matches(x,need));
   if(!valid(from)||(feed?s.board[from]?.type!=='glyph':!matches(s.board[from],need)))return fail(feed?'Keep a fragment, or operate with partner-family merges.':`Install a ${FAMILIES[need.family].names[3]}.`);
-  const alternative=normalContract(s).needs.some(r=>matches(s.board[from],r));
+  const alternative=normalContract(s).needs.some(r=>matches(s.board[from],r)),mergeAvailable=!feed&&count(s,need)>=2;
   s.board[from]=null;
   if(feed){trace(s,'fragment-spent',{kind:site.kind,decodeAvailable:!s.discoveryDone});const powered=operate(s,site,'fragment');return done(powered?'Vault rings aligned!':`${ANCHORS[site.kind].name} · fragment powers one operation`,powered?'milestone':'deployment',a.index);}
-  site.phase='active';put(s,item(ANCHORS[site.kind].drive,0));put(s,item(ANCHORS[site.kind].drive,0));trace(s,'deployment',{kind:site.kind,family:need.family,contractAlternative:alternative});
+  site.phase='active';put(s,item(ANCHORS[site.kind].drive,0));put(s,item(ANCHORS[site.kind].drive,0));trace(s,'deployment',{kind:site.kind,family:need.family,contractAlternative:alternative,mergeAvailable});
   return done(`${ANCHORS[site.kind].name} installed · ${ANCHORS[site.kind].short} (T3+)`,'deployment',a.index);
  }
  if(a.type==='goal'){

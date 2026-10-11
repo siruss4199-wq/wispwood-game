@@ -5,6 +5,14 @@ const req=(family,tier,count=1)=>({family,tier,count});
 export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,session=null,style='expedition'}={}){
  if(!goal(s))return null;
  const spaces=s.board.filter(x=>x===null).length;
+ // An impulsive merger compacts ALL families, even when a pair could be installed
+ // or traded separately. Do not fake this style by targeting one extra story tier.
+ if(style==='aggressive'&&s.stage>0&&s.stage<4&&!(s.stage===3&&ready(s,goal(s).needs))){
+  for(let tier=6;tier>=0;tier--)for(const family of Object.keys(SOURCES)){
+   const pair=s.board.flatMap((x,i)=>x?.type==='item'&&x.family===family&&x.tier===tier?[i]:[]);
+   if(pair.length>=2)return {type:'merge',from:pair[0],to:pair[1]};
+  }
+ }
  let needs,command;
  if(s.stage===4){needs=goal(s).needs;command={type:'goal'};}
  else if(sideFirst&&s.contracts===0){needs=normalContract(s).needs;command={type:'contract'};}
@@ -26,8 +34,6 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
   else if((clearSalvage||style==='exploration')&&!s.expedition.log.some(x=>x.type==='brace-clear')&&s.board.some(x=>x?.type==='rock')){
    const brace=s.board.findIndex(x=>x?.type==='brace');if(brace>=0)return {type:'clear',index:s.board.findIndex(x=>x?.type==='rock')};
    needs=[req('rig',2)];command={type:'branch',index:s.board.findIndex(x=>x?.type==='item'&&x.family==='rig'&&x.tier===2)};
-  }else if(style==='aggressive'&&!s.discovered.includes('chart:4')){
-   needs=[req('chart',4)];command=null;
   }else if(s.stage===3){needs=goal(s).needs;command={type:'goal'};}
   else{
    const order=style==='expedition'?['winch','relay']:style==='exploration'?['winch','scope']:['scope','relay'];

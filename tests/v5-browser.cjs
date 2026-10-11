@@ -34,9 +34,13 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
    else if(cmd.type==='produce'||cmd.type==='service'){
     const i=before.board.findIndex(x=>x?.type==='source'&&x.id===cmd.id);await page.locator(`[data-index="${i}"]`).tap();if(cmd.type==='service')await page.locator('[data-action="service"]').tap();
    }else if(cmd.type==='crate')await page.locator(`[data-index="${cmd.index}"]`).tap();
+   else if(cmd.type==='deploy'&&style==='contract'){
+    const family={winch:'rig',scope:'chart',relay:'flux'}[before.board[cmd.index].kind],from=before.board.findIndex(x=>x?.family===family&&x.tier===3);
+    const a=await page.locator(`[data-index="${from}"]`).boundingBox(),b=await page.locator(`[data-index="${cmd.index}"]`).boundingBox();
+    await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:7});assert.equal(await page.locator('.site.target').count(),1,'installed-equipment destination snaps');await page.mouse.up();
+   }
    else if(['deploy','feed','breach','branch','clear','recycle'].includes(cmd.type)){
-    // Explicitly deselect any prior equipment before using the contextual one-step action.
-    await page.locator(`[data-index="${cmd.index}"]`).tap();
+    if(!await page.locator(`[data-index="${cmd.index}"]`).getAttribute('aria-pressed').then(x=>x==='true'))await page.locator(`[data-index="${cmd.index}"]`).tap();
     if((await read()).moves===before.moves)await page.locator(`[data-action="${cmd.type}"]`).tap();
    }else if(cmd.type==='ration')await page.locator('#rationButton').tap();
    else if(cmd.type==='goal')await page.locator('#goalButton').tap();
