@@ -48,3 +48,8 @@
 .world.changed{animation:siteFlash .65s ease-out}@keyframes siteFlash{30%{filter:brightness(1.15)}100%{filter:none}}
 @keyframes echoWake{40%{filter:drop-shadow(0 0 10px #b281db)}100%{filter:none}}
 @media(prefers-reduced-motion:reduce){.deliveryObject{display:none}.taskCollected,.rewardLanded .art,.sitePayoff,.echoPayoff{animation:none}.tile.deliveryReady .art{animation:none}}
+.anchorCue{position:absolute;bottom:1px;left:0;right:0;text-align:center;font-size:8px;font-weight:900;color:#253b53;text-shadow:0 1px #fff6d7;pointer-events:none}
+.tile.site,.tile.route{background:transparent;border-color:transparent;box-shadow:none}
+.tile.site[data-phase=active]{filter:drop-shadow(0 0 3px #75d9eb)}
+.tile.site[data-phase=done]{filter:drop-shadow(0 0 3px #a4f3ce)}
+.contract .reward>.art{width:36px;height:36px;display:block;margin:auto}

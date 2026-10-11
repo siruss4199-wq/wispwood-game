@@ -1,4 +1,5 @@
 import {goal,normalContract,ready,matches,nameOf,item,SOURCES} from './core.mjs';
+import {equipment,ROUTES} from './expedition.mjs';
 
 export const SITE_NAMES=['Landing tray','Survey worksite','Excavated saltglass','Powered relic site','Vault observatory'];
 // A single continuous surface, under the unchanged 36 hit targets. All marks are original.
@@ -16,7 +17,17 @@ export function siteSurface(stage){
 // Uses precisely the same first-match order as the reducer's consume(). Pure and testable.
 export function deliveryItems(s,action,now=Date.now()){
  let needs;
- if(['goal','survey','prime','align'].includes(action.type))needs=goal(s)?.needs;
+ if(action.type==='goal'&&goal(s)?.action!=='inspect')needs=goal(s)?.needs;
+ if(action.type==='breach'&&s.stage===1&&s.board[action.index]?.type==='route'){
+  const need={family:ROUTES[s.board[action.index].id].family,tier:2,count:1},index=action.from??s.board.findIndex(x=>matches(x,need));
+  return matches(s.board[index],need)?[{index,x:{...s.board[index]}}]:[];
+ }
+ if(['deploy','feed'].includes(action.type)&&s.stage>=2){
+  const site=s.board[action.index];if(site?.type!=='site'||site.phase!==(action.type==='feed'?'active':'idle'))return [];
+  const index=action.from??s.board.findIndex(x=>action.type==='feed'?x?.type==='glyph':matches(x,equipment(site.kind)));
+  const x=s.board[index];if(!(action.type==='feed'?x?.type==='glyph':matches(x,equipment(site.kind))))return [];
+  return [{index,x:{...x}}];
+ }
  if(action.type==='contract')needs=normalContract(s).needs;
  if(action.type==='opportunity'&&s.opportunity&&now<=s.opportunity.ends)needs=s.opportunity.needs;
  if(action.type==='discovery'&&!s.discoveryDone)needs=[{family:'chart',tier:2,count:1}];
@@ -27,9 +38,7 @@ export function deliveryItems(s,action,now=Date.now()){
  return found;
 }
 export function continuation(s,action,rewards=[]){
- if(action.type==='survey')return 'Buried door pinned · build the excavation kit';
- if(action.type==='prime')return 'Dormant ring awake · stabilize it with field gear';
- if(action.type==='align')return 'Vault alignment solved · build the final access assembly';
+ if(action.type==='breach')return 'Echo Crucible unlocked · install any two anchors';
  if(action.type==='goal'&&s.stage===1)return 'Survey Kite unlocked · choose your 3 Surge pulls';
  if(action.type==='goal'&&s.stage===2)return 'Echo Crucible unlocked · reveal the ampoule';
  if(action.type==='goal'&&s.stage===3)return 'Rings powered · prepare the vault instruments';
@@ -37,7 +46,7 @@ export function continuation(s,action,rewards=[]){
  if(action.type==='discovery')return 'Echo decoded · every third pull now brings richer parts';
  if(s.surge>0)return `Supply Surge · choose a producer for ${s.surge} refined pulls`;
  const box=rewards.find(x=>x.x.type==='crate');if(box)return `Tap your ${nameOf(box.x)} to reveal supplies`;
- const g=goal(s);if(g&&ready(s,g.needs))return `${g.name} · READY above`;
+ const g=goal(s);if(g&&g.action!=='inspect'&&ready(s,g.needs))return `${g.name} · READY above`;
  const c=normalContract(s);if(ready(s,c.needs))return `${c.title} · READY above`;
  const need=g?.needs.find(r=>!ready(s,[r]));return need?`${nameOf(item(need.family,need.tier))} next · ${SOURCES[need.family].name}`:'Choose your next discovery';
 }
