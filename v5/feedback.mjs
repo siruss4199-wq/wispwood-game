@@ -40,7 +40,7 @@ export function deliverFeedback({kind,delivery,rewards,taskRect,taskSnapshot,tas
  const board=document.querySelector('#board');
  task?.classList.remove('taskCollected');if(task){void task.offsetWidth;task.classList.add('taskCollected');setTimeout(()=>task.classList.remove('taskCollected'),620);}
  board.classList.remove('sitePayoff','echoPayoff');void board.offsetWidth;if(main||rare)board.classList.add(main?'sitePayoff':'echoPayoff');
- const title=main?['','Landing secured','Door uncovered','Ring engine online','Tideglass Vault opened'][stage]:rare?'The echo answers':signal?'Signal received':'Supplies secured';
+ const title=main?['','Landing secured','Door uncovered','Ring engine online','Tideglass Vault opened'][stage]:kind==='deploy'?'Equipment installed':kind==='feed'?'Anchor operated':rare?'The echo answers':signal?'Signal received':'Supplies secured';
  moment(title,next);
  sound.play(main?'milestone':rare||signal?'rare':'contract');
  if(reduced()){
@@ -64,7 +64,7 @@ export function deliverFeedback({kind,delivery,rewards,taskRect,taskSnapshot,tas
  delivery.forEach((v,i)=>travel(v.x,v.rect,taskRect,'collect',i*35));
  rewards.slice(0,6).forEach((v,i)=>travel(v.x,taskRect,v.rect,'return',360+i*20));
  rewards.forEach(v=>{const tile=document.querySelector(`[data-index="${v.index}"]`);tile?.classList.add('rewardLanded');});
- rewardFlight(taskRect,document.querySelector('.resource')?.getBoundingClientRect(),`+${energy} ϟ`);
+ if(energy>0)rewardFlight(taskRect,document.querySelector('.resource')?.getBoundingClientRect(),`+${energy} ϟ`);
  burst(taskRect,rare?'flux':signal?'chart':'gold',main||rare||signal);
  if(main||rare)burst(board.getBoundingClientRect(),rare?'flux':'gold',true);
 }

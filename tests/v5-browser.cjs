@@ -30,7 +30,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
    const before=await read();
    const cmd=await page.evaluate(async style=>{const {choose}=await import('/tests/v5-policy.mjs');const s=JSON.parse(localStorage.getItem('vaultwake-v5'));window.sessionPolicy??={};return choose(s,{style,openCaches:true,session:window.sessionPolicy});},style);
    if(cmd.type==='goal'){assert.equal(await page.locator('.objective.ready').count(),1);await shot('main-ready-'+before.stage);if(before.stage===3)await shot('pre-vault');}
-   if(cmd.type==='merge'){await page.locator(`[data-index="${cmd.from}"]`).tap();await page.locator(`[data-index="${cmd.to}"]`).tap();}
+   if(cmd.type==='merge'){const selected=page.locator('#board .selected.item,#board .selected.glyph,#board .selected.brace');if(await selected.count())await selected.tap();await page.locator(`[data-index="${cmd.from}"]`).tap();await page.locator(`[data-index="${cmd.to}"]`).tap();}
    else if(cmd.type==='produce'||cmd.type==='service'){
     const i=before.board.findIndex(x=>x?.type==='source'&&x.id===cmd.id);await page.locator(`[data-index="${i}"]`).tap();if(cmd.type==='service')await page.locator('[data-action="service"]').tap();
    }else if(cmd.type==='crate')await page.locator(`[data-index="${cmd.index}"]`).tap();
@@ -46,6 +46,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
    if(await page.locator('#celebration').isVisible())await page.locator('#celebration .continue').tap();
    assert.equal(await page.locator('#board').getAttribute('data-site'),String(s.stage));
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+   const actionBounds=await page.locator('#goalButton').boundingBox(),goalBounds=await page.locator('.objective').boundingBox();assert.ok(actionBounds.x+actionBounds.width<=goalBounds.x+goalBounds.width,'main action must not clip inside overflow-hidden game');
    const bounds=await page.locator('#board').boundingBox();assert.ok(bounds.y+bounds.height<844,'board remains visible');
    timeline.push({move:s.moves,action:cmd.type,stage:s.stage,occupied:s.board.filter(Boolean).length,energy:s.energy,charges:s.charges,log:s.expedition.log.at(-1)});
    for(const [check,name] of [[s.merges>=3,'early-merges'],[s.stage===1,'route-choice'],[s.stage===2,'producer-unlock'],[cmd.type==='deploy','installed-equipment'],[cmd.type==='feed','fragment-choice'],[cmd.type==='discovery','rare-decoded'],[cmd.type==='clear','blocker-solution'],[s.expedition.log.some(x=>x.type==='operation'),'operating-site'],[s.stage===3,'powered-site'],[cmd.type==='crate','container-opening']]){
