@@ -1,7 +1,7 @@
 import {containerInfo,contents} from './containers.mjs';
 import {SAVE_KEY,FAMILIES,SOURCES,STAGES,fresh,load,act,goal,count,ready,matches,nameOf,normalContract,opportunity,nextOutput,burstOutput,item,near} from './core.mjs';
 import {art,scene as vectorScene,portrait} from './art.mjs';
-import {feedback,sound,reduced} from './feedback.mjs';
+import {feedback,sound,reduced,snapshotTask} from './feedback.mjs';
 import {platform} from '../v4/platform.mjs';
 import {siteSurface,SITE_NAMES,deliveryItems,continuation} from './presentation.mjs';
 import {deliverFeedback} from './feedback.mjs';
@@ -98,7 +98,7 @@ function run(a){
  const beforeBoard=state.board.map(x=>x?JSON.stringify(x):null);
  const objectiveAction=['goal','breach'].includes(a.type);const taskSelector=a.type==='deploy'?`[data-index="${a.index}"]`:objectiveAction?'.objective':`[data-contract="${a.type}"]`;
  const taskRect=$(taskSelector)?.getBoundingClientRect();
- const taskSnapshot=$(taskSelector)?.cloneNode(true);
+ const taskSnapshot=delivery.length?snapshotTask($(taskSelector)):null;
  const energyBefore=state.energy,firstContract=state.contracts===0,surgeBefore=state.surge??0;
  const rewardOrigin=document.querySelector(a.type==='contract'||a.type==='opportunity'?'#contracts':'.objective')?.getBoundingClientRect();
  const before=state.stage,from=a.type==='produce'?board.querySelector(`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===a.id)}"]`)?.getBoundingClientRect():null;

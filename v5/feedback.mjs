@@ -33,6 +33,16 @@ export function rewardFlight(from,to,label){
 export function moment(title,detail='',object=null){
  document.querySelector('.moment')?.remove();const el=document.createElement('div');el.className='moment';el.setAttribute('role','status');const b=document.createElement('b'),small=document.createElement('small');b.textContent=title;small.textContent=detail;if(object){const icon=document.createElement('span');icon.style.cssText='float:left;width:42px;height:42px;margin-right:10px';icon.innerHTML=art(object);icon.firstElementChild.style.cssText='width:100%;height:100%';el.append(icon);}el.append(b,small);transient(el,reduced()?2100:1750);
 }
+// Delivery copies leave their scene/optional-task parents and lose IDs. Freeze
+// their rendered layout before the synchronous render replaces those parents.
+export function snapshotTask(source){
+ if(!source||reduced())return null;
+ const copy=source.cloneNode(true),originals=[source,...source.querySelectorAll('*')],copies=[copy,...copy.querySelectorAll('*')];
+ const properties=['display','box-sizing','width','height','min-width','min-height','max-width','max-height','grid-template-columns','flex','flex-direction','flex-shrink','justify-content','align-items','gap','margin','padding','position','top','right','bottom','left','font','line-height','letter-spacing','text-align','white-space','color','background','border','border-radius','box-shadow','opacity','object-fit'];
+ originals.forEach((el,i)=>{if(el.namespaceURI!=='http://www.w3.org/1999/xhtml'&&el.tagName.toLowerCase()!=='svg')return;const css=getComputedStyle(el);for(const key of properties)copies[i].style.setProperty(key,css.getPropertyValue(key));});
+ if(source.classList.contains('objective')&&getComputedStyle(source).backgroundColor==='rgba(0, 0, 0, 0)'&&getComputedStyle(source).backgroundImage==='none')copy.style.background='#234e57';
+ return copy;
+}
 // Snapshot sprites outlive the synchronous render. Rules/save settle immediately;
 // these flights never remove items, issue commands or block a second interaction.
 export function deliverFeedback({kind,delivery,rewards,taskRect,taskSnapshot,task,energy,next,stage}){
@@ -53,7 +63,7 @@ export function deliverFeedback({kind,delivery,rewards,taskRect,taskSnapshot,tas
   taskSnapshot.removeAttribute('id');taskSnapshot.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));
   taskSnapshot.classList.add('deliveryTask');taskSnapshot.setAttribute('aria-hidden','true');taskSnapshot.tabIndex=-1;
   taskSnapshot.querySelectorAll('button').forEach(el=>el.tabIndex=-1);
-  taskSnapshot.style.cssText=`position:fixed;left:${taskRect.x}px;top:${taskRect.y}px;width:${taskRect.width}px;height:${taskRect.height}px;margin:0;pointer-events:none;z-index:38`;
+  taskSnapshot.style.cssText+=`;position:fixed;left:${taskRect.x}px;top:${taskRect.y}px;width:${taskRect.width}px;height:${taskRect.height}px;margin:0;pointer-events:none;z-index:38`;
   transient(taskSnapshot,480);
  }
  function travel(x,from,to,phase,delay=0){

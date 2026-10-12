@@ -21,7 +21,9 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
   const shot=async name=>{await page.evaluate(async()=>{await Promise.all([...document.images].map(img=>img.decode().catch(()=>{})));});await page.screenshot({path:`test-artifacts/v5/${style}-${name}-${width}.png`,fullPage:true});};
   const showSide=async type=>{for(let n=0;n<4&&!await page.locator('[data-contract="'+type+'"]').count();n++)await page.locator('[data-side-next]').tap();assert.equal(await page.locator('[data-contract="'+type+'"]').count(),1);};
   const payoff=async(kind)=>{
-   if(motion){assert.ok(await page.locator('.deliveryObject.collect').count()>0,kind+' collects actual board objects');await page.waitForTimeout(260);await shot(kind+'-delivery');await page.waitForTimeout(750);assert.equal(await page.locator('.deliveryObject').count(),0);assert.equal(await page.locator('.deliveryTask').count(),0);}
+   if(motion){assert.ok(await page.locator('.deliveryObject.collect').count()>0,kind+' collects actual board objects');
+    const clone=page.locator('.deliveryTask.objective');if(await clone.count()){assert.equal(await clone.evaluate(el=>getComputedStyle(el).display),'grid','delivery keeps mission layout outside the scene');const box=await clone.boundingBox();const requirements=await clone.locator('.goalBottom').boundingBox();assert.ok(requirements.y+requirements.height<=box.y+box.height+1,'delivery requirements stay inside the copied mission');}
+   await page.waitForTimeout(260);await shot(kind+'-delivery');await page.waitForTimeout(750);assert.equal(await page.locator('.deliveryObject').count(),0);assert.equal(await page.locator('.deliveryTask').count(),0);}
    else{assert.equal(await page.locator('.deliveryObject').count(),0);assert.ok(await page.locator('.deliveryReceipt').count()>0);await shot(kind+'-delivery');await page.waitForTimeout(710);}
    assert.ok((await page.locator('#message').textContent()).length>10);
    assert.equal(await page.locator('#board .selected').count(),0);
