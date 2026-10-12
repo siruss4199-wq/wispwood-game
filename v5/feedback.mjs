@@ -61,9 +61,12 @@ export function deliverFeedback({kind,delivery,rewards,taskRect,taskSnapshot,tas
  }
  if(taskSnapshot&&taskRect){
   taskSnapshot.removeAttribute('id');taskSnapshot.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));
-  taskSnapshot.classList.add('deliveryTask');taskSnapshot.setAttribute('aria-hidden','true');taskSnapshot.tabIndex=-1;
+  taskSnapshot.classList.remove('awaitingDelivery');taskSnapshot.classList.add('deliveryTask');taskSnapshot.setAttribute('aria-hidden','true');taskSnapshot.tabIndex=-1;
   taskSnapshot.querySelectorAll('button').forEach(el=>el.tabIndex=-1);
   taskSnapshot.style.cssText+=`;position:fixed;left:${taskRect.x}px;top:${taskRect.y}px;width:${taskRect.width}px;height:${taskRect.height}px;margin:0;pointer-events:none;z-index:38`;
+  // The next objective is already live, but must not show through the receipt.
+  // A token prevents an earlier delivery from revealing a newer receipt early.
+  if(task){const token=String(performance.now());task.dataset.deliveryToken=token;task.classList.add('awaitingDelivery');setTimeout(()=>{if(task.dataset.deliveryToken===token){task.classList.remove('awaitingDelivery');delete task.dataset.deliveryToken;}},480);}
   transient(taskSnapshot,480);
  }
  function travel(x,from,to,phase,delay=0){
@@ -78,12 +81,12 @@ export function deliverFeedback({kind,delivery,rewards,taskRect,taskSnapshot,tas
  burst(taskRect,rare?'flux':signal?'chart':'gold',main||rare||signal);
  if(main||rare)burst(board.getBoundingClientRect(),rare?'flux':'gold',true);
 }
-export function feedback({event,tile,x,from,energyDelta,stage,firstContract=false,containerKind,reveal=[],bonus,breakthrough,surgeStarted}){
+export function feedback({event,tile,x,from,energyDelta,stage,firstContract=false,containerKind,reveal=[],bonus,breakthrough,breakthroughUse,surgeStarted}){
  const rect=tile?.getBoundingClientRect();
  if(event==='merge'){
   tile?.classList.add('merge-pop');burst(rect,x?.family,x?.tier>=4);sound.play('merge',x?.tier??0);
   if(x?.tier>=4&&!reduced()){const b=document.querySelector('#board');b.classList.remove('impact');void b.offsetWidth;b.classList.add('impact');}
-  if(breakthrough)moment(x.tier>=5?'Masterwork':'New equipment',`Source recharged${x.tier>=5?' · +4 energy':''}`,x);
+  if(breakthrough)moment(x.tier>=5?'Masterwork':'New equipment',breakthroughUse??`Source recharged${x.tier>=5?' · +4 energy':''}`,x);
  }else if(event==='produce'&&x?.type==='glyph'){burst(rect,'flux',true);sound.play('rare');moment('Echo fragment found','Decode it, or reclaim its energy');}
  else if(event==='clear'||event==='container'){const info=containerInfo({kind:containerKind});burst(rect,info.family,true);sound.play('rare');moment(event==='clear'?'Saltbound Locker uncovered':info.name,`${reveal.length} finds revealed${containerKind==='salvage'?' · Rover charge support':''}`,{type:'crate',kind:containerKind});}
  else if(event==='contract'){rewardFlight(from,document.querySelector('.resource').getBoundingClientRect(),`+${energyDelta} ϟ`);sound.play('contract');if(firstContract)moment('Supplies secured','Your first contract delivered');}

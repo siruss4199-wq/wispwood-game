@@ -22,8 +22,8 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
   const showSide=async type=>{for(let n=0;n<4&&!await page.locator('[data-contract="'+type+'"]').count();n++)await page.locator('[data-side-next]').tap();assert.equal(await page.locator('[data-contract="'+type+'"]').count(),1);};
   const payoff=async(kind)=>{
    if(motion){assert.ok(await page.locator('.deliveryObject.collect').count()>0,kind+' collects actual board objects');
-    const clone=page.locator('.deliveryTask.objective');if(await clone.count()){assert.equal(await clone.evaluate(el=>getComputedStyle(el).display),'grid','delivery keeps mission layout outside the scene');const box=await clone.boundingBox();const requirements=await clone.locator('.goalBottom').boundingBox();assert.ok(requirements.y+requirements.height<=box.y+box.height+1,'delivery requirements stay inside the copied mission');}
-   await page.waitForTimeout(260);await shot(kind+'-delivery');await page.waitForTimeout(750);assert.equal(await page.locator('.deliveryObject').count(),0);assert.equal(await page.locator('.deliveryTask').count(),0);}
+    const clone=page.locator('.deliveryTask.objective');if(await clone.count()){assert.equal(await clone.evaluate(el=>getComputedStyle(el).display),'grid','delivery keeps mission layout outside the scene');assert.equal(await page.locator('.world .objective').evaluate(el=>getComputedStyle(el).visibility),'hidden','next objective waits behind delivery receipt');const box=await clone.boundingBox();const requirements=await clone.locator('.goalBottom').boundingBox();assert.ok(requirements.y+requirements.height<=box.y+box.height+1,'delivery requirements stay inside the copied mission');}
+   await page.waitForTimeout(260);await shot(kind+'-delivery');await page.waitForTimeout(750);assert.equal(await page.locator('.deliveryObject').count(),0);assert.equal(await page.locator('.deliveryTask').count(),0);assert.equal(await page.locator('.world .objective').evaluate(el=>getComputedStyle(el).visibility),'visible');}
    else{assert.equal(await page.locator('.deliveryObject').count(),0);assert.ok(await page.locator('.deliveryReceipt').count()>0);await shot(kind+'-delivery');await page.waitForTimeout(710);}
    assert.ok((await page.locator('#message').textContent()).length>10);
    assert.equal(await page.locator('#board .selected').count(),0);
@@ -67,6 +67,13 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
    else if(cmd.type==='produce'||cmd.type==='service'){
     const i=before.board.findIndex(x=>x?.type==='source'&&x.id===cmd.id);await page.locator(`[data-index="${i}"]`).tap();if(cmd.type==='service')await page.locator('[data-action="service"]').tap();
    }else if(cmd.type==='crate')await page.locator(`[data-index="${cmd.index}"]`).tap();
+   else if(cmd.type==='deploy'&&style==='exploration'){
+    const family={winch:'rig',scope:'chart',relay:'flux'}[before.board[cmd.index].kind],from=before.board.findIndex(x=>x?.family===family&&x.tier===3);
+    const selected=page.locator('#board .selected.item');if(await selected.count())await selected.tap();
+    await page.locator(`[data-index="${from}"]`).tap();
+    assert.ok(await page.locator('.site.useTarget').count()>0,'equipment highlights its expedition destination');
+    await page.locator(`[data-action="deploy"][data-target="${cmd.index}"]`).tap();
+   }
    else if(cmd.type==='deploy'&&style==='contract'){
     const family={winch:'rig',scope:'chart',relay:'flux'}[before.board[cmd.index].kind],from=before.board.findIndex(x=>x?.family===family&&x.tier===3);
     const a=await page.locator(`[data-index="${from}"]`).boundingBox(),b=await page.locator(`[data-index="${cmd.index}"]`).boundingBox();

@@ -68,3 +68,28 @@ body[data-art="premium"] .boardHeading #hint{font-size:11px;letter-spacing:0;col
 footer button{min-height:44px;min-width:44px;font-size:11px;padding:6px}
 footer>span{display:none}
 @media(max-width:375px){.contractHead>svg{width:26px;height:28px}.contractHead b{font-size:11px}.contract .reward{min-width:50px;font-size:13px}.contract{gap:5px}.objective h1{font-size:15px}.objective .primary{padding:7px 9px}.boardHeading #free{font-size:9px}}
+
+/* A delivery receipt occupies the old task until its next goal can enter cleanly. */
+.awaitingDelivery{visibility:hidden}
+#board .tile.useTarget{outline:2px solid #efae42;outline-offset:-2px;background:radial-gradient(ellipse,#ffedb077,transparent 72%)}
+.selection:has([data-target]) .mergePreview{display:none}
+.selection:has([data-target]) .actionGroup{max-width:138px;display:flex;flex-direction:column;gap:4px}
+.selection:has([data-target]) .actionGroup button{font-size:11px;min-height:44px}
+/* Keep the same lighting and mission palette after leaving the raster landing. */
+body[data-art="premium"] .world{background:#f7ebd5}
+body[data-art="premium"] .world .objective{color:#244c56;background:#fff0d8}
+body[data-art="premium"] .world .objective.ready{background:#e2f2e5}
+body[data-art="premium"] .world #step{color:#527d83}
+body[data-art="premium"] .world .objective.ready #step{color:#126f60}
+body[data-art="premium"] .missionSlot{color:#315966}
+body[data-art="premium"] .missionSlot .art{background:#efe2c7;border-color:#aa9778;opacity:.85}
+body[data-art="premium"] .missionSlot.available .art{background:#e0f3e9;border:2px solid #20a38c;opacity:1;box-shadow:0 2px 5px #287d6926}
+body[data-art="premium"] .missionSlot.complete .art{background:#cfe9dd;border-color:#238a73;opacity:1}
+body[data-art="premium"] .missionSlot.complete span{color:#187762}
+body[data-art="premium"] .or{color:#68848a}
+body[data-art="premium"] .worldLabel{color:#163f50;text-shadow:0 1px 4px #ffffed}
+body[data-art="premium"] .worldLabel span{display:none}
+body[data-art="premium"] .worldLabel b{font-size:13px}
+body[data-art="premium"] .objective .need{background:#f3dfb7;border-color:#b99b69}
+body[data-art="premium"] .objective .need.done{background:#d4e6d7;border-color:#73a48b}
+body[data-art="premium"] .objective .need:not(.done) .art{opacity:.9}
