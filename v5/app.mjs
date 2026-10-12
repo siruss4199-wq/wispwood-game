@@ -8,7 +8,7 @@ import {deliverFeedback} from './feedback.mjs';
 import {ANCHORS,ROUTES,equipment,anchors,activeAnchors} from './expedition.mjs';
 import {enablePremium,prototypeScene} from './premium.mjs';
 const premium=new URLSearchParams(location.search).get('art')!=='classic';
-if(premium){enablePremium(new URLSearchParams(location.search).get('art'));document.body.dataset.art='premium';}
+if(premium){enablePremium(new URLSearchParams(location.search).get('art'));document.body.dataset.art='premium';document.body.dataset.palette=['r2','phase1'].includes(new URLSearchParams(location.search).get('art'))?'muted':'vibrant';}
 const scene=premium?prototypeScene:vectorScene;
 const $=s=>document.querySelector(s);
 let state;try{state=load(localStorage.getItem(SAVE_KEY));}catch{state=fresh();}

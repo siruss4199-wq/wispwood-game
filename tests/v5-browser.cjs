@@ -11,9 +11,9 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
    await page.screenshot({path:`test-artifacts/v5/premium-before-${width}.png`,fullPage:true});
   }
   if(width===390&&style==='contract'){
-   await page.goto('http://127.0.0.1:8080/v5/?art=phase1');await page.waitForFunction(()=>document.querySelectorAll('#board .tile').length===36);
+   await page.goto('http://127.0.0.1:8080/v5/?art=r2');await page.waitForFunction(()=>document.querySelectorAll('#board .tile').length===36);
    await page.evaluate(async()=>{await Promise.all([...document.images].map(x=>x.decode()));});
-   await page.screenshot({path:'test-artifacts/v5/refinement-before-390.png',fullPage:true});
+   await page.screenshot({path:'test-artifacts/v5/production-before-390.png',fullPage:true});
   }
   await page.goto('http://127.0.0.1:8080/v5/');
   await page.waitForFunction(()=>document.querySelectorAll('#board .tile').length===36);
@@ -32,6 +32,9 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
   assert.equal(await page.locator('body').getAttribute('data-art'),'premium');
   assert.ok(await page.locator('#board img[data-art="rig-0"]').count()>0);
   assert.equal(await page.locator('.premiumScene').count(),1);
+  assert.match(await page.locator('.premiumScene').getAttribute('src'),/landing-vibrant/);
+  assert.match(await page.locator('#board img[data-art="source-rig"]').getAttribute('src'),/rivet-rover-vibrant/);
+  if(width===390&&style==='contract')await shot('production-after');
   assert.equal(await page.evaluate(()=>[...document.images].every(x=>x.complete&&x.naturalWidth>0)),true);
   for(const tile of await page.locator('#board .tile').all()){const b=await tile.boundingBox();assert.ok(b.width>=44&&b.height>=44,'touch targets stay at least 44px');}
   assert.equal(await page.locator('.tile.site').count(),3);assert.equal(await page.locator('.tile.route').count(),2);
@@ -98,5 +101,6 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
  const pair=await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5'));for(let i=0;i<s.board.length;i++)for(let j=i+1;j<s.board.length;j++){const a=s.board[i],b=s.board[j];if(a?.type==='item'&&b?.type==='item'&&a.family===b.family&&a.tier===b.tier&&a.tier<7)return [i,j];}return null;});assert.ok(pair,'fresh CrazyGames entry exposes a mergeable pair');const pa=await page.locator(`[data-index="${pair[0]}"]`).boundingBox(),pb=await page.locator(`[data-index="${pair[1]}"]`).boundingBox();await page.mouse.move(pa.x+pa.width/2,pa.y+pa.height/2);await page.mouse.down();await page.mouse.move(pb.x+pb.width/2,pb.y+pb.height/2,{steps:5});await page.mouse.up();await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5')).merges===1);assert.deepEqual(motionErrors,[]);assert.equal(await page.locator('.merge-pop').count(),1,'merged tile gets tactile pop feedback');assert.ok(await page.evaluate(()=>window.seenParticles)>0,'merge creates a particle burst');await page.waitForTimeout(600);assert.equal(await page.locator('.fxParticle').count(),0);
  await page.locator('#soundButton').click();assert.equal(await page.locator('#soundButton').textContent(),'Sound on');await page.reload();assert.equal(await page.locator('#soundButton').textContent(),'Sound on');await page.locator('#journalButton').focus();await page.keyboard.press('Enter');assert.equal(await page.locator('#journal').isVisible(),true);await page.keyboard.press('Escape');assert.equal(await page.locator('#journal').isVisible(),false);await page.close();
  const review=await browser.newPage({viewport:{width:390,height:844}});await review.goto('http://127.0.0.1:8080/v5/art-review.html');await review.waitForFunction(()=>document.querySelectorAll('#after img').length===4);await review.evaluate(async()=>{await Promise.all([...document.images].map(x=>x.decode()));});assert.equal(await review.locator('#after img').count(),4);for(const img of await review.locator('#after img').all()){const b=await img.boundingBox();assert.equal(b.width,48);assert.equal(b.height,48);}await review.screenshot({path:'test-artifacts/v5/premium-art-review-390.png',fullPage:true});await review.locator('#sampleComparison').screenshot({path:'test-artifacts/v5/refinement-48px.png'});assert.equal(await review.locator('#previous img').count(),4);await review.close();
+ const slice=await browser.newPage({viewport:{width:390,height:844}});await slice.goto('http://127.0.0.1:8080/v5/production-review.html');await slice.waitForSelector('#live img');await slice.evaluate(async()=>Promise.all([...document.images].map(x=>x.decode())));for(const img of await slice.locator('#objects img').all()){const box=await img.boundingBox();assert.equal(box.width,48);assert.equal(box.height,48);}await slice.locator('#objects').screenshot({path:'test-artifacts/v5/production-48px.png'});await slice.close();
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
