@@ -36,7 +36,7 @@ function renderSide(){
 function render(){
  $('.world').classList.toggle('opened',state.stage===4);$('.destination').textContent=state.stage===4?'VAULT DISCOVERED':'OPEN THE TIDEGLASS VAULT';
  $('#energy').textContent=state.energy;$('#marks').textContent=state.marks;
- $('#scene').innerHTML=scene(state.stage,state.post);$('#sceneLabel').textContent=STAGES[state.stage]?.scene??'The vault is open';
+ const sceneKey=state.stage+':'+state.post;if($('#scene').dataset.key!==sceneKey){$('#scene').innerHTML=scene(state.stage,state.post);$('#scene').dataset.key=sceneKey;}$('#sceneLabel').textContent=STAGES[state.stage]?.scene??'The vault is open';
  $('#chapterLabel').textContent=state.stage===4?'DISCOVERY · THE SKY WITHIN':'THE SALTGLASS REACH';
  $('.objective').dataset.stage=state.stage;
  const g=goal(state);$('#goalTitle').textContent=g?.name??'Expedition complete';$('#step').textContent=state.stage<4?(g?.phase??`${state.stage+1} / 4`):'DISCOVERED';

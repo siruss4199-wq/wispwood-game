@@ -97,12 +97,12 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
    const bounds=await page.locator('#board').boundingBox();assert.ok(bounds.y+bounds.height<844,'board remains visible');
    timeline.push({move:s.moves,action:cmd.type,stage:s.stage,occupied:s.board.filter(Boolean).length,energy:s.energy,charges:s.charges,log:s.expedition.log.at(-1)});
    for(const [check,name] of [[s.merges>=3,'early-merges'],[s.stage===1,'route-choice'],[s.stage===2,'producer-unlock'],[cmd.type==='deploy','device-used'],[cmd.type==='feed','fragment-choice'],[cmd.type==='discovery','rare-decoded'],[cmd.type==='clear','blocker-solution'],[s.expedition.log.some(x=>x.type==='device-used'),'device-consequence'],[s.stage===3,'powered-site'],[cmd.type==='crate','container-opening']]){
-    if(check&&!captured.has(name)){await shot(name);captured.add(name);}
+    if(check&&!captured.has(name)){if(['route-choice','producer-unlock','powered-site'].includes(name))await page.waitForTimeout(1800);await shot(name);captured.add(name);}
    }
    if(cmd.type==='deploy'){assert.equal(s.board[cmd.index].phase,'done');assert.ok(s.expedition.log.some(x=>x.type==='device-used'));await shot('device-'+s.board[cmd.index].kind);}
    if(cmd.type==='breach'){assert.equal(await page.locator('.source.locked').count(),0);assert.equal(await page.locator('.tile.sealed').count(),2,'unchosen route remains a real spatial consequence');assert.equal(await page.locator('.objective.ready').count(),0,'inspect is not a fake delivery');}
   }
-  const saved=await read();assert.equal(saved.stage,4);await shot('vault-open');assert.ok(saved.discovered.length<18);assert.equal(saved.expedition.log.filter(x=>x.type==='deployment').length,2);
+  const saved=await read();assert.equal(saved.stage,4);await page.waitForTimeout(1800);await shot('vault-open');assert.ok(saved.discovered.length<18);assert.equal(saved.expedition.log.filter(x=>x.type==='deployment').length,2);
   assert.equal(saved.discoveryDone,true,'discovery cannot silently fall out of the plan');assert.equal(saved.expedition.log.filter(x=>x.type==='device-used').length,2);assert.equal(saved.board.some(x=>x?.type==='site'&&x.phase==='active'),false);
   assert.ok(timeline.some(x=>x.action==='opportunity'));assert.ok(new Set(timeline.map(x=>x.stage)).size>=4);
   assert.ok(Math.min(...timeline.map(x=>x.occupied))>=17);let run=0;for(const sample of timeline){run=sample.action==='produce'?run+1:0;assert.ok(run<=3);}

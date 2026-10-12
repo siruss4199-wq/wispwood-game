@@ -93,3 +93,18 @@ body[data-art="premium"] .worldLabel b{font-size:13px}
 body[data-art="premium"] .objective .need{background:#f3dfb7;border-color:#b99b69}
 body[data-art="premium"] .objective .need.done{background:#d4e6d7;border-color:#73a48b}
 body[data-art="premium"] .objective .need:not(.done) .art{opacity:.9}
+
+/* Safari: let the page scroll from fixed objects and empty workspaces. Only
+   movable inventory owns a no-scroll gesture; object sizes are never reduced. */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;scroll-padding-bottom:100px;background:#f5f3ec}
+.game{min-height:100svh;overflow:visible;padding-top:max(8px,env(safe-area-inset-top));padding-left:max(10px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right));padding-bottom:calc(80px + env(safe-area-inset-bottom))}
+#board,#board .tile{touch-action:pan-y}
+#board .tile:is(.item,.crate,.glyph,.brace){touch-action:none;-webkit-touch-callout:none}
+.selection,footer{scroll-margin-bottom:calc(24px + env(safe-area-inset-bottom))}
+.moment{top:max(64px,calc(env(safe-area-inset-top) + 56px))}
+dialog{max-height:calc(100svh - 48px);overflow-y:auto;overscroll-behavior:contain}
+dialog .close{width:44px;height:44px;z-index:2}
+#celebrationContent>.premiumScene{height:auto;aspect-ratio:3/1;border-radius:13px;margin-top:28px}
+#scene .premiumScene{object-position:70% center}
+body[data-art="premium"] .world:has(.premiumScene) .worldLabel b{background:#fff5debd;padding:3px 7px;border-radius:8px;text-shadow:none;font-size:12px}
+@media(prefers-reduced-motion:no-preference){.world.opened #scene .premiumScene{animation:vaultArrival 1.1s ease-out}@keyframes vaultArrival{from{filter:brightness(1.15);transform:scale(1.025)}to{filter:none;transform:none}}}
