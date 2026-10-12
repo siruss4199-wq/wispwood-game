@@ -8,6 +8,8 @@ Built-in image-generation edits used each previous sprite as its reference: pres
 
 Opaque silhouette area at the same 192px framing (alpha >180): copper 29.2% → 44.6%; grip 31.5% → 40.5%; spanner 23.5% → 38.9%; winch 38.9% → 59.7%. These measurements check visual mass, not enjoyment or commercial quality. Final acceptance requires actual-size screen review.
 
+Public screenshots live in `../review/`: `before-390.webp`, `after-390.webp`, `objects-48.webp`, `original-390.webp`. They are lossless exports of real Chromium screenshots from CI run 38195296590 at gameplay commit 5f9ea401, not generated game mockups. The art-review page links to each full-size file. These review-only images are not loaded by the playable game.
+
 Six original images generated with the built-in image-generation tool. No third-party game art or style references used. Only Fieldworks tiers 0–3, the tray material and landing scene are replaced. Later scenes and other objects intentionally retain the previous art until direction approval.
 
 ## Pipeline
