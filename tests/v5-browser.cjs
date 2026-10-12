@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict');const fs=require('node:fs');const {chromium}=require('playwright');
 (async()=>{
  const browser=await chromium.launch({headless:true});fs.mkdirSync('test-artifacts/v5',{recursive:true});
- try{for(const [width,style] of [[360,'expedition'],[390,'contract'],[768,'exploration'],[390,'aggressive']]){
+ try{for(const [width,style] of [[360,'expedition'],[390,'contract'],[768,'exploration'],[430,'aggressive']]){
   const motion=width===390;
   const page=await browser.newPage({viewport:{width,height:844},hasTouch:true,isMobile:width<500,reducedMotion:motion?'no-preference':'reduce'});page.setDefaultTimeout(8000);
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
@@ -41,6 +41,12 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
   for(const family of ['rig','chart','flux']){const css=await page.locator(`.tile.item[data-family="${family}"]`).first().evaluate(el=>({background:getComputedStyle(el).backgroundColor,image:getComputedStyle(el).backgroundImage,shadow:getComputedStyle(el).boxShadow}));assert.deepEqual(css,{background:'rgba(0, 0, 0, 0)',image:'none',shadow:'none'});}
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   const bounds=await page.locator('#board').boundingBox();assert.ok(bounds.width>=Math.min(width-24,370));assert.ok(bounds.y+bounds.height<830);
+  if(width<500){
+   const mission=await page.locator('.objective').boundingBox();assert.ok(mission.height<=86,'single-requirement mission has no empty second row');assert.ok(bounds.y<=345,'board is promoted on the first mobile screen');
+   for(const selector of ['#journalButton','.contract','#helpButton','#soundButton']){const hit=await page.locator(selector).boundingBox();assert.ok(hit.width>=44&&hit.height>=44,selector+' is a 44px target');}
+   const icon=await page.locator('.contract .need .art').first().boundingBox();assert.ok(icon.width>=36,'optional requirement remains readable');
+   assert.match(await page.locator('.contract.ready .reward').textContent(),/12.*READY/);
+  }
   await shot('task-ready');await page.locator('[data-contract="contract"]').tap();assert.equal((await read()).contracts,1);await payoff('contract');
   const a=await page.locator('[data-index="7"]').boundingBox(),b=await page.locator('[data-index="8"]').boundingBox();
   if(width===390&&style==='contract'){
@@ -76,7 +82,9 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
    if(await page.locator('#celebration').isVisible())await page.locator('#celebration .continue').tap();
    assert.equal(await page.locator('#board').getAttribute('data-site'),String(s.stage));
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
-   if(await page.locator('#goalButton').isVisible()){const actionBounds=await page.locator('#goalButton').boundingBox(),goalBounds=await page.locator('.objective').boundingBox();assert.ok(actionBounds.x+actionBounds.width<=goalBounds.x+goalBounds.width);}assert.equal(await page.locator('.contract').count(),1);assert.equal(await page.locator('.world .objective').count(),1);
+   if(await page.locator('#goalButton').isVisible()){const actionBounds=await page.locator('#goalButton').boundingBox(),goalBounds=await page.locator('.objective').boundingBox();assert.ok(actionBounds.x+actionBounds.width<=goalBounds.x+goalBounds.width);assert.ok(actionBounds.height>=44&&actionBounds.width>=44,'main action is reachable');}assert.equal(await page.locator('.contract').count(),1);assert.equal(await page.locator('.world .objective').count(),1);
+   for(const hit of await page.locator('.missionSlot,.sideMore').all()){if(await hit.isVisible()){const box=await hit.boundingBox();assert.ok(box.width>=44&&box.height>=44,'mission and optional navigation targets stay 44px');}}
+   const contractBox=await page.locator('.contract').boundingBox();for(const part of await page.locator('.contract .needs,.contract .reward').all()){const b=await part.boundingBox();assert.ok(b.x+b.width<=contractBox.x+contractBox.width+1,'task contents remain within their tap target');}
    const bounds=await page.locator('#board').boundingBox();assert.ok(bounds.y+bounds.height<844,'board remains visible');
    timeline.push({move:s.moves,action:cmd.type,stage:s.stage,occupied:s.board.filter(Boolean).length,energy:s.energy,charges:s.charges,log:s.expedition.log.at(-1)});
    for(const [check,name] of [[s.merges>=3,'early-merges'],[s.stage===1,'route-choice'],[s.stage===2,'producer-unlock'],[cmd.type==='deploy','device-used'],[cmd.type==='feed','fragment-choice'],[cmd.type==='discovery','rare-decoded'],[cmd.type==='clear','blocker-solution'],[s.expedition.log.some(x=>x.type==='device-used'),'device-consequence'],[s.stage===3,'powered-site'],[cmd.type==='crate','container-opening']]){

@@ -1,0 +1,70 @@
+/* Focused mobile finish layer: geometry and gameplay remain in the existing board. */
+.game header{height:52px}
+.round,.sideMore{width:44px;height:44px;min-width:44px;min-height:44px}
+body[data-art="premium"] #scene:has(.premiumScene),.premiumScene{height:104px}
+#scene,#scene>svg{height:104px}
+body .world .objective{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;margin:0;padding:10px 12px;min-height:70px}
+.objectiveHeading{display:block;min-width:0}
+.objective h1{font-size:16px;line-height:1.16;letter-spacing:-.25px}
+body .objective #step{display:block;margin-top:5px;font-size:10px;letter-spacing:.6px;font-weight:800;color:#a7d5df}
+body[data-art="premium"] .world:has(.premiumScene) #step{color:#577880}
+.goalBottom{min-height:0;margin:0;gap:8px;justify-content:flex-end}
+#goalNeeds{gap:7px;flex:none}
+.objective .need{width:48px;height:48px;flex:none;border-style:solid;border-color:#ddd0ac;box-shadow:inset 0 1px 2px #ffffff70}
+.objective .need .art{width:44px;height:44px}
+.objective .need b{font-size:11px;line-height:15px;min-width:24px;text-align:center;right:-2px;bottom:-3px;background:#284c59;color:#fff;border-radius:8px;padding:1px 4px}
+body .objective .primary,body .objective.ready .primary{min-height:44px;min-width:58px;padding:8px 12px;background:#167f78;color:#fff;border-radius:14px;box-shadow:0 3px 0 #0d625e;font-size:12px}
+body .objective.ready #step{color:#aff0c2;font-size:11px}
+body[data-art="premium"] .world:has(.premiumScene) .objective.ready #step{color:#126f60}
+body[data-art="premium"] .world:has(.premiumScene) .objective.ready{background:linear-gradient(100deg,#f4ecd6,#e2f4e7)}
+.objective.ready .need.done{box-shadow:0 0 0 2px #58b49a55}
+.world .objective[data-stage="1"],.world .objective[data-stage="2"]{grid-template-columns:1fr;gap:7px}
+.objective[data-stage="1"] .objectiveHeading,.objective[data-stage="2"] .objectiveHeading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.objective[data-stage="1"] #step,.objective[data-stage="2"] #step{margin:0;flex:none}
+.objective[data-stage="1"] .goalBottom,.objective[data-stage="2"] .goalBottom{justify-content:flex-start}
+.objective[data-stage="1"] #goalNeeds,.objective[data-stage="2"] #goalNeeds{flex:1;justify-content:space-around}
+.missionSlot{min-width:64px;min-height:62px;max-width:110px;color:#e7f6fa}
+.missionSlot .art{width:45px;height:45px}.missionSlot span{font-size:10px}
+.contracts{gap:4px;min-height:64px;margin:7px 0 0}
+body .contracts .contract{min-height:60px;padding:7px 9px;gap:8px;background:#e9eeeb;border:0;border-radius:16px;box-shadow:inset 0 1px 0 #fff9}
+body .contracts .contract.ready{background:linear-gradient(105deg,#e1f0e7,#d9f0e5);box-shadow:inset 3px 0 #29a88c,inset 0 1px 0 #fff9}
+body .contracts .contract.discovery{background:#eee7f4}
+body .contracts .contract.opportunity{background:#fff0d4}
+.contractHead{gap:6px}.contractHead>svg{width:30px;height:32px}
+.contractHead small{font-size:9px;letter-spacing:.8px;color:#55747a}
+.contractHead b{font-size:12px;line-height:1.15;color:#274e59}
+.contract .needs{gap:4px;align-items:center}
+.contract .need{position:relative;min-width:36px;height:42px}
+.contract .needs .art{width:36px;height:38px}
+.contract .need b{position:absolute;bottom:-1px;right:0;background:#fff9e9;color:#3b6470;font-size:10px;line-height:13px;min-width:18px;border-radius:6px;padding:0 3px}
+.contract .need.done b{background:#1f8a75;color:white}
+.contract .reward{font-size:14px;font-weight:850;max-width:80px;min-width:55px;color:#88611a;line-height:1.1}
+.contract .reward small{font-size:9px;line-height:13px;letter-spacing:.2px;color:#57717b;margin-top:4px}
+body .contract.ready .reward small{background:#197e69;color:#fff;padding:3px 5px;border-radius:8px;font-size:10px}
+body .contract.discovery.ready .reward small{background:#775ba5}
+body .contract.opportunity.ready .reward small{background:#936322}
+.contract[data-requirements="3"] .contractHead>svg{display:none}
+.sideMore{background:#e4eae7;color:#426975;border-radius:13px;font-size:18px}
+.boardHeading{height:28px;padding:0 3px;gap:6px}
+body[data-art="premium"] .boardHeading #hint{font-size:11px;letter-spacing:0;color:#466d77}
+.boardHeading #free{font-size:10px;color:#66808a}
+#board .tile.source:not(.locked){background:radial-gradient(ellipse at 50% 76%,#63959b 0 43%,#f7daa0 45% 49%,#77cfc5 51% 55%,transparent 58%)}
+#board .tile.source .charge{height:4px;bottom:1px;left:5px;right:5px;gap:2px}
+#board .charge i{background:#126e72}.energyCue{font-size:12px;line-height:17px;box-shadow:0 1px 2px #4d503329}
+#board .tile.sealed{background:radial-gradient(ellipse at 50% 80%,#b6a08066 0 28%,transparent 61%)}
+#board .tile.sealed .art{opacity:.95;width:103%;height:103%}
+#board .tile.rock{background:radial-gradient(ellipse at 50% 80%,#81786844 0 29%,transparent 63%)}
+#board .tile.source.locked .lockedLabel{font-size:8px;letter-spacing:.2px;padding:2px 4px;background:#56777eeb}
+#board .tile.selected{outline:2px solid #f5aa43;outline-offset:-1px;background:#fff3c94d}
+#board .tile.match{outline:2px dashed #229a92;outline-offset:-1px;background:#c8fff129}
+#board .tile.target{outline:3px solid #168a80;outline-offset:-2px;background:#beffed66;box-shadow:inset 0 0 0 4px #edfff9}
+#board .tile.deliveryReady .art{filter:drop-shadow(0 0 2px #9ef4c6) drop-shadow(0 2px 1px #35534830)}
+.selection{min-height:64px;gap:7px;padding-top:10px}
+.selection b{font-size:12px}.selection small{font-size:11px;line-height:1.3}
+.selection .actionGroup{max-width:124px}
+.selection .actionGroup button{min-height:44px;min-width:44px;padding:8px;font-size:11px;border-radius:12px}
+.selection button.accent{background:#16877e;color:#fff}
+.message{font-size:11px;line-height:1.35}
+footer button{min-height:44px;min-width:44px;font-size:11px;padding:6px}
+footer>span{display:none}
+@media(max-width:375px){.contractHead>svg{width:26px;height:28px}.contractHead b{font-size:11px}.contract .reward{min-width:50px;font-size:13px}.contract{gap:5px}.objective h1{font-size:15px}.objective .primary{padding:7px 9px}.boardHeading #free{font-size:9px}}
