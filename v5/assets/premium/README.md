@@ -1,5 +1,13 @@
 # Phase 1 — approval sample, not full production
 
+## Refinement r2 (approval still pending)
+
+The four `*-r2.webp` files replace the thin runtime silhouettes. Previous sprites are retained for `?art=phase1`; `?art=classic` retains the original SVG comparison. The art-review page shows all three at exactly 48 CSS pixels. No gameplay CSS, board surface, scene, save or core rules changed in this refinement.
+
+Built-in image-generation edits used each previous sprite as its reference: preserve copper/silver/petrol materials and upper-left light; re-proportion for 48px; smooth broad light planes; reduce photoreal micro-detail; transparent alpha; no card/base/text. Per-object directions: double copper ribbon width and tighten its curl; shorten pliers handles 40%, thicken and separate their V, enlarge jaws/pivot; shorten wrench handle 40%, widen it 80%, enlarge jaw to nearly half its height; enlarge winch drum/housing, simplify cable to 5–6 visible turns, tuck hook and short crank close, remove tiny rails/gear detail. Runtime exports remain 192px WebP, quality 90, alpha quality 100.
+
+Opaque silhouette area at the same 192px framing (alpha >180): copper 29.2% → 44.6%; grip 31.5% → 40.5%; spanner 23.5% → 38.9%; winch 38.9% → 59.7%. These measurements check visual mass, not enjoyment or commercial quality. Final acceptance requires actual-size screen review.
+
 Six original images generated with the built-in image-generation tool. No third-party game art or style references used. Only Fieldworks tiers 0–3, the tray material and landing scene are replaced. Later scenes and other objects intentionally retain the previous art until direction approval.
 
 ## Pipeline

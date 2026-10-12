@@ -7,10 +7,12 @@ test('Phase 1 changes exactly four sprite keys, not game data or later scenes',(
  for(const f of ['chart','flux'])assert.match(art({type:'item',family:f,tier:0}),/<svg/);
  for(let stage=1;stage<5;stage++)assert.equal(prototypeScene(stage),scene(stage));
  assert.match(prototypeScene(0),/premiumScene.*alt=/);
+ assert.match(art({type:'item',family:'rig',tier:0}),/copper-offcut-r2.webp/);
+ enablePremium('phase1');assert.match(art({type:'item',family:'rig',tier:0}),/copper-offcut.webp/);
  for(const key of Object.keys(SPRITE_OVERRIDES))delete SPRITE_OVERRIDES[key];
 });
 test('local WebP payload is bounded and both entry points load the isolated visual layer',()=>{
- let total=0;for(const name of [...FIELDWORKS_SPRITES,'landing','saltstone-tray']){const b=fs.readFileSync(new URL('../v5/assets/premium/'+name+'.webp',import.meta.url));assert.equal(b.toString('ascii',8,12),'WEBP');total+=b.length;}
+ let total=0;for(const name of [...FIELDWORKS_SPRITES.map(n=>n+'-r2'),'landing','saltstone-tray']){const b=fs.readFileSync(new URL('../v5/assets/premium/'+name+'.webp',import.meta.url));assert.equal(b.toString('ascii',8,12),'WEBP');total+=b.length;}
  assert.ok(total<400000,'prototype asset payload under 400KB');
  for(const name of ['index.html','crazygames.html'])assert.match(fs.readFileSync(new URL('../v5/'+name,import.meta.url),'utf8'),/premium.css/);
 });
