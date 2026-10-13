@@ -1,0 +1,160 @@
+/* Vaultwake Experience Reset
+   One coherent mobile-first layout system: world preview -> primary decision ->
+   secondary bonus -> board-led action strip -> uninterrupted merge surface.
+   Overrides older prototype skin layers without changing item artwork. */
+
+.game{overflow-x:hidden}
+
+/* A compact scenic accent rather than a full page of decorative chrome. */
+.game header{height:45px;padding-bottom:3px}
+.game #scene,.game #scene>svg,
+body[data-art="premium"] #scene:has(.premiumScene),
+body[data-art="premium"] .premiumScene,
+body[data-art="premium"] #scene .premiumScene{height:64px}
+.game .world{border-radius:13px;overflow:hidden;margin-bottom:0}
+.game .worldLabel{top:5px;left:10px}
+.game .worldLabel b{font-size:11px}
+body[data-art="premium"] .world:has(.premiumScene) .worldLabel{top:5px;left:10px}
+
+/* The primary objective is a real decision surface, never a second glossary. */
+body .world .objective{
+ padding:8px 10px 9px;
+ min-height:64px;
+ gap:5px;
+ border-top:2px solid #2aa899;
+ border-radius:0 0 12px 12px;
+}
+body[data-art="premium"] .world .objective{background:#fff3dc}
+body .objectiveHeading small{font-size:9px;letter-spacing:1px;font-weight:900}
+body .objective h1{font-size:16px;line-height:1.12}
+body .objective #step{font-size:9px;line-height:1.15;margin:2px 0 0}
+body .world .goalRecipe{font-size:10px;line-height:1.2}
+body .objective .need{width:44px;height:44px}
+body .objective .need .art{width:41px;height:41px}
+body .objective.ready #goalButton{animation:actionReadyPulse 1.6s ease-in-out infinite alternate}
+@keyframes actionReadyPulse{from{box-shadow:0 2px 0 #0d625e}to{box-shadow:0 2px 0 #0d625e,0 0 0 5px #49c49b44}}
+
+/* Route choice: two explicitly compared outcomes, cost and readiness all visible. */
+body .world .objective[data-stage="1"]{padding:7px 9px 9px;gap:5px}
+body .objective[data-stage="1"] .objectiveHeading{gap:5px}
+body .objective[data-stage="1"] .goalBottom{margin:0;justify-content:stretch}
+body .objective[data-stage="1"] #goalNeeds{display:flex;gap:5px;justify-content:stretch;align-items:stretch}
+body .objective .routeChoice{
+ flex:1 1 0;max-width:none;min-width:0;
+ display:flex;align-items:center;flex-direction:row;text-align:left;
+ min-height:57px;gap:5px;padding:5px 6px;
+ border:1px solid #b2bfb5;border-radius:12px;
+ background:#f7eddb;color:#2e5860;
+ box-shadow:0 1px 0 #fff9;
+}
+body .objective .routeChoice.available{
+ background:#dff3e5;
+ border:2px solid #219d82;
+ box-shadow:0 0 0 2px #63c9ae28;
+}
+body .objective .routeChoice .routeGlyph{display:flex;align-items:center;flex:none}
+body .objective .routeChoice .routeGlyph .art{
+ width:36px;height:36px;opacity:1;padding:0;
+ background:transparent;border:0;box-shadow:none;border-radius:0;
+}
+body .objective .routeWords{display:flex;flex-direction:column;min-width:0;gap:1px}
+body .objective .routeWords b{font-size:11px;font-weight:950;letter-spacing:.5px}
+body .objective .routeWords small{font-size:9px;line-height:1.1;color:#53727a;font-weight:750}
+body .objective .routeWords em{font-style:normal;font-size:9px;line-height:1.12;color:#a46634;font-weight:850}
+body .objective .routeChoice.available .routeWords em{color:#167660}
+body .objective[data-stage="1"] .or{padding:0 1px;align-self:center;font-size:8px;font-weight:950;color:#678188}
+body .objective[data-stage="2"] .missionSlot{min-height:53px}
+
+/* Optional orders are intentionally subordinate and collapsed on entry.
+   One tap expands; an explicit CLAIM makes delivery intentional. */
+body .contracts{min-height:0;margin:5px 0 2px;gap:5px}
+body .contracts:not(.bonusOpen){height:41px;min-height:41px}
+body .contracts:not(.bonusOpen) .contract{height:41px;min-height:41px;padding:5px 8px;background:#ebf0ec;box-shadow:none;border:1px solid #dae6dd}
+body .contracts:not(.bonusOpen) .contractHead>svg{display:none}
+body .contracts:not(.bonusOpen) .needs{display:none}
+body .contracts:not(.bonusOpen) .reward>.art{display:none}
+body .contracts:not(.bonusOpen) .contractHead b{font-size:10px;color:#506e72}
+body .contracts:not(.bonusOpen) .contractHead small{display:inline-block;padding:0;background:none;color:#78928c;font-size:8px;letter-spacing:.25px}
+body .contracts:not(.bonusOpen) .reward{font-size:12px;min-width:54px;text-align:right;color:#537b70}
+body .contracts:not(.bonusOpen) .reward small{font-size:8px;line-height:1.05;margin:1px 0}
+body .contracts:not(.bonusOpen) .contract.ready{background:#ebf0ec;box-shadow:none;border:1px solid #cbded3}
+body .contracts .sideMore{height:41px;min-height:41px;width:41px;min-width:41px;background:#e3e9e4}
+body .contracts.bonusOpen{min-height:58px;flex-wrap:wrap}
+body .contracts.bonusOpen .contract{min-height:56px}
+body .contracts #bonusClaim{height:44px;min-width:65px;padding:8px 11px;border-radius:12px;font-size:11px;font-weight:900;background:#218f7b;color:#fff;box-shadow:0 2px 0 #146c61}
+body .contracts .contract{flex:1}
+
+/* Action HUD remains IN THE FLOW and is always short. No fixed bottom panel,
+   no tapping through overlay, no disappearing board below half-screen text. */
+.game .boardHeading{margin-top:2px;height:24px}
+.game .boardHeading #hint{font-size:10px;font-weight:850;color:#37666b}
+.game .boardHeading #free{font-size:10px}
+#guidePanel.guidePanel{
+ position:relative;inset:auto;bottom:auto;left:auto;
+ transform:none;width:100%;max-height:none;overflow:visible;
+ z-index:1;margin:1px 0 4px;padding:4px 6px 5px;
+ border:1px solid #a3d9c7;border-radius:11px;
+ background:#e7f3ea;box-shadow:inset 0 1px 0 #fff8;
+ color:#29595d;
+}
+#guidePanel.guidePanel[hidden]{display:none}
+#guidePanel .coachTop{display:none}
+#guidePanel .coachCompact{margin:0;min-height:24px;gap:6px}
+#guidePanel .coachThumb{height:29px;width:29px;border-radius:7px;background:#f3e7d0}
+#guidePanel .coachThumb .art{width:28px;height:28px}
+#guidePanel .coachHeadline{font-size:10px;line-height:1.14;letter-spacing:0}
+#guidePanel .coachSummary{font-size:10px;line-height:1.18;font-weight:650;max-height:24px;overflow:hidden;margin:2px 0 0;-webkit-line-clamp:1}
+#guidePanel .coachActions{display:flex;gap:5px;margin-top:3px}
+#guidePanel .coachActions button{
+ height:33px;min-height:33px;padding:4px 9px;
+ border-radius:8px;font-size:10px;line-height:1.12;font-weight:900;
+}
+#guidePanel .coachActions .coachPrimary{flex:1;background:#1d8779;color:#fff;box-shadow:0 2px 0 #15645c}
+#guidePanel .coachActions .coachSecondary{flex:1;max-width:none;background:#fff9eb;color:#246a65;border-color:#b9d7cf}
+#guidePanel .coachWhy{display:none}
+#guidePanel .coachDetails{position:relative;z-index:2;margin-top:6px;padding:6px 3px;max-height:155px;overflow-y:auto;border-top:1px solid #b7d9c7}
+#guidePanel .coachDetails[hidden]{display:none}
+#guidePanel .coachDetails .coachSequence{margin:3px 0 5px}
+#guidePanel .coachDetails .coachStep .art{height:42px;width:42px}
+#guidePanel .coachDetails .coachExplanation{font-size:11px;line-height:1.35}
+#guidePanel .coachClose{display:none}
+
+/* Board objects look like different mechanical categories.
+   Item=merge; spanner-marked rock=optional clear; hatched lock=terrain. */
+#board .tile.sealed{background:repeating-linear-gradient(130deg,#5973761a 0 6px,#f4e9ca4d 6px 13px);border-radius:8px;box-shadow:inset 0 0 0 1px #547b7760}
+#board .tile.sealed .art{opacity:.58;filter:saturate(.55)}
+#board .tile.sealed .boardRole.ground{font-size:8px;bottom:2px;background:#3d6772;color:#fff}
+#board .tile.rock{background:radial-gradient(ellipse,#8d735542 0 45%,transparent 74%);border-radius:48%}
+#board .tile.rock .boardRole.stone{font-size:7px;bottom:0;background:#bc7d33}
+#board .tile.route{background:radial-gradient(circle,#9cceb177 0 50%,transparent 72%)}
+#board[data-tutorial="merge"] .tile.teachingPair:not(.selected){
+ outline:3px solid #00a88c;outline-offset:0;box-shadow:0 0 0 3px #dbfff060;animation:learnMerge 1.1s ease-in-out infinite alternate;z-index:3
+}
+#board[data-tutorial="survey"] .tile.source[data-family="chart"]:not(.locked){outline:3px solid #1aa991;box-shadow:0 0 0 3px #bafcf099;z-index:4}
+#board[data-tutorial="route"] .tile.route{outline:2px solid #2eac96;box-shadow:0 0 0 3px #bbf1db66;z-index:3}
+@keyframes learnMerge{from{filter:brightness(1)}to{filter:brightness(1.17)}}
+@media(prefers-reduced-motion:reduce){#board[data-tutorial="merge"] .tile.teachingPair{animation:none}}
+#board .tile.route .anchorCue{font-size:8px;font-weight:950;bottom:0;background:#285d68db;color:white;border-radius:5px;margin:0 4px}
+#board .tile.coachOrigin,#board .tile.coachDestination{animation:none;filter:none}
+#board .coachRoute{z-index:7}
+
+/* Compact selection inspector is only for advanced details below the board. */
+.game .selection{min-height:49px;margin-top:3px;padding:6px 3px;gap:5px}
+.game .selection .copy small{font-size:10px}
+
+/* Desktop keeps larger scenery, but coherent visual hierarchy. */
+@media(min-width:600px){
+ .game #scene,.game #scene>svg,
+ body[data-art="premium"] #scene:has(.premiumScene),
+ body[data-art="premium"] .premiumScene{height:92px}
+ body .world .objective{min-height:70px}
+ #guidePanel.guidePanel{max-width:100%}
+}
+@media(max-width:375px){
+ body .objective .routeChoice{padding:3px 4px;gap:3px}
+ body .objective .routeChoice .routeGlyph .art{width:31px;height:31px}
+ body .objective .routeWords b{font-size:10px}
+ body .objective .routeWords small,body .objective .routeWords em{font-size:8px}
+ #guidePanel .coachSummary{font-size:9px}
+ #guidePanel .coachActions button{font-size:9px}
+}
