@@ -81,14 +81,14 @@ function paintSpotlight(){
  board.insertAdjacentHTML('beforeend',`<svg class="coachRoute" width="${surface.width}" height="${surface.height}" viewBox="0 0 ${surface.width} ${surface.height}" aria-hidden="true"><defs><marker id="coachArrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0L6 3L0 6" fill="none" stroke="#0c827b" stroke-width="1.8"/></marker></defs><path d="M${sx} ${sy} Q${mx} ${my} ${ex} ${ey}" fill="none" stroke="#fff2bb" stroke-width="7" stroke-linecap="round"/><path d="M${sx} ${sy} Q${mx} ${my} ${ex} ${ey}" fill="none" stroke="#0c827b" stroke-width="3" stroke-linecap="round" stroke-dasharray="6 5" marker-end="url(#coachArrow)"/></svg>`);
 }
 function renderCoach(){
- const panel=$('#guidePanel'),model=boardCoach(state,coachIndex);
+ const panel=$('#guidePanel'),focusIndex=coachIndex??(Number.isInteger(selected)&&selected>=0?selected:null),model=boardCoach(state,focusIndex);
  if(panel.hidden)return;
  const action=(a,secondary=false)=>a?`<button type="button" class="${secondary?'coachSecondary':'coachPrimary'}" data-coach-kind="${a.kind}" ${a.index!==undefined&&a.index!==null?`data-coach-index="${a.index}"`:''} ${a.id?`data-coach-id="${a.id}"`:''} ${a.from!==undefined?`data-coach-from="${a.from}"`:''}>${a.label}</button>`:'';
  const steps=model.icons.map((v,i)=>`${i?'<span class="coachConnector" aria-hidden="true">→</span>':''}<span class="coachStep">${art(v.x)}<small>${v.label}</small></span>`).join('');
  // The one visible line tells the player what this object DOES. Optional details
  // stay collapsed so the game, not an instruction manual, remains in view.
  const summary=model.summary??model.detail.split('. ')[0]+'.';
- const relevant=coachIndex===null?null:state.board[coachIndex];
+ const relevant=focusIndex===null?null:state.board[focusIndex];
  const icon=relevant?art(relevant):model.icons[0]?art(model.icons[0].x):'';
  panel.innerHTML=`<div class="coachTop"><span class="coachEyebrow">${relevant?.type==='rock'?'OPTIONAL OBSTACLE':relevant&&['sealed','marker','lock'].includes(relevant.type)?'LOCKED TERRAIN':relevant?.type==='glyph'?'OPTIONAL DISCOVERY':'NEXT ACTION'}</span><button type="button" class="coachClose" data-coach-kind="close" aria-label="Close guidance">×</button></div><div class="coachCompact"><span class="coachThumb">${icon}</span><div class="coachCopy"><b class="coachHeadline">${model.title}</b><p class="coachSummary">${summary}</p></div></div><div class="coachActions">${action(model.primary)}${action(model.secondary,true)}</div><button type="button" class="coachWhy" data-coach-kind="why" aria-expanded="${coachExpanded}">${coachExpanded?'LESS INFO −':'WHY?  ·  SEE HOW +'}</button><div class="coachDetails" ${coachExpanded?'':'hidden'}><div class="coachSequence">${steps}</div><p class="coachExplanation">${model.detail}</p></div>`;
  spotlight=[model.from,model.to];paintSpotlight();
