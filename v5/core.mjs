@@ -33,11 +33,11 @@ export function fresh(now=Date.now()){
  for(const i of [19,32])board[i]={type:'rock'};
  ['winch','scope','relay'].forEach((kind,n)=>board[[20,23,31][n]]={type:'site',kind,phase:'idle',progress:0});
  board[24]={type:'route',id:'ridge'};board[27]={type:'route',id:'conduit'};board[34]=container('salvage');
- return {version:5,board,stage:0,landingStep:0,energy:32,marks:0,moves:0,merges:0,contracts:0,serial:0,charges:{rig:7,chart:7,flux:7},taps:{rig:0,chart:0,flux:0},normal:0,opportunity:null,discovery:false,discoveryDone:false,boost:false,post:0,discovered:[],expedition:expeditionState(),startedAt:now,lastAt:now,rations:0,history:[]};
+ return {version:5,board,stage:0,landingStep:0,routePrepared:false,energy:32,marks:0,moves:0,merges:0,contracts:0,serial:0,charges:{rig:7,chart:7,flux:7},taps:{rig:0,chart:0,flux:0},normal:0,opportunity:null,discovery:false,discoveryDone:false,boost:false,post:0,discovered:[],expedition:expeditionState(),startedAt:now,lastAt:now,rations:0,history:[]};
 }
 export function goal(s){
- if(s.stage===0&&s.landingStep===1)return {name:'Chart the safe crossing',verb:'Mark route',scene:'Survey camp established',needs:[req('chart',2),req('rig',2)],energy:8,next:'Choose your breach · Ridge or Conduit',text:'Make a Sight Lens and Split Spanner. Keep them for the survey, or spend a spanner to recover buried supplies.',phase:'LANDING 2 / 2'};
- if(s.stage===1)return {name:'Choose your breach',verb:'Clear',scene:'Survey worksite',needs:[req('rig',2),req('chart',2)],action:'inspect',next:'Either route unlocks Echo Crucible',text:'Spanner: roomy ridge. Lens: rich conduit. Spend one, keep the other.',phase:'CHOOSE ONE'};
+ if(s.stage===0&&s.landingStep===1)return {name:'Chart the safe crossing',verb:'Mark route',scene:'Survey camp established',needs:[req('chart',2),req('rig',2)],energy:8,next:'Choose Ridge or Conduit with your prepared tools',text:'Keep your Sight Lens and Split Spanner after the survey. Spend only ONE of them to open a route.',phase:'LANDING 2 / 2'};
+ if(s.stage===1)return {name:'Choose your breach',verb:'Clear',scene:'Survey worksite',needs:[req('rig',2),req('chart',2)],action:'inspect',next:'Either route unlocks Echo Crucible',text:'Your surveyed tools are READY. Ridge uses the Spanner and opens space; Conduit uses the Lens and gives relic supplies. Choose one.',phase:'CHOOSE ONE'};
  if(s.stage===2)return {name:'Wake the vault',verb:'Use equipment',scene:'Entrance uncovered',needs:anchors(s).filter(x=>x.phase==='idle').map(x=>equipment(x.kind)),action:'inspect',next:'Choose two devices · each helps a different family',text:'Use equipment in any two devices. Choose the benefit you need.',phase:`${completedAnchors(s)} OF 2 READY`};
  if(s.stage===3)return {name:'Open the Tideglass Vault',verb:'Open vault',scene:'Rings awakened',needs:s.expedition.route==='conduit'?[req('rig',4),req('chart',4)]:[req('chart',4),req('flux',4)],energy:20,next:'The chamber + relic cache',text:'Your chosen breach determines the final alignment equipment.',action:'goal'};
  return STAGES[s.stage]??POST_GOALS[s.post]??null;
@@ -184,7 +184,13 @@ export function act(s,a,now=Date.now()){
  }
  if(a.type==='goal'){
   const g=goal(s);if(!g||g.action&&g.action!=='goal'||!ready(s,g.needs))return fail('Make the highlighted expedition items.');
-  consume(s,g.needs);s.energy=Math.min(120,s.energy+g.energy);
+  // A surveyed crossing should present a real, *immediate* route decision.
+  // Previously this milestone consumed BOTH T3 tools then asked for one of
+  // the exact same tools again, causing needless grinding and hidden gating.
+  const preserveRouteTools=s.stage===0&&s.landingStep===1;
+  if(!preserveRouteTools)consume(s,g.needs);
+  else s.routePrepared=true;
+  s.energy=Math.min(120,s.energy+g.energy);
   // The first reward opens a new producer and changes the camp, but not the main stage.
   if(s.stage===0&&s.landingStep===0){
    s.landingStep=1;
@@ -285,6 +291,14 @@ export function load(raw,now=Date.now()){
   if(s.expedition.vaultTrade!==undefined&&typeof s.expedition.vaultTrade!=='boolean')delete s.expedition.vaultTrade;
   s.expedition.log=Array.isArray(s.expedition.log)?s.expedition.log.filter(x=>x&&typeof x.type==='string'&&integer(x.move,0,1000000)).slice(-200):[];
   installSites(s);if(s.expedition.version===1){for(const site of anchors(s))if(site.phase==='active')activate(s,site);s.expedition.version=2;}delete s.mission;
+  // One-time, non-destructive migration of saves stranded at the route choice
+  // by the old milestone's double-consumption. Never reset board or progress.
+  if(s.routePrepared!==true){
+   if(s.stage===1){
+    for(const family of ['rig','chart'])if(count(s,req(family,2))===0)put(s,item(family,2));
+    s.routePrepared=true;
+   }else s.routePrepared=s.stage>=2;
+  }
   return s;
  }catch{return fresh(now);}
 }
