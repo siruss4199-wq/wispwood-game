@@ -68,8 +68,8 @@ body .objective[data-stage="2"] .missionSlot{min-height:53px}
 /* Optional orders are intentionally subordinate and collapsed on entry.
    One tap expands; an explicit CLAIM makes delivery intentional. */
 body .contracts{min-height:0;margin:5px 0 2px;gap:5px}
-body .contracts:not(.bonusOpen){height:41px;min-height:41px}
-body .contracts:not(.bonusOpen) .contract{height:41px;min-height:41px;padding:5px 8px;background:#ebf0ec;box-shadow:none;border:1px solid #dae6dd}
+body .contracts:not(.bonusOpen){height:44px;min-height:44px}
+body .contracts:not(.bonusOpen) .contract{height:44px;min-height:44px;padding:5px 8px;background:#ebf0ec;box-shadow:none;border:1px solid #dae6dd}
 body .contracts:not(.bonusOpen) .contractHead>svg{display:none}
 body .contracts:not(.bonusOpen) .needs{display:none}
 body .contracts:not(.bonusOpen) .reward>.art{display:none}
@@ -78,7 +78,7 @@ body .contracts:not(.bonusOpen) .contractHead small{display:inline-block;padding
 body .contracts:not(.bonusOpen) .reward{font-size:12px;min-width:54px;text-align:right;color:#537b70}
 body .contracts:not(.bonusOpen) .reward small{font-size:8px;line-height:1.05;margin:1px 0}
 body .contracts:not(.bonusOpen) .contract.ready{background:#ebf0ec;box-shadow:none;border:1px solid #cbded3}
-body .contracts .sideMore{height:41px;min-height:41px;width:41px;min-width:41px;background:#e3e9e4}
+body .contracts .sideMore{height:44px;min-height:44px;width:44px;min-width:44px;background:#e3e9e4}
 body .contracts.bonusOpen{min-height:58px;flex-wrap:wrap}
 body .contracts.bonusOpen .contract{min-height:56px}
 body .contracts #bonusClaim{height:44px;min-width:65px;padding:8px 11px;border-radius:12px;font-size:11px;font-weight:900;background:#218f7b;color:#fff;box-shadow:0 2px 0 #146c61}
