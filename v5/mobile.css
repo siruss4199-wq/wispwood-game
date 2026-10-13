@@ -182,3 +182,26 @@ body .contracts .contractHead small{display:inline-block;background:#dce7e1;padd
  .coachStep small{font-size:9px}
  .coachActions button{font-size:11px;padding:8px}
 }
+
+/* Contextual actions V2: default is a small choice bar, not a tutorial modal.
+   Long explanation and image recipe appear only after an explicit Why? tap. */
+#guidePanel.guidePanel{max-height:min(46svh,320px);padding:8px 11px 9px;border-radius:16px;border-width:1px;box-shadow:0 7px 25px #1b474752}
+#guidePanel .coachTop{margin:0;min-height:25px}
+#guidePanel .coachEyebrow{font-size:9px;line-height:1.1;letter-spacing:1px}
+#guidePanel .coachClose{height:30px;width:30px;font-size:21px;border-radius:9px}
+#guidePanel .coachCompact{display:flex;align-items:center;gap:8px;margin:2px 0 7px;min-height:42px}
+#guidePanel .coachThumb{display:flex;align-items:center;justify-content:center;flex:none;height:45px;width:45px;border-radius:10px;background:#f2e5c7}
+#guidePanel .coachThumb .art{width:43px;height:43px;object-fit:contain}
+#guidePanel .coachCopy{min-width:0;flex:1}
+#guidePanel .coachHeadline{font-size:12px;line-height:1.18;font-weight:900;color:#254d55}
+#guidePanel .coachSummary{font-size:11px;line-height:1.27;font-weight:650;color:#526d70;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin:3px 0 0}
+#guidePanel .coachActions{display:flex;gap:6px}
+#guidePanel .coachActions button{font-size:10px;min-height:40px;line-height:1.15;padding:6px 7px;border-radius:10px}
+#guidePanel .coachActions .coachSecondary{max-width:none;flex:1;background:#fff9ed;color:#27726d}
+#guidePanel .coachWhy{display:block;margin:5px auto 0;padding:3px 6px;min-height:25px;color:#2f7a76;font-size:10px;font-weight:900;background:none;letter-spacing:.25px}
+#guidePanel .coachDetails[hidden]{display:none}
+#guidePanel .coachDetails{border-top:1px solid #a0c3b8;padding-top:8px;margin-top:5px}
+#guidePanel .coachDetails .coachSequence{margin:4px 0 6px}
+#guidePanel .coachDetails .coachStep .art{height:41px;width:41px}
+#guidePanel .coachDetails .coachExplanation{font-size:11px;line-height:1.36;margin:5px 0;color:#46666b}
+@media(max-width:375px){#guidePanel.guidePanel{padding:7px 9px 8px}#guidePanel .coachActions button{font-size:9px}#guidePanel .coachThumb{width:40px;height:40px}#guidePanel .coachThumb .art{width:39px;height:39px}}
