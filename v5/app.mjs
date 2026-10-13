@@ -1,5 +1,5 @@
 import {containerInfo,contents} from './containers.mjs';
-import {SAVE_KEY,FAMILIES,SOURCES,STAGES,fresh,load,act,goal,count,ready,matches,nameOf,normalContract,opportunity,nextOutput,burstOutput,item,near} from './core.mjs';
+import {SAVE_KEY,FAMILIES,SOURCES,STAGES,fresh,load,act,goal,count,ready,matches,nameOf,normalContract,opportunity,nextOutput,burstOutput,item,near,sourceUnlocked} from './core.mjs';
 import {art,scene as vectorScene,portrait} from './art.mjs';
 import {feedback,sound,reduced,snapshotTask} from './feedback.mjs';
 import {platform} from '../v4/platform.mjs';
@@ -19,7 +19,7 @@ function needed(){const x=state.board[selected];if(focus==='goal'&&x?.type==='si
 function needsHTML(needs){return needs.map(r=>`<span class="need ${count(state,r)>=r.count?'done':near(state,[r])==='1 MERGE AWAY'?'almost':''}" title="${nameOf(item(r.family,r.tier))}">${art(item(r.family,r.tier))}<b>${count(state,r)>=r.count&&r.count===1?'✓':Math.min(count(state,r),r.count)+'/'+r.count}</b></span>`).join('');}
 function sideOptions(){return ['contract',...(state.discovery&&!state.discoveryDone&&state.board.some(x=>x?.type==='glyph')?['discovery']:[]),...(state.stage>=1?[state.opportunity?'opportunity':'startOpportunity']:[])];}
 function sideChoice(){const options=sideOptions();return options.includes(sideView)?sideView:state.opportunity?'opportunity':options.includes('discovery')?'discovery':'contract';}
-function hint(){if(!state.merges)return 'Tap two matching copper offcuts';if(state.stage===1)return 'Choose a route below';if(state.stage===2)return 'Use equipment · or merge higher';return 'Merge twins · choose where to use them';}
+function hint(){if(!state.merges)return 'Tap two matching copper offcuts';if(state.stage===0&&state.landingStep===1)return 'Prepare a Sight Lens + Split Spanner';if(state.stage===1)return 'Choose a route below';if(state.stage===2)return 'Use equipment · or merge higher';return 'Merge twins · choose where to use them';}
 function missionSlots(){
  if(state.stage===1)return Object.entries(ROUTES).map(([id,r])=>{const index=state.board.findIndex(x=>x?.type==='route'&&x.id===id),need={family:r.family,tier:2,count:1};return `<button class="missionSlot ${ready(state,[need])?'available':''}" data-site-index="${index}" aria-label="${r.name}: ${r.benefit}">${art(item(r.family,2))}<span>${id==='ridge'?'Room to work':'Relic supplies'}</span></button>`;}).join('<span class="or">or</span>');
  if(state.stage===2)return anchors(state).map(x=>`<button class="missionSlot ${x.phase==='done'?'complete':ready(state,[equipment(x.kind)])?'available':''}" data-site-index="${state.board.indexOf(x)}" aria-label="${nameOf(x)}: ${x.phase==='done'?'ready':ANCHORS[x.kind].effect}">${art(item(ANCHORS[x.kind].equipment,3))}<span>${x.phase==='done'?'✓':ANCHORS[x.kind].short}</span></button>`).join('');
@@ -36,7 +36,8 @@ function renderSide(){
 function render(){
  $('.world').classList.toggle('opened',state.stage===4);$('.destination').textContent=state.stage===4?'VAULT DISCOVERED':'OPEN THE TIDEGLASS VAULT';
  $('#energy').textContent=state.energy;$('#marks').textContent=state.marks;
- const sceneKey=state.stage+':'+state.post;if($('#scene').dataset.key!==sceneKey){$('#scene').innerHTML=scene(state.stage,state.post);$('#scene').dataset.key=sceneKey;}$('#sceneLabel').textContent=STAGES[state.stage]?.scene??'The vault is open';
+ const viewStage=state.stage===0&&state.landingStep===1?1:state.stage;
+ const sceneKey=viewStage+':'+state.post;if($('#scene').dataset.key!==sceneKey){$('#scene').innerHTML=scene(viewStage,state.post);$('#scene').dataset.key=sceneKey;}$('#sceneLabel').textContent=goal(state)?.scene??STAGES[state.stage]?.scene??'The vault is open';
  $('#chapterLabel').textContent=state.stage===4?'DISCOVERY · THE SKY WITHIN':'THE SALTGLASS REACH';
  $('.objective').dataset.stage=state.stage;
  const g=goal(state);$('#goalTitle').textContent=g?.name??'Expedition complete';$('#step').textContent=state.stage<4?(g?.phase??`${state.stage+1} / 4`):'DISCOVERED';
@@ -47,9 +48,9 @@ function render(){
  renderSide();const c=normalContract(state),cr=sideChoice()==='contract'&&ready(state,c.needs);
  const readySignal=sideChoice()==='opportunity'&&state.opportunity&&opportunity(state).remaining>0&&ready(state,state.opportunity.needs);
  const selectedItem=state.board[selected];
- board.dataset.site=state.stage;board.setAttribute('aria-label',SITE_NAMES[state.stage]+' · 6 by 6 merge board');
- board.innerHTML=siteSurface(state.stage)+state.board.map((x,i)=>{
-  const isSource=x?.type==='source',locked=isSource&&state.stage<SOURCES[x.id].unlock;
+ board.dataset.site=viewStage;board.setAttribute('aria-label',SITE_NAMES[viewStage]+' · 6 by 6 merge board');
+ board.innerHTML=siteSurface(viewStage)+state.board.map((x,i)=>{
+  const isSource=x?.type==='source',locked=isSource&&!sourceUnlocked(state,x.id);
   const useful=isSource&&!locked&&needed().some(r=>r.family===x.id&&count(state,r)<r.count);
   const expedition=!!g?.needs.some(r=>matches(x,r)),contract=sideChoice()==='contract'&&c.needs.some(r=>matches(x,r));
   const matching=selectedItem?.type==='item'&&x?.type==='item'&&i!==selected&&x.family===selectedItem.family&&x.tier===selectedItem.tier&&x.tier<7;
@@ -77,7 +78,7 @@ function renderSelection(){
    const site=anchors(state).find(v=>v.phase==='idle'&&matches(x,equipment(v.kind)));if(site&&state.stage>=2)desc=`Keep to merge · or use on ${nameOf(site)}${cn?' · also exchangeable':''}`;
    buttons=`${site&&state.stage>=2?`<button class="accent" data-action="deploy" data-target="${state.board.indexOf(site)}">Use · ${ANCHORS[site.kind].short}</button>`:''}<button data-action="recycle">Recycle +${2**x.tier} ϟ</button>`;
   }else if(x.type==='source'){
-   if(state.stage<SOURCES[x.id].unlock)desc=`Unlock: ${x.id==='chart'?'clear the landing':'find the buried door'}.`;
+   if(!sourceUnlocked(state,x.id))desc=`Unlock: ${x.id==='chart'?'stabilize the landing':'open a breach'}.`;
    else {desc=`${state.surge>0?'SURGE · '+state.surge+' shared pulls · ':''}${state.charges[x.id]}/7 charges · Next: ${nameOf(nextOutput(state,x.id))}${burstOutput(state,x.id)?(state.taps[x.id]+1)%7===0?' + bonus tool':' + raw part':''}`;
     buttons=state.charges[x.id]?`<button class="accent" data-action="produce">Produce · ${SOURCES[x.id].cost} ϟ</button>`:'<button data-action="serviceTool">Service · tool</button><button class="accent" data-action="service">Service · 3 ϟ</button>';
    }
@@ -90,7 +91,7 @@ function renderSelection(){
   else if(x.type==='brace'){desc='Tap a saltstone blocker to use this brace.';buttons='<button data-action="recycle">Recycle +3 ϟ</button>';}
  }
  const preview=x?.type==='crate'?`<span class="mergePreview" aria-label="Remaining rewards">${contents(x).slice(0,3).map(y=>art(y)).join('')}</span>`:x?.type==='item'&&x.tier<7?`<span class="mergePreview" title="Merge further: ${FAMILIES[x.family].names[x.tier+1]}"><span>→</span>${art(item(x.family,x.tier+1))}</span>`:x?.type==='rock'?`<span class="mergePreview" title="Blocker reward: mixed expedition gear"><span>→</span>${art({type:'crate',kind:'locker'})}</span>`:'';
- const rare=x?.type==='source'&&state.stage>=SOURCES[x.id].unlock?`<span class="rareTrack" role="progressbar" aria-label="Guaranteed rare in ${9-state.taps[x.id]%9} pulls" aria-valuemin="0" aria-valuemax="9" aria-valuenow="${state.taps[x.id]%9}">${Array.from({length:9},(_,i)=>`<i class="${i<state.taps[x.id]%9?'filled':''}"></i>`).join('')}<b>✦ ${9-state.taps[x.id]%9}</b></span>`:'';
+ const rare=x?.type==='source'&&sourceUnlocked(state,x.id)?`<span class="rareTrack" role="progressbar" aria-label="Guaranteed rare in ${9-state.taps[x.id]%9} pulls" aria-valuemin="0" aria-valuemax="9" aria-valuenow="${state.taps[x.id]%9}">${Array.from({length:9},(_,i)=>`<i class="${i<state.taps[x.id]%9?'filled':''}"></i>`).join('')}<b>✦ ${9-state.taps[x.id]%9}</b></span>`:'';
  $('#selection').innerHTML=`${x?`<span class="preview">${art(x)}</span>`:''}<span class="copy"><b>${title}</b><small>${desc}</small>${rare}</span>${preview}<span class="actionGroup">${buttons}</span>`;
 }
 function run(a){
@@ -101,7 +102,7 @@ function run(a){
  const taskSnapshot=delivery.length?snapshotTask($(taskSelector)):null;
  const energyBefore=state.energy,firstContract=state.contracts===0,surgeBefore=state.surge??0;
  const rewardOrigin=document.querySelector(a.type==='contract'||a.type==='opportunity'?'#contracts':'.objective')?.getBoundingClientRect();
- const before=state.stage,from=a.type==='produce'?board.querySelector(`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===a.id)}"]`)?.getBoundingClientRect():null;
+ const before=state.stage,landingBefore=state.landingStep,from=a.type==='produce'?board.querySelector(`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===a.id)}"]`)?.getBoundingClientRect():null;
  const result=act(state,a,now);message.textContent=result.message;
  if(!result.ok)return result;
  platform.startGameplay();if(['milestone','deployment','contract','discovery'].includes(result.event)){focus='goal';selected=null;}if(a.type==='merge')selected=result.index;render();persist();
@@ -114,7 +115,7 @@ function run(a){
  }
  for(const i of result.reveal??[])board.querySelector(`[data-index="${i}"]`)?.classList.add('merge-pop');
  for(const i of result.operated??[])board.querySelector(`[data-index="${i}"]`)?.classList.add('unlocked');
- if(result.event==='milestone'&&state.stage>before){const id=state.stage===1?'chart':state.stage===2?'flux':null;if(id)board.querySelector(`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===id)}"]`)?.classList.add('unlocked');}
+ if(result.event==='milestone'&&(state.stage>before||state.landingStep>landingBefore)){const id=state.landingStep>landingBefore&&state.stage===0?'chart':state.stage===2?'flux':null;if(id)board.querySelector(`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===id)}"]`)?.classList.add('unlocked');}
  if(result.index!==null&&result.event!=='merge')board.querySelector(`[data-index="${result.index}"]`)?.classList.add('pop');
  if(a.type==='produce'){
   board.querySelector(`[data-index="${selected}"]`)?.classList.add('react');
@@ -135,7 +136,7 @@ function clickTile(i){
  if(selected!==null&&selected!==i&&prev?.type==='item'&&(!x||(x.type==='item'&&x.family===prev.family&&x.tier===prev.tier))){run({type:'merge',from:selected,to:i});return;}
  selected=i;render();
  if(x?.type==='crate')run({type:'crate',index:i});
- if(x?.type==='source'&&state.stage>=SOURCES[x.id].unlock&&state.charges[x.id]>0)run({type:'produce',id:x.id});
+ if(x?.type==='source'&&sourceUnlocked(state,x.id)&&state.charges[x.id]>0)run({type:'produce',id:x.id});
 }
 board.addEventListener('click',e=>{const tile=e.target.closest('[data-index]')??document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-index]');if(tile&&board.contains(tile)&&performance.now()>suppressUntil)clickTile(+tile.dataset.index);});
 board.addEventListener('pointerdown',e=>{const tile=e.target.closest('[data-index]');if(!tile||e.button!==0)return;const i=+tile.dataset.index;if(!['item','crate','brace','glyph'].includes(state.board[i]?.type))return;drag={from:i,id:e.pointerId,x:e.clientX,y:e.clientY,moved:false};tile.classList.add('picked');board.setPointerCapture?.(e.pointerId);});

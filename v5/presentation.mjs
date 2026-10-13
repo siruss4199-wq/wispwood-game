@@ -39,7 +39,8 @@ export function deliveryItems(s,action,now=Date.now()){
 }
 export function continuation(s,action,rewards=[]){
  if(action.type==='breach')return 'Echo Crucible unlocked · choose two devices';
- if(action.type==='goal'&&s.stage===1)return 'Survey Kite unlocked · choose your 3 Surge pulls';
+ if(action.type==='goal'&&s.stage===0&&s.landingStep===1)return 'Landing secured · Survey Kite unlocked · chart the crossing';
+ if(action.type==='goal'&&s.stage===1)return 'Survey complete · choose your breach and 3 Surge pulls';
  if(action.type==='goal'&&s.stage===2)return 'Echo Crucible unlocked · reveal the ampoule';
  if(action.type==='goal'&&s.stage===3)return 'Rings powered · prepare the vault instruments';
  if(action.type==='goal'&&s.stage===4)return 'The crossing is open · chart the star ocean';
