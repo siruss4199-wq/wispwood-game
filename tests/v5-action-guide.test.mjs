@@ -65,8 +65,9 @@ test('matching twins are highlighted, preserving manual decision',()=>{
  const a=boardCoach(s,7);
  assert.equal(a.primary.kind,'match');
  assert.equal(a.primary.from,7);
- assert.equal(a.primary.index,8);
- assert.equal(a.from,7);assert.equal(a.to,8);
+ const actualTwin=s.board.findIndex((x,i)=>i!==7&&x?.type==='item'&&x.family==='rig'&&x.tier===0);
+ assert.equal(a.primary.index,actualTwin);
+ assert.equal(a.from,7);assert.equal(a.to,actualTwin);
  assert.equal(a.icons.length,3);
 });
 
