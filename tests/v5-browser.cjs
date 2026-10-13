@@ -47,7 +47,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
    const mission=await page.locator('.objective').boundingBox();assert.ok(mission.height<=86,'single-requirement mission has no empty second row');assert.ok(bounds.y<=345,'board is promoted on the first mobile screen');
    for(const selector of ['#journalButton','.contract','#helpButton','#soundButton']){const hit=await page.locator(selector).boundingBox();assert.ok(hit.width>=44&&hit.height>=44,selector+' is a 44px target');}
    assert.ok((await page.locator('#guidePanel').boundingBox()).height<=120,'inline action rail remains compact');
-   assert.ok((await page.locator('.contracts').boundingBox()).height<=43,'bonus starts collapsed');
+   assert.ok((await page.locator('.contracts').boundingBox()).height<=47,'bonus stays collapsed but keeps a 44px hit target');
    assert.match(await page.locator('.contract.ready .reward').textContent(),/12.*READY/);
   }
   await shot('task-ready');await page.locator('[data-contract="contract"]').tap();
