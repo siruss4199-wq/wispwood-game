@@ -9,7 +9,7 @@ const ingredient=(s,family,tier)=>find(s,x=>x?.type==='item'&&x.family===family&
 const missing=s=>(goal(s)?.needs??[]).find(r=>count(s,r)<r.count);
 const part=(family,tier)=>({type:'item',family,tier});
 const pict=(x,label)=>({x,label});
-const step=(title,detail,icons,primary,secondary=null,from=null,to=null)=>({title,detail,icons,primary,secondary,from,to});
+const step=(title,detail,icons,primary,secondary=null,from=null,to=null,summary=null)=>({title,detail,icons,primary,secondary,from,to,summary});
 const show=(label,index)=>({label,kind:'show',index});
 
 export function boardCoach(s,index=null){
@@ -21,8 +21,9 @@ export function boardCoach(s,index=null){
   return step(tool>=0?'CLEAR THIS STONE · READY':'CLEAR STONE · MAKE A TOOL',
    tool>=0?'You have the tool. Tap CLEAR NOW to spend it and reveal supplies.':'You need ONE Split Spanner. Produce Fieldworks parts, then merge matching pairs until you make a spanner. Or activate the Stone Lift device to clear both rocks at once after choosing a route. Clearing stones is optional.',
    [pict(part('rig',2),'1 · Spanner'),pict({type:'rock'},'2 · Clear'),pict({type:'crate',kind:'locker',left:2},'3 · Supplies')],
-   tool>=0?{label:'CLEAR NOW',kind:'clear',index}:show('FIND FIELDWORKS',producer(s,'rig')),
-   lift>=0?show('SEE STONE LIFT',lift):null,tool>=0?tool:producer(s,'rig'),index);
+   tool>=0?{label:'CLEAR NOW',kind:'clear',index}:show('MAKE SPANNER',producer(s,'rig')),
+   lift>=0?show('STONE LIFT',lift):null,tool>=0?tool:producer(s,'rig'),index,
+   tool>=0?'Use your Spanner to open this optional reward.':'Stone is optional. Make a Split Spanner to clear it.');
  }
  if(x?.type==='sealed'||x?.type==='lock'||x?.type==='marker'){
   const relic=find(s,y=>y?.type==='site'&&y.kind==='scope'&&y.phase==='idle');
@@ -32,14 +33,24 @@ export function boardCoach(s,index=null){
     'This is LOCKED terrain, not a merge item. The Relic Finder device uncovers two buried spaces. Make a Survey Scope (Wayfinding T4), then activate that device. Remaining buried ground opens when the Vault is unlocked.',
     [pict(part('chart',3),'1 · Scope'),pict({type:'site',kind:'scope',phase:'idle',progress:0},'2 · Device'),pict({type:'sealed'},'3 · Open')],
     scope>=0?{label:'USE RELIC FINDER',kind:'deploy',index:relic}:show('FIND SURVEY KITE',producer(s,'chart')),
-    show('FOLLOW MAIN STORY',null),scope>=0?scope:producer(s,'chart'),relic);
+    show('GO TO STORY',null),scope>=0?scope:producer(s,'chart'),relic,
+    scope>=0?'Activate Relic Finder to uncover two spaces.':'Make a Survey Scope for Relic Finder to uncover two spaces.');
   }
-  const r=s.stage===1?find(s,y=>y?.type==='route'):null;
+  if(s.stage===1){
+   const ridge=find(s,y=>y?.type==='route'&&y.id==='ridge');
+   const conduit=find(s,y=>y?.type==='route'&&y.id==='conduit');
+   return step('BURIED GROUND · CHOOSE A ROUTE',
+    'This ground is locked, not a merge item. Ridge opens working space using a Split Spanner. Conduit opens a relic route using a Sight Lens. Choose ONE: the other remains closed.',
+    [pict({type:'route',id:'ridge'},'Ridge'),pict({type:'route',id:'conduit'},'Conduit')],
+    show('RIDGE · MORE SPACE',ridge),show('CONDUIT · RELICS',conduit),
+    null,index,'Pick Ridge for space, or Conduit for relic supplies.');
+  }
+  const r=null;
   return step('BURIED GROUND · STORY LOCK',
    s.stage===1?'You do not merge this ground. Choose ONE breach (Ridge or Conduit) above to uncover part of the route. The remaining covered spaces unlock later.':s.stage>=3?'Do not spend a tool on this ground. Continue the MAIN STORY and open the Tideglass Vault; remaining covered ground disappears when the Vault opens.':'This is locked terrain, NOT a rock to clear. Finish the landing objectives and choose one route to uncover the first spaces.',
    [pict({type:'route',id:'ridge'},'1 · Route'),pict({type:'sealed'},'2 · Unlock'),pict({type:'site',kind:'scope',phase:'idle',progress:0},'3 · Explore')],
-   r!==null&&r>=0?show('SEE ROUTE CHOICE',r):show('SHOW STORY STEP',null),
-   null,r!==null&&r>=0?r:null,index);
+   show('GO TO STORY',null),
+   null,null,index,s.stage>=3?'Keep progressing: the Vault opens the remaining ground.':'Not a merge item. Complete the main story to unlock this ground.');
  }
  if(x?.type==='glyph'){
   const lens=ingredient(s,'chart',2);
@@ -47,7 +58,8 @@ export function boardCoach(s,index=null){
     s.discoveryDone?'Already decoded once. Extra fragments may be recycled.':'This purple-gold relic is NOT a rock or matching merge item. Make ONE Sight Lens (Wayfinding T3), then decode it for permanently richer producer drops. Skip it to focus on the Vault.',
     [pict({type:'glyph'},'1 · Echo'),pict(part('chart',2),'2 · Lens'),pict({type:'crate',kind:'relic',left:1},'3 · Bonus')],
     s.discoveryDone?{label:'CLOSE',kind:'close'}:lens>=0?{label:'DECODE NOW',kind:'decode'}:show('FIND SURVEY KITE',producer(s,'chart')),
-    show('FOLLOW MAIN STORY',null),lens>=0?lens:producer(s,'chart'),index);
+    show('GO TO STORY',null),lens>=0?lens:producer(s,'chart'),index,
+    s.discoveryDone?'Extra fragment.':lens>=0?'Sight Lens ready: decode for bonus drops.':'Optional: use a Sight Lens to decode this fragment.');
  }
  if(x?.type==='site'){
   const a=ANCHORS[x.kind],req=equipment(x.kind),tool=ingredient(s,req.family,req.tier);

@@ -47,6 +47,19 @@ test('buried ground is a story lock: opening a route or Relic Finder, not stone 
  assert.notEqual(later.primary.kind,'clear');
 });
 
+test('buried ground at route selection provides Ridge and Conduit choices',()=>{
+ const s=fresh();s.stage=1;s.landingStep=2;
+ const i=s.board.findIndex(x=>x?.type==='sealed');
+ const plan=boardCoach(s,i);
+ assert.match(plan.title,/CHOOSE A ROUTE/);
+ assert.match(plan.summary,/Ridge/);
+ assert.match(plan.summary,/Conduit/);
+ assert.equal(plan.primary.kind,'show');
+ assert.equal(s.board[plan.primary.index].id,'ridge');
+ assert.equal(plan.secondary.kind,'show');
+ assert.equal(s.board[plan.secondary.index].id,'conduit');
+ assert.equal(plan.icons.length,2);
+});
 test('echo asks for Sight Lens, decodes only if held and is optional',()=>{
  const s=fresh(0);s.board[7]={type:'glyph'};
  let plan=boardCoach(s,7);

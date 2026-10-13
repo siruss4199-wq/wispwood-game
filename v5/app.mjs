@@ -14,7 +14,7 @@ if(premium){enablePremium(new URLSearchParams(location.search).get('art'));docum
 const scene=premium?prototypeScene:vectorScene;
 const $=s=>document.querySelector(s);
 let state;try{state=load(localStorage.getItem(SAVE_KEY));}catch{state=fresh();}
-let selected=null,focus='goal',drag=null,suppressUntil=0,sideView=null,coachIndex=null,spotlight=null;
+let selected=null,focus='goal',drag=null,suppressUntil=0,sideView=null,coachIndex=null,spotlight=null,coachExpanded=false;
 const board=$('#board'),message=$('#message');
 function persist(){try{const raw=JSON.stringify(state);localStorage.setItem(SAVE_KEY,raw);platform.save(raw);}catch{message.textContent='Storage unavailable. This session is playable, but progress cannot be saved.';}}
 function needed(){const x=state.board[selected];if(focus==='goal'&&x?.type==='site')return x.phase==='idle'?[equipment(x.kind)]:[];if(focus==='goal'&&x?.type==='route')return [{family:ROUTES[x.id].family,tier:2,count:1}];return focus==='contract'?normalContract(state).needs:focus==='opportunity'?state.opportunity?.needs??[]:focus==='discovery'?[{family:'chart',tier:2,count:1}]:goal(state)?.needs??[];}
@@ -23,7 +23,7 @@ function sideOptions(){return ['contract',...(state.discovery&&!state.discoveryD
 function sideChoice(){const options=sideOptions();return options.includes(sideView)?sideView:state.opportunity?'opportunity':options.includes('discovery')?'discovery':'contract';}
 function hint(){return selected===null?objectiveGuide(state).short:objectGuide(state,selected).short;}
 function missionSlots(){
- if(state.stage===1)return Object.entries(ROUTES).map(([id,r])=>{const index=state.board.findIndex(x=>x?.type==='route'&&x.id===id),need={family:r.family,tier:2,count:1};return `<button class="missionSlot ${ready(state,[need])?'available':''}" data-site-index="${index}" aria-label="${r.name}: ${r.benefit}">${art(item(r.family,2))}<span>${id==='ridge'?'Room to work':'Relic supplies'}</span></button>`;}).join('<span class="or">or</span>');
+ if(state.stage===1)return Object.entries(ROUTES).map(([id,r])=>{const index=state.board.findIndex(x=>x?.type==='route'&&x.id===id),need={family:r.family,tier:2,count:1};return `<button class="missionSlot ${ready(state,[need])?'available':''}" data-site-index="${index}" aria-label="${r.name}: costs ${nameOf(item(r.family,2))} and gives ${r.benefit}">${art(item(r.family,2))}<span>${id==='ridge'?'Ridge · More space':'Conduit · Relics'}</span></button>`;}).join('<span class="or">or</span>');
  if(state.stage===2)return anchors(state).map(x=>`<button class="missionSlot ${x.phase==='done'?'complete':ready(state,[equipment(x.kind)])?'available':''}" data-site-index="${state.board.indexOf(x)}" aria-label="${nameOf(x)}: ${x.phase==='done'?'ready':ANCHORS[x.kind].effect}">${art(item(ANCHORS[x.kind].equipment,3))}<span>${x.phase==='done'?'✓':ANCHORS[x.kind].short}</span></button>`).join('');
  return needsHTML(goal(state)?.needs??[],true);
 }
@@ -65,13 +65,18 @@ function paintSpotlight(){
 function renderCoach(){
  const panel=$('#guidePanel'),model=boardCoach(state,coachIndex);
  if(panel.hidden)return;
- const icon=x=>art(x);
  const action=(a,secondary=false)=>a?`<button type="button" class="${secondary?'coachSecondary':'coachPrimary'}" data-coach-kind="${a.kind}" ${a.index!==undefined&&a.index!==null?`data-coach-index="${a.index}"`:''} ${a.id?`data-coach-id="${a.id}"`:''} ${a.from!==undefined?`data-coach-from="${a.from}"`:''}>${a.label}</button>`:'';
- const steps=model.icons.map((v,i)=>`${i?'<span class="coachConnector" aria-hidden="true">→</span>':''}<span class="coachStep">${icon(v.x)}<small>${v.label}</small></span>`).join('');
- panel.innerHTML=`<div class="coachTop"><span class="coachEyebrow">WHAT TO DO NEXT</span><button type="button" class="coachClose" data-coach-kind="close" aria-label="Close guidance">×</button></div><b class="coachHeadline">${model.title}</b><div class="coachSequence">${steps}</div><p class="coachExplanation">${model.detail}</p><div class="coachActions">${action(model.primary)}${action(model.secondary,true)}</div>`;
+ const steps=model.icons.map((v,i)=>`${i?'<span class="coachConnector" aria-hidden="true">→</span>':''}<span class="coachStep">${art(v.x)}<small>${v.label}</small></span>`).join('');
+ // The one visible line tells the player what this object DOES. Optional details
+ // stay collapsed so the game, not an instruction manual, remains in view.
+ const summary=model.summary??model.detail.split('. ')[0]+'.';
+ const relevant=coachIndex===null?null:state.board[coachIndex];
+ const icon=relevant?art(relevant):model.icons[0]?art(model.icons[0].x):'';
+ panel.innerHTML=`<div class="coachTop"><span class="coachEyebrow">${relevant?.type==='rock'?'OPTIONAL OBSTACLE':relevant&&['sealed','marker','lock'].includes(relevant.type)?'LOCKED TERRAIN':relevant?.type==='glyph'?'OPTIONAL DISCOVERY':'NEXT ACTION'}</span><button type="button" class="coachClose" data-coach-kind="close" aria-label="Close guidance">×</button></div><div class="coachCompact"><span class="coachThumb">${icon}</span><div class="coachCopy"><b class="coachHeadline">${model.title}</b><p class="coachSummary">${summary}</p></div></div><div class="coachActions">${action(model.primary)}${action(model.secondary,true)}</div><button type="button" class="coachWhy" data-coach-kind="why" aria-expanded="${coachExpanded}">${coachExpanded?'LESS INFO −':'WHY?  ·  SEE HOW +'}</button><div class="coachDetails" ${coachExpanded?'':'hidden'}><div class="coachSequence">${steps}</div><p class="coachExplanation">${model.detail}</p></div>`;
  spotlight=[model.from,model.to];paintSpotlight();
 }
 function openCoach(index=null){
+ coachExpanded=false;
  coachIndex=Number.isInteger(index)&&index>=0?index:null;
  $('#guidePanel').hidden=false;$('#guideButton').setAttribute('aria-expanded','true');
  renderCoach();
@@ -248,6 +253,7 @@ $('#guidePanel').addEventListener('click',e=>{
  const type=target.dataset.coachKind,index=target.hasAttribute('data-coach-index')?+target.dataset.coachIndex:null;
  const original=coachIndex;
  if(type==='close'){closeCoach();return;}
+ if(type==='why'){coachExpanded=!coachExpanded;renderCoach();return;}
  if(type==='show'){goToGuideTarget(index,original);return;}
  if(type==='match'){selected=Number(target.dataset.coachFrom);goToGuideTarget(index,selected);selected=Number(target.dataset.coachFrom);render();message.textContent='1 → 2: Tap the glowing matching twin to MERGE these two identical items.';return;}
  if(type==='decode'){run({type:'discovery'});return;}
