@@ -6,8 +6,8 @@ const assert=require('node:assert/strict');const {chromium,webkit}=require('play
  const initial=await read();const a=await page.locator('[data-index="7"]').boundingBox(),b=await page.locator('[data-index="8"]').boundingBox();
  await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:8});await page.mouse.up();await page.waitForTimeout(310);assert.equal((await read()).merges,1,'drag works in '+engine);
  // One fresh tool already exists; this real merge supplies the second landing tool.
- await page.locator('#goalButton').tap();assert.equal((await read()).stage,1);await page.waitForTimeout(750);
- const saved=await read();await page.reload();assert.deepEqual((await read()).board,saved.board);assert.equal((await read()).stage,1);
+ await page.locator('#goalButton').tap();assert.equal((await read()).stage,0);assert.equal((await read()).landingStep,1);await page.waitForTimeout(750);
+ const saved=await read();await page.reload();assert.deepEqual((await read()).board,saved.board);assert.equal((await read()).stage,0);assert.equal((await read()).landingStep,1);
  assert.equal(await page.locator('#board').evaluate(el=>getComputedStyle(el).touchAction),'pan-y');assert.equal(await page.locator('.tile.item').first().evaluate(el=>getComputedStyle(el).touchAction),'none');
  await page.locator('[data-index="35"]').scrollIntoViewIfNeeded();let box=await page.locator('[data-index="35"]').boundingBox();assert.ok(box.y>=0&&box.y+box.height<=664,'bottom row reachable with browser controls visible');
  if(engine==='chromium'){
