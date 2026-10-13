@@ -108,3 +108,6 @@ dialog .close{width:44px;height:44px;z-index:2}
 #scene .premiumScene{object-position:70% center}
 body[data-art="premium"] .world:has(.premiumScene) .worldLabel b{background:#fff5debd;padding:3px 7px;border-radius:8px;text-shadow:none;font-size:12px}
 @media(prefers-reduced-motion:no-preference){.world.opened #scene .premiumScene{animation:vaultArrival 1.1s ease-out}@keyframes vaultArrival{from{filter:brightness(1.15);transform:scale(1.025)}to{filter:none;transform:none}}}
+
+/* A single optional late trade: keep the reward readable beside its sprite. */
+.tradeSurge{display:block;font-size:11px;line-height:1.15;font-weight:800;color:#166c69;white-space:nowrap}

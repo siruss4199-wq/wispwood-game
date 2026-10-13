@@ -81,7 +81,7 @@ export function deliverFeedback({kind,delivery,rewards,taskRect,taskSnapshot,tas
  burst(taskRect,rare?'flux':signal?'chart':'gold',main||rare||signal);
  if(main||rare)burst(board.getBoundingClientRect(),rare?'flux':'gold',true);
 }
-export function feedback({event,tile,x,from,energyDelta,stage,firstContract=false,containerKind,reveal=[],bonus,breakthrough,breakthroughUse,surgeStarted}){
+export function feedback({event,tile,x,from,energyDelta,stage,firstContract=false,containerKind,reveal=[],bonus,improved,breakthrough,breakthroughUse,surgeStarted}){
  const rect=tile?.getBoundingClientRect();
  if(event==='merge'){
   tile?.classList.add('merge-pop');burst(rect,x?.family,x?.tier>=4);sound.play('merge',x?.tier??0);
@@ -96,6 +96,7 @@ export function feedback({event,tile,x,from,energyDelta,stage,firstContract=fals
   if(stage<4)moment(['','Survey Kite unlocked','Echo Crucible unlocked','The rings are awake'][stage],stage===2?'Excavation cache revealed':'Expedition advanced');
  }else if(event==='discovery'){sound.play('rare');burst(document.querySelector('.world').getBoundingClientRect(),'flux',true);}
  else if(event==='produce'&&bonus){burst(rect,bonus,true);sound.play('rare');moment({rig:'Rover spare found',chart:'Survey bundle found',flux:'Charged fragment found'}[bonus],'A useful bonus from this source');}
+ else if(event==='produce'&&improved){burst(rect,x?.family);sound.play('merge',x?.tier??1);tile?.classList.add('merge-pop');}
  else if(event==='produce')sound.play('produce');
  if(surgeStarted){const existing=document.querySelector('.moment small');if(existing)existing.textContent+=' · Supply Surge: 3 shared pulls';else moment('Supply Surge · 3 pulls','Choose a producer: improved parts, shared allowance');}
 }

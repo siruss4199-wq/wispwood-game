@@ -45,6 +45,12 @@ export function ready(s,needs){return needs.every(r=>count(s,r)>=r.count);}
 export function matches(x,r){return x?.type==='item'&&x.family===r.family&&x.tier===r.tier;}
 function consume(s,needs){for(const r of needs)for(let n=0;n<r.count;n++)s.board[s.board.findIndex(x=>matches(x,r))]=null;}
 export function normalContract(s){
+ // One optional late trade spends an actual vault ingredient. Keep it to finish
+ // sooner, or redirect its value into the other family and three chosen pulls.
+ if(s.stage===3&&!s.expedition.vaultTrade){
+  const [from,to]=goal(s).needs;
+  return {title:'Vault trade',who:'Neri · navigator',needs:[{...from}],energy:8,marks:4,exchange:item(to.family,3),surge:true,vaultTrade:true};
+ }
  if(s.stage>=2&&s.stage<4&&s.expedition.trades<3){
   const from=['rig','chart','flux'][s.expedition.trades],to=['chart','flux','rig'][s.expedition.trades];
   return {title:'Equipment exchange',who:'Neri · navigator',needs:[req(from,3)],energy:6,marks:4,exchange:item(to,3)};
@@ -61,7 +67,8 @@ export function opportunity(s,now=Date.now()){
 export function nextOutput(s,id){
  const n=s.taps[id]+1;
  if(n%9===0)return {type:'glyph'};
- return item(id, s.boost&&n%3===0?2:s.surge>0?1:n%4===0?1:0);
+ const base=s.boost&&n%3===0?2:n%4===0?1:0;
+ return item(id,base+(s.surge>0?1:0));
 }
 // Action-limited, shared across sources: spend the improved pulls where they matter.
 // Never stack or expire while the player thinks. Old saves simply have no active surge.
@@ -142,7 +149,7 @@ export function act(s,a,now=Date.now()){
   const surged=s.surge>0,burst=burstOutput(s,a.id),x=nextOutput(s,a.id),i=put(s,x);const windfall=burst&&(s.taps[a.id]+1)%7===0;const bonusIndex=burst?put(s,item(a.id,windfall?1:0)):-1;s.energy-=p.cost;s.charges[a.id]--;s.taps[a.id]++;
   if(surged&&x.type!=='glyph')s.surge--;
   if(x.type==='glyph')s.discovery=true;
-  return {...done(x.type==='glyph'?'Echo fragment found! A discovery awaits.':`${nameOf(x)}${windfall?' + bonus tool!':burst?' + raw part':''} · ${s.charges[a.id]} charges left`,'produce',i),bonus:windfall?a.id:null,reveal:windfall?[i,bonusIndex]:[]};
+  return {...done(x.type==='glyph'?'Echo fragment found! A discovery awaits.':`${nameOf(x)}${windfall?' + bonus tool!':burst?' + raw part':''} · ${s.charges[a.id]} charges left`,'produce',i),bonus:windfall?a.id:null,improved:surged&&x.type==='item',reveal:windfall?[i,bonusIndex]:[]};
  }
  if(a.type==='service'){
   if(!SOURCES[a.id]||s.stage<SOURCES[a.id].unlock||s.charges[a.id]>0)return fail('This source does not need service.');
@@ -186,10 +193,10 @@ export function act(s,a,now=Date.now()){
  if(a.type==='contract'){
   const c=normalContract(s);if(!ready(s,c.needs))return fail('Make the highlighted contract items.');
   consume(s,c.needs);s.energy=Math.min(120,s.energy+c.energy);s.marks+=c.marks;s.normal++;s.contracts++;
-  if(c.exchange){put(s,{...c.exchange});s.expedition.trades++;trace(s,'exchange',{from:c.needs[0].family,to:c.exchange.family});}
+  if(c.exchange){put(s,{...c.exchange});if(c.vaultTrade)s.expedition.vaultTrade=true;else s.expedition.trades++;trace(s,c.vaultTrade?'vault-diversion':'exchange',{from:c.needs[0].family,to:c.exchange.family,spentTier:c.needs[0].tier});}
   const shipment=c.exchange?[]:supplies(s,4,true,{rig:'salvage',chart:'survey',flux:'relic'}[c.needs[0].family]);
   if(c.surge)surge(s);
-  return done(`${c.exchange?nameOf(c.exchange)+' received':'Supplies secured'}${shipment.length?' · field supplies':''} · +${c.energy} energy`,'contract');
+  return done(`${c.exchange?nameOf(c.exchange)+' received':'Supplies secured'}${shipment.length?' · field supplies':''}${c.surge?' · 3 rich pulls':''} · +${c.energy} energy`,'contract');
  }
  if(a.type==='startOpportunity'){
   if(s.stage<1||s.opportunity)return fail('One opportunity at a time.');
@@ -262,6 +269,7 @@ export function load(raw,now=Date.now()){
    s.expedition=expeditionState(s.stage);
    if(s.stage<2)for(const [id,r] of Object.entries(ROUTES))if(s.board[r.start]?.type==='sealed')s.board[r.start]={type:'route',id};
   }else if(![1,2].includes(s.expedition.version)||!integer(s.expedition.trades,0,3)||s.expedition.route!==null&&!ROUTES[s.expedition.route])return fresh(now);
+  if(s.expedition.vaultTrade!==undefined&&typeof s.expedition.vaultTrade!=='boolean')delete s.expedition.vaultTrade;
   s.expedition.log=Array.isArray(s.expedition.log)?s.expedition.log.filter(x=>x&&typeof x.type==='string'&&integer(x.move,0,1000000)).slice(-200):[];
   installSites(s);if(s.expedition.version===1){for(const site of anchors(s))if(site.phase==='active')activate(s,site);s.expedition.version=2;}delete s.mission;
   return s;

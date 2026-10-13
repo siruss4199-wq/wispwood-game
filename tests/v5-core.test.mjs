@@ -149,3 +149,13 @@ test('T4 and T6 first crafts reward charges once, without renewable merge farmin
  s.board[7]=item('rig',2);s.board[8]=item('rig',2);assert.equal(success(s,{type:'merge',from:7,to:8}).breakthrough,false);assert.equal(s.charges.rig,3);
  s.board[7]=item('rig',4);s.board[8]=item('rig',4);const energy=s.energy;success(s,{type:'merge',from:7,to:8});assert.equal(s.charges.rig,5);assert.equal(s.energy,energy+5);
 });
+
+test('each Surge item is strictly better than its normal deterministic pull, including decoded sources',()=>{
+ for(const boost of [false,true])for(const family of Object.keys(SOURCES))for(let tap=0;tap<18;tap++){
+  const s=fresh();s.stage=3;s.boost=boost;s.taps[family]=tap;
+  const baseline=nextOutput(s,family);s.surge=3;const better=nextOutput(s,family);
+  if(baseline.type==='glyph'){assert.deepEqual(better,baseline);continue;}
+  assert.equal(better.tier,baseline.tier+1);assert.ok(better.tier<=3);
+  const result=success(s,{type:'produce',id:family});assert.equal(result.improved,true);assert.equal(s.surge,2);assert.deepEqual(s.board[result.index],better);
+ }
+});

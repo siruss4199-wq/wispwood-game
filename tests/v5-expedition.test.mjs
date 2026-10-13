@@ -60,11 +60,26 @@ test('four play styles complete with actual board consequences, varied choices, 
   assert.equal(s.stage,4);assert.equal(s.discoveryDone,true);assert.ok(s.discovered.length<18);assert.ok(maxRun<=3);
   assert.equal(s.expedition.log.filter(x=>x.type==='deployment').length,2);assert.equal(s.expedition.log.filter(x=>x.type==='device-used').length,2);assert.equal(s.expedition.log.some(x=>x.type==='operation'||x.type==='fragment-spent'),false);
   assert.ok(Math.min(...timeline.map(x=>x.occupied))>=17);let sparse=0;for(const x of timeline){sparse=x.occupied<18?sparse+1:0;assert.ok(sparse<=2,'no prolonged sparse board');}assert.ok(new Set(timeline.map(x=>x.stage)).size>=4);assert.ok(timeline.some(x=>x.action==='opportunity'));
-  if(style==='contract')assert.equal(s.expedition.trades,2);if(style==='exploration')assert.ok(s.expedition.log.some(x=>x.type==='brace-clear'));
+  if(style==='contract'){assert.equal(s.expedition.trades,2);assert.equal(s.expedition.vaultTrade,true);assert.equal(s.expedition.log.filter(x=>x.type==='vault-diversion').length,1);}else assert.ok(!s.expedition.vaultTrade);if(style==='exploration')assert.ok(s.expedition.log.some(x=>x.type==='brace-clear'));
   paths.push([style,s.moves,s.expedition.route,s.expedition.log.filter(x=>['deployment','exchange','brace-clear','kept-for-merge'].includes(x.type))]);
  }assert.equal(new Set(paths.map(x=>JSON.stringify(x.slice(2)))).size,4);console.log(JSON.stringify({simplifiedSessions:paths}));
 });
 test('mission belongs to the scene and obsolete expedition verbs are absent from player prompts',()=>{
  for(const file of ['index.html','crazygames.html']){const html=fs.readFileSync(new URL('../v5/'+file,import.meta.url),'utf8');assert.match(html,/mission.css/);assert.ok(html.indexOf('class="objective"')<html.indexOf('</section>\n</section>'));assert.match(html,/Optional reward/);}
  const core=fs.readFileSync(new URL('../v5/core.mjs',import.meta.url),'utf8');assert.doesNotMatch(goal({...fresh(),stage:2}).text,/install|operate|imprint|feed|reclaim/i);assert.ok(!core.includes("if(a.type==='feed')"));
+});
+
+test('vault diversion competes for exact final equipment, pays once and survives legacy saves',()=>{
+ for(const route of ['ridge','conduit']){
+  const s=fresh();s.stage=3;s.expedition.route=route;
+  const c=normalContract(s),g=goal(s);assert.equal(c.vaultTrade,true);assert.deepEqual(c.needs,[g.needs[0]]);
+  reject(s,{type:'contract'});
+  s.board[7]=item(c.needs[0].family,4);s.board[8]=item(g.needs[1].family,4);
+  const keep=structuredClone(s);ok(keep,{type:'goal'});assert.equal(keep.stage,4,'keep equipment opens the vault immediately');
+  const indices=deliveryItems(s,{type:'contract'});assert.equal(indices.length,1);assert.equal(indices[0].index,7);
+  ok(s,{type:'contract'});assert.equal(s.stage,3);assert.equal(s.expedition.vaultTrade,true);assert.equal(s.expedition.trades,0);assert.equal(s.surge,3);
+  assert.equal(s.board[8].tier,4,'other prepared ingredient is preserved');assert.ok(s.board.some(x=>x?.family===g.needs[1].family&&x.tier===3));assert.equal(ready(s,g.needs),false);
+  assert.equal(s.expedition.log.at(-1).type,'vault-diversion');const saved=load(JSON.stringify(s));assert.equal(saved.expedition.vaultTrade,true);assert.notEqual(normalContract(saved).vaultTrade,true);
+  const legacy=structuredClone(saved);delete legacy.expedition.vaultTrade;assert.equal(load(JSON.stringify(legacy)).stage,3);
+ }
 });

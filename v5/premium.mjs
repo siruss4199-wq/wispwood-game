@@ -2,7 +2,7 @@
 import {SPRITE_OVERRIDES,scene as vectorScene} from './art.mjs';
 export const FIELDWORKS_SPRITES=Object.freeze(['copper-offcut','grip-tool','split-spanner','pocket-winch']);
 export const CHAPTER_SCENES=Object.freeze(['landing','worksite','entrance','powered','vault-open']);
-export const CHAPTER_SPRITES=Object.freeze({'chart-0':'chart-scrap','flux-0':'relic-fragment','source-chart':'survey-kite','source-flux':'echo-crucible'});
+export const CHAPTER_SPRITES=Object.freeze({'chart-0':'chart-scrap','flux-0':'relic-fragment','source-chart':'survey-kite','source-flux':'echo-crucible','rock':'saltstone','sealed':'buried-ground','chart-1':'route-fold','flux-1':'loop-cell','chart-3':'survey-scope','flux-3':'resonator','crate-relic':'resonance-ampoule'});
 const descriptions=['Fallen stones block a golden circular vault on a sunlit turquoise coast.','A coral expedition camp surveys the partially buried coastal vault.','A cleared stone causeway reaches the uncovered vault entrance.','Turquoise channels and concentric gold rings power the sealed vault.','The vault opens onto a deep violet star ocean beyond the sunlit coast.'];
 const preloaded=new Set();let vibrant=true;
 export function enablePremium(revision='vibrant'){

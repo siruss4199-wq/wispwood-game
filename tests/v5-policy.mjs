@@ -31,7 +31,8 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
   else if(s.opportunity){needs=s.opportunity.needs;command={type:'opportunity'};}
   else if((clearSalvage||style==='exploration')&&!s.expedition.log.some(x=>x.type==='brace-clear')&&s.board.some(x=>x?.type==='rock')){
    needs=[req('rig',2)];command={type:'clear',index:s.board.findIndex(x=>x?.type==='rock')};
-  }else if(s.stage===3){needs=goal(s).needs;command={type:'goal'};}
+  }else if(s.stage===3&&style==='contract'&&!s.expedition.vaultTrade){needs=normalContract(s).needs;command={type:'contract'};}
+  else if(s.stage===3){needs=goal(s).needs;command={type:'goal'};}
   else{
    const order=style==='expedition'?['winch','relay']:style==='exploration'?['winch','scope']:['scope','relay'];
    const site=order.map(kind=>anchors(s).find(x=>x.kind===kind)).find(x=>x.phase!=='done');
