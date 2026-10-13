@@ -46,10 +46,15 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
   if(width<500){
    const mission=await page.locator('.objective').boundingBox();assert.ok(mission.height<=86,'single-requirement mission has no empty second row');assert.ok(bounds.y<=345,'board is promoted on the first mobile screen');
    for(const selector of ['#journalButton','.contract','#helpButton','#soundButton']){const hit=await page.locator(selector).boundingBox();assert.ok(hit.width>=44&&hit.height>=44,selector+' is a 44px target');}
-   const icon=await page.locator('.contract .need .art').first().boundingBox();assert.ok(icon.width>=36,'optional requirement remains readable');
+   assert.ok((await page.locator('#guidePanel').boundingBox()).height<=120,'inline action rail remains compact');
+   assert.ok((await page.locator('.contracts').boundingBox()).height<=43,'bonus starts collapsed');
    assert.match(await page.locator('.contract.ready .reward').textContent(),/12.*READY/);
   }
-  await shot('task-ready');await page.locator('[data-contract="contract"]').tap();assert.equal((await read()).contracts,1);await payoff('contract');
+  await shot('task-ready');await page.locator('[data-contract="contract"]').tap();
+   assert.equal((await read()).contracts,0,'optional task should not automatically spend a tool');
+   assert.equal(await page.locator('#bonusClaim').isVisible(),true);
+   const icon=await page.locator('.contract .need .art').first().boundingBox();assert.ok(icon.width>=36,'expanded bonus requirement remains readable');
+   await page.locator('#bonusClaim').tap();assert.equal((await read()).contracts,1);await payoff('contract');
   const a=await page.locator('[data-index="7"]').boundingBox(),b=await page.locator('[data-index="8"]').boundingBox();
   if(width===390&&style==='contract'){
    const touch=await page.context().newCDPSession(page);const from={x:a.x+a.width/2,y:a.y+a.height/2},to={x:b.x+b.width/2,y:b.y+b.height/2};
@@ -86,12 +91,16 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
       if(guided){
        assert.equal(await page.locator(`#guidePanel [data-coach-kind="${cmd.type}"]`).count(),1,'guide must expose the real action');
        await page.locator(`#guidePanel [data-coach-kind="${cmd.type}"]`).tap();
-       assert.equal(await page.locator('#guidePanel').isVisible(),false);
+       assert.equal(await page.locator('#guidePanel').isVisible(),true,'in-flow guidance returns to the next step');
       }else await page.locator(`[data-action="${cmd.type}"]`).tap();
      }
    }else if(cmd.type==='ration')await page.locator('#rationButton').tap();
    else if(cmd.type==='goal')await page.locator('#goalButton').tap();
-   else {await showSide(cmd.type);if(cmd.type==='contract'&&before.stage===3&&!before.expedition.vaultTrade){assert.ok(await page.locator('.tradeSurge').count());await shot('vault-trade-ready');}await page.locator(`[data-contract="${cmd.type}"]`).tap();}
+   else {await showSide(cmd.type);
+    if(cmd.type==='contract'&&before.stage===3&&!before.expedition.vaultTrade){assert.ok(await page.locator('.tradeSurge').count());await shot('vault-trade-ready');}
+    if(!await page.locator('#bonusClaim').count())await page.locator(`[data-contract="${cmd.type}"]`).tap();
+    await page.locator('#bonusClaim').tap();
+   }
    let s=await read();assert.equal(s.moves,before.moves+1,'exactly one action: '+JSON.stringify(cmd));
    if(['goal','breach','deploy','feed','contract','discovery','opportunity'].includes(cmd.type))await payoff(cmd.type);
    if(cmd.type==='feed'&&!s.board.some(x=>x?.type==='glyph')){assert.equal(await page.locator('[data-contract="discovery"]').count(),0);assert.equal(await page.locator('[data-contract="startOpportunity"]').count(),1,'spending the clue must not strand the optional slot');}
@@ -100,7 +109,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
    if(await page.locator('#goalButton').isVisible()){const actionBounds=await page.locator('#goalButton').boundingBox(),goalBounds=await page.locator('.objective').boundingBox();assert.ok(actionBounds.x+actionBounds.width<=goalBounds.x+goalBounds.width);assert.ok(actionBounds.height>=44&&actionBounds.width>=44,'main action is reachable');}assert.equal(await page.locator('.contract').count(),1);assert.equal(await page.locator('.world .objective').count(),1);
    for(const hit of await page.locator('.missionSlot,.sideMore').all()){if(await hit.isVisible()){const box=await hit.boundingBox();assert.ok(box.width>=44&&box.height>=44,'mission and optional navigation targets stay 44px');}}
-   const contractBox=await page.locator('.contract').boundingBox();for(const part of await page.locator('.contract .needs,.contract .reward').all()){const b=await part.boundingBox();assert.ok(b.x+b.width<=contractBox.x+contractBox.width+1,'task contents remain within their tap target');}
+   const contractBox=await page.locator('.contract').boundingBox();for(const part of await page.locator('.contract .needs,.contract .reward').all()){if(!await part.isVisible())continue;const b=await part.boundingBox();assert.ok(b.x+b.width<=contractBox.x+contractBox.width+1,'task contents remain within their tap target');}
    const bounds=await page.locator('#board').boundingBox();assert.ok(bounds.y+bounds.height<844,'board remains visible');
    timeline.push({move:s.moves,action:cmd.type,stage:s.stage,occupied:s.board.filter(Boolean).length,energy:s.energy,charges:s.charges,log:s.expedition.log.at(-1)});
    for(const [check,name] of [[s.merges>=3,'early-merges'],[s.stage===1,'route-choice'],[s.stage===2,'producer-unlock'],[cmd.type==='deploy','device-used'],[cmd.type==='feed','fragment-choice'],[cmd.type==='discovery','rare-decoded'],[cmd.type==='clear','blocker-solution'],[s.expedition.log.some(x=>x.type==='device-used'),'device-consequence'],[s.stage===3,'powered-site'],[cmd.type==='crate','container-opening']]){
