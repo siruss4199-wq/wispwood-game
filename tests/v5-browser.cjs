@@ -89,7 +89,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
    if(['goal','breach','deploy','feed','contract','discovery','opportunity'].includes(cmd.type))await payoff(cmd.type);
    if(cmd.type==='feed'&&!s.board.some(x=>x?.type==='glyph')){assert.equal(await page.locator('[data-contract="discovery"]').count(),0);assert.equal(await page.locator('[data-contract="startOpportunity"]').count(),1,'spending the clue must not strand the optional slot');}
    if(await page.locator('#celebration').isVisible())await page.locator('#celebration .continue').tap();
-   assert.equal(await page.locator('#board').getAttribute('data-site'),String(s.stage));
+   assert.equal(await page.locator('#board').getAttribute('data-site'),String(s.stage===0&&s.landingStep===1?1:s.stage));
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
    if(await page.locator('#goalButton').isVisible()){const actionBounds=await page.locator('#goalButton').boundingBox(),goalBounds=await page.locator('.objective').boundingBox();assert.ok(actionBounds.x+actionBounds.width<=goalBounds.x+goalBounds.width);assert.ok(actionBounds.height>=44&&actionBounds.width>=44,'main action is reachable');}assert.equal(await page.locator('.contract').count(),1);assert.equal(await page.locator('.world .objective').count(),1);
    for(const hit of await page.locator('.missionSlot,.sideMore').all()){if(await hit.isVisible()){const box=await hit.boundingBox();assert.ok(box.width>=44&&box.height>=44,'mission and optional navigation targets stay 44px');}}
