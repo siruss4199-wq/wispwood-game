@@ -86,8 +86,11 @@ test('matching twins are highlighted, preserving manual decision',()=>{
 
 test('main-story guide changes by stage and uses actual missing producer',()=>{
  const s=fresh();
- assert.match(boardCoach(s).title,/NEXT MOVE/);
- assert.equal(boardCoach(s).primary.index,0);
+ assert.match(boardCoach(s).title,/MERGE MATCHING/);
+ assert.equal(boardCoach(s).primary.kind,'show');
+ assert.equal(s.board[boardCoach(s).primary.index].family,'rig');
+ assert.equal(boardCoach(s).from>=0,true);
+ assert.equal(boardCoach(s).to>=0,true);
  assert.equal(act(s,{type:'merge',from:7,to:8}).ok,true);
  assert.equal(act(s,{type:'goal'}).ok,true);
  assert.equal(s.landingStep,1);

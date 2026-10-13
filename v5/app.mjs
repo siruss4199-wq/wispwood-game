@@ -14,17 +14,33 @@ if(premium){enablePremium(new URLSearchParams(location.search).get('art'));docum
 const scene=premium?prototypeScene:vectorScene;
 const $=s=>document.querySelector(s);
 let state;try{state=load(localStorage.getItem(SAVE_KEY));}catch{state=fresh();}
-let selected=null,focus='goal',drag=null,suppressUntil=0,sideView=null,coachIndex=null,spotlight=null,coachExpanded=false;
+let selected=null,focus='goal',drag=null,suppressUntil=0,sideView=null,coachIndex=null,spotlight=null,coachExpanded=false,bonusExpanded=false;
 const board=$('#board'),message=$('#message');
 function persist(){try{const raw=JSON.stringify(state);localStorage.setItem(SAVE_KEY,raw);platform.save(raw);}catch{message.textContent='Storage unavailable. This session is playable, but progress cannot be saved.';}}
 function needed(){const x=state.board[selected];if(focus==='goal'&&x?.type==='site')return x.phase==='idle'?[equipment(x.kind)]:[];if(focus==='goal'&&x?.type==='route')return [{family:ROUTES[x.id].family,tier:2,count:1}];return focus==='contract'?normalContract(state).needs:focus==='opportunity'?state.opportunity?.needs??[]:focus==='discovery'?[{family:'chart',tier:2,count:1}]:goal(state)?.needs??[];}
 function needsHTML(needs,interactive=false){return needs.map(r=>{const tag=interactive?'button':'span';return `<${tag} class="need ${count(state,r)>=r.count?'done':near(state,[r])==='1 MERGE AWAY'?'almost':''}" title="${nameOf(item(r.family,r.tier))}" ${interactive?`type="button" data-guide-family="${r.family}" aria-label="Find producer for ${nameOf(item(r.family,r.tier))}"`:''}>${art(item(r.family,r.tier))}<b>${count(state,r)>=r.count&&r.count===1?'✓':Math.min(count(state,r),r.count)+'/'+r.count}</b></${tag}>`;}).join('');}
 function sideOptions(){return ['contract',...(state.discovery&&!state.discoveryDone&&state.board.some(x=>x?.type==='glyph')?['discovery']:[]),...(state.stage>=1?[state.opportunity?'opportunity':'startOpportunity']:[])];}
 function sideChoice(){const options=sideOptions();return options.includes(sideView)?sideView:state.opportunity?'opportunity':options.includes('discovery')?'discovery':'contract';}
-function hint(){return selected===null?objectiveGuide(state).short:objectGuide(state,selected).short;}
+function hint(){
+ if(state.stage===0&&state.landingStep===0){
+  if(state.merges===0)return 'STEP 1 · Tap two matching copper pieces';
+  if(ready(state,goal(state).needs))return 'STEP 2 · Deliver both Grip tools above';
+  return 'STEP 2 · Make two Grip tools';
+ }
+ if(state.stage===0&&state.landingStep===1)return 'STEP 3 · Use Survey Kite and Rivet Rover';
+ if(state.stage===1)return 'CHOOSE A ROUTE · Spend one prepared tool';
+ return selected===null?objectiveGuide(state).short:objectGuide(state,selected).short;
+}
 function missionSlots(){
- if(state.stage===1)return Object.entries(ROUTES).map(([id,r])=>{const index=state.board.findIndex(x=>x?.type==='route'&&x.id===id),need={family:r.family,tier:2,count:1};return `<button class="missionSlot ${ready(state,[need])?'available':''}" data-site-index="${index}" aria-label="${r.name}: costs ${nameOf(item(r.family,2))} and gives ${r.benefit}">${art(item(r.family,2))}<span>${id==='ridge'?'Ridge · More space':'Conduit · Relics'}</span></button>`;}).join('<span class="or">or</span>');
- if(state.stage===2)return anchors(state).map(x=>`<button class="missionSlot ${x.phase==='done'?'complete':ready(state,[equipment(x.kind)])?'available':''}" data-site-index="${state.board.indexOf(x)}" aria-label="${nameOf(x)}: ${x.phase==='done'?'ready':ANCHORS[x.kind].effect}">${art(item(ANCHORS[x.kind].equipment,3))}<span>${x.phase==='done'?'✓':ANCHORS[x.kind].short}</span></button>`).join('');
+ if(state.stage===1)return Object.entries(ROUTES).map(([id,r])=>{
+  const index=state.board.findIndex(x=>x?.type==='route'&&x.id===id),need={family:r.family,tier:2,count:1},can=ready(state,[need]);
+  const title=id==='ridge'?'RIDGE':'CONDUIT',benefit=id==='ridge'?'Open workspace':'Get relic cache';
+  return `<button type="button" class="missionSlot routeChoice ${can?'available':'unavailable'}" data-site-index="${index}" aria-label="${title}: ${benefit}. Needs ${nameOf(item(r.family,2))}. ${can?'Ready to choose':'Make the required item'}"><span class="routeGlyph">${art(item(r.family,2))}</span><span class="routeWords"><b>${title}</b><small>${benefit}</small><em>${can?'✓ READY':'Need '+nameOf(item(r.family,2))}</em></span></button>`;
+ }).join('<span class="or" aria-hidden="true">OR</span>');
+ if(state.stage===2)return anchors(state).map(x=>{
+  const can=x.phase==='idle'&&ready(state,[equipment(x.kind)]);
+  return `<button type="button" class="missionSlot deviceChoice ${x.phase==='done'?'complete':can?'available':''}" data-site-index="${state.board.indexOf(x)}" aria-label="${nameOf(x)}. ${x.phase==='done'?'Already used':'Needs '+nameOf(item(ANCHORS[x.kind].equipment,3))}">${art(item(ANCHORS[x.kind].equipment,3))}<span>${x.phase==='done'?'✓ DONE':ANCHORS[x.kind].name}</span></button>`;
+ }).join('');
  return needsHTML(goal(state)?.needs??[],true);
 }
 function renderSide(){
@@ -33,14 +49,16 @@ function renderSide(){
  const can=choice!=='startOpportunity'&&ready(state,needs)&&(rare?state.board.some(x=>x?.type==='glyph'):choice==='opportunity'?op.remaining>0:true);
  const title=choice==='contract'?c.vaultTrade?'Vault trade':c.exchange?'Equipment swap':'Supply run':rare?'Relic find':'Passing signal';
  const reward=choice==='contract'?(c.exchange?art(c.exchange)+(c.surge?'<span class="tradeSurge">+3 rich pulls</span>':''):'+'+c.energy+' ϟ'):rare?'Better parts':'3 rich pulls';
- $('#contracts').innerHTML=`<button class="contract ${rare?'discovery':choice.includes('pportunity')?'opportunity':''} ${can?'ready':''}" data-contract="${choice}" data-requirements="${needs.length}" aria-label="Optional: ${title} ${can?'ready to use':''}"><span class="contractHead">${portrait(rare?'neri':'ivo')}<span><small>BONUS · CAN SKIP</small><b>${title}</b></span></span><span class="needs">${rare?art({type:'glyph'}):''}${needsHTML(needs)}</span><span class="reward">${reward}<small ${choice==='opportunity'?'id="opClock"':''}>${can?'✓ READY':choice==='startOpportunity'?'OPEN · 3 MIN':choice==='opportunity'?Math.ceil(op.remaining/1000)+'s':'COLLECT'}</small></span></button><button class="sideMore" data-side-next aria-label="Other optional tasks" ${sideOptions().length<2?'hidden':''}>•••</button>`;
+ $('#contracts').classList.toggle('bonusOpen',bonusExpanded);
+ $('#contracts').innerHTML=`<button class="contract ${rare?'discovery':choice.includes('pportunity')?'opportunity':''} ${can?'ready':''}" data-contract="${choice}" data-requirements="${needs.length}" aria-label="Optional: ${title} ${can?'ready to use':''}"><span class="contractHead">${portrait(rare?'neri':'ivo')}<span><small>BONUS · CAN SKIP</small><b>${title}</b></span></span><span class="needs">${rare?art({type:'glyph'}):''}${needsHTML(needs)}</span><span class="reward">${reward}<small ${choice==='opportunity'?'id="opClock"':''}>${can?'✓ READY':choice==='startOpportunity'?'OPEN · 3 MIN':choice==='opportunity'?Math.ceil(op.remaining/1000)+'s':'COLLECT'}</small></span></button><button class="sideMore" data-side-next aria-label="Other optional tasks" ${sideOptions().length<2?'hidden':''}>•••</button>${bonusExpanded&&(can||choice==='startOpportunity')?`<button type="button" id="bonusClaim" data-bonus-claim="${choice}">${choice==='startOpportunity'?'START':'CLAIM'}</button>`:''}`;
 }
 // The guide is an optional, compact visual action sheet, not another paragraph.
 function closeCoach(clear=true){
- $('#guidePanel').hidden=true;$('#guideButton').setAttribute('aria-expanded','false');
- coachIndex=null;if(clear)spotlight=null;
+ coachIndex=null;coachExpanded=false;if(clear)spotlight=null;
+ $('#guideButton').setAttribute('aria-expanded','false');
  board.querySelector('.coachRoute')?.remove();
  for(const el of board.querySelectorAll('.coachOrigin,.coachDestination'))el.classList.remove('coachOrigin','coachDestination');
+ if(state)renderCoach();
 }
 function paintSpotlight(){
  board.querySelector('.coachRoute')?.remove();
@@ -63,17 +81,17 @@ function paintSpotlight(){
  board.insertAdjacentHTML('beforeend',`<svg class="coachRoute" width="${surface.width}" height="${surface.height}" viewBox="0 0 ${surface.width} ${surface.height}" aria-hidden="true"><defs><marker id="coachArrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0L6 3L0 6" fill="none" stroke="#0c827b" stroke-width="1.8"/></marker></defs><path d="M${sx} ${sy} Q${mx} ${my} ${ex} ${ey}" fill="none" stroke="#fff2bb" stroke-width="7" stroke-linecap="round"/><path d="M${sx} ${sy} Q${mx} ${my} ${ex} ${ey}" fill="none" stroke="#0c827b" stroke-width="3" stroke-linecap="round" stroke-dasharray="6 5" marker-end="url(#coachArrow)"/></svg>`);
 }
 function renderCoach(){
- const panel=$('#guidePanel'),model=boardCoach(state,coachIndex);
+ const panel=$('#guidePanel'),focusIndex=coachIndex??(Number.isInteger(selected)&&selected>=0?selected:null),model=boardCoach(state,focusIndex);
  if(panel.hidden)return;
  const action=(a,secondary=false)=>a?`<button type="button" class="${secondary?'coachSecondary':'coachPrimary'}" data-coach-kind="${a.kind}" ${a.index!==undefined&&a.index!==null?`data-coach-index="${a.index}"`:''} ${a.id?`data-coach-id="${a.id}"`:''} ${a.from!==undefined?`data-coach-from="${a.from}"`:''}>${a.label}</button>`:'';
  const steps=model.icons.map((v,i)=>`${i?'<span class="coachConnector" aria-hidden="true">→</span>':''}<span class="coachStep">${art(v.x)}<small>${v.label}</small></span>`).join('');
  // The one visible line tells the player what this object DOES. Optional details
  // stay collapsed so the game, not an instruction manual, remains in view.
  const summary=model.summary??model.detail.split('. ')[0]+'.';
- const relevant=coachIndex===null?null:state.board[coachIndex];
+ const relevant=focusIndex===null?null:state.board[focusIndex];
  const icon=relevant?art(relevant):model.icons[0]?art(model.icons[0].x):'';
  panel.innerHTML=`<div class="coachTop"><span class="coachEyebrow">${relevant?.type==='rock'?'OPTIONAL OBSTACLE':relevant&&['sealed','marker','lock'].includes(relevant.type)?'LOCKED TERRAIN':relevant?.type==='glyph'?'OPTIONAL DISCOVERY':'NEXT ACTION'}</span><button type="button" class="coachClose" data-coach-kind="close" aria-label="Close guidance">×</button></div><div class="coachCompact"><span class="coachThumb">${icon}</span><div class="coachCopy"><b class="coachHeadline">${model.title}</b><p class="coachSummary">${summary}</p></div></div><div class="coachActions">${action(model.primary)}${action(model.secondary,true)}</div><button type="button" class="coachWhy" data-coach-kind="why" aria-expanded="${coachExpanded}">${coachExpanded?'LESS INFO −':'WHY?  ·  SEE HOW +'}</button><div class="coachDetails" ${coachExpanded?'':'hidden'}><div class="coachSequence">${steps}</div><p class="coachExplanation">${model.detail}</p></div>`;
- spotlight=[model.from,model.to];paintSpotlight();
+ if(spotlight===null||coachIndex!==null)spotlight=[model.from,model.to];paintSpotlight();
 }
 function openCoach(index=null){
  coachExpanded=false;
@@ -103,24 +121,27 @@ function render(){
  renderSide();const c=normalContract(state),cr=sideChoice()==='contract'&&ready(state,c.needs);
  const readySignal=sideChoice()==='opportunity'&&state.opportunity&&opportunity(state).remaining>0&&ready(state,state.opportunity.needs);
  const selectedItem=state.board[selected];
+ const onboarding=state.stage===0&&state.landingStep===0&&state.merges===0;
+ const pair=onboarding?[7,8].filter(i=>state.board[i]?.type==='item'&&state.board[i].family==='rig'&&state.board[i].tier===0):[];
+ board.dataset.tutorial=onboarding&&pair.length===2?'merge':state.stage===0&&state.landingStep===1?'survey':state.stage===1?'route':'';
  board.dataset.site=viewStage;board.setAttribute('aria-label',SITE_NAMES[viewStage]+' · 6 by 6 merge board');
  board.innerHTML=siteSurface(viewStage)+state.board.map((x,i)=>{
   const isSource=x?.type==='source',locked=isSource&&!sourceUnlocked(state,x.id);
   const useful=isSource&&!locked&&needed().some(r=>r.family===x.id&&count(state,r)<r.count);
   const expedition=!!g?.needs.some(r=>matches(x,r)),contract=sideChoice()==='contract'&&c.needs.some(r=>matches(x,r));
   const matching=selectedItem?.type==='item'&&x?.type==='item'&&i!==selected&&x.family===selectedItem.family&&x.tier===selectedItem.tier&&x.tier<7;
-  return `<button class="tile ${x?.type??'empty'} ${locked?'locked':''} ${useful?'useful':''} ${selected===i?'selected':''} ${matching?'match':''} ${needed().some(r=>matches(x,r))?'wanted':''}" data-index="${i}" ${x?.family||isSource||x?.type==='crate'?`data-family="${x.family??(isSource?x.id:containerInfo(x).family)}"`:''} data-variant="${i%3}" data-use="${expedition&&contract?'both':expedition?'expedition':contract?'contract':''}" aria-label="${nameOf(x)}${x?.type==='crate'?' · tap to reveal · '+contents(x).map(nameOf).join(', '):''}${expedition&&contract?' · needed for expedition and contract':expedition?' · needed for expedition':contract?' · useful for contract':''}${locked?' · locked':isSource?' · '+SOURCES[x.id].cost+' energy · '+state.charges[x.id]+' charges':''}. Space ${i+1}" aria-pressed="${selected===i}">${art(x?.type==='site'&&state.stage<2?{type:'sealed'}:x)}${expedition||contract?`<span class="useBadge" aria-hidden="true">${expedition?'◆':''}${contract?'▰':''}</span>`:''}${isSource?(locked?`<span class="lockedLabel">${x.id==='chart'?'CLEAR PATH':'EXCAVATE'}</span>`:`<span class="energyCue">ϟ${SOURCES[x.id].cost}</span><span class="charge">${Array.from({length:7},(_,n)=>`<i class="${n>=state.charges[x.id]?'used':''}"></i>`).join('')}</span>`):x?.type==='crate'?`<span class="pulls">${x.left}</span>`:''}${x?.type==='glyph'?'<span class="boardRole echo">+ LENS</span>':x?.type==='rock'?'<span class="boardRole stone">SPANNER</span>':x?.type==='sealed'?'<span class="boardRole ground">LOCKED</span>':''}</button>`;
+  return `<button class="tile ${x?.type??'empty'} ${locked?'locked':''} ${useful?'useful':''} ${selected===i?'selected':''} ${matching?'match':''} ${pair.includes(i)?'teachingPair':''} ${needed().some(r=>matches(x,r))?'wanted':''}" data-index="${i}" ${x?.family||isSource||x?.type==='crate'?`data-family="${x.family??(isSource?x.id:containerInfo(x).family)}"`:''} data-variant="${i%3}" data-use="${expedition&&contract?'both':expedition?'expedition':contract?'contract':''}" aria-label="${nameOf(x)}${x?.type==='crate'?' · tap to reveal · '+contents(x).map(nameOf).join(', '):''}${expedition&&contract?' · needed for expedition and contract':expedition?' · needed for expedition':contract?' · useful for contract':''}${locked?' · locked':isSource?' · '+SOURCES[x.id].cost+' energy · '+state.charges[x.id]+' charges':''}. Space ${i+1}" aria-pressed="${selected===i}">${art(x?.type==='site'&&state.stage<2?{type:'sealed'}:x)}${expedition||contract?`<span class="useBadge" aria-hidden="true">${expedition?'◆':''}${contract?'▰':''}</span>`:''}${isSource?(locked?`<span class="lockedLabel">${x.id==='chart'?'CLEAR PATH':'EXCAVATE'}</span>`:`<span class="energyCue">ϟ${SOURCES[x.id].cost}</span><span class="charge">${Array.from({length:7},(_,n)=>`<i class="${n>=state.charges[x.id]?'used':''}"></i>`).join('')}</span>`):x?.type==='crate'?`<span class="pulls">${x.left}</span>`:''}${x?.type==='glyph'?'<span class="boardRole echo">+ LENS</span>':x?.type==='rock'?'<span class="boardRole stone">SPANNER</span>':x?.type==='sealed'?'<span class="boardRole ground">LOCKED</span>':''}</button>`;
  }).join('');
  for(const tile of board.querySelectorAll('.tile.item')){const x=state.board[+tile.dataset.index];tile.dataset.tier=x.tier;tile.classList.toggle('deliveryReady',(goalReady&&g.needs.some(r=>matches(x,r)))||(cr&&c.needs.some(r=>matches(x,r))));}
  for(const tile of board.querySelectorAll('.tile.site,.tile.route')){
   const x=state.board[+tile.dataset.index],need=x.type==='route'?{family:ROUTES[x.id].family,tier:2,count:1}:equipment(x.kind);
   const can=x.type==='route'?state.stage===1&&ready(state,[need]):state.stage>=2&&x.phase==='idle'&&ready(state,[need]);
   tile.classList.toggle('deliveryReady',can);tile.classList.toggle('match',can&&matches(selectedItem,need));tile.classList.toggle('useTarget',can&&matches(selectedItem,need));tile.dataset.phase=x.phase??'buried';
-  if(state.stage>=2&&x.type==='site'||state.stage===1&&x.type==='route')tile.insertAdjacentHTML('beforeend',`<span class="anchorCue">${x.phase==='done'?'✓':can?'USE':''}</span>`);
+  if(state.stage>=2&&x.type==='site'||state.stage===1&&x.type==='route')tile.insertAdjacentHTML('beforeend',`<span class="anchorCue">${x.type==='route'?(x.id==='ridge'?'RIDGE':'CONDUIT')+(can?' ✓':''):x.phase==='done'?'✓':can?'USE':''}</span>`);
   tile.setAttribute('aria-label',state.stage<2&&x.type==='site'?'Buried device':nameOf(x));
  }
  for(const tile of board.querySelectorAll('.tile.item,.tile.glyph')){const x=state.board[+tile.dataset.index];if((readySignal&&state.opportunity.needs.some(r=>matches(x,r)))||($('.discovery.ready')&&(x.type==='glyph'||matches(x,{family:'chart',tier:2}))))tile.classList.add('deliveryReady');}
- $('#free').textContent=state.board.filter(x=>x===null).length+' spaces';$('#hint').textContent=hint();$('#rationButton').hidden=state.energy>3;renderSelection();if(!$('#guidePanel').hidden)renderCoach();else paintSpotlight();
+ $('#free').textContent=state.board.filter(x=>x===null).length+' spaces';$('#hint').textContent=hint();$('#rationButton').hidden=state.energy>3;renderSelection();renderCoach();
  if(state.surge>0){$('#free').textContent=`ϟ SURGE · ${state.surge} pulls`;$('#free').title='Shared by all producers. Choose which family gets improved parts. No timer.';board.dataset.event='surge';}else{delete board.dataset.event;$('#free').removeAttribute('title');}
  if(state.discovery&&!state.discoveryDone&&!state.opportunity&&state.board.some(x=>x?.type==='glyph')){const label=$('.discovery .reward small');if(label&&state.board.some(x=>x?.type==='glyph')&&!ready(state,[{family:'chart',tier:2,count:1}]))label.textContent='MAKE SIGHT LENS';}
 }
@@ -211,7 +232,7 @@ function clickTile(i){
  if(selected!==null&&selected!==i&&x?.type==='route'&&prev?.type==='item'&&matches(prev,{family:ROUTES[x.id].family,tier:2})){run({type:'breach',from:selected,index:i});return;}
  if(selected!==null&&selected!==i&&prev?.type==='item'&&(!x||(x.type==='item'&&x.family===prev.family&&x.tier===prev.tier))){run({type:'merge',from:selected,to:i});return;}
  selected=i;closeCoach();render();
- if(x&&['rock','sealed','lock','marker','glyph','site','route'].includes(x.type))openCoach(i);
+ if(x)openCoach(i);else closeCoach();
  if(x?.type==='crate')run({type:'crate',index:i});
  if(x?.type==='source'&&sourceUnlocked(state,x.id)&&state.charges[x.id]>0)run({type:'produce',id:x.id});
 }
@@ -242,12 +263,13 @@ $('#goalNeeds').onclick=e=>{focus='goal';const requirement=e.target.closest('[da
   render();message.textContent='Required for MAIN STORY: '+requirement.title+'. Tap '+SOURCES[family].name+' to produce and merge parts.';return;
  }
  const badge=e.target.closest('[data-site-index]');if(badge){selected=+badge.dataset.siteIndex;const x=state.board[selected],need=x?.type==='site'?equipment(x.kind):{family:ROUTES[x.id].family,tier:2,count:1};if((x.type==='route'&&state.stage===1||x.type==='site'&&x.phase==='idle')&&ready(state,[need])){run({type:x.type==='route'?'breach':'deploy',index:selected});return;}}render();message.textContent=goal(state)?.text??'Keep collecting rare discoveries.';};
-$('#contracts').onclick=e=>{if(e.target.closest('[data-side-next]')){const choices=sideOptions();sideView=choices[(choices.indexOf(sideChoice())+1)%choices.length];render();return;}const type=e.target.closest('[data-contract]')?.dataset.contract;if(!type)return;
+$('#contracts').onclick=e=>{if(e.target.closest('[data-side-next]')){const choices=sideOptions();sideView=choices[(choices.indexOf(sideChoice())+1)%choices.length];bonusExpanded=true;render();return;}const claim=e.target.closest('[data-bonus-claim]');const type=claim?.dataset.bonusClaim??e.target.closest('[data-contract]')?.dataset.contract;if(!type)return;
+ if(!claim){sideView=type;bonusExpanded=!bonusExpanded;render();message.textContent=bonusExpanded?'Optional reward · use CLAIM when ready, or skip and focus on the main story.':'Optional reward collapsed.';return;}
  if(type==='startOpportunity'){sideView='opportunity';run({type});focus='opportunity';render();return;}
  sideView=type;focus=type;const can=type==='contract'?ready(state,normalContract(state).needs):type==='opportunity'?(state.opportunity&&(Date.now()>state.opportunity.ends||ready(state,state.opportunity.needs))):state.board.some(x=>x?.type==='glyph')&&ready(state,[{family:'chart',tier:2,count:1}]);
- if(can)run({type});else{render();message.textContent=type==='discovery'?'BONUS: Decode the Echo fragment with a Sight Lens. You can skip this and keep following the main story.':hint();}
+ if(can){bonusExpanded=false;run({type});}else{render();message.textContent=type==='discovery'?'BONUS: Decode the Echo fragment with a Sight Lens. You can skip this and keep following the main story.':hint();}
 };
-$('#guideButton').onclick=()=>{$('#guidePanel').hidden?openCoach(selected):closeCoach();};
+$('#guideButton').onclick=()=>{coachExpanded=!coachExpanded;$('#guideButton').setAttribute('aria-expanded',String(coachExpanded));renderCoach();};
 $('#guidePanel').addEventListener('click',e=>{
  const target=e.target.closest('[data-coach-kind]');if(!target)return;
  const type=target.dataset.coachKind,index=target.hasAttribute('data-coach-index')?+target.dataset.coachIndex:null;
@@ -275,4 +297,4 @@ $('#journalButton').onclick=showJournal;
 $('#helpButton').onclick=()=>{$('#journalContent').innerHTML='<h2>How to play Vaultwake</h2><ul><li><b>MAIN STORY</b> (top): required to open the vault. Tap a needed item icon to locate the right producer.</li><li><b>BONUS</b> (below): optional rewards; safe to skip.</li><li><b>PRODUCE</b>: tap a machine to get parts. <b>MERGE</b>: tap or drag two identical items together to craft the next level.</li><li><b>ECHO FRAGMENT</b>: decode using one Sight Lens for permanently improved drops. This is optional, not a matching merge item.</li><li><b>SALTSTONE</b>: use a Split Spanner to clear and uncover a reward. Buried ground is not a merge item.</li><li>Tap any object to see its purpose and suggested next action.</li></ul>';$('#journal').showModal();};
 for(const dialog of document.querySelectorAll('dialog')){dialog.querySelector('.close').onclick=()=>dialog.close();dialog.querySelector('.continue')?.addEventListener('click',()=>dialog.close());dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close();});}
 setInterval(()=>{const op=opportunity(state),clock=$('#opClock');if(op&&clock){clock.textContent=op.remaining?(ready(state,op.needs)?'✓ READY · ':'MAKE · ')+Math.ceil(op.remaining/1000)+'s':'PASSED · DISMISS';if(!op.remaining){const card=clock.closest('.contract');card.classList.remove('ready');card.removeAttribute('aria-label');}}},1000);
-render();persist();platform.init();
+$('#guidePanel').hidden=false;render();persist();platform.init();

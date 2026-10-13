@@ -57,7 +57,7 @@ test('four play styles complete with actual board consequences, varied choices, 
  for(const style of ['expedition','contract','exploration','aggressive']){
   const s=fresh(0),session={},timeline=[];let run=0,maxRun=0;
   while(s.stage<4&&s.moves<300){const a=choose(s,{style,session,openCaches:true}),r=ok(s,a);run=a.type==='produce'?run+1:0;maxRun=Math.max(maxRun,run);timeline.push({action:a.type,stage:s.stage,occupied:s.board.filter(Boolean).length,event:r.event});}
-  assert.equal(s.stage,4);assert.equal(s.discoveryDone,true);assert.ok(s.discovered.length<18);assert.ok(maxRun<=3);
+  assert.equal(s.stage,4);assert.equal(s.discoveryDone,true);assert.ok(s.discovered.length<18);assert.ok(maxRun<=3,'produce streak '+JSON.stringify({style,maxRun,sequence:timeline.map((x,i)=>x.action+'('+x.stage+')').join(' ')}));
   assert.equal(s.expedition.log.filter(x=>x.type==='deployment').length,2);assert.equal(s.expedition.log.filter(x=>x.type==='device-used').length,2);assert.equal(s.expedition.log.some(x=>x.type==='operation'||x.type==='fragment-spent'),false);
   assert.ok(Math.min(...timeline.map(x=>x.occupied))>=17);let sparse=0;for(const x of timeline){sparse=x.occupied<18?sparse+1:0;assert.ok(sparse<=2,'no prolonged sparse board');}assert.ok(new Set(timeline.map(x=>x.stage)).size>=4);assert.ok(timeline.some(x=>x.action==='opportunity'));
   if(style==='contract'){assert.equal(s.expedition.trades,2);assert.equal(s.expedition.vaultTrade,true);assert.equal(s.expedition.log.filter(x=>x.type==='vault-diversion').length,1);}else assert.ok(!s.expedition.vaultTrade);if(style==='exploration')assert.ok(s.expedition.log.some(x=>x.type==='brace-clear'));
