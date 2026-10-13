@@ -69,7 +69,7 @@ function renderCoach(){
  const steps=model.icons.map((v,i)=>`${i?'<span class="coachConnector" aria-hidden="true">→</span>':''}<span class="coachStep">${art(v.x)}<small>${v.label}</small></span>`).join('');
  // The one visible line tells the player what this object DOES. Optional details
  // stay collapsed so the game, not an instruction manual, remains in view.
- const summary=model.summary??model.detail.split(/(?<=[.!?])\\s/)[0];
+ const summary=model.summary??model.detail.split('. ')[0]+'.';
  const relevant=coachIndex===null?null:state.board[coachIndex];
  const icon=relevant?art(relevant):model.icons[0]?art(model.icons[0].x):'';
  panel.innerHTML=`<div class="coachTop"><span class="coachEyebrow">${relevant?.type==='rock'?'OPTIONAL OBSTACLE':relevant&&['sealed','marker','lock'].includes(relevant.type)?'LOCKED TERRAIN':relevant?.type==='glyph'?'OPTIONAL DISCOVERY':'NEXT ACTION'}</span><button type="button" class="coachClose" data-coach-kind="close" aria-label="Close guidance">×</button></div><div class="coachCompact"><span class="coachThumb">${icon}</span><div class="coachCopy"><b class="coachHeadline">${model.title}</b><p class="coachSummary">${summary}</p></div></div><div class="coachActions">${action(model.primary)}${action(model.secondary,true)}</div><button type="button" class="coachWhy" data-coach-kind="why" aria-expanded="${coachExpanded}">${coachExpanded?'LESS INFO −':'WHY?  ·  SEE HOW +'}</button><div class="coachDetails" ${coachExpanded?'':'hidden'}><div class="coachSequence">${steps}</div><p class="coachExplanation">${model.detail}</p></div>`;
