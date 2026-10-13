@@ -7,7 +7,25 @@ function failUnchanged(s,a,t=1000){const before=JSON.stringify(s);assert.equal(a
 test('first action teaches a merge; starter has a real contract versus expedition decision',()=>{
  const s=fresh(0);assert.equal(s.board.length,36);assert.equal(new Set(s.board.filter(x=>x?.family).map(x=>x.family)).size,3);
  assert.ok(ready(s,normalContract(s).needs));success(s,{type:'contract'});assert.equal(ready(s,goal(s).needs),false);
- success(s,{type:'merge',from:7,to:8});success(s,{type:'merge',from:2,to:18});assert.ok(ready(s,goal(s).needs));success(s,{type:'goal'});assert.equal(s.stage,1);success(s,{type:'produce',id:'chart'});
+ success(s,{type:'merge',from:7,to:8});success(s,{type:'merge',from:2,to:18});assert.ok(ready(s,goal(s).needs));success(s,{type:'goal'});assert.equal(s.stage,0);assert.equal(s.landingStep,1);success(s,{type:'produce',id:'chart'});
+});
+test('landing survey makes a two-family decision before any route can open',()=>{
+ const s=fresh(0);assert.equal(s.landingStep,0);
+ const chart=()=>s.board.findIndex(x=>x?.type==='source'&&x.id==='chart');
+ assert.ok(chart()>=0);
+ failUnchanged(s,{type:'produce',id:'chart'});
+ success(s,{type:'merge',from:7,to:8});
+ success(s,{type:'goal'});
+ assert.equal(s.stage,0);assert.equal(s.landingStep,1);
+ assert.equal(goal(s).name,'Chart the safe crossing');
+ const saved=load(JSON.stringify(s));assert.equal(saved.landingStep,1);
+ success(saved,{type:'produce',id:'chart'});
+ failUnchanged(saved,{type:'breach',index:24});
+ saved.board[7]=item('chart',2);saved.board[8]=item('rig',2);
+ success(saved,{type:'goal'});
+ assert.equal(saved.stage,1);assert.equal(saved.landingStep,2);
+ assert.equal(goal(saved).name,'Choose your breach');
+ assert.equal(load(JSON.stringify(saved)).landingStep,2);
 });
 test('merge, movement, max tiers, protected sources and invalid indices',()=>{
  const s=fresh();failUnchanged(s,{type:'merge',from:7,to:7});failUnchanged(s,{type:'merge',from:0,to:1});failUnchanged(s,{type:'merge',from:7,to:9});failUnchanged(s,{type:'merge',from:-1,to:9});
@@ -38,7 +56,7 @@ test('ration and recycling offer an immediate recovery without ads, cash or wait
 });
 test('corrupt or old saves never break boot and V4 key is untouched',()=>{
  for(const bad of ['',null,'{}','{','{"version":4}',JSON.stringify({...fresh(),energy:-4}),JSON.stringify({...fresh(),board:Array(36).fill({type:'item',family:'bad',tier:2})})])assert.equal(load(bad,100).version,5);
- const s=fresh();success(s,{type:'merge',from:7,to:8});assert.deepEqual(load(JSON.stringify(s)),s);assert.notEqual(SAVE_KEY,'wispwood-v4');
+ const s=fresh();success(s,{type:'merge',from:7,to:8});assert.deepEqual(load(JSON.stringify(s)),s);const legacy=structuredClone(s);delete legacy.landingStep;assert.equal(load(JSON.stringify(legacy)).landingStep,0);assert.notEqual(SAVE_KEY,'wispwood-v4');
 });
 test('24 original item silhouettes, distinct producers and five actual world transformations',()=>{
  const sprites=[];for(const f of Object.keys(FAMILIES))for(let t=0;t<8;t++)sprites.push(art(item(f,t)));
