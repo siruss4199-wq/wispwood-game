@@ -40,7 +40,9 @@ test('buried ground is a story lock: opening a route or Relic Finder, not stone 
  assert.equal(act(s,{type:'deploy',index:use.primary.index}).ok,true);
  assert.equal(s.board.filter(x=>x?.type==='sealed').length,before-2);
  s.stage=3;
- const later=boardCoach(s,i);
+ const remaining=s.board.findIndex(x=>x?.type==='sealed');
+ assert.ok(remaining>=0);
+ const later=boardCoach(s,remaining);
  assert.match(later.detail,/Tideglass Vault/);
  assert.notEqual(later.primary.kind,'clear');
 });
