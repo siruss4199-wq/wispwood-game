@@ -132,3 +132,10 @@ body .contracts .contractHead small{color:#456e78;font-size:9px;letter-spacing:.
 #board .tile .boardRole.stone{background:#816348}
 .selection .actionGroup button{font-size:11px;min-height:42px}
 @media(max-width:375px){.goalRecipe{font-size:9px}body[data-art="premium"] .world .goalRecipe{font-size:9px}.guideButton #hint{font-size:10px}}
+
+/* Keep the original first-screen board position: recipe lives in the free area
+   under the mission title, rather than becoming a third grid child. */
+body .world .objective{position:relative}
+body .world .goalRecipe{position:absolute;left:12px;bottom:5px;max-width:53%;margin:0;font-size:9px;line-height:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body .world .objective[data-stage="1"] .goalRecipe,
+body .world .objective[data-stage="2"] .goalRecipe{display:none}
