@@ -91,7 +91,7 @@ function renderCoach(){
  const relevant=focusIndex===null?null:state.board[focusIndex];
  const icon=relevant?art(relevant):model.icons[0]?art(model.icons[0].x):'';
  panel.innerHTML=`<div class="coachTop"><span class="coachEyebrow">${relevant?.type==='rock'?'OPTIONAL OBSTACLE':relevant&&['sealed','marker','lock'].includes(relevant.type)?'LOCKED TERRAIN':relevant?.type==='glyph'?'OPTIONAL DISCOVERY':'NEXT ACTION'}</span><button type="button" class="coachClose" data-coach-kind="close" aria-label="Close guidance">×</button></div><div class="coachCompact"><span class="coachThumb">${icon}</span><div class="coachCopy"><b class="coachHeadline">${model.title}</b><p class="coachSummary">${summary}</p></div></div><div class="coachActions">${action(model.primary)}${action(model.secondary,true)}</div><button type="button" class="coachWhy" data-coach-kind="why" aria-expanded="${coachExpanded}">${coachExpanded?'LESS INFO −':'WHY?  ·  SEE HOW +'}</button><div class="coachDetails" ${coachExpanded?'':'hidden'}><div class="coachSequence">${steps}</div><p class="coachExplanation">${model.detail}</p></div>`;
- spotlight=[model.from,model.to];paintSpotlight();
+ if(spotlight===null||coachIndex!==null)spotlight=[model.from,model.to];paintSpotlight();
 }
 function openCoach(index=null){
  coachExpanded=false;
