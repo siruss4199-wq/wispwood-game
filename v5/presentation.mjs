@@ -16,6 +16,12 @@ export function siteSurface(stage){
 
 // Uses precisely the same first-match order as the reducer's consume(). Pure and testable.
 export function deliveryItems(s,action,now=Date.now()){
+ // Survey prepares both tools; only the subsequent chosen route consumes one.
+ if(action.type==='goal'&&s.stage===0&&s.landingStep===1)return [];
+ if(action.type==='clear'&&s.board[action.index]?.type==='rock'){
+  const index=action.from??s.board.findIndex(x=>x?.type==='brace'||matches(x,{family:'rig',tier:2}));
+  const x=s.board[index];return x?.type==='brace'||matches(x,{family:'rig',tier:2})?[{index,x:{...x}}]:[];
+ }
  let needs;
  if(action.type==='goal'&&goal(s)?.action!=='inspect')needs=goal(s)?.needs;
  if(action.type==='breach'&&s.stage===1&&s.board[action.index]?.type==='route'){

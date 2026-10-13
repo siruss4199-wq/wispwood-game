@@ -242,7 +242,7 @@ export function act(s,a,now=Date.now()){
  }
  if(a.type==='clear'){
   if(!valid(a.index)||s.board[a.index]?.type!=='rock')return fail('Choose saltstone.');
-  const b=s.board.findIndex(x=>x?.type==='brace'||matches(x,req('rig',2)));if(b<0)return fail('Use a split spanner to clear this stone.');
+  const b=a.from??s.board.findIndex(x=>x?.type==='brace'||matches(x,req('rig',2)));if(!valid(b)||!(s.board[b]?.type==='brace'||matches(s.board[b],req('rig',2))))return fail('Use a split spanner to clear this stone.');
   s.board[b]=null;s.board[a.index]=container('locker');
   trace(s,'brace-clear');
   const revealed=unpack(s,a.index);surge(s);return {...done('Saltbound Locker revealed · Supply Surge: 3 improved pulls','clear',a.index),reveal:revealed,containerKind:'locker'};

@@ -15,7 +15,7 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
  }
  let needs,command;
  if(s.stage===4){needs=goal(s).needs;command={type:'goal'};}
- else if(sideFirst&&s.contracts===0){needs=normalContract(s).needs;command={type:'contract'};}
+ else if(sideFirst&&s.contracts===0&&(s.stage>0||s.landingStep>=1)){needs=normalContract(s).needs;command={type:'contract'};}
  else if(s.stage===0){needs=goal(s).needs;command={type:'goal'};}
  else if(s.stage===1){
   const id=['contract','aggressive'].includes(style)?'conduit':'ridge';
