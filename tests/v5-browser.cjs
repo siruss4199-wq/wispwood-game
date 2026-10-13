@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict');const fs=require('node:fs');const {chromium}=require('playwright');
 (async()=>{
  const browser=await chromium.launch({headless:true});fs.mkdirSync('test-artifacts/v5',{recursive:true});
- try{for(const [width,style] of [[360,'expedition'],[390,'contract'],[768,'exploration'],[430,'aggressive']]){
+ try{for(const [width,style] of [[360,'expedition'],[390,'contract'],[768,'exploration'],[430,'aggressive'],[1440,'expedition']]){
   const motion=width===390;
   const page=await browser.newPage({viewport:{width,height:844},hasTouch:true,isMobile:width<500,reducedMotion:motion?'no-preference':'reduce'});page.setDefaultTimeout(8000);
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
