@@ -62,5 +62,5 @@ test('UX launch surfaces use one coherent last stylesheet and accessible action 
  assert.match(app,/routeChoice/);
  assert.match(app,/teachingPair/);
  assert.match(app,/STEP 1/);
- assert.match(app,/#\('guidePanel'\)\.hidden=false/);
+ assert.ok(app.includes("$('#guidePanel').hidden=false"));
 });
