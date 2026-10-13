@@ -17,11 +17,12 @@ export function boardCoach(s,index=null){
  const story=goal(s);
  if(x?.type==='rock'){
   const tool=find(s,y=>y?.type==='brace'||y?.type==='item'&&y.family==='rig'&&y.tier===2);
+  const lift=s.stage>=2?find(s,y=>y?.type==='site'&&y.kind==='winch'&&y.phase==='idle'):-1;
   return step(tool>=0?'CLEAR THIS STONE · READY':'CLEAR STONE · MAKE A TOOL',
-   tool>=0?'You have the tool. Tap CLEAR NOW to spend it and reveal supplies.':'You need ONE Split Spanner. Produce Fieldworks parts, then merge matching pairs until you make a spanner. Clearing stones is optional.',
+   tool>=0?'You have the tool. Tap CLEAR NOW to spend it and reveal supplies.':'You need ONE Split Spanner. Produce Fieldworks parts, then merge matching pairs until you make a spanner. Or activate the Stone Lift device to clear both rocks at once after choosing a route. Clearing stones is optional.',
    [pict(part('rig',2),'1 · Spanner'),pict({type:'rock'},'2 · Clear'),pict({type:'crate',kind:'locker',left:2},'3 · Supplies')],
    tool>=0?{label:'CLEAR NOW',kind:'clear',index}:show('FIND FIELDWORKS',producer(s,'rig')),
-   null,tool>=0?tool:producer(s,'rig'),index);
+   lift>=0?show('SEE STONE LIFT',lift):null,tool>=0?tool:producer(s,'rig'),index);
  }
  if(x?.type==='sealed'||x?.type==='lock'||x?.type==='marker'){
   const relic=find(s,y=>y?.type==='site'&&y.kind==='scope'&&y.phase==='idle');
