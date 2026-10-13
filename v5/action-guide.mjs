@@ -19,10 +19,11 @@ export function boardCoach(s,index=null){
  // panel. Match the real loose copper items, even if a prior save moved them.
  if(index===null&&s.stage===0&&s.landingStep===0&&s.merges===0){
   const twins=s.board.flatMap((y,i)=>y?.type==='item'&&y.family==='rig'&&y.tier===0?[i]:[]);
-  if(twins.length>=2)return step('STEP 1 · MERGE MATCHING PIECES',
+  const pair=[7,8].every(i=>twins.includes(i))?[7,8]:twins.slice(0,2);
+  if(pair.length>=2)return step('STEP 1 · MERGE MATCHING PIECES',
    'Tap the two glowing Copper Offcuts one after the other. They become a Grip Tool; two Grip Tools complete the first expedition task.',
    [pict(part('rig',0),'Tap first'),pict(part('rig',0),'Tap twin'),pict(part('rig',1),'Get tool')],
-   show('SHOW MATCHING PAIR',twins[1]),null,twins[0],twins[1],
+   show('SHOW MATCHING PAIR',pair[1]),null,pair[0],pair[1],
    'Tap the two glowing copper pieces to make one Grip Tool.');
  }
 
