@@ -13,5 +13,7 @@ export function useAction(s,from,index){
 
 export function openingPair(s){
  if(s.merges||s.stage||s.landingStep)return [];
- return s.board.flatMap((x,i)=>matches(x,{family:'rig',tier:0})?[i]:[]).slice(0,2);
+ const twins=s.board.flatMap((x,i)=>matches(x,{family:'rig',tier:0})?[i]:[]);
+ const left=twins.find(i=>i%6<5&&twins.includes(i+1));
+ return left===undefined?twins.slice(0,2):[left,left+1];
 }
