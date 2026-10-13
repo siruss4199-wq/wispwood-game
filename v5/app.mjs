@@ -14,7 +14,7 @@ if(premium){enablePremium(new URLSearchParams(location.search).get('art'));docum
 const scene=premium?prototypeScene:vectorScene;
 const $=s=>document.querySelector(s);
 let state;try{state=load(localStorage.getItem(SAVE_KEY));}catch{state=fresh();}
-let selected=null,focus='goal',drag=null,suppressUntil=0,sideView=null,coachIndex=null,spotlight=null,coachExpanded=false;
+let selected=null,focus='goal',drag=null,suppressUntil=0,sideView=null,coachIndex=null,spotlight=null,coachExpanded=false,bonusExpanded=false;
 const board=$('#board'),message=$('#message');
 function persist(){try{const raw=JSON.stringify(state);localStorage.setItem(SAVE_KEY,raw);platform.save(raw);}catch{message.textContent='Storage unavailable. This session is playable, but progress cannot be saved.';}}
 function needed(){const x=state.board[selected];if(focus==='goal'&&x?.type==='site')return x.phase==='idle'?[equipment(x.kind)]:[];if(focus==='goal'&&x?.type==='route')return [{family:ROUTES[x.id].family,tier:2,count:1}];return focus==='contract'?normalContract(state).needs:focus==='opportunity'?state.opportunity?.needs??[]:focus==='discovery'?[{family:'chart',tier:2,count:1}]:goal(state)?.needs??[];}
@@ -23,8 +23,15 @@ function sideOptions(){return ['contract',...(state.discovery&&!state.discoveryD
 function sideChoice(){const options=sideOptions();return options.includes(sideView)?sideView:state.opportunity?'opportunity':options.includes('discovery')?'discovery':'contract';}
 function hint(){return selected===null?objectiveGuide(state).short:objectGuide(state,selected).short;}
 function missionSlots(){
- if(state.stage===1)return Object.entries(ROUTES).map(([id,r])=>{const index=state.board.findIndex(x=>x?.type==='route'&&x.id===id),need={family:r.family,tier:2,count:1};return `<button class="missionSlot ${ready(state,[need])?'available':''}" data-site-index="${index}" aria-label="${r.name}: costs ${nameOf(item(r.family,2))} and gives ${r.benefit}">${art(item(r.family,2))}<span>${id==='ridge'?'Ridge · More space':'Conduit · Relics'}</span></button>`;}).join('<span class="or">or</span>');
- if(state.stage===2)return anchors(state).map(x=>`<button class="missionSlot ${x.phase==='done'?'complete':ready(state,[equipment(x.kind)])?'available':''}" data-site-index="${state.board.indexOf(x)}" aria-label="${nameOf(x)}: ${x.phase==='done'?'ready':ANCHORS[x.kind].effect}">${art(item(ANCHORS[x.kind].equipment,3))}<span>${x.phase==='done'?'✓':ANCHORS[x.kind].short}</span></button>`).join('');
+ if(state.stage===1)return Object.entries(ROUTES).map(([id,r])=>{
+  const index=state.board.findIndex(x=>x?.type==='route'&&x.id===id),need={family:r.family,tier:2,count:1},can=ready(state,[need]);
+  const title=id==='ridge'?'RIDGE':'CONDUIT',benefit=id==='ridge'?'Open workspace':'Get relic cache';
+  return `<button type="button" class="missionSlot routeChoice ${can?'available':'unavailable'}" data-site-index="${index}" aria-label="${title}: ${benefit}. Needs ${nameOf(item(r.family,2))}. ${can?'Ready to choose':'Make the required item'}"><span class="routeGlyph">${art(item(r.family,2))}</span><span class="routeWords"><b>${title}</b><small>${benefit}</small><em>${can?'✓ READY':'Need '+nameOf(item(r.family,2))}</em></span></button>`;
+ }).join('<span class="or" aria-hidden="true">OR</span>');
+ if(state.stage===2)return anchors(state).map(x=>{
+  const can=x.phase==='idle'&&ready(state,[equipment(x.kind)]);
+  return `<button type="button" class="missionSlot deviceChoice ${x.phase==='done'?'complete':can?'available':''}" data-site-index="${state.board.indexOf(x)}" aria-label="${nameOf(x)}. ${x.phase==='done'?'Already used':'Needs '+nameOf(item(ANCHORS[x.kind].equipment,3))}">${art(item(ANCHORS[x.kind].equipment,3))}<span>${x.phase==='done'?'✓ DONE':ANCHORS[x.kind].name}</span></button>`;
+ }).join('');
  return needsHTML(goal(state)?.needs??[],true);
 }
 function renderSide(){
@@ -33,14 +40,16 @@ function renderSide(){
  const can=choice!=='startOpportunity'&&ready(state,needs)&&(rare?state.board.some(x=>x?.type==='glyph'):choice==='opportunity'?op.remaining>0:true);
  const title=choice==='contract'?c.vaultTrade?'Vault trade':c.exchange?'Equipment swap':'Supply run':rare?'Relic find':'Passing signal';
  const reward=choice==='contract'?(c.exchange?art(c.exchange)+(c.surge?'<span class="tradeSurge">+3 rich pulls</span>':''):'+'+c.energy+' ϟ'):rare?'Better parts':'3 rich pulls';
- $('#contracts').innerHTML=`<button class="contract ${rare?'discovery':choice.includes('pportunity')?'opportunity':''} ${can?'ready':''}" data-contract="${choice}" data-requirements="${needs.length}" aria-label="Optional: ${title} ${can?'ready to use':''}"><span class="contractHead">${portrait(rare?'neri':'ivo')}<span><small>BONUS · CAN SKIP</small><b>${title}</b></span></span><span class="needs">${rare?art({type:'glyph'}):''}${needsHTML(needs)}</span><span class="reward">${reward}<small ${choice==='opportunity'?'id="opClock"':''}>${can?'✓ READY':choice==='startOpportunity'?'OPEN · 3 MIN':choice==='opportunity'?Math.ceil(op.remaining/1000)+'s':'COLLECT'}</small></span></button><button class="sideMore" data-side-next aria-label="Other optional tasks" ${sideOptions().length<2?'hidden':''}>•••</button>`;
+ $('#contracts').classList.toggle('bonusOpen',bonusExpanded);
+ $('#contracts').innerHTML=`<button class="contract ${rare?'discovery':choice.includes('pportunity')?'opportunity':''} ${can?'ready':''}" data-contract="${choice}" data-requirements="${needs.length}" aria-label="Optional: ${title} ${can?'ready to use':''}"><span class="contractHead">${portrait(rare?'neri':'ivo')}<span><small>BONUS · CAN SKIP</small><b>${title}</b></span></span><span class="needs">${rare?art({type:'glyph'}):''}${needsHTML(needs)}</span><span class="reward">${reward}<small ${choice==='opportunity'?'id="opClock"':''}>${can?'✓ READY':choice==='startOpportunity'?'OPEN · 3 MIN':choice==='opportunity'?Math.ceil(op.remaining/1000)+'s':'COLLECT'}</small></span></button><button class="sideMore" data-side-next aria-label="Other optional tasks" ${sideOptions().length<2?'hidden':''}>•••</button>${bonusExpanded&&can?`<button type="button" id="bonusClaim" data-bonus-claim="${choice}">CLAIM</button>`:''}`;
 }
 // The guide is an optional, compact visual action sheet, not another paragraph.
 function closeCoach(clear=true){
- $('#guidePanel').hidden=true;$('#guideButton').setAttribute('aria-expanded','false');
- coachIndex=null;if(clear)spotlight=null;
+ coachIndex=null;coachExpanded=false;if(clear)spotlight=null;
+ $('#guideButton').setAttribute('aria-expanded','false');
  board.querySelector('.coachRoute')?.remove();
  for(const el of board.querySelectorAll('.coachOrigin,.coachDestination'))el.classList.remove('coachOrigin','coachDestination');
+ if(state)renderCoach();
 }
 function paintSpotlight(){
  board.querySelector('.coachRoute')?.remove();
@@ -120,7 +129,7 @@ function render(){
   tile.setAttribute('aria-label',state.stage<2&&x.type==='site'?'Buried device':nameOf(x));
  }
  for(const tile of board.querySelectorAll('.tile.item,.tile.glyph')){const x=state.board[+tile.dataset.index];if((readySignal&&state.opportunity.needs.some(r=>matches(x,r)))||($('.discovery.ready')&&(x.type==='glyph'||matches(x,{family:'chart',tier:2}))))tile.classList.add('deliveryReady');}
- $('#free').textContent=state.board.filter(x=>x===null).length+' spaces';$('#hint').textContent=hint();$('#rationButton').hidden=state.energy>3;renderSelection();if(!$('#guidePanel').hidden)renderCoach();else paintSpotlight();
+ $('#free').textContent=state.board.filter(x=>x===null).length+' spaces';$('#hint').textContent=hint();$('#rationButton').hidden=state.energy>3;renderSelection();renderCoach();
  if(state.surge>0){$('#free').textContent=`ϟ SURGE · ${state.surge} pulls`;$('#free').title='Shared by all producers. Choose which family gets improved parts. No timer.';board.dataset.event='surge';}else{delete board.dataset.event;$('#free').removeAttribute('title');}
  if(state.discovery&&!state.discoveryDone&&!state.opportunity&&state.board.some(x=>x?.type==='glyph')){const label=$('.discovery .reward small');if(label&&state.board.some(x=>x?.type==='glyph')&&!ready(state,[{family:'chart',tier:2,count:1}]))label.textContent='MAKE SIGHT LENS';}
 }
@@ -242,12 +251,13 @@ $('#goalNeeds').onclick=e=>{focus='goal';const requirement=e.target.closest('[da
   render();message.textContent='Required for MAIN STORY: '+requirement.title+'. Tap '+SOURCES[family].name+' to produce and merge parts.';return;
  }
  const badge=e.target.closest('[data-site-index]');if(badge){selected=+badge.dataset.siteIndex;const x=state.board[selected],need=x?.type==='site'?equipment(x.kind):{family:ROUTES[x.id].family,tier:2,count:1};if((x.type==='route'&&state.stage===1||x.type==='site'&&x.phase==='idle')&&ready(state,[need])){run({type:x.type==='route'?'breach':'deploy',index:selected});return;}}render();message.textContent=goal(state)?.text??'Keep collecting rare discoveries.';};
-$('#contracts').onclick=e=>{if(e.target.closest('[data-side-next]')){const choices=sideOptions();sideView=choices[(choices.indexOf(sideChoice())+1)%choices.length];render();return;}const type=e.target.closest('[data-contract]')?.dataset.contract;if(!type)return;
+$('#contracts').onclick=e=>{if(e.target.closest('[data-side-next]')){const choices=sideOptions();sideView=choices[(choices.indexOf(sideChoice())+1)%choices.length];bonusExpanded=true;render();return;}const claim=e.target.closest('[data-bonus-claim]');const type=claim?.dataset.bonusClaim??e.target.closest('[data-contract]')?.dataset.contract;if(!type)return;
+ if(!claim){sideView=type;bonusExpanded=!bonusExpanded;render();message.textContent=bonusExpanded?'Optional reward · use CLAIM when ready, or skip and focus on the main story.':'Optional reward collapsed.';return;}
  if(type==='startOpportunity'){sideView='opportunity';run({type});focus='opportunity';render();return;}
  sideView=type;focus=type;const can=type==='contract'?ready(state,normalContract(state).needs):type==='opportunity'?(state.opportunity&&(Date.now()>state.opportunity.ends||ready(state,state.opportunity.needs))):state.board.some(x=>x?.type==='glyph')&&ready(state,[{family:'chart',tier:2,count:1}]);
- if(can)run({type});else{render();message.textContent=type==='discovery'?'BONUS: Decode the Echo fragment with a Sight Lens. You can skip this and keep following the main story.':hint();}
+ if(can){run({type});bonusExpanded=false;render();}else{render();message.textContent=type==='discovery'?'BONUS: Decode the Echo fragment with a Sight Lens. You can skip this and keep following the main story.':hint();}
 };
-$('#guideButton').onclick=()=>{$('#guidePanel').hidden?openCoach(selected):closeCoach();};
+$('#guideButton').onclick=()=>{coachExpanded=!coachExpanded;renderCoach();};
 $('#guidePanel').addEventListener('click',e=>{
  const target=e.target.closest('[data-coach-kind]');if(!target)return;
  const type=target.dataset.coachKind,index=target.hasAttribute('data-coach-index')?+target.dataset.coachIndex:null;
@@ -275,4 +285,4 @@ $('#journalButton').onclick=showJournal;
 $('#helpButton').onclick=()=>{$('#journalContent').innerHTML='<h2>How to play Vaultwake</h2><ul><li><b>MAIN STORY</b> (top): required to open the vault. Tap a needed item icon to locate the right producer.</li><li><b>BONUS</b> (below): optional rewards; safe to skip.</li><li><b>PRODUCE</b>: tap a machine to get parts. <b>MERGE</b>: tap or drag two identical items together to craft the next level.</li><li><b>ECHO FRAGMENT</b>: decode using one Sight Lens for permanently improved drops. This is optional, not a matching merge item.</li><li><b>SALTSTONE</b>: use a Split Spanner to clear and uncover a reward. Buried ground is not a merge item.</li><li>Tap any object to see its purpose and suggested next action.</li></ul>';$('#journal').showModal();};
 for(const dialog of document.querySelectorAll('dialog')){dialog.querySelector('.close').onclick=()=>dialog.close();dialog.querySelector('.continue')?.addEventListener('click',()=>dialog.close());dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close();});}
 setInterval(()=>{const op=opportunity(state),clock=$('#opClock');if(op&&clock){clock.textContent=op.remaining?(ready(state,op.needs)?'✓ READY · ':'MAKE · ')+Math.ceil(op.remaining/1000)+'s':'PASSED · DISMISS';if(!op.remaining){const card=clock.closest('.contract');card.classList.remove('ready');card.removeAttribute('aria-label');}}},1000);
-render();persist();platform.init();
+$('#guidePanel').hidden=false;render();persist();platform.init();
