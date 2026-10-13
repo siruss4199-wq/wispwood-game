@@ -1,5 +1,5 @@
 // Intent-based player styles. All actions use the public reducer / real UI.
-import {goal,ready,count,normalContract,SOURCES} from '../v5/core.mjs';
+import {goal,ready,count,normalContract,SOURCES,sourceUnlocked} from '../v5/core.mjs';
 import {ANCHORS,ROUTES,equipment,anchors} from '../v5/expedition.mjs';
 const req=(family,tier,count=1)=>({family,tier,count});
 export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,session=null,style='expedition'}={}){
@@ -50,6 +50,6 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
   const i=s.board.findIndex(x=>x?.type==='item'&&x.tier<3&&x.family!==r.family);if(i>=0)return {type:'recycle',index:i};
  }
  if(s.energy<=3)return {type:'ration'};
- if(s.stage<SOURCES[r.family].unlock)throw Error('Policy targets locked source');
+ if(!sourceUnlocked(s,r.family))throw Error('Policy targets locked source');
  return s.charges[r.family]?{type:'produce',id:r.family}:{type:'service',id:r.family};
 }
