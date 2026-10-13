@@ -33,11 +33,11 @@ export function fresh(now=Date.now()){
  for(const i of [19,32])board[i]={type:'rock'};
  ['winch','scope','relay'].forEach((kind,n)=>board[[20,23,31][n]]={type:'site',kind,phase:'idle',progress:0});
  board[24]={type:'route',id:'ridge'};board[27]={type:'route',id:'conduit'};board[34]=container('salvage');
- return {version:5,board,stage:0,landingStep:0,energy:32,marks:0,moves:0,merges:0,contracts:0,serial:0,charges:{rig:7,chart:7,flux:7},taps:{rig:0,chart:0,flux:0},normal:0,opportunity:null,discovery:false,discoveryDone:false,boost:false,post:0,discovered:[],expedition:expeditionState(),startedAt:now,lastAt:now,rations:0,history:[]};
+ return {version:5,board,stage:0,landingStep:0,routePrepared:false,producerStreak:0,energy:32,marks:0,moves:0,merges:0,contracts:0,serial:0,charges:{rig:7,chart:7,flux:7},taps:{rig:0,chart:0,flux:0},normal:0,opportunity:null,discovery:false,discoveryDone:false,boost:false,post:0,discovered:[],expedition:expeditionState(),startedAt:now,lastAt:now,rations:0,history:[]};
 }
 export function goal(s){
- if(s.stage===0&&s.landingStep===1)return {name:'Chart the safe crossing',verb:'Mark route',scene:'Survey camp established',needs:[req('chart',2),req('rig',2)],energy:8,next:'Choose your breach · Ridge or Conduit',text:'Make a Sight Lens and Split Spanner. Keep them for the survey, or spend a spanner to recover buried supplies.',phase:'LANDING 2 / 2'};
- if(s.stage===1)return {name:'Choose your breach',verb:'Clear',scene:'Survey worksite',needs:[req('rig',2),req('chart',2)],action:'inspect',next:'Either route unlocks Echo Crucible',text:'Spanner: roomy ridge. Lens: rich conduit. Spend one, keep the other.',phase:'CHOOSE ONE'};
+ if(s.stage===0&&s.landingStep===1)return {name:'Chart the safe crossing',verb:'Mark route',scene:'Survey camp established',needs:[req('chart',2),req('rig',2)],energy:8,next:'Choose a route with prepared equipment',text:'Build a Sight Lens and Split Spanner to survey the crossing. Both stay with you for the route choice.',phase:'LANDING 2 / 2'};
+ if(s.stage===1)return {name:'Choose your breach',verb:'Clear',scene:'Survey worksite',needs:[req('rig',2),req('chart',2)],action:'inspect',next:'Either route unlocks Echo Crucible',text:'Both prepared tools are ready. Ridge spends a spanner for workspace; Conduit spends a lens for relic supplies.',phase:'CHOOSE ONE'};
  if(s.stage===2)return {name:'Wake the vault',verb:'Use equipment',scene:'Entrance uncovered',needs:anchors(s).filter(x=>x.phase==='idle').map(x=>equipment(x.kind)),action:'inspect',next:'Choose two devices · each helps a different family',text:'Use equipment in any two devices. Choose the benefit you need.',phase:`${completedAnchors(s)} OF 2 READY`};
  if(s.stage===3)return {name:'Open the Tideglass Vault',verb:'Open vault',scene:'Rings awakened',needs:s.expedition.route==='conduit'?[req('rig',4),req('chart',4)]:[req('chart',4),req('flux',4)],energy:20,next:'The chamber + relic cache',text:'Your chosen breach determines the final alignment equipment.',action:'goal'};
  return STAGES[s.stage]??POST_GOALS[s.post]??null;
@@ -69,6 +69,12 @@ export function opportunity(s,now=Date.now()){
 export function nextOutput(s,id){
  const n=s.taps[id]+1;
  if(n%9===0)return {type:'glyph'};
+ // Late-game anti-grind: reward consecutive dry pulls with one actual pair.
+ // This never overrides the scheduled ninth-pull glyph.
+ if(s.stage>=3&&(s.producerStreak??0)>=2){
+  const tier=[3,2,1,0].find(t=>count(s,req(id,t))===1);
+  if(tier!==undefined)return item(id,tier);
+ }
  const base=s.boost&&n%3===0?2:n%4===0?1:0;
  return item(id,base+(s.surge>0?1:0));
 }
@@ -121,7 +127,7 @@ function activate(s,site){
 // Mutating reducer is intentionally atomic: failed commands leave all state untouched.
 export function act(s,a,now=Date.now()){
  const fail=message=>({ok:false,message});
- const done=(message,event='action',index=null)=>{s.moves++;s.lastAt=now;installSites(s);if(event==='milestone')remember(s,event,now);for(const x of s.board)if(x?.type==='item'){const key=x.family+':'+x.tier;if(!s.discovered.includes(key))s.discovered.push(key);}return {ok:true,message,event,index};};
+ const done=(message,event='action',index=null)=>{s.moves++;s.lastAt=now;if(event!=='produce')s.producerStreak=0;installSites(s);if(event==='milestone')remember(s,event,now);for(const x of s.board)if(x?.type==='item'){const key=x.family+':'+x.tier;if(!s.discovered.includes(key))s.discovered.push(key);}return {ok:true,message,event,index};};
  const valid=i=>Number.isInteger(i)&&i>=0&&i<36;
  if(a.type==='merge'||a.type==='move'){
   if(!valid(a.from)||!valid(a.to)||a.from===a.to)return fail('Choose another space.');
@@ -148,7 +154,7 @@ export function act(s,a,now=Date.now()){
   if(!s.charges[a.id])return fail('Service this source: a grip tool or 3 energy.');
   if(s.energy<p.cost)return fail('Deliver a contract, recycle an item, or use a field ration.');
   if(!s.board.includes(null))return fail('Board full. Merge, deliver, recycle, or clear a blocker.');
-  const surged=s.surge>0,burst=burstOutput(s,a.id),x=nextOutput(s,a.id),i=put(s,x);const windfall=burst&&(s.taps[a.id]+1)%7===0;const bonusIndex=burst?put(s,item(a.id,windfall?1:0)):-1;s.energy-=p.cost;s.charges[a.id]--;s.taps[a.id]++;
+  const surged=s.surge>0,burst=burstOutput(s,a.id),x=nextOutput(s,a.id),i=put(s,x);const windfall=burst&&(s.taps[a.id]+1)%7===0;const bonusIndex=burst?put(s,item(a.id,windfall?1:0)):-1;s.energy-=p.cost;s.charges[a.id]--;s.taps[a.id]++;s.producerStreak=(s.producerStreak??0)+1;
   if(surged&&x.type!=='glyph')s.surge--;
   if(x.type==='glyph')s.discovery=true;
   return {...done(x.type==='glyph'?'Echo fragment found! A discovery awaits.':`${nameOf(x)}${windfall?' + bonus tool!':burst?' + raw part':''} · ${s.charges[a.id]} charges left`,'produce',i),bonus:windfall?a.id:null,improved:surged&&x.type==='item',reveal:windfall?[i,bonusIndex]:[]};
@@ -184,7 +190,12 @@ export function act(s,a,now=Date.now()){
  }
  if(a.type==='goal'){
   const g=goal(s);if(!g||g.action&&g.action!=='goal'||!ready(s,g.needs))return fail('Make the highlighted expedition items.');
-  consume(s,g.needs);s.energy=Math.min(120,s.energy+g.energy);
+  // Crossing survey is a preparation milestone, not a delivery.
+  // Consuming both route tools here made the player craft them twice.
+  const routeSurvey=s.stage===0&&s.landingStep===1;
+  if(routeSurvey)s.routePrepared=true;
+  else consume(s,g.needs);
+  s.energy=Math.min(120,s.energy+g.energy);
   // The first reward opens a new producer and changes the camp, but not the main stage.
   if(s.stage===0&&s.landingStep===0){
    s.landingStep=1;
@@ -285,6 +296,15 @@ export function load(raw,now=Date.now()){
   if(s.expedition.vaultTrade!==undefined&&typeof s.expedition.vaultTrade!=='boolean')delete s.expedition.vaultTrade;
   s.expedition.log=Array.isArray(s.expedition.log)?s.expedition.log.filter(x=>x&&typeof x.type==='string'&&integer(x.move,0,1000000)).slice(-200):[];
   installSites(s);if(s.expedition.version===1){for(const site of anchors(s))if(site.phase==='active')activate(s,site);s.expedition.version=2;}delete s.mission;
+  if(!integer(s.producerStreak,0,1000000))s.producerStreak=0;
+  // Idempotent migration from older V5 builds whose survey already
+  // consumed both route ingredients. Keep all existing board progress.
+  if(s.routePrepared!==true){
+   if(s.stage===1){
+    for(const family of ['rig','chart'])if(count(s,req(family,2))===0)put(s,item(family,2));
+    s.routePrepared=true;
+   }else s.routePrepared=s.stage>=2;
+  }
   return s;
  }catch{return fresh(now);}
 }
