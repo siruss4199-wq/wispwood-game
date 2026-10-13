@@ -8,12 +8,13 @@ import {deliverFeedback} from './feedback.mjs';
 import {ANCHORS,ROUTES,equipment,anchors,activeAnchors} from './expedition.mjs';
 import {enablePremium,prototypeScene} from './premium.mjs';
 import {objectiveGuide,objectGuide} from './guidance.mjs';
+import {boardCoach} from './action-guide.mjs';
 const premium=new URLSearchParams(location.search).get('art')!=='classic';
 if(premium){enablePremium(new URLSearchParams(location.search).get('art'));document.body.dataset.art='premium';document.body.dataset.palette=['r2','phase1'].includes(new URLSearchParams(location.search).get('art'))?'muted':'vibrant';}
 const scene=premium?prototypeScene:vectorScene;
 const $=s=>document.querySelector(s);
 let state;try{state=load(localStorage.getItem(SAVE_KEY));}catch{state=fresh();}
-let selected=null,focus='goal',drag=null,suppressUntil=0,sideView=null;
+let selected=null,focus='goal',drag=null,suppressUntil=0,sideView=null,coachIndex=null,spotlight=null;
 const board=$('#board'),message=$('#message');
 function persist(){try{const raw=JSON.stringify(state);localStorage.setItem(SAVE_KEY,raw);platform.save(raw);}catch{message.textContent='Storage unavailable. This session is playable, but progress cannot be saved.';}}
 function needed(){const x=state.board[selected];if(focus==='goal'&&x?.type==='site')return x.phase==='idle'?[equipment(x.kind)]:[];if(focus==='goal'&&x?.type==='route')return [{family:ROUTES[x.id].family,tier:2,count:1}];return focus==='contract'?normalContract(state).needs:focus==='opportunity'?state.opportunity?.needs??[]:focus==='discovery'?[{family:'chart',tier:2,count:1}]:goal(state)?.needs??[];}
@@ -33,6 +34,54 @@ function renderSide(){
  const title=choice==='contract'?c.vaultTrade?'Vault trade':c.exchange?'Equipment swap':'Supply run':rare?'Relic find':'Passing signal';
  const reward=choice==='contract'?(c.exchange?art(c.exchange)+(c.surge?'<span class="tradeSurge">+3 rich pulls</span>':''):'+'+c.energy+' ϟ'):rare?'Better parts':'3 rich pulls';
  $('#contracts').innerHTML=`<button class="contract ${rare?'discovery':choice.includes('pportunity')?'opportunity':''} ${can?'ready':''}" data-contract="${choice}" data-requirements="${needs.length}" aria-label="Optional: ${title} ${can?'ready to use':''}"><span class="contractHead">${portrait(rare?'neri':'ivo')}<span><small>BONUS · CAN SKIP</small><b>${title}</b></span></span><span class="needs">${rare?art({type:'glyph'}):''}${needsHTML(needs)}</span><span class="reward">${reward}<small ${choice==='opportunity'?'id="opClock"':''}>${can?'✓ READY':choice==='startOpportunity'?'OPEN · 3 MIN':choice==='opportunity'?Math.ceil(op.remaining/1000)+'s':'COLLECT'}</small></span></button><button class="sideMore" data-side-next aria-label="Other optional tasks" ${sideOptions().length<2?'hidden':''}>•••</button>`;
+}
+// The guide is an optional, compact visual action sheet, not another paragraph.
+function closeCoach(clear=true){
+ $('#guidePanel').hidden=true;$('#guideButton').setAttribute('aria-expanded','false');
+ coachIndex=null;if(clear)spotlight=null;
+ board.querySelector('.coachRoute')?.remove();
+ for(const el of board.querySelectorAll('.coachOrigin,.coachDestination'))el.classList.remove('coachOrigin','coachDestination');
+}
+function paintSpotlight(){
+ board.querySelector('.coachRoute')?.remove();
+ for(const el of board.querySelectorAll('.coachOrigin,.coachDestination'))el.classList.remove('coachOrigin','coachDestination');
+ if(!spotlight)return;
+ const [from,to]=spotlight;
+ for(const [index,className] of [[from,'coachOrigin'],[to,'coachDestination']]){
+  if(index!==null&&index>=0)board.querySelector(`[data-index="${index}"]`)?.classList.add(className);
+ }
+ if(from===null||to===null||from<0||to<0||from===to)return;
+ const a=board.querySelector(`[data-index="${from}"]`)?.getBoundingClientRect();
+ const b=board.querySelector(`[data-index="${to}"]`)?.getBoundingClientRect();
+ const surface=board.getBoundingClientRect();
+ if(!a||!b||!surface.width||!surface.height)return;
+ const x1=a.left+a.width/2-surface.left,y1=a.top+a.height/2-surface.top;
+ const x2=b.left+b.width/2-surface.left,y2=b.top+b.height/2-surface.top;
+ const dx=x2-x1,dy=y2-y1,d=Math.hypot(dx,dy)||1;
+ const sx=x1+dx/d*19,sy=y1+dy/d*19,ex=x2-dx/d*21,ey=y2-dy/d*21;
+ const bend=Math.min(29,d*.12),mx=(sx+ex)/2-dy/d*bend,my=(sy+ey)/2+dx/d*bend;
+ board.insertAdjacentHTML('beforeend',`<svg class="coachRoute" width="${surface.width}" height="${surface.height}" viewBox="0 0 ${surface.width} ${surface.height}" aria-hidden="true"><defs><marker id="coachArrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0L6 3L0 6" fill="none" stroke="#0c827b" stroke-width="1.8"/></marker></defs><path d="M${sx} ${sy} Q${mx} ${my} ${ex} ${ey}" fill="none" stroke="#fff2bb" stroke-width="7" stroke-linecap="round"/><path d="M${sx} ${sy} Q${mx} ${my} ${ex} ${ey}" fill="none" stroke="#0c827b" stroke-width="3" stroke-linecap="round" stroke-dasharray="6 5" marker-end="url(#coachArrow)"/></svg>`);
+}
+function renderCoach(){
+ const panel=$('#guidePanel'),model=boardCoach(state,coachIndex);
+ if(panel.hidden)return;
+ const icon=x=>art(x);
+ const action=(a,secondary=false)=>a?`<button type="button" class="${secondary?'coachSecondary':'coachPrimary'}" data-coach-kind="${a.kind}" ${a.index!==undefined&&a.index!==null?`data-coach-index="${a.index}"`:''} ${a.id?`data-coach-id="${a.id}"`:''} ${a.from!==undefined?`data-coach-from="${a.from}"`:''}>${a.label}</button>`:'';
+ const steps=model.icons.map((v,i)=>`${i?'<span class="coachConnector" aria-hidden="true">→</span>':''}<span class="coachStep">${icon(v.x)}<small>${v.label}</small></span>`).join('');
+ panel.innerHTML=`<div class="coachTop"><span class="coachEyebrow">WHAT TO DO NEXT</span><button type="button" class="coachClose" data-coach-kind="close" aria-label="Close guidance">×</button></div><b class="coachHeadline">${model.title}</b><div class="coachSequence">${steps}</div><p class="coachExplanation">${model.detail}</p><div class="coachActions">${action(model.primary)}${action(model.secondary,true)}</div>`;
+ spotlight=[model.from,model.to];paintSpotlight();
+}
+function openCoach(index=null){
+ coachIndex=Number.isInteger(index)&&index>=0?index:null;
+ $('#guidePanel').hidden=false;$('#guideButton').setAttribute('aria-expanded','true');
+ renderCoach();
+}
+function goToGuideTarget(index,from=null){
+ closeCoach(false);
+ if(index===null||index<0){selected=null;focus='goal';render();const objective=$('.objective');objective.classList.remove('coachStory');void objective.offsetWidth;objective.classList.add('coachStory');objective.scrollIntoView({block:'nearest',behavior:'smooth'});message.textContent='Follow the MAIN STORY above. Bonus tasks can be skipped.';return;}
+ selected=index;focus='goal';spotlight=[from,index];render();
+ board.querySelector(`[data-index="${index}"]`)?.scrollIntoView({block:'nearest',inline:'nearest',behavior:'smooth'});
+ message.textContent='Highlighted target · '+nameOf(state.board[index])+'. Tap it to use or produce; matching items merge together.';
 }
 function render(){
  $('.world').classList.toggle('opened',state.stage===4);$('.destination').textContent=state.stage===4?'VAULT DISCOVERED':'OPEN THE TIDEGLASS VAULT';
@@ -55,7 +104,7 @@ function render(){
   const useful=isSource&&!locked&&needed().some(r=>r.family===x.id&&count(state,r)<r.count);
   const expedition=!!g?.needs.some(r=>matches(x,r)),contract=sideChoice()==='contract'&&c.needs.some(r=>matches(x,r));
   const matching=selectedItem?.type==='item'&&x?.type==='item'&&i!==selected&&x.family===selectedItem.family&&x.tier===selectedItem.tier&&x.tier<7;
-  return `<button class="tile ${x?.type??'empty'} ${locked?'locked':''} ${useful?'useful':''} ${selected===i?'selected':''} ${matching?'match':''} ${needed().some(r=>matches(x,r))?'wanted':''}" data-index="${i}" ${x?.family||isSource||x?.type==='crate'?`data-family="${x.family??(isSource?x.id:containerInfo(x).family)}"`:''} data-variant="${i%3}" data-use="${expedition&&contract?'both':expedition?'expedition':contract?'contract':''}" aria-label="${nameOf(x)}${x?.type==='crate'?' · tap to reveal · '+contents(x).map(nameOf).join(', '):''}${expedition&&contract?' · needed for expedition and contract':expedition?' · needed for expedition':contract?' · useful for contract':''}${locked?' · locked':isSource?' · '+SOURCES[x.id].cost+' energy · '+state.charges[x.id]+' charges':''}. Space ${i+1}" aria-pressed="${selected===i}">${art(x?.type==='site'&&state.stage<2?{type:'sealed'}:x)}${expedition||contract?`<span class="useBadge" aria-hidden="true">${expedition?'◆':''}${contract?'▰':''}</span>`:''}${isSource?(locked?`<span class="lockedLabel">${x.id==='chart'?'CLEAR PATH':'EXCAVATE'}</span>`:`<span class="energyCue">ϟ${SOURCES[x.id].cost}</span><span class="charge">${Array.from({length:7},(_,n)=>`<i class="${n>=state.charges[x.id]?'used':''}"></i>`).join('')}</span>`):x?.type==='crate'?`<span class="pulls">${x.left}</span>`:''}${x?.type==='glyph'?'<span class="boardRole echo">ECHO</span>':x?.type==='rock'?'<span class="boardRole stone">STONE</span>':''}</button>`;
+  return `<button class="tile ${x?.type??'empty'} ${locked?'locked':''} ${useful?'useful':''} ${selected===i?'selected':''} ${matching?'match':''} ${needed().some(r=>matches(x,r))?'wanted':''}" data-index="${i}" ${x?.family||isSource||x?.type==='crate'?`data-family="${x.family??(isSource?x.id:containerInfo(x).family)}"`:''} data-variant="${i%3}" data-use="${expedition&&contract?'both':expedition?'expedition':contract?'contract':''}" aria-label="${nameOf(x)}${x?.type==='crate'?' · tap to reveal · '+contents(x).map(nameOf).join(', '):''}${expedition&&contract?' · needed for expedition and contract':expedition?' · needed for expedition':contract?' · useful for contract':''}${locked?' · locked':isSource?' · '+SOURCES[x.id].cost+' energy · '+state.charges[x.id]+' charges':''}. Space ${i+1}" aria-pressed="${selected===i}">${art(x?.type==='site'&&state.stage<2?{type:'sealed'}:x)}${expedition||contract?`<span class="useBadge" aria-hidden="true">${expedition?'◆':''}${contract?'▰':''}</span>`:''}${isSource?(locked?`<span class="lockedLabel">${x.id==='chart'?'CLEAR PATH':'EXCAVATE'}</span>`:`<span class="energyCue">ϟ${SOURCES[x.id].cost}</span><span class="charge">${Array.from({length:7},(_,n)=>`<i class="${n>=state.charges[x.id]?'used':''}"></i>`).join('')}</span>`):x?.type==='crate'?`<span class="pulls">${x.left}</span>`:''}${x?.type==='glyph'?'<span class="boardRole echo">+ LENS</span>':x?.type==='rock'?'<span class="boardRole stone">SPANNER</span>':x?.type==='sealed'?'<span class="boardRole ground">LOCKED</span>':''}</button>`;
  }).join('');
  for(const tile of board.querySelectorAll('.tile.item')){const x=state.board[+tile.dataset.index];tile.dataset.tier=x.tier;tile.classList.toggle('deliveryReady',(goalReady&&g.needs.some(r=>matches(x,r)))||(cr&&c.needs.some(r=>matches(x,r))));}
  for(const tile of board.querySelectorAll('.tile.site,.tile.route')){
@@ -66,7 +115,7 @@ function render(){
   tile.setAttribute('aria-label',state.stage<2&&x.type==='site'?'Buried device':nameOf(x));
  }
  for(const tile of board.querySelectorAll('.tile.item,.tile.glyph')){const x=state.board[+tile.dataset.index];if((readySignal&&state.opportunity.needs.some(r=>matches(x,r)))||($('.discovery.ready')&&(x.type==='glyph'||matches(x,{family:'chart',tier:2}))))tile.classList.add('deliveryReady');}
- $('#free').textContent=state.board.filter(x=>x===null).length+' spaces';$('#hint').textContent=hint();const guide=selected===null?objectiveGuide(state):objectGuide(state,selected);$('#guideTitle').textContent=guide.title;$('#guideExplanation').textContent=guide.detail;$('#rationButton').hidden=state.energy>3;renderSelection();
+ $('#free').textContent=state.board.filter(x=>x===null).length+' spaces';$('#hint').textContent=hint();$('#rationButton').hidden=state.energy>3;renderSelection();if(!$('#guidePanel').hidden)renderCoach();else paintSpotlight();
  if(state.surge>0){$('#free').textContent=`ϟ SURGE · ${state.surge} pulls`;$('#free').title='Shared by all producers. Choose which family gets improved parts. No timer.';board.dataset.event='surge';}else{delete board.dataset.event;$('#free').removeAttribute('title');}
  if(state.discovery&&!state.discoveryDone&&!state.opportunity&&state.board.some(x=>x?.type==='glyph')){const label=$('.discovery .reward small');if(label&&state.board.some(x=>x?.type==='glyph')&&!ready(state,[{family:'chart',tier:2,count:1}]))label.textContent='MAKE SIGHT LENS';}
 }
@@ -126,6 +175,7 @@ function run(a){
  const before=state.stage,landingBefore=state.landingStep,from=a.type==='produce'?board.querySelector(`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===a.id)}"]`)?.getBoundingClientRect():null;
  const result=act(state,a,now);message.textContent=result.message;
  if(!result.ok)return result;
+ closeCoach();
  platform.startGameplay();if(['milestone','deployment','contract','discovery'].includes(result.event)){focus='goal';selected=null;}if(a.type==='merge')selected=result.index;render();persist();
  if(result.event==='milestone'&&state.stage<4)message.textContent=result.message+' unlocked. '+(goal(state)?.text??'');
  if(!delivery.length)feedback({event:result.event,tile:board.querySelector(`[data-index="${result.index}"]`),x:state.board[result.index],from:rewardOrigin,energyDelta:state.energy-energyBefore,stage:state.stage,firstContract,containerKind:result.containerKind,reveal:result.reveal,bonus:result.bonus,improved:result.improved,breakthrough:result.breakthrough,breakthroughUse:state.stage>=2&&state.board[result.index]?.tier===3?anchors(state).filter(v=>v.phase==='idle'&&ANCHORS[v.kind].equipment===state.board[result.index].family).map(v=>'Use: '+ANCHORS[v.kind].short+' · or merge higher')[0]:null,surgeStarted:state.surge>surgeBefore});
@@ -151,11 +201,12 @@ function run(a){
 }
 function clickTile(i){
  const x=state.board[i],prev=state.board[selected];
- if(selected===i&&['item','glyph','brace'].includes(x?.type)){selected=null;render();return;}
+ if(selected===i&&['item','glyph','brace'].includes(x?.type)){selected=null;closeCoach();render();return;}
  if(selected!==null&&selected!==i&&x?.type==='site'&&(prev?.type==='item'&&x.phase==='idle'&&matches(prev,equipment(x.kind)))){run({type:'deploy',from:selected,index:i});return;}
  if(selected!==null&&selected!==i&&x?.type==='route'&&prev?.type==='item'&&matches(prev,{family:ROUTES[x.id].family,tier:2})){run({type:'breach',from:selected,index:i});return;}
  if(selected!==null&&selected!==i&&prev?.type==='item'&&(!x||(x.type==='item'&&x.family===prev.family&&x.tier===prev.tier))){run({type:'merge',from:selected,to:i});return;}
- selected=i;render();
+ selected=i;closeCoach();render();
+ if(x&&['rock','sealed','lock','marker','glyph','site','route'].includes(x.type))openCoach(i);
  if(x?.type==='crate')run({type:'crate',index:i});
  if(x?.type==='source'&&sourceUnlocked(state,x.id)&&state.charges[x.id]>0)run({type:'produce',id:x.id});
 }
@@ -191,7 +242,22 @@ $('#contracts').onclick=e=>{if(e.target.closest('[data-side-next]')){const choic
  sideView=type;focus=type;const can=type==='contract'?ready(state,normalContract(state).needs):type==='opportunity'?(state.opportunity&&(Date.now()>state.opportunity.ends||ready(state,state.opportunity.needs))):state.board.some(x=>x?.type==='glyph')&&ready(state,[{family:'chart',tier:2,count:1}]);
  if(can)run({type});else{render();message.textContent=type==='discovery'?'BONUS: Decode the Echo fragment with a Sight Lens. You can skip this and keep following the main story.':hint();}
 };
-$('#guideButton').onclick=()=>{const panel=$('#guidePanel');panel.hidden=!panel.hidden;$('#guideButton').setAttribute('aria-expanded',String(!panel.hidden));};
+$('#guideButton').onclick=()=>{$('#guidePanel').hidden?openCoach(selected):closeCoach();};
+$('#guidePanel').addEventListener('click',e=>{
+ const target=e.target.closest('[data-coach-kind]');if(!target)return;
+ const type=target.dataset.coachKind,index=target.hasAttribute('data-coach-index')?+target.dataset.coachIndex:null;
+ const original=coachIndex;
+ if(type==='close'){closeCoach();return;}
+ if(type==='show'){goToGuideTarget(index,original);return;}
+ if(type==='match'){selected=Number(target.dataset.coachFrom);goToGuideTarget(index,selected);selected=Number(target.dataset.coachFrom);render();message.textContent='1 → 2: Tap the glowing matching twin to MERGE these two identical items.';return;}
+ if(type==='decode'){run({type:'discovery'});return;}
+ if(type==='goal'){run({type:'goal'});return;}
+ if(type==='clear'){run({type:'clear',index});return;}
+ if(type==='deploy'){run({type:'deploy',index});return;}
+ if(type==='breach'){run({type:'breach',index});return;}
+ if(type==='crate'){run({type:'crate',index});return;}
+ if(type==='produce'){run({type:'produce',id:target.dataset.coachId});return;}
+});
 $('#soundButton').textContent=sound.enabled()?'Sound on':'Sound off';
 $('#soundButton').onclick=()=>{$('#soundButton').textContent=sound.toggle()?'Sound on':'Sound off';sound.play('merge',2);};
 $('#rationButton').onclick=()=>run({type:'ration'});

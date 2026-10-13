@@ -3,6 +3,27 @@ const assert=require('node:assert/strict');const {chromium,webkit}=require('play
  const page=await browser.newPage({viewport:{width,height:664},isMobile:true,hasTouch:true,reducedMotion:'reduce'});const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('http://127.0.0.1:8080/v5/');await page.waitForSelector('#board .tile');await page.evaluate(async()=>Promise.all([...document.images].map(x=>x.decode())));
  const read=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('vaultwake-v5')));
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+ // An action sheet must teach visually, but never enlarge or shift the board.
+ const baseBoard=await page.locator('#board').boundingBox();
+ await page.locator('#guideButton').tap();
+ assert.equal(await page.locator('#guidePanel').isVisible(),true);
+ assert.equal(await page.locator('.coachStep').count(),3);
+ assert.ok((await page.locator('#board').boundingBox()).y-baseBoard.y<2,'guide is an overlay, not a board push');
+ await page.locator('#guidePanel .coachClose').tap();
+ await page.locator('[data-index="19"]').tap();
+ assert.match(await page.locator('.coachHeadline').textContent(),/CLEAR STONE/);
+ assert.equal(await page.locator('.coachStep').count(),3);
+ assert.match(await page.locator('.coachExplanation').textContent(),/Split Spanner/);
+ assert.equal(await page.locator('.coachPrimary').textContent(),'FIND FIELDWORKS');
+ await page.screenshot({path:`test-artifacts/v5/${engine}-stone-guide-${width}.png`});
+ await page.locator('.coachPrimary').tap();
+ assert.equal(await page.locator('#guidePanel').isVisible(),false);
+ assert.equal(await page.locator('#board .coachDestination').count(),1);
+ await page.locator('[data-index="25"]').tap();
+ assert.match(await page.locator('.coachHeadline').textContent(),/BURIED GROUND/);
+ assert.match(await page.locator('.coachExplanation').textContent(),/locked terrain/i);
+ await page.locator('#guidePanel .coachClose').tap();
+ await page.evaluate(()=>scrollTo(0,0));
  const initial=await read();const a=await page.locator('[data-index="7"]').boundingBox(),b=await page.locator('[data-index="8"]').boundingBox();
  await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:8});await page.mouse.up();await page.waitForTimeout(310);assert.equal((await read()).merges,1,'drag works in '+engine);
  // One fresh tool already exists; this real merge supplies the second landing tool.

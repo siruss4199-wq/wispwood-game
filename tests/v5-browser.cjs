@@ -81,7 +81,14 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
    }
    else if(['deploy','feed','breach','branch','clear','recycle'].includes(cmd.type)){
     if(!await page.locator(`[data-index="${cmd.index}"]`).getAttribute('aria-pressed').then(x=>x==='true'))await page.locator(`[data-index="${cmd.index}"]`).tap();
-    if((await read()).moves===before.moves)await page.locator(`[data-action="${cmd.type}"]`).tap();
+    if((await read()).moves===before.moves){
+      const guided=['deploy','breach','clear'].includes(cmd.type)&&await page.locator('#guidePanel').isVisible();
+      if(guided){
+       assert.equal(await page.locator(`#guidePanel [data-coach-kind="${cmd.type}"]`).count(),1,'guide must expose the real action');
+       await page.locator(`#guidePanel [data-coach-kind="${cmd.type}"]`).tap();
+       assert.equal(await page.locator('#guidePanel').isVisible(),false);
+      }else await page.locator(`[data-action="${cmd.type}"]`).tap();
+     }
    }else if(cmd.type==='ration')await page.locator('#rationButton').tap();
    else if(cmd.type==='goal')await page.locator('#goalButton').tap();
    else {await showSide(cmd.type);if(cmd.type==='contract'&&before.stage===3&&!before.expedition.vaultTrade){assert.ok(await page.locator('.tradeSurge').count());await shot('vault-trade-ready');}await page.locator(`[data-contract="${cmd.type}"]`).tap();}

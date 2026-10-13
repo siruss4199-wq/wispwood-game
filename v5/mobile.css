@@ -139,3 +139,46 @@ body .world .objective{position:relative}
 body .world .goalRecipe{position:absolute;left:12px;bottom:5px;max-width:53%;margin:0;font-size:9px;line-height:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 body .world .objective[data-stage="1"] .goalRecipe,
 body .world .objective[data-stage="2"] .goalRecipe{display:none}
+
+/* Visual guidance: a temporary action sheet, NOT a permanently taller board. */
+#guidePanel.guidePanel{
+ position:fixed;z-index:80;bottom:calc(10px + env(safe-area-inset-bottom));
+ left:50%;transform:translateX(-50%);width:min(calc(100vw - 24px),448px);
+ max-height:min(64svh,390px);overflow-y:auto;overscroll-behavior:contain;
+ margin:0;padding:13px 14px 15px;border:2px solid #65c7b8;border-radius:20px;
+ background:linear-gradient(160deg,#fff6e1,#e6f6ee);color:#214957;
+ box-shadow:0 10px 0 #184a4a33,0 18px 55px #143c5180;
+ font-size:13px;line-height:1.4;
+}
+#guidePanel.guidePanel[hidden]{display:none}
+.coachTop{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px}
+.coachEyebrow{color:#247970;font:900 10px/1.2 system-ui;letter-spacing:1.2px}
+.coachClose{height:36px;width:36px;border-radius:11px;color:#31616b;background:#cde8de;font-size:23px;font-weight:500;line-height:1}
+.coachHeadline{display:block;font-size:16px;letter-spacing:-.2px;line-height:1.2;color:#193f50}
+.coachSequence{display:flex;align-items:center;justify-content:space-evenly;gap:3px;margin:9px 0 8px}
+.coachStep{flex:1;min-width:0;display:flex;align-items:center;flex-direction:column;gap:3px;text-align:center}
+.coachStep .art{height:54px;width:54px;max-width:100%;object-fit:contain;filter:drop-shadow(0 2px 2px #49626131)}
+.coachStep small{font-size:10px;line-height:1.2;font-weight:850;color:#365961;white-space:normal}
+.coachConnector{font-weight:900;font-size:23px;color:#15978e;flex:none;padding-bottom:15px}
+.coachExplanation{font-size:12px;line-height:1.37;margin:5px 0 11px;color:#43616a;font-weight:600}
+.coachActions{display:flex;align-items:stretch;gap:7px}
+.coachActions button{min-height:46px;border-radius:13px;padding:9px 13px;font:900 12px/1.1 system-ui;letter-spacing:.1px}
+.coachActions .coachPrimary{background:#168d81;color:#fff;flex:1;box-shadow:0 3px 0 #0e5b59}
+.coachActions .coachSecondary{background:#e1e8dd;color:#2c6871;border:1px solid #9cb8b6;flex:0 1 auto;max-width:49%}
+.board{position:relative}
+#board .tile.coachOrigin{outline:3px solid #f8b743;outline-offset:-2px;box-shadow:0 0 0 4px #f9cb6d55,0 0 18px #ecad3970;z-index:5;animation:coachHalo 1s ease-in-out infinite alternate}
+#board .tile.coachDestination{outline:3px solid #069e90;outline-offset:-1px;box-shadow:0 0 0 5px #64e4d766,0 0 18px #2ac9ae77;z-index:5;animation:coachHalo 1s ease-in-out infinite alternate}
+#board .coachRoute{position:absolute;inset:0;z-index:6;width:100%;height:100%;pointer-events:none;overflow:visible}
+@keyframes coachHalo{from{filter:brightness(1)}to{filter:brightness(1.12)}}
+@media(prefers-reduced-motion:reduce){#board .tile.coachOrigin,#board .tile.coachDestination{animation:none}}
+#board .tile .boardRole.ground{background:#355f67;letter-spacing:.1px;font-size:8px}
+body .world .objective.coachStory{outline:3px solid #1b9c85;outline-offset:-3px;animation:coachHalo 1s ease-in-out 3 alternate}
+body .world .objective[data-stage="3"] .goalRecipe{position:static;grid-column:1/-1;white-space:normal;overflow:visible;max-width:100%;font-size:10px;line-height:1.25;margin-top:-1px;margin-bottom:1px;color:#315b64}
+body .contracts .contract{background:#f0f0ea;box-shadow:inset 0 0 0 1px #d2dad5}
+body .contracts .contractHead small{display:inline-block;background:#dce7e1;padding:3px 5px;border-radius:6px;font-size:8px;font-weight:900;letter-spacing:0;color:#56776c}
+@media(max-width:375px){
+ #guidePanel.guidePanel{padding:11px 10px 12px;max-height:70svh}
+ .coachStep .art{width:47px;height:47px}
+ .coachStep small{font-size:9px}
+ .coachActions button{font-size:11px;padding:8px}
+}
