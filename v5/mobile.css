@@ -111,3 +111,24 @@ body[data-art="premium"] .world:has(.premiumScene) .worldLabel b{background:#fff
 
 /* A single optional late trade: keep the reward readable beside its sprite. */
 .tradeSurge{display:block;font-size:11px;line-height:1.15;font-weight:800;color:#166c69;white-space:nowrap}
+
+/* Rule-driven help occupies the existing heading; details expand only on request. */
+.boardHeading{gap:7px}
+.guideButton{display:flex;align-items:center;justify-content:space-between;min-width:0;flex:1;height:28px;padding:0 2px;text-align:left;background:transparent;color:#305f68;font-size:11px;font-weight:850;gap:5px}
+.guideButton #hint{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;max-width:100%;letter-spacing:0;font-size:11px}
+.guideMark{display:flex;align-items:center;justify-content:center;border-radius:50%;width:23px;height:23px;min-width:23px;background:#e0eee7;border:1px solid #83b9a8;color:#166e67;font-size:13px;font-weight:900}
+.guideButton[aria-expanded="true"] .guideMark{background:#177f78;color:#fff}
+.guidePanel{background:#e8f3e9;color:#28535a;border-left:3px solid #35a18a;border-radius:10px;padding:9px 11px;margin:3px 0 8px;font-size:12px;line-height:1.4}
+.guidePanel[hidden]{display:none}
+.guidePanel>b{display:block;font-size:12px;margin-bottom:3px;color:#185e5b}
+.guidePanel p{margin:0}
+.guidePanel .guideRule{margin-top:6px;padding-top:6px;border-top:1px solid #a3ccbf;font-size:11px;color:#496d70}
+body[data-art="premium"] .world .objectiveHeading small{display:block;color:#257e71;font-size:9px}
+body[data-art="premium"] .world .goalRecipe{color:#44666b;font-size:10px}
+body[data-art="premium"] .world .objective.ready .goalRecipe{color:#176852}
+body .contracts .contractHead small{color:#456e78;font-size:9px;letter-spacing:.3px;line-height:1.18}
+#board .tile .boardRole{position:absolute;bottom:0;left:50%;transform:translateX(-50%);z-index:3;padding:2px 4px;border-radius:6px;font:900 8px/10px system-ui;letter-spacing:.45px;color:#fff;pointer-events:none;box-shadow:0 1px 3px #29485b42}
+#board .tile .boardRole.echo{background:#775aa6}
+#board .tile .boardRole.stone{background:#816348}
+.selection .actionGroup button{font-size:11px;min-height:42px}
+@media(max-width:375px){.goalRecipe{font-size:9px}body[data-art="premium"] .world .goalRecipe{font-size:9px}.guideButton #hint{font-size:10px}}
