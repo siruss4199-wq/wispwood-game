@@ -269,7 +269,7 @@ $('#contracts').onclick=e=>{if(e.target.closest('[data-side-next]')){const choic
  sideView=type;focus=type;const can=type==='contract'?ready(state,normalContract(state).needs):type==='opportunity'?(state.opportunity&&(Date.now()>state.opportunity.ends||ready(state,state.opportunity.needs))):state.board.some(x=>x?.type==='glyph')&&ready(state,[{family:'chart',tier:2,count:1}]);
  if(can){run({type});bonusExpanded=false;render();}else{render();message.textContent=type==='discovery'?'BONUS: Decode the Echo fragment with a Sight Lens. You can skip this and keep following the main story.':hint();}
 };
-$('#guideButton').onclick=()=>{coachExpanded=!coachExpanded;renderCoach();};
+$('#guideButton').onclick=()=>{coachExpanded=!coachExpanded;$('#guideButton').setAttribute('aria-expanded',String(coachExpanded));renderCoach();};
 $('#guidePanel').addEventListener('click',e=>{
  const target=e.target.closest('[data-coach-kind]');if(!target)return;
  const type=target.dataset.coachKind,index=target.hasAttribute('data-coach-index')?+target.dataset.coachIndex:null;
