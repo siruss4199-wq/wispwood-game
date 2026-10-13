@@ -39,7 +39,7 @@ export function objectGuide(s,index){
   const keep=goal(s)?.needs.some(r=>r.family===x.family&&r.tier===x.tier);
   const site=s.stage>=2&&anchors(s).find(y=>y.phase==='idle'&&y.kind in ANCHORS&&ANCHORS[y.kind].equipment===x.family&&x.tier===3);
   const role=keep?'This exact item is needed for the MAIN STORY.':site?'You can USE this on '+ANCHORS[site.kind].name+' or keep it to merge higher.':'This is a merge item, not a producer or an Echo fragment.';
-  const how=x.tier===7?'Highest discovery tier.':twin?'Tap or drag this item onto its identical twin to make '+next+'.':'No matching twin on the board. Make another from '+SOURCES[x.family].name+' and merge pairs to this level.';
+  const how=x.tier===7?'Highest discovery tier.':twin?'Tap or drag this item onto its matching twin to make '+next+'.':'No matching twin on the board. Make another from '+SOURCES[x.family].name+' and merge pairs to this level.';
   return {title:nameOf(x)+' · '+f.name+' T'+(x.tier+1),short:(keep?'STORY ITEM · ':twin?'MERGE MATCH · ':'CRAFT PART · ')+nameOf(x),detail:role+' '+how};
  }
  if(x.type==='source')return {
