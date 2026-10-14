@@ -3,7 +3,7 @@ import {goal,ready,count,normalContract,SOURCES,sourceUnlocked} from '../v5/core
 import {ANCHORS,ROUTES,equipment,anchors} from '../v5/expedition.mjs';
 import {circuit,linkPhase,loopCell} from '../v5/seals.mjs';
 const req=(family,tier,count=1)=>({family,tier,count});
-export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,session=null,style='expedition',findStrategy=null}={}){
+export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,session=null,style='expedition',findStrategy=null,decode=true,route=null}={}){
  if(!goal(s))return null;
  const spaces=s.board.filter(x=>x===null).length;
  // An impulsive merger compacts ALL families, even when a pair could be installed
@@ -19,7 +19,7 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
  else if(sideFirst&&s.contracts===0&&(s.stage>0||s.landingStep>=1)){needs=normalContract(s).needs;command={type:'contract'};}
  else if(s.stage===0){needs=goal(s).needs;command={type:'goal'};}
  else if(s.stage===1){
-  const id=['contract','aggressive'].includes(style)?'conduit':'ridge';
+  const id=route??(['contract','aggressive'].includes(style)?'conduit':'ridge');
   needs=[req(ROUTES[id].family,2)];command={type:'breach',index:s.board.findIndex(x=>x?.type==='route'&&x.id===id)};
  }else{
   const finds=s.board.flatMap((x,i)=>x?.type==='rock'&&x.find&&anchors(s).some(v=>v.kind===x.find&&v.phase==='idle')?[i]:[]);
@@ -31,7 +31,7 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
   // Decoding is an intent: obtain a lens, not just click if one happens to survive.
   const glyph=s.board.findIndex(x=>x?.type==='glyph');
   if(command){/* Resolve the selected excavation before switching intent. */}
-  else if(glyph>=0&&!s.discoveryDone){
+  else if(decode&&glyph>=0&&!s.discoveryDone){
    needs=[req('chart',2)];command={type:'discovery'};
   }else if(style==='contract'&&s.expedition.trades<2&&!(s.expedition.trades===1&&!anchors(s).some(x=>x.kind==='scope'&&x.phase!=='idle'))){
    needs=normalContract(s).needs;command={type:'contract'};

@@ -101,7 +101,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
    }else if(cmd.type==='ration')await page.locator('#rationButton').tap();
    else if(cmd.type==='goal')await page.locator('#goalButton').tap();
    else if(cmd.type==='power'){
-    assert.equal(await page.locator('.sealState.secured').count(),2);assert.equal(await page.locator('.connectedCell').count(),2);assert.equal(await page.locator('.sealWire.live').count(),1);await shot('resonance-connection-ready');
+    assert.equal(await page.locator('.sealState.secured').count(),2);assert.equal(await page.locator('.connectedCell').count(),2);assert.equal(await page.locator('.sealWire.live').count(),1);await page.locator('.moment').waitFor({state:'detached'});await shot('resonance-connection-ready');
     await page.reload();assert.deepEqual((await read()).seals,before.seals);assert.equal(await page.locator('.connectedCell').count(),2);
     if(width===390)await page.locator('.site').filter({hasText:'POWER'}).last().tap();else await page.locator('#goalButton').tap();
    }
