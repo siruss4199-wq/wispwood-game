@@ -35,4 +35,19 @@ This pass fixes action coherence, not the entire economy or post-vault loop. No 
 - Compare real browser screenshots at fresh start, surveyed routes and excavation. Check board prominence, asset integrity and no clipped touch targets.
 - Physical iPhone Safari remains a user playtest; Chromium/WebKit emulation is not proof of real-device ergonomics or human comprehension.
 
-Measured results and remaining issues will be appended after browser review. No invented human playtime or retention claims.
+## Playtest correction: recovered gear versus restored machinery
+
+The user's iPhone playtest rejected the opening-only changes as insufficient: three independent merge ladders and an energy/service loop remained boring. The previous pass's full CI passed, but this was not evidence of fun.
+
+This revision reuses the two saltstone cells as surveyed machinery. Completing the existing crossing survey reveals a winch and a scope without consuming the prepared route tools. At excavation, each find supports two uses:
+
+- **Recover with a split spanner:** the find becomes a movable T3 object. Keep it for merging, exchange it, or spend it on its device later. No energy-only reward or generic crate pop.
+- **Restore with a pulse coil:** consume resonance equipment to activate the matching expedition device immediately. The find's cell opens, the device visibly powers on, and its existing cross-family consequence occurs. The player forgoes the movable object.
+
+This offers an alternative to manufacturing each family's T3 separately. Ridge keeps the lens and buys room; Conduit keeps the spanner and brings the coil that can immediately restore a find. The route therefore changes which excavation option is available next. The other surveyed find is never silently destroyed by the stone lift.
+
+No new art, currency, countdown, board object positions or save key. Existing completed saves are untouched; existing unsurveyed legacy rocks keep their original behavior. This is a small playable decision test, not a claim to have rebuilt the whole game's depth.
+
+Deterministic exploration policies: recover/recover finishes in 47 actions (29 merges, 1 source tap, minimum occupancy 19); restore/restore in 43 (23 merges, 6 taps, minimum 20); mixed in 42 (24 merges, 3 taps, minimum 21). Each decodes the discovery, activates two devices and opens the vault, with 13–14 item discoveries. No human playtime is inferred. The economy is still generous: that remains a material limitation, not a reason to inflate costs or add grind.
+
+Browser captures and CI results accompany the draft PR. Physical iPhone feedback remains the quality gate.

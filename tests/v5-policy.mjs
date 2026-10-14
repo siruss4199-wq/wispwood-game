@@ -2,7 +2,7 @@
 import {goal,ready,count,normalContract,SOURCES,sourceUnlocked} from '../v5/core.mjs';
 import {ANCHORS,ROUTES,equipment,anchors} from '../v5/expedition.mjs';
 const req=(family,tier,count=1)=>({family,tier,count});
-export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,session=null,style='expedition'}={}){
+export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,session=null,style='expedition',findStrategy=null}={}){
  if(!goal(s))return null;
  const spaces=s.board.filter(x=>x===null).length;
  // An impulsive merger compacts ALL families, even when a pair could be installed
@@ -21,9 +21,16 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
   const id=['contract','aggressive'].includes(style)?'conduit':'ridge';
   needs=[req(ROUTES[id].family,2)];command={type:'breach',index:s.board.findIndex(x=>x?.type==='route'&&x.id===id)};
  }else{
+  const finds=s.board.flatMap((x,i)=>x?.type==='rock'&&x.find&&anchors(s).some(v=>v.kind===x.find&&v.phase==='idle')?[i]:[]);
+  if(s.stage===2&&findStrategy&&finds.length){
+   const prior=s.expedition.log.filter(x=>x.type==='find-choice').length;
+   const restore=findStrategy==='restore'||findStrategy==='mixed'&&prior>0;
+   needs=[req(restore?'flux':'rig',2)];command={type:restore?'restore':'clear',index:finds[0]};
+  }
   // Decoding is an intent: obtain a lens, not just click if one happens to survive.
   const glyph=s.board.findIndex(x=>x?.type==='glyph');
-  if(glyph>=0&&!s.discoveryDone){
+  if(command){/* Resolve the selected excavation before switching intent. */}
+  else if(glyph>=0&&!s.discoveryDone){
    needs=[req('chart',2)];command={type:'discovery'};
   }else if(style==='contract'&&s.expedition.trades<2&&!(s.expedition.trades===1&&!anchors(s).some(x=>x.kind==='scope'&&x.phase!=='idle'))){
    needs=normalContract(s).needs;command={type:'contract'};

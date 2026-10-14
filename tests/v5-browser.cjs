@@ -58,7 +58,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
   let actions=0;const timeline=[],captured=new Set();
   while((await read()).stage<4&&actions++<300){
    const before=await read();
-   const cmd=await page.evaluate(async style=>{const {choose}=await import('/tests/v5-policy.mjs');const s=JSON.parse(localStorage.getItem('vaultwake-v5'));window.sessionPolicy??={};return choose(s,{style,openCaches:true,session:window.sessionPolicy});},style);
+   const cmd=await page.evaluate(async style=>{const {choose}=await import('/tests/v5-policy.mjs');const s=JSON.parse(localStorage.getItem('vaultwake-v5'));window.sessionPolicy??={};return choose(s,{style,openCaches:true,session:window.sessionPolicy,findStrategy:style==='exploration'?'mixed':style==='contract'?'restore':null});},style);
    if(cmd.type==='goal'){assert.equal(await page.locator('.objective.ready').count(),1);await shot('main-ready-'+before.stage);if(before.stage===3)await shot('pre-vault');}
    if(cmd.type==='merge'){const selected=page.locator('#board .selected.item,#board .selected.glyph,#board .selected.brace');if(await selected.count())await selected.tap();await page.locator(`[data-index="${cmd.from}"]`).tap();await page.locator(`[data-index="${cmd.to}"]`).tap();}
    else if(cmd.type==='produce'||cmd.type==='service'){
@@ -76,6 +76,15 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
     const a=await page.locator(`[data-index="${from}"]`).boundingBox(),b=await page.locator(`[data-index="${cmd.index}"]`).boundingBox();
     await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:7});assert.equal(await page.locator('.site.target').count(),1,'installed-equipment destination snaps');await page.mouse.up();
    }
+   else if(cmd.type==='restore'){
+    const selected=page.locator('#board .selected.item,#board .selected.glyph,#board .selected.brace');if(await selected.count())await selected.tap();
+    await page.locator(`[data-index="${cmd.index}"]`).tap();assert.equal(await page.locator('.findChoice').count(),2);await shot('buried-choice');
+    for(const choice of await page.locator('.findChoice').all()){const b=await choice.boundingBox();assert.ok(b.height>=44&&b.width>=44);}
+    const from=before.board.findIndex(x=>x?.family==='flux'&&x.tier===2);
+    if(style==='contract'){
+     const a=await page.locator(`[data-index="${from}"]`).boundingBox(),b=await page.locator(`[data-index="${cmd.index}"]`).boundingBox();await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:7});assert.equal(await page.locator('.rock.target').count(),1);await page.mouse.up();
+    }else await page.locator(`[data-index="${from}"]`).tap();
+   }
    else if(cmd.type==='clear'){
     const from=before.board.findIndex(x=>x?.type==='brace'||x?.family==='rig'&&x.tier===2);
     const a=await page.locator(`[data-index="${from}"]`).boundingBox(),b=await page.locator(`[data-index="${cmd.index}"]`).boundingBox();
@@ -90,7 +99,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
    else {await showSide(cmd.type);if(cmd.type==='contract'&&before.stage===3&&!before.expedition.vaultTrade){assert.ok(await page.locator('.tradeSurge').count());await shot('vault-trade-ready');}await page.locator(`[data-contract="${cmd.type}"]`).tap();}
    let s=await read();assert.equal(s.moves,before.moves+1,'exactly one action: '+JSON.stringify(cmd));
    if(cmd.type==='goal'&&before.stage===0&&before.landingStep===1){assert.equal(await page.locator('.deliveryObject.collect').count(),0,'prepared tools do not fly away');for(const family of ['rig','chart'])assert.ok(s.board.some(x=>x?.family===family&&x.tier===2));await shot('prepared-tools');}
-   else if(['goal','breach','deploy','feed','clear','contract','discovery','opportunity'].includes(cmd.type))await payoff(cmd.type);
+   else if(['goal','breach','deploy','restore','feed','clear','contract','discovery','opportunity'].includes(cmd.type))await payoff(cmd.type);
    if(cmd.type==='feed'&&!s.board.some(x=>x?.type==='glyph')){assert.equal(await page.locator('[data-contract="discovery"]').count(),0);assert.equal(await page.locator('[data-contract="startOpportunity"]').count(),1,'spending the clue must not strand the optional slot');}
    if(await page.locator('#celebration').isVisible())await page.locator('#celebration .continue').tap();
    assert.equal(await page.locator('#board').getAttribute('data-site'),String(s.stage===0&&s.landingStep===1?1:s.stage));
