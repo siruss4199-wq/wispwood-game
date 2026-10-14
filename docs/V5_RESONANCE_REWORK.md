@@ -30,8 +30,9 @@ solution path. Dragging a reflector onto movable stock swaps them, including
 on a full board. Turns and moves are free and reversible. No additional tiers,
 timers, producer costs or seal checklists were added.
 
-The Relic finder returns a five-output relic ampoule. The Power bridge refills
-sources and grants three improved pulls. The chosen receiver therefore affects
+The Relic finder returns a five-output relic ampoule. The Power bridge returns a Pocket winch, refills
+sources and grants three improved pulls. The winch guarantees a tangible reward
+even if all charges were already full. The chosen receiver therefore affects
 the board or the next production choices, rather than granting the same reward.
 Navigation, Stabilization and their existing equipment costs are unchanged.
 

@@ -40,7 +40,7 @@ test('receivers require two reflected turns and grant different, single-use rewa
   assert.ok(allSeals(s));assert.equal(s.stage,3);assert.equal(s.board.some(x=>x?.type==='prism'),false);
   assert.deepEqual(s.seals.link,path);
   for(let i=0;i<36;i++)if(before[i]&&before[i].type!=='prism')assert.deepEqual(s.board[i],before[i],'kept stock is never consumed by the beam');
-  if(receiver==='relay'){assert.equal(s.surge,3);assert.deepEqual(s.charges,{rig:7,chart:7,flux:7});}
+  if(receiver==='relay'){assert.equal(s.surge,3);assert.deepEqual(s.charges,{rig:7,chart:7,flux:7});assert.equal(s.board.filter(x=>x?.family==='rig'&&x.tier===3).length,before.filter(x=>x?.family==='rig'&&x.tier===3).length+1,'tangible reward even when charges were already full');}
   else{assert.equal(s.surge,0);assert.deepEqual(s.charges,{rig:0,chart:0,flux:0});assert.ok(s.board.some(x=>x?.type==='crate'&&x.kind==='relic'&&x.left===5));}
   reject(s,{type:'power'});ok(s,{type:'goal'});assert.equal(s.stage,4);
  }

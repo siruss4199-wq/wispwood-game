@@ -70,7 +70,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
    }else if(['turn','prime'].includes(cmd.type)){
     const index=cmd.index??before.board.findIndex(x=>x?.type==='site'&&x.kind==='winch');
     if(await page.locator(`#board [data-index="${index}"]`).getAttribute('aria-pressed')!=='true')await page.locator(`#board [data-index="${index}"]`).tap();
-    await page.locator(`[data-action="${cmd.type}"]`).tap();
+    if((await read()).moves===before.moves)await page.locator(`[data-action="${cmd.type}"]`).tap();
    }else if(cmd.type==='crate')await page.locator(`#board [data-index="${cmd.index}"]`).tap();
    else if(cmd.type==='deploy'&&style==='exploration'){
     const family={winch:'rig',scope:'chart',relay:'flux'}[before.board[cmd.index].kind],from=before.board.findIndex(x=>x?.family===family&&x.tier===3);

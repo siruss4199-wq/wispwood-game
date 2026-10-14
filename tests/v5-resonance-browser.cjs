@@ -49,8 +49,9 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
   for(let n=0;n<60;n++){
    const a=await page.evaluate(async plan=>{const {arrange}=await import('/tests/v5-optics-policy.mjs');return arrange(JSON.parse(localStorage.getItem('vaultwake-v5')),plan);},plan);if(!a)break;
    const before=await read();await perform(a);
-   if(!partial&&(a.type==='turn'&&a.index!==20||a.type==='merge'&&before.board[a.from]?.type==='prism')){await shot('partial');partial=true;}
-   if(!management&&a.type==='merge'&&before.board[a.from]?.type!=='prism'){await shot('workspace-decision');management=true;}
+   const ray=steps.at(-1).ray;
+   if(!partial&&ray.prisms.length>0&&ray.receiver===null&&ray.stop!=='stone'){await shot('partial');partial=true;}
+   if(!management&&a.type==='merge'&&(before.board[a.from]?.type!=='prism'||before.board[a.to])){await shot('workspace-decision');management=true;}
   }
   assert.equal(await page.locator('.litReflector').count(),2);assert.equal(await page.locator('.sealWire.live').count(),1);
   // A wrong setting is recoverable; exercise the visible TURN control twice.
