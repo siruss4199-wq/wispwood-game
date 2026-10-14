@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main, dev/v5-premium-restoration]
+    branches: [main, dev/v5-premium-restoration, codex/v5-first-session-foundation]
   workflow_dispatch:
 
 permissions:
