@@ -1,4 +1,4 @@
-// One item, one immediate consequence. Any two devices prepare the vault.
+// Repairs have immediate consequences. The lift connects to either receiver.
 export const ANCHORS={
  winch:{name:'Stone lift',equipment:'rig',drive:'chart',effect:'Clear two stones · find survey gear',short:'Clear stones'},
  scope:{name:'Relic finder',equipment:'chart',drive:'flux',effect:'Uncover buried ground · find relic gear',short:'Find relics'},

@@ -46,7 +46,7 @@ export function snapshotTask(source){
 // Snapshot sprites outlive the synchronous render. Rules/save settle immediately;
 // these flights never remove items, issue commands or block a second interaction.
 export function deliverFeedback({kind,delivery,rewards,taskRect,taskSnapshot,task,energy,next,stage}){
- const main=kind==='goal'||kind==='breach',rare=kind==='discovery',signal=kind==='opportunity';
+ const main=kind==='goal'||kind==='breach'||kind==='power',rare=kind==='discovery',signal=kind==='opportunity';
  const board=document.querySelector('#board');
  task?.classList.remove('taskCollected');if(task){void task.offsetWidth;task.classList.add('taskCollected');setTimeout(()=>task.classList.remove('taskCollected'),620);}
  board.classList.remove('sitePayoff','echoPayoff');void board.offsetWidth;if(main||rare)board.classList.add(main?'sitePayoff':'echoPayoff');
