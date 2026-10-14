@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main, dev/v5-premium-restoration]
+    branches: [main, dev/v5-premium-restoration, codex/v5-first-session-foundation]
   workflow_dispatch:
 
 permissions:
@@ -42,7 +42,10 @@ jobs:
         run: node --test tests/v4-crazygames.test.mjs
 
       - name: Run V5 rules and first-session simulation
-        run: node --test tests/v5-*.test.mjs
+        run: |
+          node --test tests/v5-*.test.mjs
+          mkdir -p test-artifacts/v5
+          node tests/v5-seal-metrics.mjs > test-artifacts/v5/seal-policy-metrics.json
       - name: Check V5 modules
         run: node --check v5/app.mjs && node --check v5/core.mjs && node --check v5/art.mjs
       - name: Install browser smoke dependencies

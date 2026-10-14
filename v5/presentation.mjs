@@ -1,5 +1,6 @@
 import {goal,normalContract,ready,matches,nameOf,item,SOURCES} from './core.mjs';
 import {equipment,ROUTES,canRestore} from './expedition.mjs';
+import {circuit} from './seals.mjs';
 
 export const SITE_NAMES=['Landing tray','Survey worksite','Excavated saltglass','Powered relic site','Vault observatory'];
 // A single continuous surface, under the unchanged 36 hit targets. All marks are original.
@@ -16,6 +17,7 @@ export function siteSurface(stage){
 
 // Uses precisely the same first-match order as the reducer's consume(). Pure and testable.
 export function deliveryItems(s,action,now=Date.now()){
+ if(action.type==='power')return (circuit(s)?.slice(1,-1)??[]).map(index=>({index,x:{...s.board[index]}}));
  // Survey prepares both tools; only the subsequent chosen route consumes one.
  if(action.type==='goal'&&s.stage===0&&s.landingStep===1)return [];
  if(action.type==='restore'&&canRestore(s,s.board[action.index])){
@@ -48,7 +50,8 @@ export function deliveryItems(s,action,now=Date.now()){
  return found;
 }
 export function continuation(s,action,rewards=[]){
- if(action.type==='breach')return 'Echo Crucible unlocked · choose two devices';
+ if(action.type==='breach')return 'Navigation secured · restore the stone lift';
+ if(action.type==='power')return 'Three seals secured · open the Tideglass Vault';
  if(action.type==='goal'&&s.stage===0&&s.landingStep===1)return 'Landing secured · Survey Kite unlocked · chart the crossing';
  if(action.type==='goal'&&s.stage===1)return 'Survey complete · choose your breach and 3 Surge pulls';
  if(action.type==='goal'&&s.stage===2)return 'Echo Crucible unlocked · reveal the ampoule';

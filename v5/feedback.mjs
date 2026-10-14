@@ -38,7 +38,7 @@ export function moment(title,detail='',object=null){
 export function snapshotTask(source){
  if(!source||reduced())return null;
  const copy=source.cloneNode(true),originals=[source,...source.querySelectorAll('*')],copies=[copy,...copy.querySelectorAll('*')];
- const properties=['display','box-sizing','width','height','min-width','min-height','max-width','max-height','grid-template-columns','flex','flex-direction','flex-shrink','justify-content','align-items','gap','margin','padding','position','top','right','bottom','left','font','line-height','letter-spacing','text-align','white-space','color','background','border','border-radius','box-shadow','opacity','object-fit'];
+ const properties=['display','box-sizing','width','height','min-width','min-height','max-width','max-height','grid-template-columns','grid-column','grid-row','flex','flex-direction','flex-shrink','justify-content','align-items','gap','margin','padding','position','top','right','bottom','left','font','line-height','letter-spacing','text-align','white-space','color','background','border','border-radius','box-shadow','opacity','object-fit'];
  originals.forEach((el,i)=>{if(el.namespaceURI!=='http://www.w3.org/1999/xhtml'&&el.tagName.toLowerCase()!=='svg')return;const css=getComputedStyle(el);for(const key of properties)copies[i].style.setProperty(key,css.getPropertyValue(key));});
  if(source.classList.contains('objective')&&getComputedStyle(source).backgroundColor==='rgba(0, 0, 0, 0)'&&getComputedStyle(source).backgroundImage==='none')copy.style.background='#234e57';
  return copy;
@@ -46,7 +46,7 @@ export function snapshotTask(source){
 // Snapshot sprites outlive the synchronous render. Rules/save settle immediately;
 // these flights never remove items, issue commands or block a second interaction.
 export function deliverFeedback({kind,delivery,rewards,taskRect,taskSnapshot,task,energy,next,stage}){
- const main=kind==='goal'||kind==='breach',rare=kind==='discovery',signal=kind==='opportunity';
+ const main=kind==='goal'||kind==='breach'||kind==='power',rare=kind==='discovery',signal=kind==='opportunity';
  const board=document.querySelector('#board');
  task?.classList.remove('taskCollected');if(task){void task.offsetWidth;task.classList.add('taskCollected');setTimeout(()=>task.classList.remove('taskCollected'),620);}
  board.classList.remove('sitePayoff','echoPayoff');void board.offsetWidth;if(main||rare)board.classList.add(main?'sitePayoff':'echoPayoff');
