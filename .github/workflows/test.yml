@@ -54,10 +54,10 @@ jobs:
       - name: Verify mobile render, persistence and board interactions
         run: |
           python3 -m http.server 8080 > /tmp/wispwood-http.log 2>&1 &
+          node tests/v5-resonance-browser.cjs
           node tests/v45-browser.cjs
           node tests/v5-browser.cjs
           node tests/v5-mobile.cjs
-          node tests/v5-resonance-browser.cjs
       - name: Save mobile screenshots
         if: always()
         uses: actions/upload-artifact@v4

@@ -5,7 +5,9 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
  try{for(const [route,receiver,lane]of [['conduit','scope','upper'],['ridge','relay','lower']]){
   const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,recordVideo:{dir,size:{width:390,height:844}}});
   const page=await context.newPage(),video=page.video(),errors=[],steps=[];page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(8000);
+  try{
   await page.goto('http://127.0.0.1:8080/v5/');await page.waitForSelector('#board .tile');
+  await page.evaluate(()=>{window.inputLog=[];for(const type of ['pointerdown','pointerup','pointercancel'])document.addEventListener(type,e=>{window.inputLog.push({type,x:e.clientX,y:e.clientY,button:e.button,target:e.target.closest('[data-index]')?.dataset.index,hit:document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-index]')?.dataset.index});window.inputLog=window.inputLog.slice(-12);},true);});
   const read=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('vaultwake-v5')));
   const shot=async name=>{await page.locator('.moment').waitFor({state:'detached'});await page.evaluate(async()=>Promise.all([...document.images].map(x=>x.decode().catch(()=>{}))));await page.screenshot({path:`${dir}/${route}-${name}-390.png`,fullPage:true});};
   const drag=async(from,to)=>{
@@ -29,6 +31,8 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
     if(await page.locator(`#board [data-index="${index}"]`).getAttribute('aria-pressed')!=='true')await page.locator(`#board [data-index="${index}"]`).tap();
     if((await read()).moves===before.moves)await page.locator(`[data-action="${a.type}"]`).tap();
    }
+   try{await page.waitForFunction(n=>JSON.parse(localStorage.getItem('vaultwake-v5')).moves>n,before.moves,{timeout:1500});}
+   catch(e){await page.screenshot({path:`${dir}/${route}-input-failure.png`,fullPage:true});const debug=await page.evaluate(()=>({input:window.inputLog,message:document.querySelector('#message').textContent,state:JSON.parse(localStorage.getItem('vaultwake-v5'))}));fs.writeFileSync(`${dir}/${route}-input-failure.json`,JSON.stringify({action:a,before,debug},null,2));throw e;}
    const after=await read();assert.equal(after.moves,before.moves+1,JSON.stringify(a));
    const ray=await page.evaluate(async()=>{const {beam}=await import('/v5/seals.mjs');return beam(JSON.parse(localStorage.getItem('vaultwake-v5')));});
    steps.push({action:a,moves:after.moves,occupied:after.board.filter(Boolean).length,energy:after.energy,ray});
@@ -61,7 +65,7 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
   await perform({type:'goal'});await page.locator('#celebration').waitFor({state:'visible'});await page.locator('#celebration .continue').tap();await shot('vault-open');
   assert.equal((await read()).stage,4);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);
   fs.writeFileSync(`${dir}/${route}-walkthrough.json`,JSON.stringify({route,receiver,lane,puzzleActions:steps.length-start-1,plan,steps},null,2));
-  await context.close();await video.saveAs(`${dir}/${route}-walkthrough.webm`);
+  }finally{await context.close();await video.saveAs(`${dir}/${route}-walkthrough.webm`);}
  }
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});
