@@ -9,7 +9,7 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
   const read=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('vaultwake-v5')));
   const shot=async name=>{await page.locator('.moment').waitFor({state:'detached'});await page.evaluate(async()=>Promise.all([...document.images].map(x=>x.decode().catch(()=>{}))));await page.screenshot({path:`${dir}/${route}-${name}-390.png`,fullPage:true});};
   const drag=async(from,to)=>{
-   const a=await page.locator(`[data-index="${from}"]`).boundingBox(),b=await page.locator(`[data-index="${to}"]`).boundingBox();
+   const a=await page.locator(`#board [data-index="${from}"]`).boundingBox(),b=await page.locator(`#board [data-index="${to}"]`).boundingBox();
    const touch=await context.newCDPSession(page),start={x:a.x+a.width/2,y:a.y+a.height/2},end={x:b.x+b.width/2,y:b.y+b.height/2};
    await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[start]});
    for(let n=1;n<=9;n++){await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:start.x+(end.x-start.x)*n/9,y:start.y+(end.y-start.y)*n/9}]});await page.waitForTimeout(24);}
@@ -19,14 +19,14 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
    const before=await read();assert.ok(a);
    if(a.type==='merge'||a.type==='move')await drag(a.from,a.to);
    else if(a.type==='goal')await page.locator('#goalButton').tap();
-   else if(a.type==='power')await page.locator(`[data-index="${a.index}"]`).tap();
+   else if(a.type==='power')await page.locator(`#board [data-index="${a.index}"]`).tap();
    else if(a.type==='produce'||a.type==='service'){
-    const i=before.board.findIndex(x=>x?.type==='source'&&x.id===a.id);await page.locator(`[data-index="${i}"]`).tap();if(a.type==='service')await page.locator('[data-action="service"]').tap();
+    const i=before.board.findIndex(x=>x?.type==='source'&&x.id===a.id);await page.locator(`#board [data-index="${i}"]`).tap();if(a.type==='service')await page.locator('[data-action="service"]').tap();
    }else if(a.type==='ration')await page.locator('#rationButton').tap();
-   else if(a.type==='crate')await page.locator(`[data-index="${a.index}"]`).tap();
+   else if(a.type==='crate')await page.locator(`#board [data-index="${a.index}"]`).tap();
    else{
     const index=a.index??before.board.findIndex(x=>x?.type==='site'&&x.kind==='winch');
-    if(await page.locator(`[data-index="${index}"]`).getAttribute('aria-pressed')!=='true')await page.locator(`[data-index="${index}"]`).tap();
+    if(await page.locator(`#board [data-index="${index}"]`).getAttribute('aria-pressed')!=='true')await page.locator(`#board [data-index="${index}"]`).tap();
     if((await read()).moves===before.moves)await page.locator(`[data-action="${a.type}"]`).tap();
    }
    const after=await read();assert.equal(after.moves,before.moves+1,JSON.stringify(a));
@@ -49,7 +49,7 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
   for(let n=0;n<60;n++){
    const a=await page.evaluate(async plan=>{const {arrange}=await import('/tests/v5-optics-policy.mjs');return arrange(JSON.parse(localStorage.getItem('vaultwake-v5')),plan);},plan);if(!a)break;
    const before=await read();await perform(a);
-   if(!partial&&a.type==='turn'&&a.index!==20){await shot('partial');partial=true;}
+   if(!partial&&(a.type==='turn'&&a.index!==20||a.type==='merge'&&before.board[a.from]?.type==='prism')){await shot('partial');partial=true;}
    if(!management&&a.type==='merge'&&before.board[a.from]?.type!=='prism'){await shot('workspace-decision');management=true;}
   }
   assert.equal(await page.locator('.litReflector').count(),2);assert.equal(await page.locator('.sealWire.live').count(),1);

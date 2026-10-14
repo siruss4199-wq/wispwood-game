@@ -69,10 +69,12 @@ function render(){
  }).join('');
  const connected=circuit(state),ray=beam(state),wiring=linkPhase(state)&&optics(state).primed?ray.path:state.stage>=3?state.seals.link:null;
  if(wiring?.length){
-  const points=wiring.map(i=>`${(i%6+.5)*100},${(Math.floor(i/6)+.5)*100}`).join(' ');
+  const ends=wiring.map(i=>[(i%6+.5)*100,(Math.floor(i/6)+.5)*100]);
+  if(linkPhase(state)&&ray.stop==='stone'){const last=wiring.at(-1),next=ray.blocked;ends.push([((last%6+next%6)/2+.5)*100,((Math.floor(last/6)+Math.floor(next/6))/2+.5)*100]);}
+  const points=ends.map(x=>x.join(',')).join(' ');
   board.insertAdjacentHTML('afterbegin',`<svg class="sealWire ${connected||state.seals.resonance?'live':''}" viewBox="0 0 600 600" aria-hidden="true"><polyline points="${points}"/></svg>`);
   for(const i of ray.prisms)board.querySelector(`[data-index="${i}"]`)?.classList.add('litReflector');
-  if(ray.blocked!==undefined)board.querySelector(`[data-index="${ray.blocked}"]`)?.classList.add('beamBlocked');
+  if(ray.stop==='blocked')board.querySelector(`[data-index="${ray.blocked}"]`)?.classList.add('beamBlocked');
  }
  if(linkPhase(state)){
   for(const [a]of BAFFLES)board.insertAdjacentHTML('beforeend',`<span class="saltglassRib" style="left:${(a%6+1)*100/6}%;top:${Math.floor(a/6)*100/6}%" aria-hidden="true"></span>`);

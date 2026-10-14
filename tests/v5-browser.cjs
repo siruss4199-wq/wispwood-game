@@ -47,7 +47,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
    const mission=await page.locator('.objective').boundingBox();assert.ok(mission.height<=86,'single-requirement mission has no empty second row');assert.ok(bounds.y<=345,'board is promoted on the first mobile screen');
    for(const selector of ['#journalButton','#helpButton','#soundButton']){const hit=await page.locator(selector).boundingBox();assert.ok(hit.width>=44&&hit.height>=44,selector+' is a 44px target');}
   }
-  const a=await page.locator('[data-index="7"]').boundingBox(),b=await page.locator('[data-index="8"]').boundingBox();
+  const a=await page.locator('#board [data-index="7"]').boundingBox(),b=await page.locator('#board [data-index="8"]').boundingBox();
   if(width===390&&style==='contract'){
    const touch=await page.context().newCDPSession(page);const from={x:a.x+a.width/2,y:a.y+a.height/2},to={x:b.x+b.width/2,y:b.y+b.height/2};
    await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[from]});
@@ -62,45 +62,45 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
    if(cmd.type==='goal'){assert.equal(await page.locator('.objective.ready').count(),1);await shot('main-ready-'+before.stage);if(before.stage===3)await shot('pre-vault');}
    if(cmd.type==='merge'){
     if(before.board[cmd.from].type!=='item'||width===390&&before.seals.stabilization&&before.board[cmd.to]===null){
-     const a=await page.locator(`[data-index="${cmd.from}"]`).boundingBox(),b=await page.locator(`[data-index="${cmd.to}"]`).boundingBox();await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:7});await page.mouse.up();
-    }else{const selected=page.locator('#board .selected.item,#board .selected.glyph,#board .selected.brace');if(await selected.count())await selected.tap();await page.locator(`[data-index="${cmd.from}"]`).tap();await page.locator(`[data-index="${cmd.to}"]`).tap();}
+     const a=await page.locator(`#board [data-index="${cmd.from}"]`).boundingBox(),b=await page.locator(`#board [data-index="${cmd.to}"]`).boundingBox();await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:7});await page.mouse.up();
+    }else{const selected=page.locator('#board .selected.item,#board .selected.glyph,#board .selected.brace');if(await selected.count())await selected.tap();await page.locator(`#board [data-index="${cmd.from}"]`).tap();await page.locator(`#board [data-index="${cmd.to}"]`).tap();}
    }
    else if(cmd.type==='produce'||cmd.type==='service'){
-    const i=before.board.findIndex(x=>x?.type==='source'&&x.id===cmd.id);await page.locator(`[data-index="${i}"]`).tap();if(cmd.type==='service')await page.locator('[data-action="service"]').tap();
+    const i=before.board.findIndex(x=>x?.type==='source'&&x.id===cmd.id);await page.locator(`#board [data-index="${i}"]`).tap();if(cmd.type==='service')await page.locator('[data-action="service"]').tap();
    }else if(['turn','prime'].includes(cmd.type)){
     const index=cmd.index??before.board.findIndex(x=>x?.type==='site'&&x.kind==='winch');
-    if(await page.locator(`[data-index="${index}"]`).getAttribute('aria-pressed')!=='true')await page.locator(`[data-index="${index}"]`).tap();
+    if(await page.locator(`#board [data-index="${index}"]`).getAttribute('aria-pressed')!=='true')await page.locator(`#board [data-index="${index}"]`).tap();
     await page.locator(`[data-action="${cmd.type}"]`).tap();
-   }else if(cmd.type==='crate')await page.locator(`[data-index="${cmd.index}"]`).tap();
+   }else if(cmd.type==='crate')await page.locator(`#board [data-index="${cmd.index}"]`).tap();
    else if(cmd.type==='deploy'&&style==='exploration'){
     const family={winch:'rig',scope:'chart',relay:'flux'}[before.board[cmd.index].kind],from=before.board.findIndex(x=>x?.family===family&&x.tier===3);
     const selected=page.locator('#board .selected.item');if(await selected.count())await selected.tap();
-    await page.locator(`[data-index="${from}"]`).tap();
+    await page.locator(`#board [data-index="${from}"]`).tap();
     assert.ok(await page.locator('.site.useTarget').count()>0,'equipment highlights its expedition destination');
     await page.locator(`[data-action="deploy"][data-target="${cmd.index}"]`).tap();
    }
    else if(cmd.type==='deploy'&&style==='contract'){
     const family={winch:'rig',scope:'chart',relay:'flux'}[before.board[cmd.index].kind],from=before.board.findIndex(x=>x?.family===family&&x.tier===3);
-    const a=await page.locator(`[data-index="${from}"]`).boundingBox(),b=await page.locator(`[data-index="${cmd.index}"]`).boundingBox();
+    const a=await page.locator(`#board [data-index="${from}"]`).boundingBox(),b=await page.locator(`#board [data-index="${cmd.index}"]`).boundingBox();
     await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:7});assert.equal(await page.locator('.site.target').count(),1,'installed-equipment destination snaps');await page.mouse.up();
    }
    else if(cmd.type==='restore'){
     const selected=page.locator('#board .selected.item,#board .selected.glyph,#board .selected.brace');if(await selected.count())await selected.tap();
-    await page.locator(`[data-index="${cmd.index}"]`).tap();assert.equal(await page.locator('.findChoice').count(),2);await shot('buried-choice');
+    await page.locator(`#board [data-index="${cmd.index}"]`).tap();assert.equal(await page.locator('.findChoice').count(),2);await shot('buried-choice');
     for(const choice of await page.locator('.findChoice').all()){const b=await choice.boundingBox();assert.ok(b.height>=44&&b.width>=44);}
     const from=before.board.findIndex(x=>x?.family==='flux'&&x.tier===2);
     if(style==='contract'){
-     const a=await page.locator(`[data-index="${from}"]`).boundingBox(),b=await page.locator(`[data-index="${cmd.index}"]`).boundingBox();await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:7});assert.equal(await page.locator('.rock.target').count(),1);await page.mouse.up();
-    }else await page.locator(`[data-index="${from}"]`).tap();
+     const a=await page.locator(`#board [data-index="${from}"]`).boundingBox(),b=await page.locator(`#board [data-index="${cmd.index}"]`).boundingBox();await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:7});assert.equal(await page.locator('.rock.target').count(),1);await page.mouse.up();
+    }else await page.locator(`#board [data-index="${from}"]`).tap();
    }
    else if(cmd.type==='clear'){
     const from=before.board.findIndex(x=>x?.type==='brace'||x?.family==='rig'&&x.tier===2);
-    const a=await page.locator(`[data-index="${from}"]`).boundingBox(),b=await page.locator(`[data-index="${cmd.index}"]`).boundingBox();
+    const a=await page.locator(`#board [data-index="${from}"]`).boundingBox(),b=await page.locator(`#board [data-index="${cmd.index}"]`).boundingBox();
     await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:7});
     assert.equal(await page.locator('.rock.target').count(),1,'held tool snaps to usable stone');await page.mouse.up();
    }
    else if(['deploy','feed','breach','branch','recycle'].includes(cmd.type)){
-    if(!await page.locator(`[data-index="${cmd.index}"]`).getAttribute('aria-pressed').then(x=>x==='true'))await page.locator(`[data-index="${cmd.index}"]`).tap();
+    if(!await page.locator(`#board [data-index="${cmd.index}"]`).getAttribute('aria-pressed').then(x=>x==='true'))await page.locator(`#board [data-index="${cmd.index}"]`).tap();
     if((await read()).moves===before.moves)await page.locator(`[data-action="${cmd.type}"]`).tap();
    }else if(cmd.type==='ration')await page.locator('#rationButton').tap();
    else if(cmd.type==='goal')await page.locator('#goalButton').tap();
@@ -113,7 +113,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
    let s=await read();assert.equal(s.moves,before.moves+1,'exactly one action: '+JSON.stringify(cmd));
    if(cmd.type==='goal'&&before.stage===0&&before.landingStep===1){assert.equal(await page.locator('.deliveryObject.collect').count(),0,'prepared tools do not fly away');for(const family of ['rig','chart'])assert.ok(s.board.some(x=>x?.family===family&&x.tier===2));await shot('prepared-tools');}
    else if(cmd.type==='goal'&&before.stage===3){assert.equal((await read()).seals.resonance,true);await page.locator('#celebration').waitFor({state:'visible'});}
-   else if(['goal','breach','power','deploy','restore','feed','clear','contract','discovery','opportunity'].includes(cmd.type))await payoff(cmd.type);
+   else if(['goal','breach','power','prime','deploy','restore','feed','clear','contract','discovery','opportunity'].includes(cmd.type))await payoff(cmd.type);
    if(cmd.type==='feed'&&!s.board.some(x=>x?.type==='glyph')){assert.equal(await page.locator('[data-contract="discovery"]').count(),0);assert.equal(await page.locator('[data-contract="startOpportunity"]').count(),1,'spending the clue must not strand the optional slot');}
    if(await page.locator('#celebration').isVisible())await page.locator('#celebration .continue').tap();
    assert.equal(await page.locator('#board').getAttribute('data-site'),String(s.stage===0&&s.landingStep===1?1:s.stage));
@@ -140,9 +140,9 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
   console.log(JSON.stringify({width,style,actions,merges:saved.merges,stage:saved.stage,discovered:saved.discovered.length}));await page.close();
  }
  // CrazyGames entry works even if external SDK is unavailable, as in Basic Launch preview.
- const page=await browser.newPage({viewport:{width:390,height:844},reducedMotion:"no-preference"});const motionErrors=[];page.on("pageerror",e=>motionErrors.push(e.message));await page.route('https://sdk.crazygames.com/**',r=>r.abort());await page.goto('http://127.0.0.1:8080/v5/crazygames.html');await page.waitForFunction(()=>document.querySelectorAll('#board .tile').length===36);await page.locator('[data-index="34"]').click();await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5')).board[34].type==='item');assert.equal(await page.locator('[data-action="crate"]').count(),0);await page.waitForTimeout(120);await page.screenshot({path:'test-artifacts/v5/container-opening-motion.png',fullPage:true});await page.locator('[data-index="0"]').click();assert.equal(await page.locator('.flight').count(),1);assert.equal(await page.locator('.rareTrack').getAttribute('aria-valuenow'),'1');await page.waitForTimeout(550);assert.equal(await page.locator('.flight').count(),0);
+ const page=await browser.newPage({viewport:{width:390,height:844},reducedMotion:"no-preference"});const motionErrors=[];page.on("pageerror",e=>motionErrors.push(e.message));await page.route('https://sdk.crazygames.com/**',r=>r.abort());await page.goto('http://127.0.0.1:8080/v5/crazygames.html');await page.waitForFunction(()=>document.querySelectorAll('#board .tile').length===36);await page.locator('#board [data-index="34"]').click();await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5')).board[34].type==='item');assert.equal(await page.locator('[data-action="crate"]').count(),0);await page.waitForTimeout(120);await page.screenshot({path:'test-artifacts/v5/container-opening-motion.png',fullPage:true});await page.locator('#board [data-index="0"]').click();assert.equal(await page.locator('.flight').count(),1);assert.equal(await page.locator('.rareTrack').getAttribute('aria-valuenow'),'1');await page.waitForTimeout(550);assert.equal(await page.locator('.flight').count(),0);
  await page.evaluate(()=>{window.seenParticles=0;new MutationObserver(records=>{for(const r of records)for(const n of r.addedNodes)if(n.classList?.contains('fxParticle'))window.seenParticles++;}).observe(document.body,{childList:true});});
- const pair=await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5'));for(let i=0;i<s.board.length;i++)for(let j=i+1;j<s.board.length;j++){const a=s.board[i],b=s.board[j];if(a?.type==='item'&&b?.type==='item'&&a.family===b.family&&a.tier===b.tier&&a.tier<7)return [i,j];}return null;});assert.ok(pair,'fresh CrazyGames entry exposes a mergeable pair');const pa=await page.locator(`[data-index="${pair[0]}"]`).boundingBox(),pb=await page.locator(`[data-index="${pair[1]}"]`).boundingBox();await page.mouse.move(pa.x+pa.width/2,pa.y+pa.height/2);await page.mouse.down();await page.mouse.move(pb.x+pb.width/2,pb.y+pb.height/2,{steps:5});await page.mouse.up();await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5')).merges===1);assert.deepEqual(motionErrors,[]);assert.equal(await page.locator('.merge-pop').count(),1,'merged tile gets tactile pop feedback');assert.ok(await page.evaluate(()=>window.seenParticles)>0,'merge creates a particle burst');await page.waitForTimeout(600);assert.equal(await page.locator('.fxParticle').count(),0);
+ const pair=await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5'));for(let i=0;i<s.board.length;i++)for(let j=i+1;j<s.board.length;j++){const a=s.board[i],b=s.board[j];if(a?.type==='item'&&b?.type==='item'&&a.family===b.family&&a.tier===b.tier&&a.tier<7)return [i,j];}return null;});assert.ok(pair,'fresh CrazyGames entry exposes a mergeable pair');const pa=await page.locator(`#board [data-index="${pair[0]}"]`).boundingBox(),pb=await page.locator(`#board [data-index="${pair[1]}"]`).boundingBox();await page.mouse.move(pa.x+pa.width/2,pa.y+pa.height/2);await page.mouse.down();await page.mouse.move(pb.x+pb.width/2,pb.y+pb.height/2,{steps:5});await page.mouse.up();await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5')).merges===1);assert.deepEqual(motionErrors,[]);assert.equal(await page.locator('.merge-pop').count(),1,'merged tile gets tactile pop feedback');assert.ok(await page.evaluate(()=>window.seenParticles)>0,'merge creates a particle burst');await page.waitForTimeout(600);assert.equal(await page.locator('.fxParticle').count(),0);
  await page.locator('#soundButton').click();assert.equal(await page.locator('#soundButton').textContent(),'Sound on');await page.reload();assert.equal(await page.locator('#soundButton').textContent(),'Sound on');await page.locator('#journalButton').focus();await page.keyboard.press('Enter');assert.equal(await page.locator('#journal').isVisible(),true);await page.keyboard.press('Escape');assert.equal(await page.locator('#journal').isVisible(),false);await page.close();
  const review=await browser.newPage({viewport:{width:390,height:844}});await review.goto('http://127.0.0.1:8080/v5/art-review.html');await review.waitForFunction(()=>document.querySelectorAll('#after img').length===4);await review.evaluate(async()=>{await Promise.all([...document.images].map(x=>x.decode()));});assert.equal(await review.locator('#after img').count(),4);for(const img of await review.locator('#after img').all()){const b=await img.boundingBox();assert.equal(b.width,48);assert.equal(b.height,48);}await review.screenshot({path:'test-artifacts/v5/premium-art-review-390.png',fullPage:true});await review.locator('#sampleComparison').screenshot({path:'test-artifacts/v5/refinement-48px.png'});assert.equal(await review.locator('#previous img').count(),4);await review.close();
  const slice=await browser.newPage({viewport:{width:390,height:844}});await slice.goto('http://127.0.0.1:8080/v5/production-review.html');await slice.waitForSelector('#live img');await slice.evaluate(async()=>Promise.all([...document.images].map(x=>x.decode())));for(const img of await slice.locator('#objects img').all()){const box=await img.boundingBox();assert.equal(box.width,48);assert.equal(box.height,48);}await slice.locator('#objects').screenshot({path:'test-artifacts/v5/production-48px.png'});await slice.close();
