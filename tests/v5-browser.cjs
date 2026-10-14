@@ -67,6 +67,10 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
    }
    else if(cmd.type==='produce'||cmd.type==='service'){
     const i=before.board.findIndex(x=>x?.type==='source'&&x.id===cmd.id);await page.locator(`[data-index="${i}"]`).tap();if(cmd.type==='service')await page.locator('[data-action="service"]').tap();
+   }else if(['turn','prime'].includes(cmd.type)){
+    const index=cmd.index??before.board.findIndex(x=>x?.type==='site'&&x.kind==='winch');
+    if(await page.locator(`[data-index="${index}"]`).getAttribute('aria-pressed')!=='true')await page.locator(`[data-index="${index}"]`).tap();
+    await page.locator(`[data-action="${cmd.type}"]`).tap();
    }else if(cmd.type==='crate')await page.locator(`[data-index="${cmd.index}"]`).tap();
    else if(cmd.type==='deploy'&&style==='exploration'){
     const family={winch:'rig',scope:'chart',relay:'flux'}[before.board[cmd.index].kind],from=before.board.findIndex(x=>x?.family===family&&x.tier===3);
@@ -101,8 +105,8 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
    }else if(cmd.type==='ration')await page.locator('#rationButton').tap();
    else if(cmd.type==='goal')await page.locator('#goalButton').tap();
    else if(cmd.type==='power'){
-    assert.equal(await page.locator('.sealState.secured').count(),2);assert.equal(await page.locator('.connectedCell').count(),2);assert.equal(await page.locator('.sealWire.live').count(),1);await page.locator('.moment').waitFor({state:'detached'});await shot('resonance-connection-ready');
-    await page.reload();assert.deepEqual((await read()).seals,before.seals);assert.equal(await page.locator('.connectedCell').count(),2);
+    assert.equal(await page.locator('.sealState.secured').count(),2);assert.equal(await page.locator('.litReflector').count(),2);assert.equal(await page.locator('.sealWire.live').count(),1);await page.locator('.moment').waitFor({state:'detached'});await shot('resonance-connection-ready');
+    await page.reload();assert.deepEqual((await read()).seals,before.seals);assert.equal(await page.locator('.litReflector').count(),2);
     if(width===390)await page.locator('.site').filter({hasText:'POWER'}).last().tap();else await page.locator('#goalButton').tap();
    }
    else {await showSide(cmd.type);if(cmd.type==='contract'&&before.stage===2&&before.seals.stabilization&&!before.expedition.vaultTrade){assert.ok(await page.locator('.tradeSurge').count());await shot('cell-exchange-ready');}await page.locator(`[data-contract="${cmd.type}"]`).tap();}

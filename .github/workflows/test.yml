@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main, dev/v5-premium-restoration, codex/v5-first-session-foundation]
+    branches: [main, dev/v5-premium-restoration, codex/v5-first-session-foundation, codex/v5-three-seal-foundation]
   workflow_dispatch:
 
 permissions:
@@ -56,6 +56,7 @@ jobs:
           node tests/v45-browser.cjs
           node tests/v5-browser.cjs
           node tests/v5-mobile.cjs
+          node tests/v5-resonance-browser.cjs
       - name: Save mobile screenshots
         if: always()
         uses: actions/upload-artifact@v4
