@@ -9,6 +9,15 @@ export const ROUTES={
  conduit:{name:'Conduit breach',family:'chart',start:27,benefit:'Relic equipment · 3 rich pulls'}
 };
 export const equipment=kind=>({family:ANCHORS[kind].equipment,tier:3,count:1});
+// The two existing stones conceal useful machinery, revealed by the crossing survey.
+// Recover it as a movable object, or spend relic energy to restore its site directly.
+export const FINDS={winch:{name:'Buried winch',family:'rig'},scope:{name:'Buried scope',family:'chart'}};
+export function surveyFinds(s){
+ const rocks=s.board.filter(x=>x?.type==='rock');
+ for(const [n,x] of rocks.entries())if(!x.find)x.find=n%2?'scope':'winch';
+}
+export const findSite=(s,x)=>x?.type==='rock'&&FINDS[x.find]?s.board.find(v=>v?.type==='site'&&v.kind===x.find):null;
+export const canRestore=(s,x)=>s.stage>=2&&s.stage<4&&findSite(s,x)?.phase==='idle';
 export const anchors=s=>s.board.filter(x=>x?.type==='site');
 export const activeAnchors=s=>anchors(s).filter(x=>x.phase==='active');
 export const completedAnchors=s=>anchors(s).filter(x=>x.phase==='done').length;

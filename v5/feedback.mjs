@@ -50,7 +50,7 @@ export function deliverFeedback({kind,delivery,rewards,taskRect,taskSnapshot,tas
  const board=document.querySelector('#board');
  task?.classList.remove('taskCollected');if(task){void task.offsetWidth;task.classList.add('taskCollected');setTimeout(()=>task.classList.remove('taskCollected'),620);}
  board.classList.remove('sitePayoff','echoPayoff');void board.offsetWidth;if(main||rare)board.classList.add(main?'sitePayoff':'echoPayoff');
- const title=main?['','Landing secured','Door uncovered','Ring engine online','Tideglass Vault opened'][stage]:kind==='deploy'?'Device ready':rare?'The echo answers':signal?'Signal received':'Supplies secured';
+ const title=main?['Landing secured','Route equipment ready','Door uncovered','Ring engine online','Tideglass Vault opened'][stage]:kind==='restore'?'Machinery restored':kind==='clear'?'Salvage uncovered':kind==='deploy'?'Device ready':rare?'The echo answers':signal?'Signal received':'Supplies secured';
  moment(title,next);
  sound.play(main?'milestone':rare||signal?'rare':'contract');
  if(reduced()){
@@ -93,7 +93,7 @@ export function feedback({event,tile,x,from,energyDelta,stage,firstContract=fals
  else if(event==='milestone'){
   document.querySelector('.moment')?.remove();
   const world=document.querySelector('.world');burst(world.getBoundingClientRect(),'gold',true);sound.play('milestone');
-  if(stage<4)moment(['','Survey Kite unlocked','Echo Crucible unlocked','The rings are awake'][stage],stage===2?'Excavation cache revealed':'Expedition advanced');
+  if(stage<4)moment(['Survey Kite unlocked','Route equipment ready','Echo Crucible unlocked','The rings are awake'][stage],stage===1?'Both tools kept · choose your route':stage===2?'Excavation cache revealed':'Expedition advanced');
  }else if(event==='discovery'){sound.play('rare');burst(document.querySelector('.world').getBoundingClientRect(),'flux',true);}
  else if(event==='produce'&&bonus){burst(rect,bonus,true);sound.play('rare');moment({rig:'Rover spare found',chart:'Survey bundle found',flux:'Charged fragment found'}[bonus],'A useful bonus from this source');}
  else if(event==='produce'&&improved){burst(rect,x?.family);sound.play('merge',x?.tier??1);tile?.classList.add('merge-pop');}
