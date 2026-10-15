@@ -1,8 +1,9 @@
 import {requestProgress} from './requests.mjs';
+import {WORKSHOP_COST} from './workshop.mjs';
 import {containerInfo,contents} from './containers.mjs';
 import {SAVE_KEY,FAMILIES,SOURCES,STAGES,fresh,load,act,goal,count,ready,matches,nameOf,normalContract,opportunity,nextOutput,burstOutput,item,near,sourceUnlocked} from './core.mjs';
 import {art,scene as vectorScene,portrait} from './art.mjs';
-import {feedback,sound,reduced,snapshotTask} from './feedback.mjs';
+import {feedback,sound,reduced,snapshotTask,moment} from './feedback.mjs';
 import {platform} from '../v4/platform.mjs';
 import {siteSurface,SITE_NAMES,deliveryItems,continuation} from './presentation.mjs';
 import {deliverFeedback} from './feedback.mjs';
@@ -46,6 +47,16 @@ function renderSurvey(){
   }
  }
 }
+function renderWorkshop(){
+ let button=$('#workshop');
+ if(!button){$('#scene').insertAdjacentHTML('beforeend','<button id="workshop"><img width="256" height="256" alt=""><span></span></button>');button=$('#workshop');}
+ const restored=state.workshop.repaired,ready=state.requests.supplies>=WORKSHOP_COST;
+ const src='assets/premium/workshop-'+(restored?'operational':'damaged')+'.webp';
+ if(button.querySelector('img').getAttribute('src')!==src)button.querySelector('img').src=src;
+ button.dataset.state=restored?'operational':'damaged';button.classList.toggle('repairReady',!restored&&ready);
+ button.querySelector('span').textContent=restored?'Tool press · 2 ϟ':ready?'Repair · 8 ◆':`Workshop · ${state.requests.supplies}/8 ◆`;
+ button.setAttribute('aria-label',restored?'Coastal Workshop operational. Press a Grip tool for 2 energy and one Rover charge.':`Coastal Workshop damaged. Repair for 8 supplies. You have ${state.requests.supplies}.`);
+}
 function renderRequests(){
  $('#requests').hidden=state.stage===0&&!state.landingStep&&state.merges===0;
  $('#sideTray').hidden=state.stage===0&&!state.landingStep;
@@ -70,6 +81,7 @@ function render(){
  $('#energy').textContent=state.energy;$('#marks').textContent=state.marks;
  const viewStage=state.stage===0&&state.landingStep===1?1:state.stage;
  const sceneKey=viewStage+':'+state.post;if($('#scene').dataset.key!==sceneKey){$('#scene').innerHTML=scene(viewStage,state.post);$('#scene').dataset.key=sceneKey;}$('#sceneLabel').textContent=goal(state)?.scene??STAGES[state.stage]?.scene??'The vault is open';
+ renderWorkshop();
  $('#chapterLabel').textContent=state.stage===4?'DISCOVERY · THE SKY WITHIN':'THE SALTGLASS REACH';
  $('.objective').dataset.stage=state.stage;
  const g=goal(state);$('#goalTitle').textContent=g?.name??'Expedition complete';$('#step').textContent=state.stage<4?(g?.phase??`${state.stage+1} / 4`):'DISCOVERED';
@@ -150,6 +162,7 @@ function renderSelection(){
    else {desc=`${state.surge>0?'SURGE · '+state.surge+' shared pulls · ':''}${state.charges[x.id]}/7 charges · Next: ${nameOf(nextOutput(state,x.id))}${burstOutput(state,x.id)?(state.taps[x.id]+1)%7===0?' + bonus tool':' + raw part':''}`;
     buttons=state.charges[x.id]?`<button class="accent" data-action="produce">Produce · ${SOURCES[x.id].cost} ϟ</button>`:'<button data-action="serviceTool">Service · tool</button><button class="accent" data-action="service">Service · 3 ϟ</button>';
    }
+   if(x.id==='rig'&&state.workshop.repaired&&state.charges.rig)buttons+='<button class="accent toolPress" data-action="press">Tool press · 2 ϟ</button>';
   }else if(x.type==='rock'){
    const find=FINDS[x.find];
    if(find){title=find.name;desc=x.find==='winch'?'Recover: lower crossing · Restore: middle crossing':'Recover the gear · or restore its site';
@@ -178,10 +191,10 @@ function run(a){
  const taskSnapshot=delivery.length?snapshotTask($(taskSelector)):null;
  const energyBefore=state.energy,firstContract=state.contracts===0,surgeBefore=state.surge??0;
  const rewardOrigin=document.querySelector(a.type==='contract'||a.type==='opportunity'?'#contracts':'.objective')?.getBoundingClientRect();
- const before=state.stage,landingBefore=state.landingStep,from=a.type==='produce'?board.querySelector(`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===a.id)}"]`)?.getBoundingClientRect():null;
+ const before=state.stage,landingBefore=state.landingStep,from=['produce','press'].includes(a.type)?board.querySelector(`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===a.id)}"]`)?.getBoundingClientRect():null;
  const result=act(state,a,now);message.textContent=result.message;
  if(!result.ok)return result;
- platform.startGameplay();if(['milestone','deployment','contract','discovery','clear','turn'].includes(result.event)){focus='goal';selected=null;}if(a.type==='merge')selected=state.board[result.index]?.type==='prism'?null:result.index;render();persist();
+ platform.startGameplay();if(['milestone','deployment','contract','discovery','clear','turn','restoration'].includes(result.event)){focus='goal';selected=null;}if(a.type==='merge')selected=state.board[result.index]?.type==='prism'?null:result.index;render();persist();
  if(a.type==='goal'&&before===0&&landingBefore===1){for(const tile of board.querySelectorAll('.tile.item')){const x=state.board[+tile.dataset.index];if(x.tier===2&&['rig','chart'].includes(x.family))tile.classList.add('unlocked');}board.querySelectorAll('.rock.surveyed').forEach(tile=>tile.classList.add('unlocked'));}
  if(result.event==='milestone'&&state.stage<4)message.textContent=result.message+' unlocked. '+(goal(state)?.text??'');
  if(!delivery.length)feedback({event:result.event,tile:board.querySelector(`[data-index="${result.index}"]`),x:state.board[result.index],from:rewardOrigin,energyDelta:state.energy-energyBefore,stage:state.stage,firstContract,containerKind:result.containerKind,reveal:result.reveal,bonus:result.bonus,improved:result.improved,breakthrough:result.breakthrough,breakthroughUse:state.stage>=2&&state.board[result.index]?.tier===3?anchors(state).filter(v=>v.phase==='idle'&&ANCHORS[v.kind].equipment===state.board[result.index].family).map(v=>'Use: '+ANCHORS[v.kind].short+' · or merge higher')[0]:null,surgeStarted:state.surge>surgeBefore});
@@ -196,7 +209,9 @@ function run(a){
  for(const i of result.operated??[])board.querySelector(`[data-index="${i}"]`)?.classList.add('unlocked');
  if(result.event==='milestone'&&(state.stage>before||state.landingStep>landingBefore)){const id=state.landingStep>landingBefore&&state.stage===0?'chart':state.stage===2?'flux':null;if(id)board.querySelector(`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===id)}"]`)?.classList.add('unlocked');}
  if(result.index!==null&&result.event!=='merge')board.querySelector(`[data-index="${result.index}"]`)?.classList.add('pop');
- if(a.type==='produce'){
+ if(a.type==='press'){sound.play('merge',1);board.querySelector(`[data-index="${result.index}"]`)?.classList.add('merge-pop');}
+ if(result.event==='restoration'){moment('Workshop restored','Rover tool press unlocked',item('rig',1));sound.play('milestone');$('.world').classList.add('changed');board.querySelector('.source[data-family="rig"]')?.classList.add('unlocked');}
+ if(a.type==='produce'||a.type==='press'){
   board.querySelector(`[data-index="${selected}"]`)?.classList.add('react');
   if(from&&!reduced()){const to=board.querySelector(`[data-index="${result.index}"]`)?.getBoundingClientRect();if(to){const el=document.createElement('div');el.className='flight';el.innerHTML=art(state.board[result.index]);el.style.cssText=`left:${from.x}px;top:${from.y}px;--dx:${to.x-from.x}px;--dy:${to.y-from.y}px`;document.body.append(el);setTimeout(()=>el.remove(),460);}}
  }
@@ -226,6 +241,7 @@ board.addEventListener('pointercancel',()=>{drag=null;board.querySelectorAll('.d
 $('#selection').addEventListener('click',e=>{const button=e.target.closest('[data-action]'),type=button?.dataset.action;if(!type)return;const x=state.board[selected];run({type:type==='serviceTool'?'service':type,index:button.dataset.target!==undefined?+button.dataset.target:selected,from:button.dataset.target!==undefined?selected:undefined,id:x?.id,useTool:type==='serviceTool'});});
 $('#goalButton').onclick=()=>{const g=goal(state);if(g?.action==='inspect'){const choices=state.board.flatMap((x,i)=>(state.stage===1?x?.type==='route':x?.type==='site'&&x.phase!=='done')?[i]:[]);selected=choices[(choices.indexOf(selected)+1)%choices.length];focus='goal';render();message.textContent=g.text;return;}g?run({type:g.action??'goal'}):showJournal();};
 $('#goalNeeds').onclick=e=>{focus='goal';const badge=e.target.closest('[data-site-index]');if(badge){selected=+badge.dataset.siteIndex;const x=state.board[selected];if(x?.type==='rock'){render();return;}const need=x?.type==='site'?equipment(x.kind):{family:ROUTES[x.id].family,tier:2,count:1};if((x.type==='route'&&state.stage===1||x.type==='site'&&x.phase==='idle')&&ready(state,[need])){run({type:x.type==='route'?'breach':'deploy',index:selected});return;}}render();message.textContent=goal(state)?.text??'Keep collecting rare discoveries.';};
+$('#scene').onclick=e=>{if(!e.target.closest('#workshop'))return;if(!state.workshop.repaired){const result=run({type:'restoreWorkshop'});if(!result.ok)message.textContent=`Camp requests fund repairs · ${state.requests.supplies}/${WORKSHOP_COST} supplies`;return;}selected=state.board.findIndex(x=>x?.type==='source'&&x.id==='rig');if(!state.charges.rig){render();$('#selection').scrollIntoView({block:'nearest'});return;}run({type:'press',id:'rig'});board.scrollIntoView({block:'center'});};
 $('#requests').onclick=e=>{const id=e.target.closest('[data-request]')?.dataset.request;if(!id)return;const o=state.requests.orders.find(o=>o?.id===id);if(!o)return;if(focus==='request'&&requestId===id&&requestProgress(state,o).ready){run({type:'request',id});return;}requestId=id;focus='request';selected=null;render();};
 $('#contracts').onclick=e=>{if(e.target.closest('[data-side-next]')){const choices=sideOptions();sideView=choices[(choices.indexOf(sideChoice())+1)%choices.length];render();return;}const type=e.target.closest('[data-contract]')?.dataset.contract;if(!type)return;
  if(type==='startOpportunity'){sideView='opportunity';run({type});focus='opportunity';render();return;}

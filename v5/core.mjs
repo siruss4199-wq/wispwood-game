@@ -135,6 +135,15 @@ export function act(s,a,now=Date.now()){
  const done=(message,event='action',index=null)=>{s.moves++;s.lastAt=now;syncRequests(s);if(event!=='produce')s.producerStreak=0;installSites(s);unfold(s);if(event==='milestone')remember(s,event,now);for(const x of s.board)if(x?.type==='item'){const key=x.family+':'+x.tier;if(!s.discovered.includes(key))s.discovered.push(key);}return {ok:true,message,event,index};};
  const valid=i=>Number.isInteger(i)&&i>=0&&i<36;
  if(a.type==='restoreWorkshop'){const result=restoreWorkshop(s);return result.ok?done(result.message,'restoration'):result;}
+ if(a.type==='press'){
+  if(!s.workshop?.repaired)return fail('Restore the Coastal Workshop to unlock the tool press.');
+  if(!s.board.some(x=>x?.type==='source'&&x.id==='rig'))return fail('Rivet Rover missing.');
+  if(!s.charges.rig)return fail('Service Rivet Rover first.');
+  if(s.energy<2)return fail('Tool press needs 2 energy.');
+  if(!s.board.includes(null))return fail('Make space: merge or deliver an item first.');
+  const i=put(s,item('rig',1));s.energy-=2;s.charges.rig--;s.workshop.presses++;
+  return done('Grip tool pressed · 2 energy · one Rover charge','produce',i);
+ }
  if(a.type==='request'){const result=deliverRequest(s,a.id);if(!result.ok)return result;s.contracts++;return {...done(result.message,'contract'),reward:result.reward};}
  if(a.type==='merge'||a.type==='move'){
   if(!valid(a.from)||!valid(a.to)||a.from===a.to)return fail('Choose another space.');

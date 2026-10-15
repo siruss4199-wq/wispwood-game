@@ -172,3 +172,14 @@ body[data-art] #board .tile.surveyMark{outline:2px dashed #379d9b;outline-offset
 #sideTray[open]>summary:after{content:' ⌄'}
 #sideTray .contracts{margin-top:0}
 @media(min-width:700px){.requestCard{min-height:116px}}
+
+/* One diegetic restoration object; no added panel or board row. */
+#scene{position:relative}
+#workshop{position:absolute;left:8px;top:14px;width:112px;height:90px;padding:0;background:none;box-shadow:none;z-index:2;touch-action:manipulation}
+#workshop img{display:block;width:90px;height:80px;margin:0 auto;object-fit:contain;filter:drop-shadow(0 2px 2px #173a5340)}
+#workshop>span{position:absolute;bottom:1px;left:50%;transform:translateX(-50%);white-space:nowrap;border-radius:7px;padding:3px 6px;font-size:10px;font-weight:800;color:#244d59;background:#fff2d8ed;box-shadow:0 1px 3px #25445535}
+#workshop.repairReady>span{background:#ffe4a2;color:#674718;box-shadow:0 0 0 2px #e9ae42}
+#workshop[data-state="operational"]>span{background:#daf6e5;color:#176c5b}
+body[data-art] .world:has(#workshop) .worldLabel{left:auto;right:10px;top:7px;text-align:right;pointer-events:none}
+.toolPress{border:1px solid #e7bc62!important}
+@media(prefers-reduced-motion:reduce){#workshop{transition:none}}
