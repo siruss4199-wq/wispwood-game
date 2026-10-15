@@ -55,7 +55,7 @@ function renderWorkshop(){
  if(button.querySelector('img').getAttribute('src')!==src)button.querySelector('img').src=src;
  button.dataset.state=restored?'operational':'damaged';button.classList.toggle('repairReady',!restored&&ready);
  button.classList.toggle('pressAvailable',restored&&state.charges.rig>0&&state.energy>=2&&state.board.includes(null));
- button.querySelector('span').textContent=restored?'Grip tool · 2 ϟ':ready?'Repair · 8 ◆':`Workshop · ${state.requests.supplies}/8 ◆`;
+ button.querySelector('span').textContent=restored?'Press Grip · 2 ϟ':ready?'Repair · 8 ◆':`Workshop · ${state.requests.supplies}/8 ◆`;
  button.setAttribute('aria-label',restored?'Coastal Workshop operational. Tap here to press a Grip tool for 2 energy and one Rover charge, or select Rivet Rover.':`Coastal Workshop damaged. Repair for 8 supplies. You have ${state.requests.supplies}.`);
 }
 function renderRequests(){
