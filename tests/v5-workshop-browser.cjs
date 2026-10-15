@@ -9,6 +9,11 @@ const assert=require('node:assert/strict'),fs=require('node:fs');const {chromium
   const shot=async name=>{await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:`${out}/${name}-390.png`,fullPage:true});};
   assert.equal(await page.locator('#workshop').getAttribute('data-state'),'damaged');await shot('01-damaged');
   await page.locator('#board [data-index="7"]').tap();await page.locator('#board [data-index="8"]').tap();await page.locator('#goalButton').tap();await page.waitForTimeout(1900);
+  const goals=(await read()).requests.orders.filter(Boolean).map(o=>o.needs[0].family+':'+o.needs[0].tier);
+  assert.equal(new Set(goals).size,3,'three request cards offer different main items');
+  const shelf=await page.locator('#requests').boundingBox();assert.ok(shelf.height<=135,'request shelf stays compact at 390px');
+  for(const c of await page.locator('.requestCard').all())assert.ok((await c.boundingBox()).height>=44,'request is a large tap target');
+  await shot('01b-compact-variety');
   async function fulfill(lane){
    for(let step=0;step<100;step++){
     const a=await page.evaluate(async lane=>{
@@ -29,7 +34,10 @@ const assert=require('node:assert/strict'),fs=require('node:fs');const {chromium
   for(const lane of [0,1,0,1])await fulfill(lane);
   let s=await read();assert.equal(s.requests.supplies,8);assert.equal(s.requests.completed,4);assert.ok(Object.values(s.taps).reduce((a,b)=>a+b,0)>0);await shot('02-earned-repair');
   const before=structuredClone(s);await page.locator('#workshop').tap();trace.push({type:'restoreWorkshop'});s=await read();assert.equal(s.requests.supplies,0);assert.equal(s.workshop.repaired,true);assert.deepEqual(s.board,before.board);assert.equal(s.stage,before.stage);
-  await page.locator('#workshop img').evaluate(img=>img.decode());await page.waitForTimeout(1900);assert.match(await page.locator('#workshop img').getAttribute('src'),/operational/);await shot('03-operational');
+  await page.locator('#workshop img').evaluate(img=>img.decode());await page.waitForTimeout(1900);assert.match(await page.locator('#workshop img').getAttribute('src'),/operational/);
+  assert.match(await page.locator('#workshop span').textContent(),/Press Grip/);
+  assert.ok(await page.locator('#workshop').evaluate(el=>el.classList.contains('pressAvailable')),'press unlock is clearly visible');
+  await shot('03-operational');
   const unavailable=await page.evaluate(async()=>{const {requestProgress}=await import('/v5/requests.mjs');const s=JSON.parse(localStorage.getItem('vaultwake-v5'));return requestProgress(s,s.requests.orders[2]).ready;});assert.equal(unavailable,false,'next request genuinely needs more production');
   const tools=[];
   for(let n=0;n<4;n++){
