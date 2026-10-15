@@ -4,8 +4,8 @@ import {beam,sightLens} from '../v5/seals.mjs';
 import {choose} from './v5-policy.mjs';
 import {layouts} from './v5-optics-policy.mjs';
 const runs=[];
-for(const route of ['ridge','conduit'])for(const style of ['expedition','exploration'])for(const findStrategy of [null,'recover','restore','mixed'])for(const openCaches of [false,true])for(const decode of [false,true]){
- const options={route,style,findStrategy,openCaches,decode,sideFirst:false},s=fresh(0),actions=[];let entry=null;
+for(const route of ['ridge','conduit'])for(const style of ['expedition','exploration'])for(const findStrategy of [null,'recover','restore','mixed'])for(const openCaches of [false,true])for(const decode of [false,true])for(const mergeSight of [false,true]){
+ const options={route,style,findStrategy,openCaches,decode,mergeSight,sideFirst:false},s=fresh(0),actions=[];let entry=null;
  while(s.stage<4&&s.moves<200){
   const solutions=layouts(s);
   if(!entry&&solutions.length)entry={move:s.moves,occupied:s.board.filter(Boolean).length,solutions:solutions.map(({path,receiver})=>({path,receiver}))};

@@ -5,7 +5,7 @@ import {ANCHORS,ROUTES,equipment,anchors} from '../v5/expedition.mjs';
 import {circuit,linkPhase,optics} from '../v5/seals.mjs';
 import {layouts,arrange} from './v5-optics-policy.mjs';
 const req=(family,tier,count=1)=>({family,tier,count});
-export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,session=null,style='expedition',findStrategy=null,decode=true,route=null}={}){
+export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,session=null,style='expedition',findStrategy=null,decode=true,route=null,mergeSight=false}={}){
  if(!goal(s))return null;
  const spaces=s.board.filter(x=>x===null).length;
  // An impulsive merger compacts ALL families, even when a pair could be installed
@@ -25,6 +25,7 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
   const view=sight(s,id),lens=s.board.findIndex(x=>x?.type==='item'&&x.family==='chart'&&x.tier===2);
   if(lens>=0&&!view.ready){
    const start=view.path[0],blocked=lens!==start&&s.board[start]?start:view.blocked[0];
+   if(mergeSight&&blocked!==undefined){const x=s.board[blocked];if(x?.type==='item'&&x.tier<2){const twin=s.board.findIndex((y,i)=>i!==blocked&&!view.path.includes(i)&&y?.type==='item'&&y.family===x.family&&y.tier===x.tier);if(twin>=0)return {type:'merge',from:blocked,to:twin};}}
    if(blocked!==undefined){const to=s.board.findIndex((x,i)=>!x&&!view.path.includes(i));if(to>=0)return {type:'merge',from:blocked,to};const extra=s.board.findIndex((x,i)=>x?.type==='item'&&i!==lens&&x.tier===0);if(extra>=0)return {type:'recycle',index:extra};}
    if(lens!==start)return {type:'merge',from:lens,to:start};
   }

@@ -40,8 +40,9 @@ Old completed saves keep their seals; unresolved saves keep their inventory.
 
 ## Observed policy results (not human difficulty or exhaustive optimality)
 
-64 deterministic policies: both routes, two styles, four repair preferences,
-cache/no-cache and discovery/no-discovery. All finish. Additional regression
+128 deterministic policies: both routes, two styles, four repair preferences,
+cache/no-cache, discovery/no-discovery, and moving versus merging sightline
+obstructions. All finish. Additional regression
 styles include contract-heavy and aggressive merging; stress cases start with
 a full board, zero energy and zero source charges and reload during play.
 
@@ -50,11 +51,11 @@ a full board, zero energy and zero source charges and reload during play.
 | Ridge / Recover | 25 | 8 | 1 | 6 |
 | Ridge / Restore | 25 | 8 | 3 | 6 |
 | Ridge / mixed | 27 | 8 | 1 | 9 |
-| Conduit / Recover | 27 | 10 | 0 | 7 |
-| Conduit / Restore | 22 | 8 | 1 | 6 |
+| Conduit / Recover | 26 | 10 | 0 | 6 |
+| Conduit / Restore | 21 | 8 | 1 | 6 |
 | Conduit / mixed | 23 | 6 | 0 | 9 |
 
-Fastest observed: 22 actions, 22–26 occupied cells, 76 energy remaining, six
+Fastest observed: 21 actions, 22–26 occupied cells, 76 energy remaining, six
 environment commands. Old winning preference: now 23 actions, 23–26 occupied
 cells, zero pulls, eight environment commands. **Zero-production solutions still
 exist.** They are not concealed or prevented with compulsory tapping.
@@ -74,21 +75,21 @@ merge 2→8; merge 1→8; survey. `move` below is the reducer's non-merging move
 
 | After common opening | Baseline winner | New fastest | Same mixed preference now |
 |---:|---|---|---|
-| 8 | Breach 27 | Move 15→3 | Move 15→3 |
+| 8 | Breach 27 | Merge 15→16 (clear sightline) | Move 15→3 |
 | 9 | Recover 19 | Move lens 14→9 | Move lens 14→9 |
 | 10 | Restore 32 | Breach 27 | Breach 27 |
 | 11 | Deploy 20 | Restore 19 | Recover 19 |
-| 12 | Merge 6→7 | Merge 3→16 | Restore 32 |
-| 13 | Move 7→21 | Crucible pull | Deploy 20 |
-| 14 | Merge 15→16 | Merge 3→16 | Merge lens 9→12 |
-| 15 | Move 16→22 | Restore 32 | Prime lift |
-| 16 | Power | Merge lens 4→6 | Aim lift south |
-| 17 | Open vault | Prime lift | Reflector 13→26 |
-| 18 | — | Reflector 12→14 | Turn reflector 26 |
-| 19 | — | Lens 6→17 | Cache 29→4 |
-| 20 | — | Turn lens 17 | Lens 12→29 |
-| 21 | — | Power | Fragment 27→9 |
-| 22 | — | Open vault | Power |
+| 12 | Merge 6→7 | Crucible pull | Restore 32 |
+| 13 | Move 7→21 | Merge 12→16 | Deploy 20 |
+| 14 | Merge 15→16 | Restore 32 | Merge lens 9→12 |
+| 15 | Move 16→22 | Merge lens 3→4 | Prime lift |
+| 16 | Power | Prime lift | Aim lift south |
+| 17 | Open vault | Reflector 9→14 | Reflector 13→26 |
+| 18 | — | Lens 4→17 | Turn reflector 26 |
+| 19 | — | Turn lens 17 | Cache 29→4 |
+| 20 | — | Power | Lens 12→29 |
+| 21 | — | Open vault | Fragment 27→9 |
+| 22 | — | — | Power |
 | 23 | — | — | Open vault |
 
 CI artifacts contain every current policy's complete action trace, occupancy,

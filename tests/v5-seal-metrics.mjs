@@ -7,8 +7,8 @@ import {linkPhase,optics,allSeals} from '../v5/seals.mjs';
 import {choose} from './v5-policy.mjs';
 export function measure(){
  const runs=[];
- for(const route of ['ridge','conduit'])for(const style of ['expedition','exploration'])for(const findStrategy of [null,'recover','restore','mixed'])for(const openCaches of [false,true])for(const decode of [false,true]){
-  const s=fresh(0),options={route,style,findStrategy,openCaches,decode,sideFirst:false},decisions=new Set(),actions=[],pressure=[];
+ for(const route of ['ridge','conduit'])for(const style of ['expedition','exploration'])for(const findStrategy of [null,'recover','restore','mixed'])for(const openCaches of [false,true])for(const decode of [false,true])for(const mergeSight of [false,true]){
+  const s=fresh(0),options={route,style,findStrategy,openCaches,decode,mergeSight,sideFirst:false},decisions=new Set(),actions=[],pressure=[];
   while(s.stage<4&&s.moves<300){
    if(s.stage===1&&['rig','chart'].every(family=>count(s,{family,tier:2})>0))decisions.add('route: workspace versus relic supplies');
    for(const [i,x]of s.board.entries())if(canRestore(s,x)&&count(s,{family:'rig',tier:2})>0&&count(s,{family:'flux',tier:2})>0)decisions.add('find '+i+': movable equipment versus immediate repair');
