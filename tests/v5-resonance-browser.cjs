@@ -11,7 +11,14 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
   const read=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('vaultwake-v5')));
   const shot=async name=>{await page.locator('.moment').waitFor({state:'detached'});await page.evaluate(async()=>Promise.all([...document.images].map(x=>x.decode().catch(()=>{}))));await page.screenshot({path:`${dir}/${route}-${name}-390.png`,fullPage:true});};
   const drag=async(from,to)=>{
-   const a=await page.locator(`#board [data-index="${from}"]`).boundingBox(),b=await page.locator(`#board [data-index="${to}"]`).boundingBox();
+   // Entire 6×6 board can extend below the viewport on a phone.
+   // CDP touch coordinates are viewport-relative; scroll BOTH targets into view.
+   const startTile=page.locator(`#board [data-index="${from}"]`),endTile=page.locator(`#board [data-index="${to}"]`);
+   await startTile.scrollIntoViewIfNeeded();
+   await endTile.scrollIntoViewIfNeeded();
+   const a=await startTile.boundingBox(),b=await endTile.boundingBox();
+   const visible=await page.evaluate(({a,b})=>[a,b].every(r=>r&&r.y>=0&&r.y+r.height<=innerHeight&&r.x>=0&&r.x+r.width<=innerWidth),{a,b});
+   assert.ok(visible,JSON.stringify({reason:'Touch drag endpoints outside the visible viewport',from,to,a,b}));
    const touch=await context.newCDPSession(page),start={x:a.x+a.width/2,y:a.y+a.height/2},end={x:b.x+b.width/2,y:b.y+b.height/2};
    await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[start]});
    for(let n=1;n<=9;n++){await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:start.x+(end.x-start.x)*n/9,y:start.y+(end.y-start.y)*n/9}]});await page.waitForTimeout(24);}
@@ -32,7 +39,7 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
     if((await read()).moves===before.moves)await page.locator(`[data-action="${a.type}"]`).tap();
    }
    try{await page.waitForFunction(n=>JSON.parse(localStorage.getItem('vaultwake-v5')).moves>n,before.moves,{timeout:1500});}
-   catch(e){await page.screenshot({path:`${dir}/${route}-input-failure.png`,fullPage:true});const debug=await page.evaluate(()=>({input:window.inputLog,message:document.querySelector('#message').textContent,state:JSON.parse(localStorage.getItem('vaultwake-v5'))}));fs.writeFileSync(`${dir}/${route}-input-failure.json`,JSON.stringify({action:a,before,debug},null,2));throw e;}
+   catch(e){await page.screenshot({path:`${dir}/${route}-input-failure.png`,fullPage:true});const debug=await page.evaluate(()=>({input:window.inputLog,message:document.querySelector('#message')?.textContent,state:JSON.parse(localStorage.getItem('vaultwake-v5')),scrollY:window.scrollY,viewport:{width:innerWidth,height:innerHeight}}));fs.writeFileSync(`${dir}/${route}-input-failure.json`,JSON.stringify({action:a,before,debug},null,2));console.error('RESONANCE TOUCH FAILURE',JSON.stringify({route,action:a,step:steps.length,beforeMoves:before.moves,afterMoves:debug.state?.moves,scrollY:debug.scrollY,input:debug.input,message:debug.message}));throw e;}
    const after=await read();assert.equal(after.moves,before.moves+1,JSON.stringify(a));
    const ray=await page.evaluate(async()=>{const {beam}=await import('/v5/seals.mjs');return beam(JSON.parse(localStorage.getItem('vaultwake-v5')));});
    steps.push({action:a,moves:after.moves,occupied:after.board.filter(Boolean).length,energy:after.energy,ray});
