@@ -13,7 +13,7 @@ test('opening invitation identifies real twins and disappears after a merge',()=
 test('held tools advertise only currently usable expedition targets',()=>{
  const s=fresh(0);s.board[1]=item('rig',2);
  assert.deepEqual(useAction(s,1,19),{type:'clear',from:1,index:19});
- assert.equal(useAction(s,1,24),null);s.stage=1;assert.equal(useAction(s,1,24).type,'breach');
+ assert.equal(useAction(s,1,24),null);s.stage=1;assert.equal(useAction(s,1,24),null);s.routePrepared=true;s.board[3]=item('chart',2);prepareSight(s,'ridge');assert.equal(useAction(s,1,24).type,'breach');
  s.board[1]=item('rig',3);assert.equal(useAction(s,1,20),null);s.stage=2;assert.equal(useAction(s,1,20).type,'deploy');
  s.board[20].phase='done';assert.equal(useAction(s,1,20),null);
  assert.equal(useAction(s,null,19),null);assert.equal(useAction(s,1,null),null);

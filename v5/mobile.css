@@ -147,3 +147,4 @@ body[data-art="premium"] .world:has(.premiumScene) .worldLabel b{background:#fff
 .surveyRay.clear{stroke:#13a98f;stroke-dasharray:none;opacity:.85}
 .surveyMark{outline:2px dashed #379d9b;outline-offset:-5px}
 .surveyGhost{position:absolute;inset:6px;opacity:.25;pointer-events:none}
+.lensPlane{position:absolute;width:42%;height:4px;left:29%;top:48%;border-radius:3px;background:#dbfffb;box-shadow:0 0 0 1px #489c9b,0 0 5px #d2fff6;transform:rotate(var(--lens-angle));pointer-events:none}

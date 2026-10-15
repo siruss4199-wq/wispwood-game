@@ -1,6 +1,7 @@
 import {goal,normalContract,ready,matches,nameOf,item,SOURCES} from './core.mjs';
 import {equipment,ROUTES,canRestore} from './expedition.mjs';
 import {circuit} from './seals.mjs';
+import {sight} from './navigation.mjs';
 
 export const SITE_NAMES=['Landing tray','Survey worksite','Excavated saltglass','Powered relic site','Vault observatory'];
 // A single continuous surface, under the unchanged 36 hit targets. All marks are original.
@@ -34,7 +35,7 @@ export function deliveryItems(s,action,now=Date.now()){
  }
  let needs;
  if(action.type==='goal'&&goal(s)?.action!=='inspect')needs=goal(s)?.needs;
- if(action.type==='breach'&&s.stage===1&&s.board[action.index]?.type==='route'){
+ if(action.type==='breach'&&s.stage===1&&s.board[action.index]?.type==='route'&&sight(s,s.board[action.index].id).ready){
   const need={family:ROUTES[s.board[action.index].id].family,tier:2,count:1},index=action.from??s.board.findIndex(x=>matches(x,need));
   return matches(s.board[index],need)?[{index,x:{...s.board[index]}}]:[];
  }

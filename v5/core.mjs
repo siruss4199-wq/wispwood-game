@@ -1,6 +1,6 @@
 import {container,containerInfo,contents,CONTAINERS} from './containers.mjs';
 import {sight} from './navigation.mjs';
-import {freshSeals,allSeals,circuit,migrateSeals,linkPhase,loopCell,movable,optics,unfold} from './seals.mjs';
+import {freshSeals,allSeals,circuit,migrateSeals,linkPhase,loopCell,movable,optics,unfold,reflector} from './seals.mjs';
 import {ANCHORS,ROUTES,FINDS,surveyFinds,findSite,canRestore,equipment,anchors,activeAnchors,completedAnchors,trace,expeditionState,installSites} from './expedition.mjs';
 // Vaultwake: deterministic rules, independent of rendering and wall-clock timers.
 export const SAVE_KEY='vaultwake-v5';
@@ -42,7 +42,7 @@ export function goal(s){
  if(s.stage===1)return {name:'Choose your breach',verb:'Clear',scene:'Survey worksite',needs:[req('rig',2),req('chart',2)],action:'inspect',next:'Either route unlocks Echo Crucible',text:'Place the lens on a survey mark. Clear its sightline, then use the route tool.',phase:'CHOOSE ONE'};
  if(s.stage===2){
   const receivers=anchors(s).filter(x=>x.kind!=='winch'),stable=s.seals?.stabilization,receiver=receivers.some(x=>x.phase==='done');
-  return {name:!stable?'Restore the stone lift':!receiver?'Choose a ring receiver':!optics(s).primed?'Light the ring engine':'Guide light to a receiver',verb:'Power rings',scene:'Entrance uncovered',needs:!stable?[equipment('winch')]:!receiver?receivers.filter(x=>x.phase==='idle').map(x=>equipment(x.kind)):!optics(s).primed?[req('flux',1)]:[],action:circuit(s)?'power':'inspect',next:!stable?'Lift clears buried ground':!receiver?'Relic finder or Power bridge':'Reflect light around the stone rib',text:!stable?'Recover a winch, or restore the buried lift with a pulse coil.':!receiver?'Choose relic supplies or recharged sources.':!optics(s).primed?'Use one Loop Cell on the lift.':'Move and turn both reflectors. Objects block the light.',phase:!stable?'STABILIZATION':'RESONANCE'};
+  return {name:!stable?'Restore the stone lift':!receiver?'Choose a ring receiver':!optics(s).primed?'Light the ring engine':'Guide light to a receiver',verb:'Power rings',scene:'Entrance uncovered',needs:!stable?[equipment('winch')]:!receiver?receivers.filter(x=>x.phase==='idle').map(x=>equipment(x.kind)):[req('chart',2),...(!optics(s).primed?[req('flux',1)]:[])],action:circuit(s)?'power':'inspect',next:!stable?'Lift clears buried ground':!receiver?'Relic finder or Power bridge':'Reflect light around the stone rib',text:!stable?'Recover a winch, or restore the buried lift with a pulse coil.':!receiver?'Choose relic supplies or recharged sources.':!optics(s).primed?'Use one Loop Cell on the lift.':'Move and turn the reflector and Sight Lens. Objects block light.',phase:!stable?'STABILIZATION':'RESONANCE'};
  }
  if(s.stage===3)return {name:'Open the Tideglass Vault',verb:'Open vault',scene:'Rings awakened',needs:[],energy:20,next:'The chamber + relic cache',text:'All three seals are secured.',action:allSeals(s)?'goal':'inspect'};
  return STAGES[s.stage]??POST_GOALS[s.post]??null;
@@ -209,7 +209,7 @@ export function act(s,a,now=Date.now()){
   return {...done(ANCHORS[site.kind].effect,s.stage>before?'milestone':'deployment',siteIndex),reveal:change.revealed,opened:[a.index,...change.opened],restored:siteIndex};
  }
  if(a.type==='power'){
-  const path=circuit(s);if(!path)return fail('Guide the beam through both reflectors to a working receiver.');
+  const path=circuit(s);if(!path)return fail('Guide light through the reflector and a Sight Lens into a receiver.');
   if(a.index!==undefined&&a.index!==path[0]&&a.index!==path.at(-1))return fail('Use a connected device.');
   const receiver=s.board[path.at(-1)].kind,folded=[];
   for(const [i,x]of s.board.entries())if(x?.type==='prism'){s.board[i]=null;folded.push(i);}
@@ -226,7 +226,7 @@ export function act(s,a,now=Date.now()){
  }
  if(a.type==='turn'){
   const x=s.board[a.index];if(!linkPhase(s)||!valid(a.index))return fail('Turn expedition optics while connecting the rings.');
-  if(x?.type==='prism'){x.turn=1-x.turn;trace(s,'reflector-turn',{index:a.index,turn:x.turn});}
+  if(reflector(x)){x.turn=1-(x.turn??0);trace(s,'reflector-turn',{index:a.index,turn:x.turn});}
   else if(x?.type==='site'&&x.kind==='winch'&&x.phase==='done'){s.seals.optics={...optics(s),direction:optics(s).direction===0?2:0};trace(s,'emitter-turn',{direction:s.seals.optics.direction});}
   else return fail('Choose a reflector or the repaired lift.');
   return done('Light redirected.','turn',a.index);

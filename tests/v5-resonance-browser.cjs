@@ -39,13 +39,21 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
    await page.waitForTimeout(430);
   };
   const options={route,style:'expedition',sideFirst:false,decode:false,findStrategy:receiver==='scope'?'mixed':null};
+  let navigationShot=false;
   while(!(await read()).seals.optics.primed&&steps.length<100){
+   if((await read()).stage===1&&!navigationShot){await shot('navigation-blocked');navigationShot=true;}
    const a=await page.evaluate(async options=>{const {choose}=await import('/tests/v5-policy.mjs');return choose(JSON.parse(localStorage.getItem('vaultwake-v5')),options);},options);
+   if(a.type==='breach')await shot('navigation-aligned');
    await perform(a);
+   if(a.type==='restore'||a.type==='deploy')await shot('equipment-'+a.index);
   }
   assert.ok((await read()).seals.optics.primed);await shot('unsolved');const start=steps.length;
   // Deliberately try the tempting middle crossing. The beam hits a visible rib.
-  for(const [id,to]of [[0,14],[1,17]]){const s=await read(),from=s.board.findIndex(x=>x?.type==='prism'&&x.id===id);if(from!==to)await perform({type:'move',from,to});if((await read()).board[to].turn!==0)await perform({type:'turn',index:to});}
+  for(const [id,to]of [[0,14],[1,17]]){
+   const s=await read(),from=s.board.findIndex(x=>id?x?.family==='chart'&&x.tier===2:x?.type==='prism');
+   if(id&&from!==to&&s.board[to]){const empty=s.board.findIndex((x,i)=>!x&&![14,17].includes(i));assert.ok(empty>=0);await perform({type:'move',from:to,to:empty});}
+   if(from!==to)await perform({type:'move',from,to});if(((await read()).board[to].turn??0)!==0)await perform({type:'turn',index:to});
+  }
   if((await read()).seals.optics.direction!==0)await perform({type:'turn',index:20});
   assert.equal(steps.at(-1).ray.stop,'stone');await shot('obstacle');
   const plan=await page.evaluate(async ({receiver,lane})=>{const {layouts}=await import('/tests/v5-optics-policy.mjs');return layouts(JSON.parse(localStorage.getItem('vaultwake-v5')),{receiver,lane})[0];},{receiver,lane});assert.ok(plan);

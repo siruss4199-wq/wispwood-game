@@ -28,6 +28,7 @@ test('stone rib stops the obvious middle crossing; inventory casts a visible sha
 test('both routes have alternate geometric solutions and real socket directions',()=>{
  for(const route of ['ridge','conduit']){
   const s=approach(route);const i=s.board.indexOf(null);s.board[i]=item('flux',1);ok(s,{type:'prime',from:i});
+  if(!s.board.some(x=>x?.family==='chart'&&x.tier===2))s.board[s.board.indexOf(null)]=item('chart',2);
   // A second receiver is an existing equipment decision, not a puzzle flag.
   const j=s.board.indexOf(null);s.board[j]=item('flux',3);ok(s,{type:'deploy',index:31,from:j});
   const options=layouts(s);assert.ok(new Set(options.map(x=>x.path.join(','))).size>=2);
@@ -42,7 +43,7 @@ test('reflector swap is reversible on a completely full board; cannot recycle or
  const s=approach();s.board=s.board.map(x=>x??item('rig',0));const from=s.board.findIndex(x=>x?.type==='prism'),to=s.board.findIndex(x=>x?.type==='item'),before=structuredClone(s.board);
  ok(s,{type:'move',from,to});ok(s,{type:'move',from:to,to:from});assert.deepEqual(s.board,before);
  reject(s,{type:'recycle',index:from});reject(s,{type:'turn',index:0});
- const other=s.board.findIndex((x,i)=>x?.type==='prism'&&i!==from);ok(s,{type:'merge',from,to:other});assert.equal(s.board.filter(x=>x?.type==='prism').length,2);
+ assert.equal(s.board.filter(x=>x?.type==='prism').length,1,'the second reflector must be a real crafted lens');
 });
 test('legacy unresolved boards are not overwritten, even full or already using the old straight line',()=>{
  const s=approach();delete s.seals.optics;s.board=s.board.map(x=>x?.type==='prism'||!x?item('rig',0):x);s.board[21]=item('flux',1);s.board[22]=item('flux',1);

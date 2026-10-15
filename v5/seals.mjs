@@ -2,6 +2,8 @@
 export const freshSeals=()=>({version:1,navigation:false,stabilization:false,resonance:false,link:[],optics:{version:1,primed:false,direction:0}});
 export const allSeals=s=>['navigation','stabilization','resonance'].every(k=>s.seals?.[k]===true);
 export const loopCell=x=>x?.type==='item'&&x.family==='flux'&&x.tier===1;
+export const sightLens=x=>x?.type==='item'&&x.family==='chart'&&x.tier===2;
+export const reflector=x=>x?.type==='prism'||sightLens(x);
 export const linkPhase=s=>s.stage===2&&s.seals?.navigation&&s.seals?.stabilization&&!s.seals.resonance;
 // A raised saltglass rib interrupts the tempting middle crossing. Inventory
 // can sit beside it, but light cannot cross it. No hidden/random obstacles.
@@ -20,7 +22,7 @@ export function optics(s){return s.seals.optics??{version:1,primed:false,directi
 export function unfold(s){
  if(!linkPhase(s))return;
  s.seals.optics??={version:1,primed:false,direction:0};
- for(const id of [0,1])if(!s.board.some(x=>x?.type==='prism'&&x.id===id)){
+ for(const id of [0])if(!s.board.some(x=>x?.type==='prism'&&x.id===id)){
   const i=s.board.indexOf(null);if(i<0)break;
   s.board[i]={type:'prism',id,turn:0};
  }
@@ -40,7 +42,7 @@ export function beam(s){
   const key=i+':'+d;if(seen.has(key))return {path,prisms,stop:'loop',receiver:null};seen.add(key);
   const x=s.board[i];
   if(!x)continue;
-  if(x.type==='prism'){prisms.push(i);d=reflect(d,x.turn);continue;}
+  if(reflector(x)){prisms.push(i);d=reflect(d,x.turn??0);continue;}
   if(x.type==='site'&&x.kind!=='winch'){
    const accepts=d===0||d===2;
    return {path,prisms,stop:!accepts?'backplate':x.phase==='done'?'receiver':'dormant',receiver:accepts&&x.phase==='done'?i:null};
@@ -49,7 +51,7 @@ export function beam(s){
  }
 }
 export function circuit(s){
- const b=beam(s);return b.receiver!==null&&new Set(b.prisms).size===2?b.path:null;
+ const b=beam(s);return b.receiver!==null&&b.prisms.some(i=>s.board[i]?.type==='prism')&&b.prisms.some(i=>sightLens(s.board[i]))?b.path:null;
 }
 export function migrateSeals(s){
  if(!s.seals||s.seals.version!==1){

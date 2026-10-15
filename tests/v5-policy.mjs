@@ -56,7 +56,8 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
    const plan=layouts(s)[0],connected=circuit(s);
    if(connected)return {type:'power'};
    if(plan){
-    if(!optics(s).primed){needs=[req('flux',1)];command={type:'prime'};}
+    if(!count(s,req('chart',2))){needs=[req('chart',2)];command=null;}
+    else if(!optics(s).primed){needs=[req('flux',1)];command={type:'prime'};}
     else {const next=arrange(s,plan);if(next)return next;throw Error('Optics plan stalled');}
    }else{
    const order=['expedition','contract'].includes(style)?['winch','relay']:style==='exploration'?['winch','scope']:['scope','winch'];
