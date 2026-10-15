@@ -35,7 +35,10 @@ export function syncRequests(s){
    const key=family+':'+tier;
    const protectedOnly=s.board.some((x,i)=>matches(x,req(family,tier))&&protectedIndices.has(i))&&
     !s.board.some((x,i)=>matches(x,req(family,tier))&&!protectedIndices.has(i));
-   return {family,tier,score:(occupied.has(key)?100:0)+(protectedOnly?15:0)+fi*6+ti*9};
+   // New Standard orders favour bench output when it adds variety. Existing
+   // orders never change; competing lanes keep distinct goals where possible.
+   const bench=s.workshop?.precision&&lane===1&&family==='rig'&&tier===2;
+   return {family,tier,score:(occupied.has(key)?100:0)+(protectedOnly?15:0)+fi*6+ti*9-(bench?40:0)};
   }));
   // Before Survey Kite unlocks, early Quick orders can ask for more raw copper
   // instead of consuming the two Grip tools reserved for the landing.

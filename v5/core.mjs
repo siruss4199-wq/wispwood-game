@@ -1,5 +1,5 @@
 import {syncRequests,deliverRequest} from './requests.mjs';
-import {workshopState,restoreWorkshop} from './workshop.mjs';
+import {workshopState,restoreWorkshop,upgradeWorkshop,fitSpanner} from './workshop.mjs';
 import {container,containerInfo,contents,CONTAINERS} from './containers.mjs';
 import {sight} from './navigation.mjs';
 import {freshSeals,allSeals,circuit,migrateSeals,linkPhase,loopCell,movable,optics,unfold,reflector} from './seals.mjs';
@@ -135,6 +135,8 @@ export function act(s,a,now=Date.now()){
  const done=(message,event='action',index=null)=>{s.moves++;s.lastAt=now;syncRequests(s);if(event!=='produce')s.producerStreak=0;installSites(s);unfold(s);if(event==='milestone')remember(s,event,now);for(const x of s.board)if(x?.type==='item'){const key=x.family+':'+x.tier;if(!s.discovered.includes(key))s.discovered.push(key);}return {ok:true,message,event,index};};
  const valid=i=>Number.isInteger(i)&&i>=0&&i<36;
  if(a.type==='restoreWorkshop'){const result=restoreWorkshop(s);return result.ok?done(result.message,'restoration'):result;}
+ if(a.type==='upgradeWorkshop'){const result=upgradeWorkshop(s);return result.ok?done(result.message,'restoration'):result;}
+ if(a.type==='fitSpanner'){const result=fitSpanner(s);return result.ok?done(result.message,'manufacture',result.index):result;}
  if(a.type==='press'){
   if(!s.workshop?.repaired)return fail('Restore the Coastal Workshop to unlock the tool press.');
   if(!s.board.some(x=>x?.type==='source'&&x.id==='rig'))return fail('Rivet Rover missing.');
