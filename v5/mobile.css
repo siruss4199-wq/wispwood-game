@@ -183,3 +183,14 @@ body[data-art] #board .tile.surveyMark{outline:2px dashed #379d9b;outline-offset
 body[data-art] .world:has(#workshop) .worldLabel{left:auto;right:10px;top:7px;text-align:right;pointer-events:none}
 .toolPress{border:1px solid #e7bc62!important}
 @media(prefers-reduced-motion:reduce){#workshop{transition:none}}
+
+/* TT-1B1 final polish: compact three requests without shrinking board objects or touch targets. */
+#requests{margin:5px 0 1px}
+.requestHeading{margin-bottom:3px}
+.requestShelf{gap:5px}
+.requestCard{min-height:99px;padding:3px 3px 4px;gap:0;justify-content:flex-start}
+.requestCard .requestLane{font-size:11px;line-height:15px}
+.requestCard .requestItems{height:48px;flex:none}
+.requestCard .requestReward{font-size:11px;line-height:14px}
+.requestCard>strong{font-size:10px;line-height:13px}
+#workshop.pressAvailable>span{background:#d3f4df;color:#126c56;box-shadow:0 0 0 2px #39aa8444}
