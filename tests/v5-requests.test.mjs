@@ -64,3 +64,34 @@ test('delivery keeps the actual positioned navigation and circuit lens, not an e
  s.stage=2;s.seals.navigation=true;s.seals.stabilization=true;s.seals.optics.primed=true;s.board[20].phase='done';s.board[20].progress=2;s.board[14]=item('chart',2);
  assert.ok(reservedItems(s).has(14));assert.deepEqual(requestProgress(s,order).indices,[2]);
 });
+
+test('three unlocked lanes choose different achievable item goals where families allow it',()=>{
+ for(const stage of [0,1,2,4]){
+  const s=fresh();s.stage=stage;if(stage===0)s.landingStep=1;
+  s.requests.orders=[null,null,null];syncRequests(s);
+  const available=new Set(stage<2?['rig','chart']:['rig','chart','flux']);
+  const orders=s.requests.orders.filter(Boolean);
+  assert.equal(orders.length,3);
+  const mains=orders.map(o=>o.needs[0].family+':'+o.needs[0].tier);
+  assert.equal(new Set(mains).size,3,'distinct primary items at stage '+stage+': '+mains);
+  for(const o of orders)for(const r of o.needs){
+   assert.ok(available.has(r.family),'producer unlocked in stage '+stage);
+   assert.ok(r.tier<=3,'no high-tier grinding');
+  }
+ }
+});
+test('two early Quick deliveries unlock a safe long request even before landing progress',()=>{
+ const s=fresh();s.requests.completed=2;s.requests.sequences=[2,0,0];s.requests.orders=[null,null,null];
+ assert.doesNotThrow(()=>syncRequests(s));
+ assert.equal(s.requests.orders.filter(Boolean).length,3);
+ for(const o of s.requests.orders)for(const r of o.needs){
+  assert.equal(r.family,'rig','no locked producer before survey unlock');
+  assert.ok(r.tier<=1,'avoid early high-tier request');
+ }
+});
+test('live requests survive stage unlocks and save reload without rerolling',()=>{
+ const s=fresh();s.stage=2;syncRequests(s);
+ const before=structuredClone(s.requests.orders);
+ s.stage=4;syncRequests(s);assert.deepEqual(s.requests.orders,before);
+ assert.deepEqual(load(JSON.stringify(s)).requests.orders,before);
+});
