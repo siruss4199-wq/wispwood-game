@@ -47,6 +47,8 @@ function renderSurvey(){
  }
 }
 function renderRequests(){
+ $('#requests').hidden=state.stage===0&&!state.landingStep&&state.merges===0;
+ $('#sideTray').hidden=state.stage===0&&!state.landingStep;
  const q=state.requests;
  $('#requests').innerHTML=`<div class="requestHeading"><span>CAMP REQUESTS</span><b title="Saved for future restoration">◆ <span id="supplies">${q.supplies}</span> supplies</b></div><div class="requestShelf">${q.orders.filter(Boolean).map(o=>{
  const p=requestProgress(state,o),active=requestId===o.id&&focus==='request',energy=Math.min(o.energy,120-state.energy);

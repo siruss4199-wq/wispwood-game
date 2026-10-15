@@ -5,7 +5,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs');const {chromium
  const read=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('vaultwake-v5')));
  const shot=async name=>{await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:`test-artifacts/v5/requests/${name}-${width}.png`,fullPage:true});};
  await shot('fresh');
- await page.locator('#board [data-index="7"]').tap();await page.locator('#board [data-index="8"]').tap();await page.locator('#goalButton').tap();await page.waitForTimeout(1000);
+ await page.locator('#board [data-index="7"]').tap();await page.locator('#board [data-index="8"]').tap();await page.locator('#goalButton').tap();await page.waitForTimeout(1800);
  assert.equal((await read()).landingStep,1);assert.equal(await page.locator('#requests [data-request]').count(),3);await shot('before');
  const timeline=[];
  for(const lane of [0,1,0,2,1,0]){

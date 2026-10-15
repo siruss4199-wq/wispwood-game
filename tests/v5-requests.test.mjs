@@ -41,3 +41,26 @@ test('replacement variety stays within unlocked producers across 90 deliveries',
  }
  assert.equal(s.requests.completed,90);assert.equal(s.requests.supplies,300);
 });
+test('twelve consecutive requests use actual production, service and merging without injected stock',()=>{
+ const s=fresh();act(s,{type:'merge',from:7,to:8});act(s,{type:'goal'});
+ for(let n=0;n<12;n++){
+  const lane=n%3;let delivered=false;
+  for(let step=0;step<100;step++){
+   const o=s.requests.orders[lane],p=requestProgress(s,o);
+   if(p.ready){assert.ok(act(s,{type:'request',id:o.id}).ok);delivered=true;break;}
+   const need=p.progress.find(r=>r.current<r.count),kept=reservedItems(s);let command;
+   for(let tier=need.tier-1;tier>=0;tier--){const pair=s.board.flatMap((x,i)=>x?.type==='item'&&x.family===need.family&&x.tier===tier&&!kept.has(i)?[i]:[]);if(pair.length>=2){command={type:'merge',from:pair[0],to:pair[1]};break;}}
+   command??={type:s.charges[need.family]?'produce':'service',id:need.family};
+   const result=act(s,command);assert.ok(result.ok,result.message);
+  }
+  assert.ok(delivered,'every lane remains achievable');
+ }
+ assert.equal(s.requests.completed,12);assert.ok(s.taps.rig>7);assert.ok(s.taps.chart>0);assert.ok(s.merges>10);
+ assert.deepEqual(load(JSON.stringify(s)).requests,s.requests);
+});
+test('delivery keeps the actual positioned navigation and circuit lens, not an earlier spare',()=>{
+ const s=fresh();s.stage=1;s.board[2]=item('chart',2);s.board[9]=item('chart',2);
+ const order={needs:[{family:'chart',tier:2,count:1}]};assert.deepEqual(requestProgress(s,order).indices,[2]);
+ s.stage=2;s.seals.navigation=true;s.seals.stabilization=true;s.seals.optics.primed=true;s.board[20].phase='done';s.board[20].progress=2;s.board[14]=item('chart',2);
+ assert.ok(reservedItems(s).has(14));assert.deepEqual(requestProgress(s,order).indices,[2]);
+});

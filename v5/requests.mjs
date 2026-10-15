@@ -1,3 +1,4 @@
+import {beam} from './seals.mjs';
 // Repeatable optional orders. No timers, board rewards or random rolls.
 const families=['rig','chart','flux'];
 const matches=(x,r)=>x?.type==='item'&&x.family===r.family&&x.tier===r.tier;
@@ -22,7 +23,7 @@ export function syncRequests(s){
  for(let lane=0;lane<unlocked;lane++)if(!q.orders[lane]){
   const n=q.sequences[lane],family=fs[(Math.floor(n/2)+lane)%fs.length];
   const tier=lane===0?n%2:lane===1?1+n%2:2+n%2;
-  const needs=[req(family,tier)];
+  const needs=[req(family,tier,lane===1&&tier===1?2:1)];
   if(lane===0&&q.orders.some(o=>o?.needs.length===1&&o.needs[0].family===family&&o.needs[0].tier===tier&&o.needs[0].count===1))needs[0].count=2;
   if(lane===2)needs.push(req(fs[(n+lane+1)%fs.length],fs.length===1?1:0));
   q.orders[lane]={id:`${lane}:${n}`,lane:LANES[lane],needs,energy:[5,10,18][lane],supplies:[1,3,6][lane]};
@@ -42,7 +43,9 @@ export function reservedItems(s){
   if(s.board.some(x=>x?.type==='rock'&&x.find))needs.push(req('flux',2));
  }
  const kept=new Set();
- for(const r of needs)for(let n=0;n<r.count;n++){
+ const placed=s.stage===1?[6,9]:s.stage===2?beam(s).prisms:[];
+ for(const i of placed)if(matches(s.board[i],req('chart',2)))kept.add(i);
+ for(const r of needs)for(let n=[...kept].filter(i=>matches(s.board[i],r)).length;n<r.count;n++){
   const i=s.board.findIndex((x,i)=>!kept.has(i)&&matches(x,r));if(i>=0)kept.add(i);
  }
  return kept;
