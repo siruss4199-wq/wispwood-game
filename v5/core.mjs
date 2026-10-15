@@ -1,3 +1,4 @@
+import {syncRequests,deliverRequest} from './requests.mjs';
 import {container,containerInfo,contents,CONTAINERS} from './containers.mjs';
 import {sight} from './navigation.mjs';
 import {freshSeals,allSeals,circuit,migrateSeals,linkPhase,loopCell,movable,optics,unfold,reflector} from './seals.mjs';
@@ -35,7 +36,7 @@ export function fresh(now=Date.now()){
  for(const i of [19,32])board[i]={type:'rock'};
  ['winch','scope','relay'].forEach((kind,n)=>board[[20,23,31][n]]={type:'site',kind,phase:'idle',progress:0});
  board[24]={type:'route',id:'ridge'};board[27]={type:'route',id:'conduit'};board[34]=container('salvage');
- return {version:5,board,stage:0,landingStep:0,routePrepared:false,seals:freshSeals(),producerStreak:0,energy:32,marks:0,moves:0,merges:0,contracts:0,serial:0,charges:{rig:7,chart:7,flux:7},taps:{rig:0,chart:0,flux:0},normal:0,opportunity:null,discovery:false,discoveryDone:false,boost:false,post:0,discovered:[],expedition:expeditionState(),startedAt:now,lastAt:now,rations:0,history:[]};
+ const state={version:5,board,stage:0,landingStep:0,routePrepared:false,seals:freshSeals(),producerStreak:0,energy:32,marks:0,moves:0,merges:0,contracts:0,serial:0,charges:{rig:7,chart:7,flux:7},taps:{rig:0,chart:0,flux:0},normal:0,opportunity:null,discovery:false,discoveryDone:false,boost:false,post:0,discovered:[],expedition:expeditionState(),startedAt:now,lastAt:now,rations:0,history:[]};syncRequests(state);return state;
 }
 export function goal(s){
  if(s.stage===0&&s.landingStep===1)return {name:'Chart the safe crossing',verb:'Mark route',scene:'Survey camp established',needs:[req('chart',2),req('rig',2)],energy:8,next:'Choose a route with prepared equipment',text:'Build a Sight Lens and Split Spanner to survey the crossing. Both stay with you for the route choice.',phase:'LANDING 2 / 2'};
@@ -130,8 +131,9 @@ function activate(s,site){
 // Mutating reducer is intentionally atomic: failed commands leave all state untouched.
 export function act(s,a,now=Date.now()){
  const fail=message=>({ok:false,message});
- const done=(message,event='action',index=null)=>{s.moves++;s.lastAt=now;if(event!=='produce')s.producerStreak=0;installSites(s);unfold(s);if(event==='milestone')remember(s,event,now);for(const x of s.board)if(x?.type==='item'){const key=x.family+':'+x.tier;if(!s.discovered.includes(key))s.discovered.push(key);}return {ok:true,message,event,index};};
+ const done=(message,event='action',index=null)=>{s.moves++;s.lastAt=now;syncRequests(s);if(event!=='produce')s.producerStreak=0;installSites(s);unfold(s);if(event==='milestone')remember(s,event,now);for(const x of s.board)if(x?.type==='item'){const key=x.family+':'+x.tier;if(!s.discovered.includes(key))s.discovered.push(key);}return {ok:true,message,event,index};};
  const valid=i=>Number.isInteger(i)&&i>=0&&i<36;
+ if(a.type==='request'){const result=deliverRequest(s,a.id);if(!result.ok)return result;s.contracts++;return {...done(result.message,'contract'),reward:result.reward};}
  if(a.type==='merge'||a.type==='move'){
   if(!valid(a.from)||!valid(a.to)||a.from===a.to)return fail('Choose another space.');
   const x=s.board[a.from],y=s.board[a.to];
@@ -357,6 +359,6 @@ export function load(raw,now=Date.now()){
     s.routePrepared=true;
    }else s.routePrepared=s.stage>=2;
   }
-  return s;
+  syncRequests(s);return s;
  }catch{return fresh(now);}
 }
