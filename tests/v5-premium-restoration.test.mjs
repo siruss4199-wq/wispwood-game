@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import {prepareSight} from './v5-navigation-policy.mjs';
 import {fresh,load,goal,ready,item,count,act} from '../v5/core.mjs';
 
 const req=(family,tier)=>({family,tier,count:1});
@@ -21,6 +22,7 @@ test('Survey progression preserves both crafted route tools and spends only chos
  assert.equal(count(s,req('chart',2)),1);
  assert.equal(load(JSON.stringify(s)).stage,1);
  const conduitIndex=s.board.findIndex(x=>x?.type==='route'&&x.id==='conduit');
+ prepareSight(s,'conduit');
  perform(s,{type:'breach',index:conduitIndex});
  assert.equal(s.stage,2);
  assert.equal(s.expedition.route,'conduit');
