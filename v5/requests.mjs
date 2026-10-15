@@ -28,7 +28,7 @@ export function syncRequests(s){
   const protectedIndices=reservedItems(s);
   const tierBase=lane===0?n%2:lane===1?1+n%2:2+(s.stage>=2?n%2:0);
   const maxTier=s.stage===0&&!s.landingStep?1:s.stage===0?2:3;
-  const tiers=(lane===0?[tierBase,1-tierBase]:lane===1?[tierBase,3-tierBase]:[tierBase,2,3])
+  const tiers=(lane===0?[tierBase,1-tierBase]:lane===1?[tierBase,3-tierBase,1,0]:[tierBase,2,3,1,0])
    .filter((t,i,a)=>t<=maxTier&&a.indexOf(t)===i);
   const familyOrder=[preferred,...fs.filter(f=>f!==preferred)];
   const choices=familyOrder.flatMap((family,fi)=>tiers.map((tier,ti)=>{
@@ -48,7 +48,7 @@ export function syncRequests(s){
    // The small companion stays inexpensive and, when possible, differs
    // from the main goal and all other current requests.
    const secondary=[fs[(n+lane+1)%fs.length],...fs].filter((f,i,a)=>a.indexOf(f)===i);
-   const options=secondary.flatMap((f,fi)=>(fs.length===1?[1]:[0,1]).map((t,ti)=>({
+   const options=secondary.flatMap((f,fi)=>[0,1].map((t,ti)=>({
     family:f,tier:t,score:(f===family&&t===tier?1000:0)+(occupied.has(f+':'+t)?100:0)+fi*6+ti*8
    })));
    options.sort((a,b)=>a.score-b.score);
