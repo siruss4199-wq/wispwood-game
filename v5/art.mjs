@@ -18,6 +18,7 @@ const extras={
 };
 export function art(x,cls=''){
  if(!x)return '';
+ if(x.type==='prism')return `<svg class="art ${cls}" viewBox="0 0 100 100" aria-hidden="true" data-art="reflector"><defs><linearGradient id="mirror-${x.id}" x2="1" y2="1"><stop stop-color="#fff8d5"/><stop offset=".42" stop-color="#8ff7ed"/><stop offset=".55" stop-color="#fff"/><stop offset="1" stop-color="#8e78d7"/></linearGradient></defs><image href="${SPRITE_OVERRIDES['flux-3']??'assets/premium/resonator-vibrant.webp'}" x="7" y="8" width="86" height="86"/><g transform="rotate(${x.turn?90:0} 50 45)"><path d="M26 66L65 20 76 30 37 76Z" fill="#5b4a91"/><path d="M24 61L63 15 74 25 35 71Z" fill="url(#mirror-${x.id})" stroke="#ffe6a1" stroke-width="3"/></g><path d="M20 86Q50 101 80 86" fill="none" stroke="#ffd778" stroke-width="4"/></svg>`;
  if(x.type==='site'||x.type==='route'){
   const family=x.type==='site'?{winch:'rig',scope:'chart',relay:'flux'}[x.kind]:x.id==='ridge'?'rig':'chart';
   const tier=x.type==='site'?3:2,color={rig:'#f27755',chart:'#43bfe7',flux:'#ac83fa'}[family];

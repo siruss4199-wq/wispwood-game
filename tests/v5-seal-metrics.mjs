@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import {fresh,act,count,ready,normalContract} from '../v5/core.mjs';
 import {canRestore,equipment,anchors} from '../v5/expedition.mjs';
-import {circuit,allSeals} from '../v5/seals.mjs';
+import {linkPhase,optics,allSeals} from '../v5/seals.mjs';
 import {choose} from './v5-policy.mjs';
 export function measure(){
  const runs=[];
@@ -13,8 +13,8 @@ export function measure(){
    if(s.stage===1&&['rig','chart'].every(family=>count(s,{family,tier:2})>0))decisions.add('route: workspace versus relic supplies');
    for(const [i,x]of s.board.entries())if(canRestore(s,x)&&count(s,{family:'rig',tier:2})>0&&count(s,{family:'flux',tier:2})>0)decisions.add('find '+i+': movable equipment versus immediate repair');
    if(s.seals.stabilization&&anchors(s).filter(x=>x.kind!=='winch'&&x.phase==='idle'&&ready(s,[equipment(x.kind)])).length===2)decisions.add('receiver: relic supplies versus source charges');
-   if(circuit(s,true)&&count(s,{family:'flux',tier:1})>=2){
-    decisions.add('cells: keep for connection versus merge into repair coil');
+   if(linkPhase(s)&&!optics(s).primed&&count(s,{family:'flux',tier:1})>=1){
+    decisions.add('cell: light the lift versus merge into repair coil');
     if(normalContract(s).vaultTrade&&ready(s,normalContract(s).needs))decisions.add('cells: connection versus receiver exchange');
    }
    const a=choose(s,options),result=act(s,a,s.moves*1000);assert.ok(result.ok,result.message);actions.push(a);pressure.push(s.board.filter(Boolean).length);

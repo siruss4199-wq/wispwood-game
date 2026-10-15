@@ -1,7 +1,8 @@
 // Intent-based player styles. All actions use the public reducer / real UI.
 import {goal,ready,count,normalContract,SOURCES,sourceUnlocked} from '../v5/core.mjs';
 import {ANCHORS,ROUTES,equipment,anchors} from '../v5/expedition.mjs';
-import {circuit,linkPhase,loopCell} from '../v5/seals.mjs';
+import {circuit,linkPhase,optics} from '../v5/seals.mjs';
+import {layouts,arrange} from './v5-optics-policy.mjs';
 const req=(family,tier,count=1)=>({family,tier,count});
 export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,session=null,style='expedition',findStrategy=null,decode=true,route=null}={}){
  if(!goal(s))return null;
@@ -42,22 +43,11 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
   }else if(s.stage===2&&style==='contract'&&normalContract(s).vaultTrade){needs=normalContract(s).needs;command={type:'contract'};}
   else if(s.stage===3){needs=goal(s).needs;command={type:'goal'};}
   else{
-   const path=circuit(s,true),connected=circuit(s);
+   const plan=layouts(s)[0],connected=circuit(s);
    if(connected)return {type:'power'};
-   if(path){
-    const slots=path.slice(1,-1);
-    for(const to of slots){
-     if(loopCell(s.board[to]))continue;
-     if(s.board[to]){
-      const empty=s.board.findIndex((x,i)=>!x&&!slots.includes(i));
-      if(empty>=0)return {type:'merge',from:to,to:empty};
-      const recyclable=s.board.findIndex((x,i)=>x?.type==='item'&&!slots.includes(i)&&!loopCell(x));
-      if(recyclable>=0)return {type:'recycle',index:recyclable};
-     }
-     const from=s.board.findIndex((x,i)=>loopCell(x)&&!slots.includes(i));
-     if(from>=0)return {type:'merge',from,to};
-    }
-    needs=[req('flux',1,slots.length)];command={type:'power'};
+   if(plan){
+    if(!optics(s).primed){needs=[req('flux',1)];command={type:'prime'};}
+    else {const next=arrange(s,plan);if(next)return next;throw Error('Optics plan stalled');}
    }else{
    const order=['expedition','contract'].includes(style)?['winch','relay']:style==='exploration'?['winch','scope']:['scope','winch'];
    const site=order.map(kind=>anchors(s).find(x=>x.kind===kind)).find(x=>x.phase!=='done');

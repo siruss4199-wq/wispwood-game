@@ -1,7 +1,8 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {fresh,act,item,load,goal} from '../v5/core.mjs';
-import {circuit,allSeals} from '../v5/seals.mjs';
+import {circuit,allSeals,beam,optics} from '../v5/seals.mjs';
 import {choose} from './v5-policy.mjs';
+import {layouts,arrange} from './v5-optics-policy.mjs';
 const ok=(s,a)=>{const r=act(s,a,1000+s.moves*1000);assert.ok(r.ok,JSON.stringify(a)+': '+r.message);return r;};
 const reject=(s,a)=>{const before=JSON.stringify(s);assert.equal(act(s,a).ok,false);assert.equal(JSON.stringify(s),before);};
 function prepared(receiver='scope'){
@@ -26,20 +27,28 @@ test('two receivers cannot replace the lift; diagonal or wrong-tier cells cannot
  s.board[7]=item('rig',3);ok(s,{type:'deploy',index:20,from:7});s.board[22]=null;s.board[16]=item('flux',1);reject(s,{type:'power'});
  s.board[22]=item('flux',2);reject(s,{type:'power'});
 });
-test('both receivers consume only connected cells and power sources exactly once',()=>{
+function solve(s,options={}){
+ if(!optics(s).primed){const i=s.board.indexOf(null);s.board[i]=item('flux',1);ok(s,{type:'prime',from:i});}
+ const plan=layouts(s,options)[0];assert.ok(plan,'at least one geometric solution');
+ for(let n=0;n<60&&!circuit(s);n++)ok(s,arrange(s,plan));
+ assert.deepEqual(circuit(s),plan.path);return plan;
+}
+test('receivers require two reflected turns and grant different, single-use rewards',()=>{
  for(const receiver of ['scope','relay']){
-  const s=prepared(receiver),path=circuit(s,true);assert.ok(path);assert.equal(path.length,4);
-  for(const i of path.slice(1,-1))s.board[i]=item('flux',1);s.board[7]=item('flux',1);s.charges={rig:0,chart:0,flux:0};
-  const before=structuredClone(s.board);assert.deepEqual(circuit(s),path);reject(s,{type:'power',index:0});ok(s,{type:'power',index:path.at(-1)});
-  assert.ok(allSeals(s));assert.equal(s.stage,3);assert.equal(s.surge,3);assert.deepEqual(s.charges,{rig:7,chart:7,flux:7});
-  for(let i=0;i<36;i++)assert.deepEqual(s.board[i],path.slice(1,-1).includes(i)?null:before[i]);
-  assert.deepEqual(s.seals.link,path);reject(s,{type:'power'});ok(s,{type:'goal'});assert.equal(s.stage,4);
+  const s=prepared(receiver);solve(s,{receiver});const path=circuit(s),before=structuredClone(s.board);s.surge=0;s.charges={rig:0,chart:0,flux:0};
+  reject(s,{type:'power',index:0});ok(s,{type:'power',index:path.at(-1)});
+  assert.ok(allSeals(s));assert.equal(s.stage,3);assert.equal(s.board.some(x=>x?.type==='prism'),false);
+  assert.deepEqual(s.seals.link,path);
+  for(let i=0;i<36;i++)if(before[i]&&before[i].type!=='prism')assert.deepEqual(s.board[i],before[i],'kept stock is never consumed by the beam');
+  if(receiver==='relay'){assert.equal(s.surge,3);assert.deepEqual(s.charges,{rig:7,chart:7,flux:7});assert.equal(s.board.filter(x=>x?.family==='rig'&&x.tier===3).length,before.filter(x=>x?.family==='rig'&&x.tier===3).length+1,'tangible reward even when charges were already full');}
+  else{assert.equal(s.surge,0);assert.deepEqual(s.charges,{rig:0,chart:0,flux:0});assert.ok(s.board.some(x=>x?.type==='crate'&&x.kind==='relic'&&x.left===5));}
+  reject(s,{type:'power'});ok(s,{type:'goal'});assert.equal(s.stage,4);
  }
 });
-test('merging wiring cells breaks the connection but ordinary gameplay can recover',()=>{
- const s=prepared(),[a,b]=circuit(s,true).slice(1,-1);s.board[a]=item('flux',1);s.board[b]=item('flux',1);assert.ok(circuit(s));
- ok(s,{type:'merge',from:a,to:b});assert.equal(circuit(s),null);reject(s,{type:'power'});
- for(let n=0;n<120&&s.stage<4;n++)ok(s,choose(s,{sideFirst:false,openCaches:true}));assert.equal(s.stage,4);
+test('a wrong turn breaks the beam and can be reversed without energy or lost gear',()=>{
+ const s=prepared();solve(s);const before=structuredClone(s),i=beam(s).prisms[0];
+ ok(s,{type:'turn',index:i});assert.equal(circuit(s),null);reject(s,{type:'power'});
+ ok(s,{type:'turn',index:i});assert.ok(circuit(s));assert.deepEqual(s.board,before.board);assert.equal(s.energy,before.energy);
 });
 test('legacy saves retain board, energy and earned progress; migration is idempotent',()=>{
  for(const stage of [0,1,2,3,4]){
@@ -50,9 +59,10 @@ test('legacy saves retain board, energy and earned progress; migration is idempo
   if(stage===3){ok(saved,{type:'goal'});assert.equal(saved.stage,4);}
  }
 });
-test('reload preserves partial wiring without granting the remaining seal',()=>{
- const s=prepared(),path=circuit(s,true);s.board[path[1]]=item('flux',1);const copy=load(JSON.stringify(s));assert.deepEqual(copy,s);reject(copy,{type:'power'});
- copy.board[path[2]]=item('flux',1);ok(copy,{type:'power'});assert.deepEqual(load(JSON.stringify(copy)),copy);
+test('reload preserves partial optics and old completed saves need no puzzle replay',()=>{
+ const s=prepared();const i=s.board.indexOf(null);s.board[i]=item('flux',1);ok(s,{type:'prime',from:i});ok(s,{type:'turn',index:s.board.findIndex(x=>x?.type==='prism')});
+ const copy=load(JSON.stringify(s));assert.deepEqual(copy,s);reject(copy,{type:'power'});
+ solve(copy);ok(copy,{type:'power'});assert.deepEqual(load(JSON.stringify(copy)),copy);
 });
 test('full inventory and depleted sources remain recoverable without deleting a device',()=>{
  const s=prepared();s.board=s.board.map(x=>x??item('rig',0));s.energy=0;s.charges={rig:0,chart:0,flux:0};
