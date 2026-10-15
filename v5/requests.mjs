@@ -21,11 +21,39 @@ export function syncRequests(s){
  const q=requestState(s),fs=requestFamilies(s);
  const unlocked=s.stage>0||s.landingStep>=1||q.completed>=2?3:s.merges>0?2:1;
  for(let lane=0;lane<unlocked;lane++)if(!q.orders[lane]){
-  const n=q.sequences[lane],family=fs[(Math.floor(n/2)+lane)%fs.length];
-  const tier=lane===0?n%2:lane===1?1+n%2:2+n%2;
-  const needs=[req(family,tier,lane===1&&tier===1?2:1)];
-  if(lane===0&&q.orders.some(o=>o?.needs.length===1&&o.needs[0].family===family&&o.needs[0].tier===tier&&o.needs[0].count===1))needs[0].count=2;
-  if(lane===2)needs.push(req(fs[(n+lane+1)%fs.length],fs.length===1?1:0));
+  const n=q.sequences[lane],preferred=fs[(Math.floor(n/2)+lane)%fs.length];
+  // Select a different achievable *item*, not the same tool in another quantity.
+  // Keep existing orders untouched: a player's partially prepared request never changes.
+  const occupied=new Set(q.orders.filter(Boolean).flatMap(o=>o.needs.map(r=>r.family+':'+r.tier)));
+  const protectedIndices=reservedItems(s);
+  const tierBase=lane===0?n%2:lane===1?1+n%2:2+(s.stage>=2?n%2:0);
+  const maxTier=s.stage===0&&!s.landingStep?1:s.stage===0?2:3;
+  const tiers=(lane===0?[tierBase,1-tierBase]:lane===1?[tierBase,3-tierBase]:[tierBase,2,3])
+   .filter((t,i,a)=>t<=maxTier&&a.indexOf(t)===i);
+  const familyOrder=[preferred,...fs.filter(f=>f!==preferred)];
+  const choices=familyOrder.flatMap((family,fi)=>tiers.map((tier,ti)=>{
+   const key=family+':'+tier;
+   const protectedOnly=s.board.some((x,i)=>matches(x,req(family,tier))&&protectedIndices.has(i))&&
+    !s.board.some((x,i)=>matches(x,req(family,tier))&&!protectedIndices.has(i));
+   return {family,tier,score:(occupied.has(key)?100:0)+(protectedOnly?15:0)+fi*6+ti*9};
+  }));
+  // Before Survey Kite unlocks, early Quick orders can ask for more raw copper
+  // instead of consuming the two Grip tools reserved for the landing.
+  if(lane===0&&s.stage===0&&!s.landingStep)choices.splice(0,choices.length,{family:'rig',tier:0,score:0});
+  choices.sort((a,b)=>a.score-b.score);
+  const {family,tier}=choices[0];
+  const count=lane===0&&s.stage===0&&!s.landingStep&&n%2?2:lane===1&&tier===1?2:1;
+  const needs=[req(family,tier,count)];
+  if(lane===2){
+   // The small companion stays inexpensive and, when possible, differs
+   // from the main goal and all other current requests.
+   const secondary=[fs[(n+lane+1)%fs.length],...fs].filter((f,i,a)=>a.indexOf(f)===i);
+   const options=secondary.flatMap((f,fi)=>(fs.length===1?[1]:[0,1]).map((t,ti)=>({
+    family:f,tier:t,score:(f===family&&t===tier?1000:0)+(occupied.has(f+':'+t)?100:0)+fi*6+ti*8
+   })));
+   options.sort((a,b)=>a.score-b.score);
+   needs.push(req(options[0].family,options[0].tier));
+  }
   q.orders[lane]={id:`${lane}:${n}`,lane:LANES[lane],needs,energy:[5,10,18][lane],supplies:[1,3,6][lane]};
  }
  return q.orders.filter(Boolean);
