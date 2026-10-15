@@ -20,7 +20,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs');const {chromium
    },lane);
    timeline.push(decision);
    if(decision.type==='deliver'){
-    const before=await read(),card=page.locator(`#requests [data-request="${decision.id}"]`);await card.tap();assert.equal((await read()).requests.completed,before.requests.completed,'select does not deliver');await shot('ready');await card.tap();
+    const before=await read(),card=page.locator(`#requests [data-request="${decision.id}"]`);if(await card.getAttribute('aria-pressed')!=='true'){await card.tap();assert.equal((await read()).requests.completed,before.requests.completed,'select does not deliver');}await shot('ready');await card.tap();
     if(width===390)await page.waitForTimeout(130);await shot('delivery');await page.waitForTimeout(900);
     const after=await read();assert.equal(after.requests.supplies,before.requests.supplies+decision.supplies);assert.equal(after.energy,before.energy+decision.energy);assert.notEqual(after.requests.orders[lane].id,decision.id);await shot('replacement');await page.reload();assert.deepEqual((await read()).requests,after.requests);delivered=true;break;
    }

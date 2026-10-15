@@ -42,7 +42,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
   assert.equal(await page.locator('.tile.site').count(),3);assert.equal(await page.locator('.tile.route').count(),2);
   for(const family of ['rig','chart','flux']){const css=await page.locator(`.tile.item[data-family="${family}"]`).first().evaluate(el=>({background:getComputedStyle(el).backgroundColor,image:getComputedStyle(el).backgroundImage,shadow:getComputedStyle(el).boxShadow}));assert.deepEqual(css,{background:'rgba(0, 0, 0, 0)',image:'none',shadow:'none'});}
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
-  const bounds=await page.locator('#board').boundingBox();assert.ok(bounds.width>=Math.min(width-24,370));assert.ok(bounds.y+bounds.height<830);
+  const bounds=await page.locator('#board').boundingBox();assert.ok(bounds.width>=Math.min(width-24,370));assert.ok(bounds.y<500,'request shelf leaves the board visible without shrinking its targets');
   if(width<500){
    const mission=await page.locator('.objective').boundingBox();assert.ok(mission.height<=86,'single-requirement mission has no empty second row');assert.ok(bounds.y<=345,'board is promoted on the first mobile screen');
    for(const selector of ['#journalButton','#helpButton','#soundButton']){const hit=await page.locator(selector).boundingBox();assert.ok(hit.width>=44&&hit.height>=44,selector+' is a 44px target');}

@@ -36,7 +36,7 @@ test('replacement variety stays within unlocked producers across 90 deliveries',
  for(let n=0;n<90;n++){
   const o=s.requests.orders[n%3];for(const r of o.needs){assert.ok(sourceUnlocked(s,r.family));assert.ok(r.tier<=3);}
   // Supply only spare requested inventory; reserved equipment stays intact.
-  for(const r of o.needs)while(!requestProgress(s,o).progress.find(p=>p.family===r.family&&p.tier===r.tier)?.current){const i=s.board.indexOf(null);assert.ok(i>=0);s.board[i]=item(r.family,r.tier);}
+  for(const r of o.needs)while(requestProgress(s,o).progress.find(p=>p.family===r.family&&p.tier===r.tier).current<r.count){const i=s.board.indexOf(null);assert.ok(i>=0);s.board[i]=item(r.family,r.tier);}
   assert.ok(act(s,{type:'request',id:o.id}).ok);assert.notEqual(s.requests.orders[n%3].id,o.id);last=o;
  }
  assert.equal(s.requests.completed,90);assert.equal(s.requests.supplies,300);

@@ -20,9 +20,10 @@ export function syncRequests(s){
  const q=requestState(s),fs=requestFamilies(s);
  const unlocked=s.stage>0||s.landingStep>=1||q.completed>=2?3:s.merges>0?2:1;
  for(let lane=0;lane<unlocked;lane++)if(!q.orders[lane]){
-  const n=q.sequences[lane],family=fs[(n+lane)%fs.length];
+  const n=q.sequences[lane],family=fs[(Math.floor(n/2)+lane)%fs.length];
   const tier=lane===0?n%2:lane===1?1+n%2:2+n%2;
   const needs=[req(family,tier)];
+  if(lane===0&&q.orders.some(o=>o?.needs.length===1&&o.needs[0].family===family&&o.needs[0].tier===tier&&o.needs[0].count===1))needs[0].count=2;
   if(lane===2)needs.push(req(fs[(n+lane+1)%fs.length],fs.length===1?1:0));
   q.orders[lane]={id:`${lane}:${n}`,lane:LANES[lane],needs,energy:[5,10,18][lane],supplies:[1,3,6][lane]};
  }
