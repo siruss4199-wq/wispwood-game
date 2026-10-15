@@ -79,14 +79,14 @@ function render(){
  if(goalReady)$('#step').textContent='READY';
  let seals=$('#sealStates');if(!seals){seals=document.createElement('div');seals.id='sealStates';$('.objective').append(seals);}
  seals.hidden=state.stage===0;seals.innerHTML=['navigation','stabilization','resonance'].map((k,n)=>`<span class="sealState ${state.seals[k]?'secured':''}" aria-label="${k} seal ${state.seals[k]?'secured':'unresolved'}"><i aria-hidden="true">${state.seals[k]?'✓':['◇','⌂','ϟ'][n]}</i>${['Navigate','Stabilize','Resonate'][n]}</span>`).join('');
- renderRequests();renderSide();const c=normalContract(state),sideVisible=!$('#contracts').hidden,cr=sideVisible&&sideChoice()==='contract'&&ready(state,c.needs);
+ renderRequests();renderSide();const order=focus==='request'?state.requests.orders.find(o=>o?.id===requestId):null,orderProgress=order?requestProgress(state,order):null,c=order??normalContract(state),sideVisible=!!order||!$('#contracts').hidden&&$('#sideTray').open,cr=order?orderProgress.ready:sideVisible&&sideChoice()==='contract'&&ready(state,c.needs);
  const readySignal=sideChoice()==='opportunity'&&state.opportunity&&opportunity(state).remaining>0&&ready(state,state.opportunity.needs);
  const selectedItem=state.board[selected];
  board.dataset.site=viewStage;board.setAttribute('aria-label',SITE_NAMES[viewStage]+' · 6 by 6 merge board');
  board.innerHTML=siteSurface(viewStage)+state.board.map((x,i)=>{
   const isSource=x?.type==='source',locked=isSource&&!sourceUnlocked(state,x.id);
-  const useful=isSource&&!locked&&needed().some(r=>r.family===x.id&&count(state,r)<r.count);
-  const expedition=!!g?.needs.some(r=>matches(x,r)),contract=sideVisible&&sideChoice()==='contract'&&c.needs.some(r=>matches(x,r));
+  const useful=isSource&&!locked&&(orderProgress?orderProgress.progress.some(r=>r.family===x.id&&r.current<r.count):needed().some(r=>r.family===x.id&&count(state,r)<r.count));
+  const expedition=!!g?.needs.some(r=>matches(x,r)),contract=sideVisible&&(!!order||sideChoice()==='contract')&&c.needs.some(r=>matches(x,r));
   const matching=selectedItem?.type==='item'&&x?.type==='item'&&i!==selected&&x.family===selectedItem.family&&x.tier===selectedItem.tier&&x.tier<7;
   return `<button class="tile ${x?.type??'empty'} ${locked?'locked':''} ${useful?'useful':''} ${selected===i?'selected':''} ${matching?'match':''} ${needed().some(r=>matches(x,r))?'wanted':''}" data-index="${i}" ${x?.family||isSource||x?.type==='crate'?`data-family="${x.family??(isSource?x.id:containerInfo(x).family)}"`:''} data-variant="${i%3}" data-use="${expedition&&contract?'both':expedition?'expedition':contract?'contract':''}" aria-label="${nameOf(x)}${x?.type==='crate'?' · tap to reveal · '+contents(x).map(nameOf).join(', '):''}${expedition&&contract?' · needed for expedition and contract':expedition?' · needed for expedition':contract?' · useful for contract':''}${locked?' · locked':isSource?' · '+SOURCES[x.id].cost+' energy · '+state.charges[x.id]+' charges':''}. Space ${i+1}" aria-pressed="${selected===i}">${art(x?.type==='site'&&state.stage<2?{type:'sealed'}:x)}${expedition||contract?`<span class="useBadge" aria-hidden="true">${expedition?'◆':''}${contract?'▰':''}</span>`:''}${isSource?(locked?`<span class="lockedLabel">${x.id==='chart'?'CLEAR PATH':'EXCAVATE'}</span>`:`<span class="energyCue">ϟ${SOURCES[x.id].cost}</span><span class="charge">${Array.from({length:7},(_,n)=>`<i class="${n>=state.charges[x.id]?'used':''}"></i>`).join('')}</span>`):x?.type==='crate'?`<span class="pulls">${x.left}</span>`:''}</button>`;
  }).join('');
@@ -119,7 +119,7 @@ function render(){
  }
  const pair=openingPair(state);if(pair.length===2)for(const i of pair)board.querySelector(`[data-index="${i}"]`).classList.add('openingPair');
  for(const tile of board.querySelectorAll('.tile')){const i=+tile.dataset.index;if(useAction(state,selected,i)||useAction(state,i,selected))tile.classList.add('useTarget','match');}
- for(const tile of board.querySelectorAll('.tile.item')){const x=state.board[+tile.dataset.index];tile.dataset.tier=x.tier;tile.classList.toggle('deliveryReady',(goalReady&&g.needs.some(r=>matches(x,r)))||(cr&&c.needs.some(r=>matches(x,r))));}
+ for(const tile of board.querySelectorAll('.tile.item')){const x=state.board[+tile.dataset.index];tile.dataset.tier=x.tier;tile.classList.toggle('deliveryReady',(goalReady&&g.needs.some(r=>matches(x,r)))||(cr&&(orderProgress?orderProgress.indices.includes(+tile.dataset.index):c.needs.some(r=>matches(x,r)))));}
  for(const tile of board.querySelectorAll('.tile.site,.tile.route')){
   const x=state.board[+tile.dataset.index],need=x.type==='route'?{family:ROUTES[x.id].family,tier:2,count:1}:equipment(x.kind);
   const can=x.type==='route'?state.stage===1&&sight(state,x.id).ready&&ready(state,[need]):state.stage>=2&&x.phase==='idle'&&ready(state,[need]);
