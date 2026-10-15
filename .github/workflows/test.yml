@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main, dev/v5-premium-restoration, codex/v5-first-session-foundation, codex/v5-three-seal-foundation]
+    branches: [main, dev/v5-premium-restoration, codex/v5-first-session-foundation, codex/v5-three-seal-foundation, codex/v5-critical-path-challenge]
   workflow_dispatch:
 
 permissions:
@@ -54,6 +54,7 @@ jobs:
       - name: Verify mobile render, persistence and board interactions
         run: |
           python3 -m http.server 8080 > /tmp/wispwood-http.log 2>&1 &
+          node tests/v5-requests-browser.cjs
           node tests/v5-resonance-browser.cjs
           node tests/v45-browser.cjs
           node tests/v5-browser.cjs

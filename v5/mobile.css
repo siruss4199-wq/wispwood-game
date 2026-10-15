@@ -145,6 +145,30 @@ body[data-art="premium"] .world:has(.premiumScene) .worldLabel b{background:#fff
 #board .tile.prism{touch-action:none;-webkit-touch-callout:none}
 .surveyRay{position:absolute;inset:6px;width:calc(100% - 12px);height:calc(100% - 12px);pointer-events:none;z-index:1;fill:none;stroke:#569f9c;stroke-width:4;stroke-dasharray:8 9;opacity:.55}
 .surveyRay.clear{stroke:#13a98f;stroke-dasharray:none;opacity:.85}
-.surveyMark{outline:2px dashed #379d9b;outline-offset:-5px}
+body[data-art] #board .tile.surveyMark{outline:2px dashed #379d9b;outline-offset:-5px}
 .surveyGhost{position:absolute;inset:6px;opacity:.25;pointer-events:none}
 .lensPlane{position:absolute;width:42%;height:4px;left:29%;top:48%;border-radius:3px;background:#dbfffb;box-shadow:0 0 0 1px #489c9b,0 0 5px #d2fff6;transform:rotate(var(--lens-angle));pointer-events:none}
+
+/* TT-1A: three compact optional orders; expedition exchanges stay available. */
+#requests{margin:8px 0 3px;color:#274d59}
+.requestHeading{display:flex;justify-content:space-between;align-items:center;font-size:11px;letter-spacing:.06em;margin:0 5px 5px}
+.requestHeading b{font-size:12px;letter-spacing:0;color:#79602c}
+.requestShelf{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.requestCard{min-height:112px;min-width:44px;padding:6px 3px;border:1px solid #bed8d0;border-radius:15px;background:#f9f4e4;color:#315461;box-shadow:0 2px 0 #b9c9c2;display:flex;flex-direction:column;align-items:center;gap:2px;touch-action:manipulation}
+.requestCard.active{outline:2px solid #e9ac42;outline-offset:1px}
+.requestCard.ready{background:#e0f3d8;border-color:#45a58d}
+.requestLane{font-size:12px;line-height:16px}
+.requestItems{display:flex;justify-content:center;align-items:center;height:48px;width:100%}
+.requestItems>span{position:relative;width:48px;height:48px}
+.requestItems svg,.requestItems img{width:48px;height:48px;object-fit:contain}
+.requestItems b{position:absolute;right:0;bottom:0;background:#fff9e9;border-radius:6px;padding:0 3px;font-size:11px;color:#284e57}
+.requestItems i{position:absolute;left:0;bottom:0;font-size:10px;color:#b47c21;font-style:normal}
+.requestReward{font-size:12px;font-weight:700;color:#795526}
+.requestCard>strong{font-size:10px;line-height:16px;color:#4d7274}
+.requestCard.ready>strong{color:#fff;background:#218779;border-radius:8px;padding:0 8px}
+#sideTray{margin:2px 0 0;color:#416977;font-size:12px}
+#sideTray>summary{min-height:44px;display:flex;align-items:center;justify-content:flex-end;cursor:pointer;padding:0 8px;list-style:none}
+#sideTray>summary:after{content:' ›';margin-left:5px}
+#sideTray[open]>summary:after{content:' ⌄'}
+#sideTray .contracts{margin-top:0}
+@media(min-width:700px){.requestCard{min-height:116px}}

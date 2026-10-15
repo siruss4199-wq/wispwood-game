@@ -19,7 +19,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
   await page.waitForFunction(()=>document.querySelectorAll('#board .tile').length===36);
   const read=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('vaultwake-v5')));
   const shot=async name=>{await page.evaluate(async()=>{await Promise.all([...document.images].map(img=>img.decode().catch(()=>{})));});await page.screenshot({path:`test-artifacts/v5/${style}-${name}-${width}.png`,fullPage:true});};
-  const showSide=async type=>{for(let n=0;n<4&&!await page.locator('[data-contract="'+type+'"]').count();n++)await page.locator('[data-side-next]').tap();assert.equal(await page.locator('[data-contract="'+type+'"]').count(),1);};
+  const showSide=async type=>{await page.locator('#sideTray').evaluate(el=>el.open=true);for(let n=0;n<4&&!await page.locator('[data-contract="'+type+'"]').count();n++)await page.locator('[data-side-next]').tap();assert.equal(await page.locator('[data-contract="'+type+'"]').count(),1);};
   const payoff=async(kind)=>{
    if(motion){assert.ok(await page.locator('.deliveryObject.collect').count()>0,kind+' collects actual board objects');
     const clone=page.locator('.deliveryTask.objective');if(await clone.count()){assert.equal(await clone.evaluate(el=>getComputedStyle(el).display),'grid','delivery keeps mission layout outside the scene');assert.equal(await page.locator('.world .objective').evaluate(el=>getComputedStyle(el).visibility),'hidden','next objective waits behind delivery receipt');const box=await clone.boundingBox();const requirements=await clone.locator('.goalBottom').boundingBox();assert.ok(requirements.y+requirements.height<=box.y+box.height+1,'delivery requirements stay inside the copied mission');}
@@ -42,12 +42,12 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
   assert.equal(await page.locator('.tile.site').count(),3);assert.equal(await page.locator('.tile.route').count(),2);
   for(const family of ['rig','chart','flux']){const css=await page.locator(`.tile.item[data-family="${family}"]`).first().evaluate(el=>({background:getComputedStyle(el).backgroundColor,image:getComputedStyle(el).backgroundImage,shadow:getComputedStyle(el).boxShadow}));assert.deepEqual(css,{background:'rgba(0, 0, 0, 0)',image:'none',shadow:'none'});}
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
-  const bounds=await page.locator('#board').boundingBox();assert.ok(bounds.width>=Math.min(width-24,370));assert.ok(bounds.y+bounds.height<830);
+  const bounds=await page.locator('#board').boundingBox();assert.ok(bounds.width>=Math.min(width-24,370));assert.ok(bounds.y<500,'request shelf leaves the board visible without shrinking its targets');
   if(width<500){
    const mission=await page.locator('.objective').boundingBox();assert.ok(mission.height<=86,'single-requirement mission has no empty second row');assert.ok(bounds.y<=345,'board is promoted on the first mobile screen');
    for(const selector of ['#journalButton','#helpButton','#soundButton']){const hit=await page.locator(selector).boundingBox();assert.ok(hit.width>=44&&hit.height>=44,selector+' is a 44px target');}
   }
-  const a=await page.locator('#board [data-index="7"]').boundingBox(),b=await page.locator('#board [data-index="8"]').boundingBox();
+  await page.locator('#board').scrollIntoViewIfNeeded();const a=await page.locator('#board [data-index="7"]').boundingBox(),b=await page.locator('#board [data-index="8"]').boundingBox();
   if(width===390&&style==='contract'){
    const touch=await page.context().newCDPSession(page);const from={x:a.x+a.width/2,y:a.y+a.height/2},to={x:b.x+b.width/2,y:b.y+b.height/2};
    await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[from]});
@@ -62,7 +62,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
    if(cmd.type==='goal'){assert.equal(await page.locator('.objective.ready').count(),1);await shot('main-ready-'+before.stage);if(before.stage===3)await shot('pre-vault');}
    if(cmd.type==='merge'){
     if(before.board[cmd.from].type!=='item'||width===390&&before.seals.stabilization&&before.board[cmd.to]===null){
-     const a=await page.locator(`#board [data-index="${cmd.from}"]`).boundingBox(),b=await page.locator(`#board [data-index="${cmd.to}"]`).boundingBox();await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:7});await page.mouse.up();
+     await page.locator('#board').scrollIntoViewIfNeeded();const a=await page.locator(`#board [data-index="${cmd.from}"]`).boundingBox(),b=await page.locator(`#board [data-index="${cmd.to}"]`).boundingBox();await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:7});await page.mouse.up();
     }else{const selected=page.locator('#board .selected.item,#board .selected.glyph,#board .selected.brace');if(await selected.count())await selected.tap();await page.locator(`#board [data-index="${cmd.from}"]`).tap();await page.locator(`#board [data-index="${cmd.to}"]`).tap();}
    }
    else if(cmd.type==='produce'||cmd.type==='service'){
@@ -81,7 +81,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
    }
    else if(cmd.type==='deploy'&&style==='contract'){
     const family={winch:'rig',scope:'chart',relay:'flux'}[before.board[cmd.index].kind],from=before.board.findIndex(x=>x?.family===family&&x.tier===3);
-    const a=await page.locator(`#board [data-index="${from}"]`).boundingBox(),b=await page.locator(`#board [data-index="${cmd.index}"]`).boundingBox();
+    await page.locator('#board').scrollIntoViewIfNeeded();const a=await page.locator(`#board [data-index="${from}"]`).boundingBox(),b=await page.locator(`#board [data-index="${cmd.index}"]`).boundingBox();
     await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:7});assert.equal(await page.locator('.site.target').count(),1,'installed-equipment destination snaps');await page.mouse.up();
    }
    else if(cmd.type==='restore'){
@@ -90,12 +90,12 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
     for(const choice of await page.locator('.findChoice').all()){const b=await choice.boundingBox();assert.ok(b.height>=44&&b.width>=44);}
     const from=before.board.findIndex(x=>x?.family==='flux'&&x.tier===2);
     if(style==='contract'){
-     const a=await page.locator(`#board [data-index="${from}"]`).boundingBox(),b=await page.locator(`#board [data-index="${cmd.index}"]`).boundingBox();await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:7});assert.equal(await page.locator('.rock.target').count(),1);await page.mouse.up();
+     await page.locator('#board').scrollIntoViewIfNeeded();const a=await page.locator(`#board [data-index="${from}"]`).boundingBox(),b=await page.locator(`#board [data-index="${cmd.index}"]`).boundingBox();await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:7});assert.equal(await page.locator('.rock.target').count(),1);await page.mouse.up();
     }else await page.locator(`#board [data-index="${from}"]`).tap();
    }
    else if(cmd.type==='clear'){
     const from=before.board.findIndex(x=>x?.type==='brace'||x?.family==='rig'&&x.tier===2);
-    const a=await page.locator(`#board [data-index="${from}"]`).boundingBox(),b=await page.locator(`#board [data-index="${cmd.index}"]`).boundingBox();
+    await page.locator('#board').scrollIntoViewIfNeeded();const a=await page.locator(`#board [data-index="${from}"]`).boundingBox(),b=await page.locator(`#board [data-index="${cmd.index}"]`).boundingBox();
     await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:7});
     assert.equal(await page.locator('.rock.target').count(),1,'held tool snaps to usable stone');await page.mouse.up();
    }
@@ -120,8 +120,8 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
    if(await page.locator('#goalButton').isVisible()){const actionBounds=await page.locator('#goalButton').boundingBox(),goalBounds=await page.locator('.objective').boundingBox();assert.ok(actionBounds.x+actionBounds.width<=goalBounds.x+goalBounds.width);assert.ok(actionBounds.height>=44&&actionBounds.width>=44,'main action is reachable');}assert.equal(await page.locator('.contract').count(),1);assert.equal(await page.locator('.world .objective').count(),1);
    for(const hit of await page.locator('.missionSlot,.sideMore').all()){if(await hit.isVisible()){const box=await hit.boundingBox();assert.ok(box.width>=44&&box.height>=44,'mission and optional navigation targets stay 44px');}}
-   const contractBox=await page.locator('.contract').boundingBox();for(const part of await page.locator('.contract .needs,.contract .reward').all()){const b=await part.boundingBox();assert.ok(b.x+b.width<=contractBox.x+contractBox.width+1,'task contents remain within their tap target');}
-   const bounds=await page.locator('#board').boundingBox();assert.ok(bounds.y+bounds.height<844,'board remains visible');
+   await page.locator('#sideTray').evaluate(el=>el.open=true);const contractBox=await page.locator('.contract').boundingBox();for(const part of await page.locator('.contract .needs,.contract .reward').all()){const b=await part.boundingBox();assert.ok(b.x+b.width<=contractBox.x+contractBox.width+1,'task contents remain within their tap target');}
+   await page.locator('#sideTray').evaluate(el=>el.open=false);await page.locator('#board').scrollIntoViewIfNeeded();const bounds=await page.locator('#board').boundingBox();assert.ok(bounds.y>=0&&bounds.y+bounds.height<=844,'full-size board remains accessible by scrolling');
    timeline.push({move:s.moves,action:cmd.type,stage:s.stage,occupied:s.board.filter(Boolean).length,energy:s.energy,charges:s.charges,log:s.expedition.log.at(-1)});
    for(const [check,name] of [[s.merges>=3,'early-merges'],[s.stage===1,'route-choice'],[s.stage===2,'producer-unlock'],[cmd.type==='deploy','device-used'],[cmd.type==='feed','fragment-choice'],[cmd.type==='discovery','rare-decoded'],[cmd.type==='clear','blocker-solution'],[s.expedition.log.some(x=>x.type==='device-used'),'device-consequence'],[s.stage===3,'powered-site'],[cmd.type==='crate','container-opening']]){
     if(check&&!captured.has(name)){if(['route-choice','producer-unlock','powered-site'].includes(name))await page.waitForTimeout(1800);await shot(name);captured.add(name);}
