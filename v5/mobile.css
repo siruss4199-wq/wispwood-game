@@ -99,7 +99,7 @@ body[data-art="premium"] .objective .need:not(.done) .art{opacity:.9}
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%;scroll-padding-bottom:100px;background:#f5f3ec}
 .game{min-height:100svh;overflow:visible;padding-top:max(8px,env(safe-area-inset-top));padding-left:max(10px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right));padding-bottom:calc(80px + env(safe-area-inset-bottom))}
 #board,#board .tile{touch-action:pan-y}
-#board .tile:is(.item,.crate,.glyph,.brace){touch-action:none;-webkit-touch-callout:none}
+#board .tile:is(.item,.crate,.glyph,.brace,.prism){touch-action:none;-webkit-touch-callout:none}
 .selection,footer{scroll-margin-bottom:calc(24px + env(safe-area-inset-bottom))}
 .moment{top:max(64px,calc(env(safe-area-inset-top) + 56px))}
 dialog{max-height:calc(100svh - 48px);overflow-y:auto;overscroll-behavior:contain}
