@@ -1,7 +1,9 @@
 // Intent-based player styles. All actions use the public reducer / real UI.
 import {goal,ready,count,normalContract,SOURCES,sourceUnlocked} from '../v5/core.mjs';
+import {sight} from '../v5/navigation.mjs';
 import {ANCHORS,ROUTES,equipment,anchors} from '../v5/expedition.mjs';
-import {circuit,linkPhase,loopCell} from '../v5/seals.mjs';
+import {circuit,linkPhase,optics} from '../v5/seals.mjs';
+import {layouts,arrange} from './v5-optics-policy.mjs';
 const req=(family,tier,count=1)=>({family,tier,count});
 export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,session=null,style='expedition',findStrategy=null,decode=true,route=null}={}){
  if(!goal(s))return null;
@@ -20,7 +22,16 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
  else if(s.stage===0){needs=goal(s).needs;command={type:'goal'};}
  else if(s.stage===1){
   const id=route??(['contract','aggressive'].includes(style)?'conduit':'ridge');
+  const view=sight(s,id),lens=s.board.findIndex(x=>x?.type==='item'&&x.family==='chart'&&x.tier===2);
+  if(lens>=0&&!view.ready){
+   const start=view.path[0],blocked=lens!==start&&s.board[start]?start:view.blocked[0];
+   if(blocked!==undefined){const to=s.board.findIndex((x,i)=>!x&&!view.path.includes(i));if(to>=0)return {type:'merge',from:blocked,to};const extra=s.board.findIndex((x,i)=>x?.type==='item'&&i!==lens&&x.tier===0);if(extra>=0)return {type:'recycle',index:extra};}
+   if(lens!==start)return {type:'merge',from:lens,to:start};
+  }
+  if(lens<0){needs=[req('chart',2)];command={type:'breach',index:s.board.findIndex(x=>x?.type==='route'&&x.id===id)};}
+  else{
   needs=[req(ROUTES[id].family,2)];command={type:'breach',index:s.board.findIndex(x=>x?.type==='route'&&x.id===id)};
+  }
  }else{
   const finds=s.board.flatMap((x,i)=>x?.type==='rock'&&x.find&&anchors(s).some(v=>v.kind===x.find&&v.phase==='idle')?[i]:[]);
   if(s.stage===2&&findStrategy&&finds.length){
@@ -42,22 +53,11 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
   }else if(s.stage===2&&style==='contract'&&normalContract(s).vaultTrade){needs=normalContract(s).needs;command={type:'contract'};}
   else if(s.stage===3){needs=goal(s).needs;command={type:'goal'};}
   else{
-   const path=circuit(s,true),connected=circuit(s);
+   const plan=layouts(s)[0],connected=circuit(s);
    if(connected)return {type:'power'};
-   if(path){
-    const slots=path.slice(1,-1);
-    for(const to of slots){
-     if(loopCell(s.board[to]))continue;
-     if(s.board[to]){
-      const empty=s.board.findIndex((x,i)=>!x&&!slots.includes(i));
-      if(empty>=0)return {type:'merge',from:to,to:empty};
-      const recyclable=s.board.findIndex((x,i)=>x?.type==='item'&&!slots.includes(i)&&!loopCell(x));
-      if(recyclable>=0)return {type:'recycle',index:recyclable};
-     }
-     const from=s.board.findIndex((x,i)=>loopCell(x)&&!slots.includes(i));
-     if(from>=0)return {type:'merge',from,to};
-    }
-    needs=[req('flux',1,slots.length)];command={type:'power'};
+   if(plan){
+    if(!optics(s).primed){needs=[req('flux',1)];command={type:'prime'};}
+    else {const next=arrange(s,plan);if(next)return next;throw Error('Optics plan stalled');}
    }else{
    const order=['expedition','contract'].includes(style)?['winch','relay']:style==='exploration'?['winch','scope']:['scope','winch'];
    const site=order.map(kind=>anchors(s).find(x=>x.kind===kind)).find(x=>x.phase!=='done');

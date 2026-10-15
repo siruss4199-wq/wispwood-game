@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {fresh,act,item} from '../v5/core.mjs';
 import {useAction,openingPair} from '../v5/interactions.mjs';
 import {deliveryItems} from '../v5/presentation.mjs';
+import {prepareSight} from './v5-navigation-policy.mjs';
 
 test('opening invitation identifies real twins and disappears after a merge',()=>{
  const s=fresh(0),pair=openingPair(s);assert.equal(pair.length,2);
@@ -31,6 +32,7 @@ test('survey retains both tools without consumption feedback; chosen route spend
  for(const [route,family,kept] of [[24,'rig','chart'],[27,'chart','rig']]){
   const s=fresh(0);s.landingStep=1;s.board[1]=item('rig',2);s.board[3]=item('chart',2);
   assert.deepEqual(deliveryItems(s,{type:'goal'}),[]);assert.ok(act(s,{type:'goal'},0).ok);
+  prepareSight(s,route===24?'ridge':'conduit');
   const from=s.board.findIndex(x=>x?.family===family&&x.tier===2);
   assert.equal(deliveryItems(s,{type:'breach',from,index:route})[0].index,from);
   assert.ok(act(s,useAction(s,from,route),0).ok);assert.ok(s.board.some(x=>x?.family===kept&&x.tier===2));

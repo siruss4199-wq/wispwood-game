@@ -1,5 +1,6 @@
 import {container,containerInfo,contents,CONTAINERS} from './containers.mjs';
-import {freshSeals,allSeals,circuit,migrateSeals} from './seals.mjs';
+import {sight} from './navigation.mjs';
+import {freshSeals,allSeals,circuit,migrateSeals,linkPhase,loopCell,movable,optics,unfold} from './seals.mjs';
 import {ANCHORS,ROUTES,FINDS,surveyFinds,findSite,canRestore,equipment,anchors,activeAnchors,completedAnchors,trace,expeditionState,installSites} from './expedition.mjs';
 // Vaultwake: deterministic rules, independent of rendering and wall-clock timers.
 export const SAVE_KEY='vaultwake-v5';
@@ -21,7 +22,7 @@ export const POST_GOALS=[
  {name:'Chart the next crossing',verb:'Chart crossing',scene:'Vault opened',needs:[req('chart',6),req('rig',5)],energy:35,next:'Archive expedition badge'},
  {name:'Build an aurora beacon',verb:'Light beacon',scene:'Vault opened',needs:[req('flux',7)],energy:50,next:'Aurora collector badge'}
 ];
-export const nameOf=x=>!x?'Empty space':x.type==='site'?ANCHORS[x.kind].name:x.type==='route'?ROUTES[x.id].name:x.type==='item'?FAMILIES[x.family].names[x.tier]:x.type==='source'?SOURCES[x.id].name:x.type==='rock'?'Saltstone blocker':x.type==='marker'?'Buried survey marker':x.type==='lock'?'Dormant relic lock':x.type==='crate'?containerInfo(x).name:x.type==='brace'?'Trail brace':x.type==='glyph'?'Echo fragment':'Buried ground';
+export const nameOf=x=>!x?'Empty space':x.type==='prism'?'Ring reflector':x.type==='site'?ANCHORS[x.kind].name:x.type==='route'?ROUTES[x.id].name:x.type==='item'?FAMILIES[x.family].names[x.tier]:x.type==='source'?SOURCES[x.id].name:x.type==='rock'?'Saltstone blocker':x.type==='marker'?'Buried survey marker':x.type==='lock'?'Dormant relic lock':x.type==='crate'?containerInfo(x).name:x.type==='brace'?'Trail brace':x.type==='glyph'?'Echo fragment':'Buried ground';
 export const item=(family,tier)=>({type:'item',family,tier});
 const source=id=>({type:'source',id});
 export function fresh(now=Date.now()){
@@ -38,10 +39,10 @@ export function fresh(now=Date.now()){
 }
 export function goal(s){
  if(s.stage===0&&s.landingStep===1)return {name:'Chart the safe crossing',verb:'Mark route',scene:'Survey camp established',needs:[req('chart',2),req('rig',2)],energy:8,next:'Choose a route with prepared equipment',text:'Build a Sight Lens and Split Spanner to survey the crossing. Both stay with you for the route choice.',phase:'LANDING 2 / 2'};
- if(s.stage===1)return {name:'Choose your breach',verb:'Clear',scene:'Survey worksite',needs:[req('rig',2),req('chart',2)],action:'inspect',next:'Either route unlocks Echo Crucible',text:'Both prepared tools are ready. Ridge spends a spanner for workspace; Conduit spends a lens for relic supplies.',phase:'CHOOSE ONE'};
+ if(s.stage===1)return {name:'Choose your breach',verb:'Clear',scene:'Survey worksite',needs:[req('rig',2),req('chart',2)],action:'inspect',next:'Either route unlocks Echo Crucible',text:'Place the lens on a survey mark. Clear its sightline, then use the route tool.',phase:'CHOOSE ONE'};
  if(s.stage===2){
-  const receivers=anchors(s).filter(x=>x.kind!=='winch'),stable=s.seals?.stabilization,receiver=receivers.some(x=>x.phase==='done'),path=circuit(s)??circuit(s,true);
-  return {name:!stable?'Restore the stone lift':!receiver?'Choose a ring receiver':'Connect the ring engine',verb:'Power rings',scene:'Entrance uncovered',needs:!stable?[equipment('winch')]:!receiver?receivers.filter(x=>x.phase==='idle').map(x=>equipment(x.kind)):[req('flux',1,path?path.length-2:2)],action:circuit(s)?'power':'inspect',next:!stable?'Lift clears buried ground':!receiver?'Relic finder or Power bridge':'Link the lift to a working receiver',text:!stable?'Recover a winch, or restore the buried lift with a pulse coil.':!receiver?'Choose relic supplies or recharged sources.':'Place separate Loop Cells along the connection. Keep them apart.',phase:!stable?'STABILIZATION':'RESONANCE'};
+  const receivers=anchors(s).filter(x=>x.kind!=='winch'),stable=s.seals?.stabilization,receiver=receivers.some(x=>x.phase==='done');
+  return {name:!stable?'Restore the stone lift':!receiver?'Choose a ring receiver':!optics(s).primed?'Light the ring engine':'Guide light to a receiver',verb:'Power rings',scene:'Entrance uncovered',needs:!stable?[equipment('winch')]:!receiver?receivers.filter(x=>x.phase==='idle').map(x=>equipment(x.kind)):!optics(s).primed?[req('flux',1)]:[],action:circuit(s)?'power':'inspect',next:!stable?'Lift clears buried ground':!receiver?'Relic finder or Power bridge':'Reflect light around the stone rib',text:!stable?'Recover a winch, or restore the buried lift with a pulse coil.':!receiver?'Choose relic supplies or recharged sources.':!optics(s).primed?'Use one Loop Cell on the lift.':'Move and turn both reflectors. Objects block the light.',phase:!stable?'STABILIZATION':'RESONANCE'};
  }
  if(s.stage===3)return {name:'Open the Tideglass Vault',verb:'Open vault',scene:'Rings awakened',needs:[],energy:20,next:'The chamber + relic cache',text:'All three seals are secured.',action:allSeals(s)?'goal':'inspect'};
  return STAGES[s.stage]??POST_GOALS[s.post]??null;
@@ -119,7 +120,7 @@ function activate(s,site){
  const opened=[],revealed=[];site.phase='done';site.progress=2;delete site.reclaimed;
  const uncover=type=>{for(let i=0;i<36&&opened.length<2;i++)if(s.board[i]?.type===type&&!s.board[i].find){s.board[i]=null;opened.push(i);}};
  if(site.kind==='winch'){uncover('rock');uncover('sealed');for(let n=0;n<2;n++){const i=put(s,item('chart',1));if(i>=0)revealed.push(i);}}
- else if(site.kind==='scope'){uncover('sealed');for(const x of [item('flux',2),container('relic')]){const i=put(s,x);if(i>=0)revealed.push(i);}}
+ else if(site.kind==='scope'){uncover('sealed');for(const x of [item('flux',1),container('relic')]){const i=put(s,x);if(i>=0)revealed.push(i);}}
  else {for(const id of Object.keys(SOURCES))s.charges[id]=7;surge(s);const i=put(s,item('rig',2));if(i>=0)revealed.push(i);}
  for(let n=0;n<2&&s.board.filter(Boolean).length<24;n++){const i=put(s,item(ANCHORS[site.kind].drive,0));if(i>=0)revealed.push(i);}
  trace(s,'device-used',{kind:site.kind,crossFamily:ANCHORS[site.kind].drive,opened,revealed});
@@ -129,12 +130,17 @@ function activate(s,site){
 // Mutating reducer is intentionally atomic: failed commands leave all state untouched.
 export function act(s,a,now=Date.now()){
  const fail=message=>({ok:false,message});
- const done=(message,event='action',index=null)=>{s.moves++;s.lastAt=now;if(event!=='produce')s.producerStreak=0;installSites(s);if(event==='milestone')remember(s,event,now);for(const x of s.board)if(x?.type==='item'){const key=x.family+':'+x.tier;if(!s.discovered.includes(key))s.discovered.push(key);}return {ok:true,message,event,index};};
+ const done=(message,event='action',index=null)=>{s.moves++;s.lastAt=now;if(event!=='produce')s.producerStreak=0;installSites(s);unfold(s);if(event==='milestone')remember(s,event,now);for(const x of s.board)if(x?.type==='item'){const key=x.family+':'+x.tier;if(!s.discovered.includes(key))s.discovered.push(key);}return {ok:true,message,event,index};};
  const valid=i=>Number.isInteger(i)&&i>=0&&i<36;
  if(a.type==='merge'||a.type==='move'){
   if(!valid(a.from)||!valid(a.to)||a.from===a.to)return fail('Choose another space.');
   const x=s.board[a.from],y=s.board[a.to];
-  if(!x||!['item','glyph','brace','crate'].includes(x.type))return fail('That object stays here.');
+  if(!movable(x))return fail('That object stays here.');
+  // Reflectors are equipment, never merge ingredients. Swap with kept stock
+  // even on a full board; a wrong placement can always be undone.
+  if(x.type==='prism'&&movable(y)||y?.type==='prism'&&movable(x)){
+   s.board[a.to]=x;s.board[a.from]=y;trace(s,'reflector-move',{from:a.from,to:a.to,swapped:true});return done('Reflector repositioned.','move',a.to);
+  }
   if(!y){s.board[a.to]=x;s.board[a.from]=null;return done('Moved.','move',a.to);}
   if(x.type!=='item'||y.type!=='item'||x.family!==y.family||x.tier!==y.tier||x.tier>=7)return fail('Merge two identical objects.');
   if(x.tier===3&&anchors(s).some(site=>site.phase==='idle'&&ANCHORS[site.kind].equipment===x.family))trace(s,'kept-for-merge',{family:x.family});
@@ -173,9 +179,10 @@ export function act(s,a,now=Date.now()){
  if(a.type==='breach'){
   const x=s.board[a.index],r=ROUTES[x?.id];
   if(s.stage!==1||!s.routePrepared||x?.type!=='route'||!r)return fail('Survey the crossing, then choose one breach.');
+  const view=sight(s,x.id);if(!view.ready)return fail(view.blocked.length?'Clear the sightline to this breach.':'Place the Sight Lens on this route’s survey mark.');
   const need=req(r.family,2),from=a.from??s.board.findIndex(x=>matches(x,need));if(!valid(from)||!matches(s.board[from],need))return fail(`Bring a ${FAMILIES[r.family].names[2]}.`);
   s.board[from]=null;s.expedition.route=x.id;s.stage=2;s.discovery=true;
-  s.seals.navigation=true;trace(s,'seal',{seal:'navigation',method:'survey-and-breach',route:x.id});
+  s.seals.navigation=true;trace(s,'seal',{seal:'navigation',method:'sightline-and-breach',route:x.id,path:view.path});
   for(let i=r.start;i<r.start+3;i++)s.board[i]=null;
   s.board[r.start]={type:'glyph'};
   if(x.id==='ridge')s.board[r.start+1]=item('rig',1);
@@ -188,7 +195,7 @@ export function act(s,a,now=Date.now()){
   const need=equipment(site.kind),from=a.from??s.board.findIndex(x=>matches(x,need));
   if(!valid(from)||!matches(s.board[from],need))return fail(`Use a ${FAMILIES[need.family].names[3]}.`);
   trace(s,'deployment',{kind:site.kind,family:need.family,contractAlternative:normalContract(s).needs.some(r=>matches(s.board[from],r)),mergeAvailable:count(s,need)>=2});
-  s.board[from]=null;const before=s.stage,change=activate(s,site);
+  s.board[from]=null;site.repair='recover';const before=s.stage,change=activate(s,site);
   return {...done(ANCHORS[site.kind].effect,s.stage>before?'milestone':'deployment',a.index),reveal:change.revealed,opened:change.opened};
  }
  if(a.type==='restore'){
@@ -198,17 +205,31 @@ export function act(s,a,now=Date.now()){
   const site=findSite(s,rock),siteIndex=s.board.indexOf(site),before=s.stage;
   trace(s,'find-choice',{choice:'restore',kind:rock.find,spent:'flux',keptAlternative:'recover'});
   trace(s,'deployment',{kind:site.kind,family:'flux',method:'restore',mergeAvailable:count(s,req('flux',2))>=2});
-  s.board[from]=null;s.board[a.index]=null;const change=activate(s,site);
+  s.board[from]=null;s.board[a.index]=null;site.repair='restore';const change=activate(s,site);
   return {...done(ANCHORS[site.kind].effect,s.stage>before?'milestone':'deployment',siteIndex),reveal:change.revealed,opened:[a.index,...change.opened],restored:siteIndex};
  }
  if(a.type==='power'){
-  const path=circuit(s);if(!path)return fail('Connect the repaired lift to a working receiver with separate Loop Cells.');
+  const path=circuit(s);if(!path)return fail('Guide the beam through both reflectors to a working receiver.');
   if(a.index!==undefined&&a.index!==path[0]&&a.index!==path.at(-1))return fail('Use a connected device.');
-  for(const i of path.slice(1,-1))s.board[i]=null;
+  const receiver=s.board[path.at(-1)].kind,folded=[];
+  for(const [i,x]of s.board.entries())if(x?.type==='prism'){s.board[i]=null;folded.push(i);}
   s.seals.resonance=true;s.seals.link=path;s.stage=3;s.energy=Math.min(120,s.energy+6);
-  for(const id of Object.keys(SOURCES))s.charges[id]=7;surge(s);
-  trace(s,'seal',{seal:'resonance',method:'board-circuit',path,receiver:s.board[path.at(-1)].kind});trace(s,'powered');
-  return {...done('Ring engine online · sources recharged · three rich pulls','milestone',path.at(-1)),opened:path.slice(1,-1)};
+  if(receiver==='relay'){for(const id of Object.keys(SOURCES))s.charges[id]=7;surge(s);put(s,item('rig',3));}
+  else put(s,container('relic',5));
+  trace(s,'seal',{seal:'resonance',method:'reflected-beam',path,receiver});trace(s,'powered');
+  return {...done(receiver==='relay'?'Rings online · pocket winch recovered · three rich pulls':'Rings online · a sealed relic ampoule recovered','milestone',path.at(-1)),opened:folded};
+ }
+ if(a.type==='prime'){
+  const from=a.from??s.board.findIndex(loopCell),lift=s.board.findIndex(x=>x?.type==='site'&&x.kind==='winch'&&x.phase==='done');
+  if(!linkPhase(s)||optics(s).primed||lift<0||!valid(from)||!loopCell(s.board[from])||a.index!==undefined&&a.index!==lift)return fail('Use one Loop Cell on the repaired lift.');
+  s.board[from]=null;s.seals.optics={...optics(s),primed:true};trace(s,'beam-primed');return done('Light online · objects cast shadows.','deployment',lift);
+ }
+ if(a.type==='turn'){
+  const x=s.board[a.index];if(!linkPhase(s)||!valid(a.index))return fail('Turn expedition optics while connecting the rings.');
+  if(x?.type==='prism'){x.turn=1-x.turn;trace(s,'reflector-turn',{index:a.index,turn:x.turn});}
+  else if(x?.type==='site'&&x.kind==='winch'&&x.phase==='done'){s.seals.optics={...optics(s),direction:optics(s).direction===0?2:0};trace(s,'emitter-turn',{direction:s.seals.optics.direction});}
+  else return fail('Choose a reflector or the repaired lift.');
+  return done('Light redirected.','turn',a.index);
  }
  if(a.type==='goal'){
   if(s.stage===3&&!allSeals(s))return fail('Resolve all three vault seals first.');
@@ -309,6 +330,7 @@ export function load(raw,now=Date.now()){
    else if(x.type==='crate'){if(!integer(x.left,1,5)||x.kind!==undefined&&!CONTAINERS[x.kind])return fresh(now);x.kind??='locker';}
    else if(x.type==='site'){if(!ANCHORS[x.kind]||!['idle','active','done'].includes(x.phase)||!integer(x.progress,0,2)||x.phase==='idle'&&x.progress!==0||x.phase==='done'&&x.progress!==2||x.phase==='active'&&x.progress>1||x.reclaimed!==undefined&&typeof x.reclaimed!=='boolean')return fresh(now);}
    else if(x.type==='route'){if(!ROUTES[x.id])return fresh(now);}
+   else if(x.type==='prism'){if(!integer(x.id,0,1)||!integer(x.turn,0,1))return fresh(now);}
    else if(!['glyph','brace','rock','sealed','marker','lock'].includes(x.type))return fresh(now);
    if(x.type==='rock'&&x.find!==undefined&&!FINDS[x.find])delete x.find;
   }
