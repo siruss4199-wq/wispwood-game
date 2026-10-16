@@ -24,7 +24,17 @@ function needed(){if(focus==='bench')return BENCH_NEEDS;if(focus==='request')ret
 function needsHTML(needs){return needs.map(r=>`<span class="need ${count(state,r)>=r.count?'done':near(state,[r])==='1 MERGE AWAY'?'almost':''}" title="${nameOf(item(r.family,r.tier))}">${art(item(r.family,r.tier))}<b>${count(state,r)>=r.count&&r.count===1?'✓':Math.min(count(state,r),r.count)+'/'+r.count}</b></span>`).join('');}
 function sideOptions(){return ['contract',...(state.discovery&&!state.discoveryDone&&state.board.some(x=>x?.type==='glyph')?['discovery']:[]),...(state.stage>=1?[state.opportunity?'opportunity':'startOpportunity']:[])];}
 function sideChoice(){const options=sideOptions();return options.includes(sideView)?sideView:state.opportunity?'opportunity':options.includes('discovery')?'discovery':'contract';}
-function hint(){if(!state.merges)return 'Tap two matching copper offcuts';if(state.stage===0&&state.landingStep===1)return 'Prepare a Sight Lens + Split Spanner';if(state.stage===1)return 'Place the lens · clear its sightline';if(circuit(state))return 'Receiver lit · power the rings';if(linkPhase(state)&&optics(state).primed)return beam(state).stop==='stone'?'Stone blocks light · find another crossing':'Turn reflector + lens · clear the beam';if(linkPhase(state))return 'Use a Loop Cell on the lift';if(state.stage===2)return 'Recover gear · or restore machinery';return 'Merge twins · choose where to use them';}
+function hint(){
+ if(!state.merges)return 'START HERE · Tap the two glowing Copper Offcuts';
+ if(state.stage===0&&!state.landingStep)return 'GRIP TOOL MADE · Tap CLEAR PATH above';
+ if(focus==='request'){
+  const order=state.requests.orders.find(o=>o?.id===requestId);
+  if(order){const progress=requestProgress(state,order);if(progress.ready)return 'ORDER READY · Tap the chosen request again to deliver';
+   const missing=progress.progress.find(r=>r.current<r.count);
+   if(missing)return 'CAMP ORDER · Make '+nameOf(item(missing.family,missing.tier))+' using the board';
+  }
+ }
+ if(state.stage===0&&state.landingStep===1)return 'NEXT · Make a Sight Lens and a Split Spanner';if(state.stage===1)return 'Place the lens · clear its sightline';if(circuit(state))return 'Receiver lit · power the rings';if(linkPhase(state)&&optics(state).primed)return beam(state).stop==='stone'?'Stone blocks light · find another crossing':'Turn reflector + lens · clear the beam';if(linkPhase(state))return 'Use a Loop Cell on the lift';if(state.stage===2)return 'Recover gear · or restore machinery';return 'Merge twins · choose where to use them';}
 function missionSlots(){
  if(state.stage===1)return Object.entries(ROUTES).map(([id,r])=>{const index=state.board.findIndex(x=>x?.type==='route'&&x.id===id),need={family:r.family,tier:2,count:1};return `<button class="missionSlot ${sight(state,id).ready&&ready(state,[need])?'available':''}" data-site-index="${index}" aria-label="${r.name}: ${r.benefit}">${art(item(r.family,2))}<span>${id==='ridge'?'Room to work':'Relic supplies'}</span></button>`;}).join('<span class="or">or</span>');
  if(linkPhase(state)&&state.board.some(x=>x?.type==='site'&&x.kind!=='winch'&&x.phase==='done'))return `<span class="circuitRecipe">${art(optics(state).primed?item('chart',2):item('flux',1))}<span>${optics(state).primed?'Guide the light':'Power the lift'}<br><small>${optics(state).primed?'Reflector + Sight Lens':'Keep a Sight Lens'}</small></span></span>`;
@@ -51,6 +61,9 @@ function renderWorkshop(){
  let button=$('#workshop');
  if(!button){$('#scene').insertAdjacentHTML('beforeend','<button id="workshop"><img width="256" height="256" alt=""><span></span></button>');button=$('#workshop');}
  const restored=state.workshop.repaired,ready=state.requests.supplies>=WORKSHOP_COST;
+ // Reveal camp management only after the first landing milestone, not before
+ // the player has learned the basic merge interaction.
+ button.hidden=state.stage===0&&!state.landingStep&&!restored;
  const src='assets/premium/workshop-'+(restored?'operational':'damaged')+'.webp';
  if(button.querySelector('img').getAttribute('src')!==src)button.querySelector('img').src=src;
  button.dataset.state=state.workshop.precision?'precision':restored?'operational':'damaged';button.classList.toggle('repairReady',!restored&&ready);
@@ -67,10 +80,10 @@ function renderWorkshop(){
  button.setAttribute('aria-label',restored?'Coastal Workshop operational. Tap here to press a Grip tool for 2 energy and one Rover charge, or select Rivet Rover.':`Coastal Workshop damaged. Repair for 8 supplies. You have ${state.requests.supplies}.`);
 }
 function renderRequests(){
- $('#requests').hidden=state.stage===0&&!state.landingStep&&state.merges===0;
+ $('#requests').hidden=state.stage===0&&!state.landingStep;
  $('#sideTray').hidden=state.stage===0&&!state.landingStep;
  const q=state.requests;
- $('#requests').innerHTML=`<div class="requestHeading"><span>CAMP REQUESTS</span><b title="Saved for future restoration">◆ <span id="supplies">${q.supplies}</span> supplies</b></div><div class="requestShelf">${q.orders.filter(Boolean).map(o=>{
+ $('#requests').innerHTML=`<div class="requestHeading"><span>OPTIONAL · CAMP REQUESTS</span><b title="Saved for future restoration">◆ <span id="supplies">${q.supplies}</span> supplies</b></div><div class="requestShelf">${q.orders.filter(Boolean).map(o=>{
  const p=requestProgress(state,o),active=requestId===o.id&&focus==='request',energy=Math.min(o.energy,120-state.energy);
  return `<button class="requestCard ${p.ready?'ready':''} ${active?'active':''}" data-request="${o.id}" aria-pressed="${active}" aria-label="${o.lane} request: ${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier))).join(', ')}. ${p.ready?active?'Deliver':'Ready. Select to deliver':'In progress'}. Reward ${o.supplies} restoration supplies and ${energy} energy"><b class="requestLane">${o.lane==='long'?'Expedition kit':o.lane==='quick'?'Quick':'Standard'}</b><span class="requestItems">${p.progress.map(r=>`<span>${art(item(r.family,r.tier))}<b>${r.current}/${r.count}</b>${r.protected?'<i title="One copy kept for expedition">◆</i>':''}</span>`).join('')}</span><span class="requestReward">+${o.supplies} ◆ · +${energy} ϟ</span><strong>${p.ready?active?'DELIVER':'✓ READY':active&&p.progress.some(r=>r.protected)?'MAKE A SPARE':'COLLECT'}</strong></button>`;
  }).join('')}</div>`;
@@ -156,6 +169,15 @@ function render(){
 }
 function renderSelection(){
  const x=state.board[selected];let title=state.stage<4?'Open the Tideglass Vault':'The crossing is yours',desc=state.stage<4?'Merge identical objects. Choose expedition progress or supplies.':'Chart the star ocean, clear caches, or collect an aurora beacon.',buttons='';
+ if(!x&&focus==='request'){
+  const order=state.requests.orders.find(o=>o?.id===requestId);
+  if(order){const p=requestProgress(state,order),missing=p.progress.find(r=>r.current<r.count);
+   title=p.ready?'Request ready to deliver':missing?'Make '+nameOf(item(missing.family,missing.tier)):'Camp request';
+   desc=p.ready?'Tap the selected request below the board again to receive supplies and energy.':'Merge matching objects or tap their producer. Expedition equipment is kept safe.';
+  }
+ }
+ if(!x&&!state.merges){title='Start with the glowing pair';desc='Tap one Copper Offcut, then tap its twin. They become a Grip Tool.';}
+ else if(!x&&state.stage===0&&!state.landingStep){title='Landing ready';desc='You made a Grip Tool. Tap CLEAR PATH above to open the landing.';}
  if(x){title=nameOf(x);
   if(x.type==='item'){
    const used=goal(state)?.needs.some(r=>matches(x,r)),cn=normalContract(state).needs.some(r=>matches(x,r));
@@ -263,7 +285,7 @@ $('#scene').onclick=e=>{
   $('#selection').scrollIntoView({block:'nearest'});return;
  }
  if(!e.target.closest('#workshop'))return;if(!state.workshop.repaired){const result=run({type:'restoreWorkshop'});if(!result.ok)message.textContent=`Camp requests fund repairs · ${state.requests.supplies}/${WORKSHOP_COST} supplies`;return;}selected=state.board.findIndex(x=>x?.type==='source'&&x.id==='rig');if(!state.charges.rig){render();$('#selection').scrollIntoView({block:'nearest'});return;}run({type:'press',id:'rig'});board.scrollIntoView({block:'center'});};
-$('#requests').onclick=e=>{const id=e.target.closest('[data-request]')?.dataset.request;if(!id)return;const o=state.requests.orders.find(o=>o?.id===id);if(!o)return;if(focus==='request'&&requestId===id&&requestProgress(state,o).ready){run({type:'request',id});return;}requestId=id;focus='request';selected=null;render();};
+$('#requests').onclick=e=>{const id=e.target.closest('[data-request]')?.dataset.request;if(!id)return;const o=state.requests.orders.find(o=>o?.id===id);if(!o)return;if(focus==='request'&&requestId===id&&requestProgress(state,o).ready){run({type:'request',id});return;}requestId=id;focus='request';selected=null;render();if(!requestProgress(state,o).ready)board.scrollIntoView({block:'nearest'});};
 $('#contracts').onclick=e=>{if(e.target.closest('[data-side-next]')){const choices=sideOptions();sideView=choices[(choices.indexOf(sideChoice())+1)%choices.length];render();return;}const type=e.target.closest('[data-contract]')?.dataset.contract;if(!type)return;
  if(type==='startOpportunity'){sideView='opportunity';run({type});focus='opportunity';render();return;}
  sideView=type;focus=type;const can=type==='contract'?ready(state,normalContract(state).needs):type==='opportunity'?(state.opportunity&&(Date.now()>state.opportunity.ends||ready(state,state.opportunity.needs))):state.board.some(x=>x?.type==='glyph')&&ready(state,[{family:'chart',tier:2,count:1}]);
