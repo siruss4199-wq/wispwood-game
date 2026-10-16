@@ -7,7 +7,7 @@ const {chromium}=require('playwright');
   const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,recordVideo:{dir:out,size:{width:390,height:844}}});
   if(mode==='legacy')await context.addInitScript(raw=>localStorage.setItem('vaultwake-v5',raw),JSON.stringify(legacy));
   const page=await context.newPage(),errors=[],trace=[];page.setDefaultTimeout(8000);page.on('pageerror',e=>errors.push(e.message));
-  await page.goto('http://127.0.0.1:8080/v5/');await page.waitForSelector('#workshop');
+  await page.goto('http://127.0.0.1:8080/v5/');await page.waitForSelector('#workshop',{state:'attached'});
   const read=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('vaultwake-v5')));
   const shot=async(name,top=true)=>{if(top)await page.evaluate(()=>scrollTo(0,0));await page.waitForTimeout(500);await page.evaluate(async()=>Promise.all([...document.images].map(x=>x.decode())));await page.screenshot({path:`${out}/${mode}-${name}-390.png`,fullPage:true});};
   const lineage=new Set();let deliveredFitting=false,fittingShots=false;
