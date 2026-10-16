@@ -25,8 +25,8 @@ function needsHTML(needs){return needs.map(r=>`<span class="need ${count(state,r
 function sideOptions(){return ['contract',...(state.discovery&&!state.discoveryDone&&state.board.some(x=>x?.type==='glyph')?['discovery']:[]),...(state.stage>=1?[state.opportunity?'opportunity':'startOpportunity']:[])];}
 function sideChoice(){const options=sideOptions();return options.includes(sideView)?sideView:state.opportunity?'opportunity':options.includes('discovery')?'discovery':'contract';}
 function hint(){
- if(!state.merges)return 'START HERE · Tap the two glowing Copper Offcuts';
- if(state.stage===0&&!state.landingStep)return 'GRIP TOOL MADE · Tap CLEAR PATH above';
+ if(!state.merges)return 'START · Tap the glowing pair';
+ if(state.stage===0&&!state.landingStep)return 'GRIP TOOL MADE · Tap CLEAR PATH ↑';
  if(focus==='request'){
   const order=state.requests.orders.find(o=>o?.id===requestId);
   if(order){const progress=requestProgress(state,order);if(progress.ready)return 'ORDER READY · Tap the chosen request again to deliver';
@@ -34,7 +34,7 @@ function hint(){
    if(missing)return 'CAMP ORDER · Make '+nameOf(item(missing.family,missing.tier))+' using the board';
   }
  }
- if(state.stage===0&&state.landingStep===1)return 'NEXT · Make a Sight Lens and a Split Spanner';if(state.stage===1)return 'Place the lens · clear its sightline';if(circuit(state))return 'Receiver lit · power the rings';if(linkPhase(state)&&optics(state).primed)return beam(state).stop==='stone'?'Stone blocks light · find another crossing':'Turn reflector + lens · clear the beam';if(linkPhase(state))return 'Use a Loop Cell on the lift';if(state.stage===2)return 'Recover gear · or restore machinery';return 'Merge twins · choose where to use them';}
+ if(state.stage===0&&state.landingStep===1)return 'NEXT · Make a lens + spanner';if(state.stage===1)return 'Place the lens · clear its sightline';if(circuit(state))return 'Receiver lit · power the rings';if(linkPhase(state)&&optics(state).primed)return beam(state).stop==='stone'?'Stone blocks light · find another crossing':'Turn reflector + lens · clear the beam';if(linkPhase(state))return 'Use a Loop Cell on the lift';if(state.stage===2)return 'Recover gear · or restore machinery';return 'Merge twins · choose where to use them';}
 function missionSlots(){
  if(state.stage===1)return Object.entries(ROUTES).map(([id,r])=>{const index=state.board.findIndex(x=>x?.type==='route'&&x.id===id),need={family:r.family,tier:2,count:1};return `<button class="missionSlot ${sight(state,id).ready&&ready(state,[need])?'available':''}" data-site-index="${index}" aria-label="${r.name}: ${r.benefit}">${art(item(r.family,2))}<span>${id==='ridge'?'Room to work':'Relic supplies'}</span></button>`;}).join('<span class="or">or</span>');
  if(linkPhase(state)&&state.board.some(x=>x?.type==='site'&&x.kind!=='winch'&&x.phase==='done'))return `<span class="circuitRecipe">${art(optics(state).primed?item('chart',2):item('flux',1))}<span>${optics(state).primed?'Guide the light':'Power the lift'}<br><small>${optics(state).primed?'Reflector + Sight Lens':'Keep a Sight Lens'}</small></span></span>`;
@@ -116,7 +116,7 @@ function render(){
  renderRequests();renderSide();const order=focus==='request'?state.requests.orders.find(o=>o?.id===requestId):null,orderProgress=order?requestProgress(state,order):null,c=order??normalContract(state),sideVisible=!!order||!$('#contracts').hidden&&$('#sideTray').open,cr=order?orderProgress.ready:sideVisible&&sideChoice()==='contract'&&ready(state,c.needs);
  const readySignal=sideChoice()==='opportunity'&&state.opportunity&&opportunity(state).remaining>0&&ready(state,state.opportunity.needs);
  const selectedItem=state.board[selected];
- board.dataset.site=viewStage;board.setAttribute('aria-label',SITE_NAMES[viewStage]+' · 6 by 6 merge board');
+ board.dataset.site=viewStage;board.classList.toggle('firstMerge',state.merges===0);board.setAttribute('aria-label',SITE_NAMES[viewStage]+' · 6 by 6 merge board');
  board.innerHTML=siteSurface(viewStage)+state.board.map((x,i)=>{
   const isSource=x?.type==='source',locked=isSource&&!sourceUnlocked(state,x.id);
   const useful=isSource&&!locked&&(orderProgress?orderProgress.progress.some(r=>r.family===x.id&&r.current<r.count):needed().some(r=>r.family===x.id&&count(state,r)<r.count));
