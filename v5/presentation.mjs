@@ -1,4 +1,5 @@
 import {requestProgress} from './requests.mjs';
+import {benchInputs} from './workshop.mjs';
 import {goal,normalContract,ready,matches,nameOf,item,SOURCES} from './core.mjs';
 import {equipment,ROUTES,canRestore} from './expedition.mjs';
 import {circuit} from './seals.mjs';
@@ -19,6 +20,7 @@ export function siteSurface(stage){
 
 // Uses precisely the same first-match order as the reducer's consume(). Pure and testable.
 export function deliveryItems(s,action,now=Date.now()){
+ if(action.type==='fitSpanner')return benchInputs(s).filter(i=>i>=0).map(index=>({index,x:{...s.board[index]}}));
  if(action.type==='request'){const o=s.requests?.orders.find(o=>o?.id===action.id);if(!o)return [];const p=requestProgress(s,o);return p.ready?p.indices.map(index=>({index,x:{...s.board[index]}})):[];}
  if(action.type==='power')return (circuit(s)?.slice(1,-1)??[]).filter(index=>s.board[index]?.type==='prism').map(index=>({index,x:{...s.board[index]}}));
  if(action.type==='prime'){

@@ -54,6 +54,7 @@ jobs:
       - name: Verify mobile render, persistence and board interactions
         run: |
           python3 -m http.server 8080 > /tmp/wispwood-http.log 2>&1 &
+          node tests/v5-workshop-evolution-browser.cjs
           node tests/v5-workshop-browser.cjs
           node tests/v5-requests-browser.cjs
           node tests/v5-resonance-browser.cjs
