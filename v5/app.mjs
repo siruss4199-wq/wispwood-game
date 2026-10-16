@@ -34,7 +34,13 @@ function hint(){
    if(missing)return 'CAMP ORDER · Make '+nameOf(item(missing.family,missing.tier))+' using the board';
   }
  }
- if(state.stage===0&&state.landingStep===1)return 'NEXT · Make a lens + spanner';if(state.stage===1)return 'Place the lens · clear its sightline';if(circuit(state))return 'Receiver lit · power the rings';if(linkPhase(state)&&optics(state).primed)return beam(state).stop==='stone'?'Stone blocks light · find another crossing':'Turn reflector + lens · clear the beam';if(linkPhase(state))return 'Use a Loop Cell on the lift';if(state.stage===2)return 'Recover gear · or restore machinery';return 'Merge twins · choose where to use them';}
+ if(state.stage===0&&state.landingStep===1){
+  if(!state.taps.chart)return 'NEW MACHINE · Tap Survey Kite for map parts';
+  const g=goal(state);
+  if(g&&ready(state,g.needs))return 'CROSSING READY · Complete the mission above';
+  return 'NEXT · Merge map parts into a lens + tools into a spanner';
+ }
+ if(state.stage===1)return 'SURVEY · Put the Sight Lens on a marked tile';if(circuit(state))return 'Receiver lit · power the rings';if(linkPhase(state)&&optics(state).primed)return beam(state).stop==='stone'?'Stone blocks light · find another crossing':'Turn reflector + lens · clear the beam';if(linkPhase(state))return 'Use a Loop Cell on the lift';if(state.stage===2)return 'Recover gear · or restore machinery';return 'Merge twins · choose where to use them';}
 function missionSlots(){
  if(state.stage===1)return Object.entries(ROUTES).map(([id,r])=>{const index=state.board.findIndex(x=>x?.type==='route'&&x.id===id),need={family:r.family,tier:2,count:1};return `<button class="missionSlot ${sight(state,id).ready&&ready(state,[need])?'available':''}" data-site-index="${index}" aria-label="${r.name}: ${r.benefit}">${art(item(r.family,2))}<span>${id==='ridge'?'Room to work':'Relic supplies'}</span></button>`;}).join('<span class="or">or</span>');
  if(linkPhase(state)&&state.board.some(x=>x?.type==='site'&&x.kind!=='winch'&&x.phase==='done'))return `<span class="circuitRecipe">${art(optics(state).primed?item('chart',2):item('flux',1))}<span>${optics(state).primed?'Guide the light':'Power the lift'}<br><small>${optics(state).primed?'Reflector + Sight Lens':'Keep a Sight Lens'}</small></span></span>`;
@@ -83,7 +89,8 @@ function renderRequests(){
  $('#requests').hidden=state.stage===0&&!state.landingStep;
  $('#sideTray').hidden=state.stage===0&&!state.landingStep;
  const q=state.requests;
- $('#requests').innerHTML=`<div class="requestHeading"><span>OPTIONAL · CAMP REQUESTS</span><b title="Saved for future restoration">◆ <span id="supplies">${q.supplies}</span> supplies</b></div><div class="requestShelf">${q.orders.filter(Boolean).map(o=>{
+ const purpose=!state.workshop.repaired?'REPAIR THE WORKSHOP':!state.workshop.precision?'UNLOCK THE PRECISION BENCH':'EARN SUPPLIES + ENERGY';
+ $('#requests').innerHTML=`<div class="requestHeading"><span>CAMP ORDERS · ${purpose}</span><b title="Saved for future restoration">◆ <span id="supplies">${q.supplies}</span> supplies</b></div><div class="requestShelf">${q.orders.filter(Boolean).map(o=>{
  const p=requestProgress(state,o),active=requestId===o.id&&focus==='request',energy=Math.min(o.energy,120-state.energy);
  return `<button class="requestCard ${p.ready?'ready':''} ${active?'active':''}" data-request="${o.id}" aria-pressed="${active}" aria-label="${o.lane} request: ${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier))).join(', ')}. ${p.ready?active?'Deliver':'Ready. Select to deliver':'In progress'}. Reward ${o.supplies} restoration supplies and ${energy} energy"><b class="requestLane">${o.lane==='long'?'Expedition kit':o.lane==='quick'?'Quick':'Standard'}</b><span class="requestItems">${p.progress.map(r=>`<span>${art(item(r.family,r.tier))}<b>${r.current}/${r.count}</b>${r.protected?'<i title="One copy kept for expedition">◆</i>':''}</span>`).join('')}</span><span class="requestReward">+${o.supplies} ◆ · +${energy} ϟ</span><strong>${p.ready?active?'DELIVER':'✓ READY':active&&p.progress.some(r=>r.protected)?'MAKE A SPARE':'COLLECT'}</strong></button>`;
  }).join('')}</div>`;
