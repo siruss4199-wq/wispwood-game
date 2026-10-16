@@ -233,7 +233,7 @@ body[data-art="premium"] .boardHeading #hint{font-size:12px;line-height:1.25;fon
 /* A destination, the tool spent, and its payoff share one touch target. */
 .objective[data-stage="1"] #goalNeeds{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%}
 .objective[data-stage="1"] .goalBottom{width:100%;grid-column:1/-1}
-body[data-art] .routeChoice{max-width:none;width:100%;min-height:112px;align-items:flex-start;gap:3px;padding:6px 8px;border-radius:13px;background:#f0e8d5;border:1px solid #d6c8a8;text-align:left}
+body[data-art] .routeChoice{max-width:none;width:100%;min-height:96px;align-items:flex-start;gap:3px;padding:6px 8px;border-radius:13px;background:#f0e8d5;border:1px solid #d6c8a8;text-align:left}
 body[data-art] .routeChoice.available{background:#e7f1df;border-color:#64ad95}
 .routeChoice>b{font-size:13px;line-height:18px}
 .routeChoice .routeCost{display:flex;align-items:center;gap:4px;width:100%}
@@ -246,3 +246,5 @@ body[data-art] .routeChoice .routeReward .art{width:24px;height:24px}
 .routeChoice small{font-size:10px;color:#526e70;line-height:14px}
 /* Reserve badges for an actual optional tradeoff, not every expedition item. */
 .tile[data-use="expedition"] .useBadge{display:none}
+
+body[data-art="premium"] .missionSlot.routeChoice .art,body[data-art="premium"] .missionSlot.routeChoice.available .art{background:none;border:0;border-radius:0;box-shadow:none}

@@ -7,7 +7,7 @@ const {chromium,webkit}=require('playwright');const assert=require('node:assert/
  const context=await browser.newContext({viewport:{width,height:844},hasTouch:true,isMobile:true,reducedMotion:'reduce'}),page=await context.newPage();page.setDefaultTimeout(7000);
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('http://127.0.0.1:8080/v5/');await page.waitForSelector('#board .tile');
  const read=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('vaultwake-v5'))),trace=[];
- const shot=async name=>{await page.evaluate(async()=>Promise.all([...document.images].map(i=>i.decode().catch(()=>{}))));await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:`${dir}/${engine}-${route}-${name}-${width}.png`,fullPage:true});};
+ const shot=async name=>{await page.locator(".moment").waitFor({state:"detached"});await page.locator(".deliveryReceipt").waitFor({state:"detached"});await page.evaluate(async()=>Promise.all([...document.images].map(i=>i.decode().catch(()=>{}))));await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:`${dir}/${engine}-${route}-${name}-${width}.png`,fullPage:true});};
  const perform=async a=>{
  const before=await read();
  if(['merge','move'].includes(a.type)){
@@ -28,10 +28,10 @@ const {chromium,webkit}=require('playwright');const assert=require('node:assert/
  }
  const saved=await read();assert.equal(saved.stage,1);assert.ok(saved.merges>1);
  assert.equal(await page.locator('.surveyGhost,.surveyRay,.surveyMark').count(),0);
- assert.equal(await page.locator('#sealStates').isVisible(),false);assert.equal(await page.locator('.routeChoice').count(),2);
+ assert.equal(await page.locator('#sealStates').isVisible(),false);assert.equal(await page.locator('.routeChoice').count(),2);assert.equal(await page.locator('.moment').count(),0,'prepared tools reveal routes without an instructional popup');
  assert.match(await page.locator('.routeChoice[data-route="ridge"]').textContent(),/Split spanner/);assert.match(await page.locator('.routeChoice[data-route="conduit"]').textContent(),/Sight lens/);
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
- for(const b of await page.locator('.routeChoice').all()){const r=await b.boundingBox();assert.ok(r.width>=44&&r.height>=44);}
+ for(const b of await page.locator('.routeChoice').all()){const r=await b.boundingBox();assert.ok(r.width>=44&&r.height>=44);assert.equal(await b.locator('.art').first().evaluate(el=>getComputedStyle(el).borderTopWidth),'0px');}
  await shot('choice');
  if(engine==='chromium'&&width===390&&route==='ridge'){
  // Same genuinely earned board, rendered by the previous build for an exact comparison.

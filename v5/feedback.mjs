@@ -93,10 +93,10 @@ export function feedback({event,tile,x,from,energyDelta,stage,firstContract=fals
  else if(event==='milestone'){
   document.querySelector('.moment')?.remove();
   const world=document.querySelector('.world');burst(world.getBoundingClientRect(),'gold',true);sound.play('milestone');
-  if(stage<4)moment(['Survey Kite unlocked','Route equipment ready','Echo Crucible unlocked','The rings are awake'][stage],stage===1?'Both tools kept · choose your route':stage===2?'Excavation cache revealed':'Expedition advanced');
+  if(stage<4&&stage!==1)moment(['Survey Kite unlocked','Route equipment ready','Echo Crucible unlocked','The rings are awake'][stage],stage===1?'Both tools kept · choose your route':stage===2?'Excavation cache revealed':'Expedition advanced');
  }else if(event==='discovery'){sound.play('rare');burst(document.querySelector('.world').getBoundingClientRect(),'flux',true);}
  else if(event==='produce'&&bonus){burst(rect,bonus,true);sound.play('rare');moment({rig:'Rover spare found',chart:'Survey bundle found',flux:'Charged fragment found'}[bonus],'A useful bonus from this source');}
  else if(event==='produce'&&improved){burst(rect,x?.family);sound.play('merge',x?.tier??1);tile?.classList.add('merge-pop');}
  else if(event==='produce')sound.play('produce');
- if(surgeStarted){const existing=document.querySelector('.moment small');if(existing)existing.textContent+=' · Supply Surge: 3 shared pulls';else moment('Supply Surge · 3 pulls','Choose a producer: improved parts, shared allowance');}
+ if(surgeStarted&&stage!==1){const existing=document.querySelector('.moment small');if(existing)existing.textContent+=' · Supply Surge: 3 shared pulls';else moment('Supply Surge · 3 pulls','Choose a producer: improved parts, shared allowance');}
 }
