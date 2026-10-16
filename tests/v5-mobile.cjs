@@ -18,6 +18,8 @@ const assert=require('node:assert/strict');const {chromium,webkit}=require('play
  await page.locator('#goalButton').tap();assert.equal((await read()).stage,0);assert.equal((await read()).landingStep,1);await page.waitForTimeout(750);
  assert.equal(await page.locator('#requests').isVisible(),true,'camp requests now appear');
  assert.equal(await page.locator('#workshop').isVisible(),true,'workshop is introduced with supplies');
+ assert.match(await page.locator('.requestHeading').textContent(),/REPAIR THE WORKSHOP/);
+ assert.match(await page.locator('#hint').textContent(),/Survey Kite/,'first newly unlocked producer is explained');
  const boardBox=await page.locator('#board').boundingBox(),requestBox=await page.locator('#requests').boundingBox();
  assert.ok(boardBox.y+boardBox.height<=requestBox.y,'the board takes priority above camp orders');
  const firstTile=await page.locator('#board .tile').first().boundingBox();
