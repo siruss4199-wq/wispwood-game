@@ -9,7 +9,7 @@ const {chromium}=require('playwright');
   const page=await context.newPage(),errors=[],trace=[];page.setDefaultTimeout(8000);page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://127.0.0.1:8080/v5/');await page.waitForSelector('#workshop');
   const read=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('vaultwake-v5')));
-  const shot=async(name,top=true)=>{if(top)await page.evaluate(()=>scrollTo(0,0));await page.evaluate(async()=>Promise.all([...document.images].map(x=>x.decode())));await page.screenshot({path:`${out}/${mode}-${name}-390.png`,fullPage:true});};
+  const shot=async(name,top=true)=>{if(top)await page.evaluate(()=>scrollTo(0,0));await page.waitForTimeout(500);await page.evaluate(async()=>Promise.all([...document.images].map(x=>x.decode())));await page.screenshot({path:`${out}/${mode}-${name}-390.png`,fullPage:true});};
   const lineage=new Set();let deliveredFitting=false,fittingShots=false;
   async function execute(a){
    const before=await read();trace.push(a);
@@ -55,6 +55,7 @@ const {chromium}=require('playwright');
   let s=await read();if(!s.charges.rig)await execute({type:'service',id:'rig'});
   s=await read();await execute({type:'press',id:'rig'});assert.equal((await read()).requests.supplies,s.requests.supplies);assert.equal((await read()).workshop.precision,false);
   await page.locator('#workshopBench').tap();assert.equal((await read()).requests.supplies,s.requests.supplies);
+  assert.ok(await page.locator('[data-action="upgradeWorkshop"]').evaluate(el=>el.classList.contains('available')),'affordable upgrade is visually actionable');
   const before=await read();await page.locator('[data-action="upgradeWorkshop"]').tap();trace.push({type:'upgradeWorkshop'});let upgraded=await read();
   assert.equal(upgraded.requests.supplies,before.requests.supplies-12);assert.deepEqual(upgraded.board,before.board);assert.deepEqual(upgraded.requests.orders,before.requests.orders);
   assert.equal(upgraded.workshop.precision,true);assert.equal(await page.locator('#workshop').getAttribute('data-state'),'precision');assert.equal(await page.locator('.benchFitting').count(),1);

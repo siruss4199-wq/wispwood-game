@@ -177,7 +177,7 @@ function renderSelection(){
     desc=installed?'Precision Bench · use spare materials, or keep them for requests':'Next: Precision Bench · fit a spanner from a tool and chart';
     const recipe=BENCH_NEEDS.map((r,n)=>'<span class="benchInput '+(inputs[n]>=0?'present':'missing')+'">'+art(item(r.family,r.tier))+'<small>'+(inputs[n]>=0?'✓':'0/1')+'</small></span>').join('');
     buttons+='<span class="benchRoute">'+recipe+'<span>→</span>'+art(item('rig',2))+'</span>';
-    buttons+=installed?'<button class="benchAction '+(inputs.every(i=>i>=0)&&state.energy>=1&&state.charges.rig?'available':'')+'" data-action="fitSpanner">Fit spanner · 1 ϟ + 1 charge</button>':'<button class="benchAction" data-action="upgradeWorkshop">Install bench · 12 ◆</button>';
+    buttons+=installed?'<button class="benchAction '+(inputs.every(i=>i>=0)&&state.energy>=1&&state.charges.rig?'available':'')+'" data-action="fitSpanner">Fit spanner · 1 ϟ + 1 charge</button>':'<button class="benchAction '+(state.requests.supplies>=BENCH_COST?'available':'')+'" data-action="upgradeWorkshop">Install bench · 12 ◆</button>';
    }
   }else if(x.type==='rock'){
    const find=FINDS[x.find];
