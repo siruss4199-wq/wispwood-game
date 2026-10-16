@@ -56,7 +56,9 @@ const {chromium}=require('playwright');
   assert.equal(upgraded.requests.supplies,before.requests.supplies-12);assert.deepEqual(upgraded.board,before.board);assert.deepEqual(upgraded.requests.orders,before.requests.orders);
   assert.equal(upgraded.workshop.precision,true);assert.equal(await page.locator('#workshop').getAttribute('data-state'),'precision');assert.equal(await page.locator('.benchFitting').count(),1);
   await page.waitForTimeout(1850);await shot('03-bench-installed');
-  for(let n=0;n<12&&!deliveredFitting;n++)await fulfill(n%3);
+  const supported=upgraded.requests.orders.findIndex(o=>o.needs.some(r=>r.family==='rig'&&r.tier===2));
+  if(supported>=0)await fulfill(supported);
+  for(let n=0;n<6&&!deliveredFitting;n++)await fulfill(n%3);
   assert.ok(deliveredFitting,'a manufactured spanner or its merged descendant is consumed by a real request');
   completed=await read();assert.ok(completed.workshop.fittings>0);await shot('06-request-delivered');
   // Remove the legacy init script by reusing storage in a clean page context.
