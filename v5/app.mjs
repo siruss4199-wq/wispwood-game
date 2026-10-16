@@ -35,10 +35,11 @@ function hint(){
   }
  }
  if(state.stage===0&&state.landingStep===1){
-  if(!state.taps.chart)return 'NEW MACHINE · Tap Survey Kite for map parts';
   const g=goal(state);
-  if(g&&ready(state,g.needs))return 'CROSSING READY · Complete the mission above';
-  return 'NEXT · Merge map parts into a lens + tools into a spanner';
+  if(g&&ready(state,g.needs))return 'CROSSING READY · View routes above';
+  const missing=g.needs.find(r=>count(state,r)<r.count);
+  if(missing.family==='chart'&&!state.taps.chart)return 'NEW MACHINE · Tap Survey Kite for map parts';
+  return 'NEXT · Merge parts into a '+nameOf(item(missing.family,missing.tier));
  }
  if(state.stage===1)return 'Choose a crossing above · keep the other tool';if(circuit(state))return 'Receiver lit · power the rings';if(linkPhase(state)&&optics(state).primed)return beam(state).stop==='stone'?'Stone blocks light · find another crossing':'Turn reflector + lens · clear the beam';if(linkPhase(state))return 'Use a Loop Cell on the lift';if(state.stage===2)return 'Recover gear · or restore machinery';return 'Merge twins · choose where to use them';}
 function missionSlots(){

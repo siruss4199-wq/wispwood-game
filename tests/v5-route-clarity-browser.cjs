@@ -15,7 +15,7 @@ const {chromium,webkit}=require('playwright');const assert=require('node:assert/
   const from=page.locator(`[data-index="${a.from}"]`),to=page.locator(`[data-index="${a.to}"]`);
   if(trace.length%2===0){const x=await from.boundingBox(),y=await to.boundingBox();await page.mouse.move(x.x+x.width/2,x.y+x.height/2);await page.mouse.down();await page.mouse.move(y.x+y.width/2,y.y+y.height/2,{steps:9});await page.mouse.up();}
   else{if(await from.getAttribute('aria-pressed')!=='true')await from.tap();await to.tap();}
- }else if(a.type==='goal')await page.locator('#goalButton').tap();
+ }else if(a.type==='goal'){if(before.landingStep===1)assert.match(await page.locator('#hint').textContent(),/CROSSING READY/,'ready objective takes priority over suggesting more producer pulls');await page.locator('#goalButton').tap();}
  else if(a.type==='produce'||a.type==='service'){const i=before.board.findIndex(x=>x?.type==='source'&&x.id===a.id);await page.locator(`[data-index="${i}"]`).tap();if(a.type==='service')await page.locator('[data-action="service"]').tap();}
  else if(a.type==='crate')await page.locator(`[data-index="${a.index}"]`).tap();
  else if(a.type==='ration')await page.locator('#rationButton').tap();
