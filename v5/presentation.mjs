@@ -22,7 +22,7 @@ export function siteSurface(stage){
 export function deliveryItems(s,action,now=Date.now()){
  if(action.type==='fitSpanner')return benchInputs(s).filter(i=>i>=0).map(index=>({index,x:{...s.board[index]}}));
  if(action.type==='request'){const o=s.requests?.orders.find(o=>o?.id===action.id);if(!o)return [];const p=requestProgress(s,o);return p.ready?p.indices.map(index=>({index,x:{...s.board[index]}})):[];}
- if(action.type==='power')return (circuit(s)?.slice(1,-1)??[]).filter(index=>s.board[index]?.type==='prism').map(index=>({index,x:{...s.board[index]}}));
+ if(action.type==='power')return [];
  if(action.type==='prime'){
   const index=action.from??s.board.findIndex(x=>matches(x,{family:'flux',tier:1}));
   return index>=0?[{index,x:{...s.board[index]}}]:[];

@@ -2,9 +2,8 @@
 import {goal,ready,count,normalContract,SOURCES,sourceUnlocked} from '../v5/core.mjs';
 import {ANCHORS,ROUTES,equipment,anchors} from '../v5/expedition.mjs';
 import {circuit,linkPhase,optics} from '../v5/seals.mjs';
-import {layouts,arrange} from './v5-optics-policy.mjs';
 const req=(family,tier,count=1)=>({family,tier,count});
-export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,session=null,style='expedition',findStrategy=null,decode=true,route=null,mergeSight=false}={}){
+export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,session=null,style='expedition',findStrategy=null,decode=true,route=null,mergeSight=false,receiver=null}={}){
  if(!goal(s))return null;
  const spaces=s.board.filter(x=>x===null).length;
  // An impulsive merger compacts ALL families, even when a pair could be installed
@@ -43,14 +42,13 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
   }else if(s.stage===2&&style==='contract'&&normalContract(s).vaultTrade){needs=normalContract(s).needs;command={type:'contract'};}
   else if(s.stage===3){needs=goal(s).needs;command={type:'goal'};}
   else{
-   const plan=layouts(s)[0],connected=circuit(s);
-   if(connected)return {type:'power'};
-   if(plan){
-    if(!count(s,req('chart',2))){needs=[req('chart',2)];command=null;}
-    else if(!optics(s).primed){needs=[req('flux',1)];command={type:'prime'};}
-    else {const next=arrange(s,plan);if(next)return next;throw Error('Optics plan stalled');}
+   const chosen=anchors(s).find(x=>x.kind===(receiver??(['expedition','contract'].includes(style)?'relay':'scope'))&&x.phase==='done');const connected=receiver&&!chosen?null:circuit(s,chosen?s.board.indexOf(chosen):undefined);
+   if(connected&&spaces)return {type:'power',index:connected.at(-1)};
+   if(linkPhase(s)&&anchors(s).some(x=>x.kind!=='winch'&&(!receiver||x.kind===receiver)&&x.phase==='done')){
+    if(!optics(s).primed){needs=[req('flux',1)];command={type:'prime'};}
+    else {const pair=s.board.flatMap((x,i)=>x?.type==='item'&&x.tier<7?[i]:[]);for(const i of pair)for(const j of pair)if(i<j&&s.board[i].family===s.board[j].family&&s.board[i].tier===s.board[j].tier)return {type:'merge',from:i,to:j};return {type:'recycle',index:pair[0]};}
    }else{
-   const order=['expedition','contract'].includes(style)?['winch','relay']:style==='exploration'?['winch','scope']:['scope','winch'];
+   const order=['winch',receiver??(['expedition','contract'].includes(style)?'relay':'scope')];
    const site=order.map(kind=>anchors(s).find(x=>x.kind===kind)).find(x=>x.phase!=='done');
    const index=s.board.indexOf(site);
    needs=[equipment(site.kind)];command={type:'deploy',index};

@@ -16,11 +16,11 @@ test('delivery consumes exact unprotected copies, replaces once, survives reload
  assert.equal(act(next,{type:'request',id:o.id}).ok,false);assert.equal(next.requests.supplies,1);
  assert.notDeepEqual(next.requests.orders[0].needs,o.needs);
 });
-test('prepared tools, live lens and receiver equipment cannot be accidentally delivered',()=>{
- const s=fresh();s.stage=2;s.board[6]=item('chart',2);s.board[7]=item('rig',3);s.board[8]=item('flux',1);syncRequests(s);
+test('prepared tools, charge cells and receiver equipment cannot be accidentally delivered',()=>{
+ const s=fresh();s.stage=2;s.board[6]=item('chart',3);s.board[7]=item('rig',3);s.board[8]=item('flux',1);syncRequests(s);
  const kept=reservedItems(s);for(const i of [6,7,8])assert.ok(kept.has(i));
- const o={needs:[{family:'chart',tier:2,count:1}]};assert.equal(requestProgress(s,o).ready,false);
- s.board[12]=item('chart',2);assert.deepEqual(requestProgress(s,o).indices,[12]);
+ const o={needs:[{family:'chart',tier:3,count:1}]};assert.equal(requestProgress(s,o).ready,false);
+ s.board[12]=item('chart',3);assert.deepEqual(requestProgress(s,o).indices,[12]);
 });
 test('full board delivery and capped energy still award persistent supplies',()=>{
  const s=fresh();s.board=s.board.map(x=>x??item('rig',0));s.energy=120;
@@ -58,11 +58,11 @@ test('twelve consecutive requests use actual production, service and merging wit
  assert.equal(s.requests.completed,12);assert.ok(s.taps.rig>7);assert.ok(s.taps.chart>0);assert.ok(s.merges>10);
  assert.deepEqual(load(JSON.stringify(s)).requests,s.requests);
 });
-test('delivery reserves one route lens anywhere, but preserves the actual live circuit lens',()=>{
+test('delivery reserves the route lens then frees lenses after the route',()=>{
  const s=fresh();s.stage=1;s.board[2]=item('chart',2);s.board[9]=item('chart',2);
  const order={needs:[{family:'chart',tier:2,count:1}]};assert.deepEqual(requestProgress(s,order).indices,[9]);assert.ok(reservedItems(s).has(2));
  s.stage=2;s.seals.navigation=true;s.seals.stabilization=true;s.seals.optics.primed=true;s.board[20].phase='done';s.board[20].progress=2;s.board[14]=item('chart',2);
- assert.ok(reservedItems(s).has(14));assert.deepEqual(requestProgress(s,order).indices,[2]);
+ assert.equal(reservedItems(s).has(14),false);assert.deepEqual(requestProgress(s,order).indices,[2]);
 });
 
 test('three unlocked lanes choose different achievable item goals where families allow it',()=>{

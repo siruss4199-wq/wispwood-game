@@ -50,7 +50,7 @@ export function deliverFeedback({kind,delivery,rewards,taskRect,taskSnapshot,tas
  const board=document.querySelector('#board');
  task?.classList.remove('taskCollected');if(task){void task.offsetWidth;task.classList.add('taskCollected');setTimeout(()=>task.classList.remove('taskCollected'),620);}
  board.classList.remove('sitePayoff','echoPayoff');void board.offsetWidth;if(main||rare)board.classList.add(main?'sitePayoff':'echoPayoff');
- const title=kind==='fitSpanner'?'Spanner fitted':main?['Landing secured','Route equipment ready','Door uncovered','Ring engine online','Tideglass Vault opened'][stage]:kind==='prime'?'Lift beam lit':kind==='restore'?'Machinery restored':kind==='clear'?'Salvage uncovered':kind==='deploy'?'Device ready':rare?'The echo answers':signal?'Signal received':'Supplies secured';
+ const title=kind==='fitSpanner'?'Spanner fitted':main?['Landing secured','Route equipment ready','Door uncovered','Ring engine online','Tideglass Vault opened'][stage]:kind==='prime'?'Lift charged':kind==='restore'?'Machinery restored':kind==='clear'?'Salvage uncovered':kind==='deploy'?'Device ready':rare?'The echo answers':signal?'Signal received':'Supplies secured';
  moment(title,next);
  sound.play(kind==='fitSpanner'?'merge':main?'milestone':rare||signal?'rare':'contract');
  if(reduced()){
