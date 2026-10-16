@@ -37,6 +37,9 @@ const {chromium}=require('playwright');
   }
   async function fulfill(lane){for(let n=0;n<100;n++){
    const a=await page.evaluate(async lane=>{const {requestAction}=await import('/tests/v5-workshop-policy.mjs');return requestAction(JSON.parse(localStorage.getItem('vaultwake-v5')),lane);},lane);
+   // Focus the unfinished order before picking its next pair. A prior merge
+   // leaves its output selected; tapping that output again would deselect it.
+   if(a.type!=='request')await page.locator('#requests [data-request]').nth(lane).tap();
    await execute(a);if(a.type==='request')return;
   }throw Error('request policy stalled');}
   if(mode==='fresh'){
