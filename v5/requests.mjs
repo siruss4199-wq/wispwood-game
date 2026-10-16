@@ -74,7 +74,7 @@ export function reservedItems(s){
   if(s.board.some(x=>x?.type==='rock'&&x.find))needs.push(req('flux',2));
  }
  const kept=new Set();
- const placed=s.stage===1?[6,9]:s.stage===2?beam(s).prisms:[];
+ const placed=s.stage===2?beam(s).prisms:[];
  for(const i of placed)if(matches(s.board[i],req('chart',2)))kept.add(i);
  for(const r of needs)for(let n=[...kept].filter(i=>matches(s.board[i],r)).length;n<r.count;n++){
   const i=s.board.findIndex((x,i)=>!kept.has(i)&&matches(x,r));if(i>=0)kept.add(i);

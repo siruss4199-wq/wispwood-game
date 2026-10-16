@@ -27,3 +27,11 @@ test('preparation is earned by merging and cannot be skipped; optional orders pr
  const p=prepared();assert.ok(p.merges>=3);assert.ok(p.routePrepared);
  for(const family of ['rig','chart']){const r=requestProgress(p,{needs:[{family,tier:2,count:1}]});assert.equal(r.ready,false);}
 });
+
+test('old survey positions no longer reserve extra lenses from optional requests',()=>{
+ const s=prepared();s.board=s.board.map(x=>x?.family==='chart'&&x.tier===2?null:x);
+ s.board[6]=item('chart',2);s.board[9]=item('chart',2);
+ const progress=requestProgress(s,{needs:[{family:'chart',tier:2,count:1}]});
+ assert.equal(progress.ready,true);assert.equal(progress.indices.length,1);
+ assert.ok([6,9].includes(progress.indices[0]));
+});
