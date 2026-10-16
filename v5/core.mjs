@@ -228,12 +228,12 @@ export function act(s,a,now=Date.now()){
  if(a.type==='power'){
   const path=circuit(s,a.index);if(!path)return fail('Charge the repaired Lift, then choose a prepared receiver.');
   if(!s.board.includes(null))return fail('Merge or deliver one item to make room for the receiver reward.');
-  const receiver=s.board[path.at(-1)].kind;
+  const receiver=s.board[path.at(-1)].kind;let reward;
   s.seals.resonance=true;s.seals.link=path;s.stage=3;s.energy=Math.min(120,s.energy+6);
-  if(receiver==='relay'){for(const id of Object.keys(SOURCES))s.charges[id]=7;surge(s);put(s,item('rig',3));}
-  else put(s,container('relic',5));
+  if(receiver==='relay'){for(const id of Object.keys(SOURCES))s.charges[id]=7;surge(s);reward=put(s,item('rig',3));}
+  else reward=put(s,container('relic',5));
   trace(s,'seal',{seal:'resonance',method:'charged-receiver',path,receiver});trace(s,'powered');
-  return {...done(receiver==='relay'?'Rings online · pocket winch recovered · three rich pulls':'Rings online · a sealed relic ampoule recovered','milestone',path.at(-1)),opened:[]};
+  return {...done(receiver==='relay'?'Rings online · pocket winch recovered · three rich pulls':'Rings online · a sealed relic ampoule recovered','milestone',path.at(-1)),reveal:[reward],opened:[]};
  }
  if(a.type==='prime'){
   const from=a.from??s.board.findIndex(loopCell),lift=s.board.findIndex(x=>x?.type==='site'&&x.kind==='winch'&&x.phase==='done');

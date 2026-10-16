@@ -15,7 +15,7 @@ const {chromium,webkit}=require('playwright');const assert=require('node:assert/
  const before=await read();
  if(a.type==='merge'||a.type==='move'){
   await page.locator('#board').scrollIntoViewIfNeeded();const from=page.locator(`[data-index="${a.from}"]`),to=page.locator(`[data-index="${a.to}"]`);
-  if(trace.length%2){if(await from.getAttribute('aria-pressed')!=='true')await from.tap();await to.tap();}
+  if(trace.length%2){if(await from.getAttribute('aria-pressed')!=='true'){const prior=page.locator('#board .selected.item,#board .selected.glyph,#board .selected.brace');if(await prior.count())await prior.tap();await from.tap();}await to.tap();}
   else {const x=await from.boundingBox(),y=await to.boundingBox();await page.mouse.move(x.x+x.width/2,x.y+x.height/2);await page.mouse.down();await page.mouse.move(y.x+y.width/2,y.y+y.height/2,{steps:9});await page.mouse.up();}
  }else if(a.type==='goal')await page.locator('#goalButton').tap();
  else if(a.type==='breach')await page.locator(`[data-route="${route}"]`).tap();
@@ -40,7 +40,7 @@ const {chromium,webkit}=require('playwright');const assert=require('node:assert/
   if(['prime','power','restore','clear'].includes(a.type))await shot('before-'+a.type);
   const after=await perform(a);
   if(['breach','deploy','restore','clear','prime','power'].includes(a.type))await shot('after-'+a.type+'-'+(a.index??20));
-  if(a.type==='prime'){assert.match(await page.locator('#goalTitle').textContent(),/Wake the ring engine/);assert.ok(await page.locator('[data-engine-action="power"]').count());}
+  if(a.type==='prime'){assert.equal(await page.locator('#goalButton').isVisible(),false,'one primary action, no duplicate CTA');assert.match(await page.locator('#goalTitle').textContent(),/Wake the ring engine/);assert.ok(await page.locator('[data-engine-action="power"]').count());}
   if(a.type==='power'){assert.equal(after.stage,3);assert.equal(await page.locator('.enginePowered').count(),1);assert.match(await page.locator('.premiumScene').getAttribute('src'),/powered/);}
  }
  const saved=await read();assert.equal(saved.stage,4);assert.ok(saved.merges>1);assert.ok(trace.some(x=>x.type==='produce'));assert.ok(trace.some(x=>x.type==='prime'));assert.ok(trace.some(x=>x.type==='power'));
@@ -52,7 +52,7 @@ const {chromium,webkit}=require('playwright');const assert=require('node:assert/
   const old=JSON.parse(fs.readFileSync(`tests/fixtures/stage2/${route}-${phase}.json`));
   await page.evaluate(s=>localStorage.setItem('vaultwake-v5',JSON.stringify(s)),old);await page.reload();const migrated=await read();assert.equal(migrated.stage,old.stage);assert.equal(migrated.energy,old.energy);assert.equal(migrated.seals.optics.primed,true);
   if(phase==='primed'&&engine==='chromium'){
-   const base=await context.newPage();await base.goto('http://127.0.0.1:8081/v5/');await base.evaluate(s=>localStorage.setItem('vaultwake-v5',JSON.stringify(s)),old);await base.reload();await base.waitForSelector('#board .tile');await base.evaluate(async()=>Promise.all([...document.images].map(x=>x.decode().catch(()=>{}))));await base.screenshot({path:`${dir}/${route}-before-optics-390.png`,fullPage:true});await base.close();await shot('legacy-charge-retained');
+   const base=await context.newPage();await base.goto('http://127.0.0.1:8082/v5/');await base.evaluate(s=>localStorage.setItem('vaultwake-v5',JSON.stringify(s)),old);await base.reload();await base.waitForSelector('#board .tile');await base.evaluate(async()=>Promise.all([...document.images].map(x=>x.decode().catch(()=>{}))));await base.screenshot({path:`${dir}/${route}-before-optics-390.png`,fullPage:true});await base.close();await shot('legacy-charge-retained');
   }
   if(phase!=='completed'){const target=migrated.board.findIndex(x=>x?.type==='site'&&x.kind!=='winch'&&x.phase==='done');await perform({type:'power',index:target});await perform({type:'goal'});assert.equal((await read()).stage,4);}
   const again=await read();await page.reload();assert.deepEqual(await read(),again);

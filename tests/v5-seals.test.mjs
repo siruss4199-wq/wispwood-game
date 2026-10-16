@@ -33,7 +33,7 @@ function solve(s,options={}){
 test('receivers require a charged repaired lift and grant different, single-use rewards',()=>{
  for(const receiver of ['scope','relay']){
   const s=prepared(receiver);solve(s,{receiver});const path=circuit(s),before=structuredClone(s.board);s.surge=0;s.charges={rig:0,chart:0,flux:0};
-  reject(s,{type:'power',index:0});ok(s,{type:'power',index:path.at(-1)});
+  reject(s,{type:'power',index:0});const result=ok(s,{type:'power',index:path.at(-1)});assert.equal(result.reveal.length,1);assert.ok(s.board[result.reveal[0]],'new reward is exposed to the existing reveal feedback');
   assert.ok(allSeals(s));assert.equal(s.stage,3);assert.equal(s.board.some(x=>x?.type==='prism'),false);
   assert.deepEqual(s.seals.link,path);
   for(let i=0;i<36;i++)if(before[i]&&before[i].type!=='prism')assert.deepEqual(s.board[i],before[i],'kept stock is never consumed by the beam');

@@ -41,7 +41,7 @@ function hint(){
   if(missing.family==='chart'&&!state.taps.chart)return 'NEW MACHINE · Tap Survey Kite for map parts';
   return 'NEXT · Merge parts into a '+nameOf(item(missing.family,missing.tier));
  }
- if(state.stage===1)return 'Choose a crossing above · keep the other tool';if(state.stage===2)return goal(state).text;return 'Merge twins · choose where to use them';}
+ if(state.stage===1)return 'Choose a crossing above · keep the other tool';if(state.stage===2){const g=goal(state);return g.action==='prime'&&ready(state,g.needs)?'LOOP CELL READY · Tap Charge Stone Lift':g.text;}if(state.stage===3)return 'RINGS AWAKE · Open the Tideglass Vault';return 'Merge twins · choose where to use them';}
 function missionSlots(){
  if(state.stage===1)return Object.entries(ROUTES).map(([id,r])=>{
   const index=state.board.findIndex(x=>x?.type==='route'&&x.id===id),need={family:r.family,tier:2,count:1},can=routePrepared(state,id)&&ready(state,[need]);
@@ -61,8 +61,8 @@ function missionSlots(){
   }
   const targets=receivers(state);
   if(!targets.length)return anchors(state).filter(x=>x.kind!=='winch').map(x=>slot(equipment(x.kind),state.board.indexOf(x),'deploy',nameOf(x),x.kind==='scope'?'Relic supplies':'Refill sources + rich pulls')).join('');
-  if(!optics(state).primed)return slot({family:'flux',tier:1,count:1},lift,'prime','Charge Stone Lift','Echo Crucible → merge two Violet Shards');
-  return targets.map(i=>slot(null,i,'power',nameOf(state.board[i]),state.board[i].kind==='scope'?'Relic capsule · open the vault':'Pocket winch + 3 rich pulls')).join('');
+  if(!optics(state).primed)return slot({family:'flux',tier:1,count:1},lift,'prime','Charge Stone Lift',ready(state,[{family:'flux',tier:1,count:1}])?'Use cell → wake the receiver':'Echo Crucible → merge two Violet Shards');
+  return targets.map(i=>slot(null,i,'power',nameOf(state.board[i]),state.board[i].kind==='scope'?'5 relic finds · rings awaken':'Pocket winch + 3 rich pulls')).join('');
  }
  return needsHTML(goal(state)?.needs??[]);
 }
@@ -118,7 +118,7 @@ function render(){
  $('.objective').dataset.stage=state.stage;
  const g=goal(state);$('#goalTitle').textContent=g?.name??'Expedition complete';$('#step').textContent=state.stage<4?(g?.phase??`${state.stage+1} / 4`):'DISCOVERED';
  $('#goalNeeds').innerHTML=missionSlots();$('#goalButton').textContent=g?.verb??'Journal';
- const goalReady=!!g&&g.action!=='inspect'&&ready(state,g.needs);$('#goalButton').hidden=!goalReady;$('#goalButton').disabled=false;
+ const goalReady=!!g&&g.action!=='inspect'&&ready(state,g.needs);$('#goalButton').hidden=!goalReady||state.stage===2;$('#goalButton').disabled=false;
  $('.objective').classList.toggle('ready',goalReady);$('.objective').classList.remove('almost');$('#nextUnlock').textContent=g?.next??'';
  if(goalReady)$('#step').textContent='READY';
  let seals=$('#sealStates');if(!seals){seals=document.createElement('div');seals.id='sealStates';$('.objective').append(seals);}
@@ -145,7 +145,7 @@ function render(){
  for(const tile of board.querySelectorAll('.tile.item')){const x=state.board[+tile.dataset.index];tile.dataset.tier=x.tier;tile.classList.toggle('deliveryReady',(goalReady&&g.needs.some(r=>matches(x,r)))||(cr&&(orderProgress?orderProgress.indices.includes(+tile.dataset.index):c.needs.some(r=>matches(x,r)))));}
  for(const tile of board.querySelectorAll('.tile.site,.tile.route')){
   const x=state.board[+tile.dataset.index],need=x.type==='route'?{family:ROUTES[x.id].family,tier:2,count:1}:equipment(x.kind);
-  const can=x.type==='route'?state.stage===1&&routePrepared(state,x.id)&&ready(state,[need]):state.stage>=2&&x.phase==='idle'&&ready(state,[need]);
+  const can=x.type==='route'?state.stage===1&&routePrepared(state,x.id)&&ready(state,[need]):state.stage===2&&x.phase==='idle'&&g.needs.some(r=>r.family===need.family&&r.tier===need.tier)&&ready(state,[need]);
   tile.classList.toggle('deliveryReady',can);tile.classList.toggle('match',can&&matches(selectedItem,need));tile.classList.toggle('useTarget',can&&matches(selectedItem,need));tile.dataset.phase=x.phase??'buried';
   const power=poweredTargets.includes(+tile.dataset.index);if(power)tile.classList.add('deliveryReady');
   if(state.stage>=2&&x.type==='site'||state.stage===1&&x.type==='route')tile.insertAdjacentHTML('beforeend',`<span class="anchorCue">${power?'POWER':x.phase==='done'?'✓':can?'USE':''}</span>`);

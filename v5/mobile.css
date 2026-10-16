@@ -242,7 +242,11 @@ body[data-art] .routeChoice .routeReward .art{width:24px;height:24px}
 body[data-art="premium"] .missionSlot.routeChoice .art,body[data-art="premium"] .missionSlot.routeChoice.available .art{background:none;border:0;border-radius:0;box-shadow:none}
 
 /* Stage 2 uses the same compact mission slots, with real costs and rewards. */
-.engineChoice{flex:1;min-width:0;min-height:82px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 8px;}
+.engineChoice{flex:1;min-width:0;max-width:none;min-height:82px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 8px;}
 .engineChoice b{font-size:13px;color:#24515c}.engineChoice small{font-size:11px;line-height:1.2;color:#46676a}
 .engineCost{display:flex;align-items:center;gap:5px;max-width:100%}.engineCost .art{width:48px;height:48px;flex-shrink:0}.engineCost>span{font-size:12px;line-height:1.2;max-width:110px}
 .tile.engineCharged .art,.tile.enginePowered .art{filter:drop-shadow(0 0 7px #8eece2)}
+
+.engineChoice .engineCost>span{white-space:normal;text-align:left}
+body[data-art="premium"] .missionSlot.engineChoice .art{background:none;border:0;border-radius:0;box-shadow:none;opacity:1}
+.engineChoice.available b{color:#08776a}
