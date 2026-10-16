@@ -213,3 +213,23 @@ body[data-art] .world:has(#workshop) .worldLabel{left:auto;right:10px;top:7px;te
 #selection:has(.benchRoute) .actionGroup>button{flex:1}
 #selection:has(.benchRoute) .benchRoute{order:1}
 #selection:has(.benchRoute) .benchAction{order:2;flex-basis:100%}
+
+
+/* Player-experience rescue: the world sets the mood; the board is the game. */
+.boardHeading{margin-top:8px;min-height:35px;height:auto;align-items:center;gap:8px}
+body[data-art="premium"] .boardHeading #hint{font-size:12px;line-height:1.25;font-weight:850;color:#155f67;white-space:normal;overflow:visible}
+.boardHeading #hint:before{content:'➜';display:inline-block;margin-right:7px;color:#d68b37;font-size:15px;vertical-align:-1px}
+.boardHeading #free{font-size:10px}
+#board.firstMerge{border:2px solid #52baaa;box-shadow:0 4px 0 #73aaa0,0 0 0 3px #d2f2e5}
+#board.firstMerge .tile.openingPair{outline:3px solid #f1b34c;outline-offset:-2px;box-shadow:0 0 0 2px #fff7d4,0 2px 6px #9c804b7a}
+#board.firstMerge .tile.openingPair .art{filter:drop-shadow(0 4px 2px #31545e55)}
+/* Optional work is always BELOW the playable board, never between the goal and tools. */
+#requests{margin:12px 0 5px;border-top:1px solid #d4e2d8;padding-top:8px}
+.requestHeading{letter-spacing:.03em}
+#sideTray{margin-bottom:4px}
+#workshop[hidden]{display:none}
+@media(max-width:375px){
+ body[data-art="premium"] .boardHeading #hint{font-size:11px}
+ .boardHeading #free{font-size:9px}
+}
+@media(prefers-reduced-motion:reduce){#board.firstMerge .tile.openingPair:after{animation:none}}
