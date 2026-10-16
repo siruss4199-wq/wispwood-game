@@ -25,7 +25,7 @@ function needsHTML(needs){return needs.map(r=>`<span class="need ${count(state,r
 function sideOptions(){return ['contract',...(state.discovery&&!state.discoveryDone&&state.board.some(x=>x?.type==='glyph')?['discovery']:[]),...(state.stage>=1?[state.opportunity?'opportunity':'startOpportunity']:[])];}
 function sideChoice(){const options=sideOptions();return options.includes(sideView)?sideView:state.opportunity?'opportunity':options.includes('discovery')?'discovery':'contract';}
 function hint(){
- if(!state.merges)return 'START · Tap the glowing pair';
+ if(!state.merges&&state.stage===0&&!state.landingStep)return 'START · Tap the glowing pair';
  if(state.stage===0&&!state.landingStep)return 'GRIP TOOL MADE · Tap CLEAR PATH ↑';
  if(focus==='request'){
   const order=state.requests.orders.find(o=>o?.id===requestId);
@@ -123,7 +123,7 @@ function render(){
  renderRequests();renderSide();const order=focus==='request'?state.requests.orders.find(o=>o?.id===requestId):null,orderProgress=order?requestProgress(state,order):null,c=order??normalContract(state),sideVisible=!!order||!$('#contracts').hidden&&$('#sideTray').open,cr=order?orderProgress.ready:sideVisible&&sideChoice()==='contract'&&ready(state,c.needs);
  const readySignal=sideChoice()==='opportunity'&&state.opportunity&&opportunity(state).remaining>0&&ready(state,state.opportunity.needs);
  const selectedItem=state.board[selected];
- board.dataset.site=viewStage;board.classList.toggle('firstMerge',state.merges===0);board.setAttribute('aria-label',SITE_NAMES[viewStage]+' · 6 by 6 merge board');
+ board.dataset.site=viewStage;board.classList.toggle('firstMerge',state.merges===0&&state.stage===0&&!state.landingStep);board.setAttribute('aria-label',SITE_NAMES[viewStage]+' · 6 by 6 merge board');
  board.innerHTML=siteSurface(viewStage)+state.board.map((x,i)=>{
   const isSource=x?.type==='source',locked=isSource&&!sourceUnlocked(state,x.id);
   const useful=isSource&&!locked&&(orderProgress?orderProgress.progress.some(r=>r.family===x.id&&r.current<r.count):needed().some(r=>r.family===x.id&&count(state,r)<r.count));
@@ -183,7 +183,7 @@ function renderSelection(){
    desc=p.ready?'Tap the selected request below the board again to receive supplies and energy.':'Merge matching objects or tap their producer. Expedition equipment is kept safe.';
   }
  }
- if(!x&&!state.merges){title='Start with the glowing pair';desc='Tap one Copper Offcut, then tap its twin. They become a Grip Tool.';}
+ if(!x&&!state.merges&&state.stage===0&&!state.landingStep){title='Start with the glowing pair';desc='Tap one Copper Offcut, then tap its twin. They become a Grip Tool.';}
  else if(!x&&state.stage===0&&!state.landingStep){title='Landing ready';desc='You made a Grip Tool. Tap CLEAR PATH above to open the landing.';}
  if(x){title=nameOf(x);
   if(x.type==='item'){
