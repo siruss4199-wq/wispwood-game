@@ -58,9 +58,9 @@ test('twelve consecutive requests use actual production, service and merging wit
  assert.equal(s.requests.completed,12);assert.ok(s.taps.rig>7);assert.ok(s.taps.chart>0);assert.ok(s.merges>10);
  assert.deepEqual(load(JSON.stringify(s)).requests,s.requests);
 });
-test('delivery keeps the actual positioned navigation and circuit lens, not an earlier spare',()=>{
+test('delivery reserves one route lens anywhere, but preserves the actual live circuit lens',()=>{
  const s=fresh();s.stage=1;s.board[2]=item('chart',2);s.board[9]=item('chart',2);
- const order={needs:[{family:'chart',tier:2,count:1}]};assert.deepEqual(requestProgress(s,order).indices,[2]);
+ const order={needs:[{family:'chart',tier:2,count:1}]};assert.deepEqual(requestProgress(s,order).indices,[9]);assert.ok(reservedItems(s).has(2));
  s.stage=2;s.seals.navigation=true;s.seals.stabilization=true;s.seals.optics.primed=true;s.board[20].phase='done';s.board[20].progress=2;s.board[14]=item('chart',2);
  assert.ok(reservedItems(s).has(14));assert.deepEqual(requestProgress(s,order).indices,[2]);
 });
