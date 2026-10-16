@@ -2,7 +2,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import fs f
 import {fresh,act,load,item,goal,normalContract,ready} from '../v5/core.mjs';
 import {ANCHORS,anchors,completedAnchors,equipment} from '../v5/expedition.mjs';
 import {deliveryItems} from '../v5/presentation.mjs';import {choose} from './v5-policy.mjs';
-import {prepareSight} from './v5-navigation-policy.mjs';
+import {prepareRoute} from './v5-navigation-policy.mjs';
 const ok=(s,a)=>{const r=act(s,a);assert.ok(r.ok,r.message);return r;};
 const reject=(s,a)=>{const before=JSON.stringify(s);assert.equal(act(s,a).ok,false);assert.equal(JSON.stringify(s),before);};
 const siteIndex=(s,kind)=>s.board.findIndex(x=>x?.type==='site'&&x.kind===kind);
@@ -34,7 +34,7 @@ test('use versus merge versus optional delivery consumes the same valuable equip
 });
 test('routes remain exclusive, with exact-item collection and different accessible resources',()=>{
  const goals=[];
- for(const [id,family] of [['ridge','rig'],['conduit','chart']]){const s=fresh();s.stage=1;s.routePrepared=true;s.board[3]=item('chart',2);s.board[7]=item(family,2);s.board[8]=item(family,2);prepareSight(s,id);
+ for(const [id,family] of [['ridge','rig'],['conduit','chart']]){const s=fresh();s.stage=1;s.routePrepared=true;s.board[3]=item('chart',2);s.board[7]=item(family,2);s.board[8]=item(family,2);prepareRoute(s,id);
   const index=s.board.findIndex(x=>x?.type==='route'&&x.id===id),a={type:'breach',index,from:8};assert.deepEqual(deliveryItems(s,a).map(x=>x.index),[8]);ok(s,a);assert.equal(s.board[8],null);assert.equal(s.stage,2);
   reject(s,{type:'breach',index:s.board.findIndex(x=>x?.type==='route')});assert.equal(s.seals.navigation,true);goals.push(s.board.slice(24,30));
  }assert.notDeepEqual(goals[0],goals[1]);

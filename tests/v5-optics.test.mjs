@@ -11,7 +11,7 @@ function approach(route='conduit'){
 test('old 17-action witness cannot power the vault; unlimited Loop Cells do not bypass geometry',()=>{
  const old=fresh(0),actions=[['merge',2,7],['goal'],['merge',1,9],['merge',9,14],['merge',2,8],['merge',1,8],['goal']];
  for(const [type,a,b]of actions)ok(old,type==='merge'?{type,from:a,to:b}:{type,index:a});
- reject(old,{type:'breach',index:27});
+ ok(old,{type:'breach',index:27});reject(old,{type:'power'});assert.equal(old.stage,2,'simpler navigation does not bypass the remaining seals');
  const s=approach();
  s.board[21]=item('flux',1);s.board[22]=item('flux',1);reject(s,{type:'power'});
  for(let i=0;i<36;i++)if(!s.board[i]||s.board[i].type==='item')s.board[i]=item('flux',1);

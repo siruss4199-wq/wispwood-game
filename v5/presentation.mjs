@@ -3,7 +3,7 @@ import {benchInputs} from './workshop.mjs';
 import {goal,normalContract,ready,matches,nameOf,item,SOURCES} from './core.mjs';
 import {equipment,ROUTES,canRestore} from './expedition.mjs';
 import {circuit} from './seals.mjs';
-import {sight} from './navigation.mjs';
+import {routePrepared} from './navigation.mjs';
 
 export const SITE_NAMES=['Landing tray','Survey worksite','Excavated saltglass','Powered relic site','Vault observatory'];
 // A single continuous surface, under the unchanged 36 hit targets. All marks are original.
@@ -39,7 +39,7 @@ export function deliveryItems(s,action,now=Date.now()){
  }
  let needs;
  if(action.type==='goal'&&goal(s)?.action!=='inspect')needs=goal(s)?.needs;
- if(action.type==='breach'&&s.stage===1&&s.board[action.index]?.type==='route'&&sight(s,s.board[action.index].id).ready){
+ if(action.type==='breach'&&s.stage===1&&s.board[action.index]?.type==='route'&&routePrepared(s,s.board[action.index].id)){
   const need={family:ROUTES[s.board[action.index].id].family,tier:2,count:1},index=action.from??s.board.findIndex(x=>matches(x,need));
   return matches(s.board[index],need)?[{index,x:{...s.board[index]}}]:[];
  }
@@ -59,10 +59,10 @@ export function deliveryItems(s,action,now=Date.now()){
  return found;
 }
 export function continuation(s,action,rewards=[]){
- if(action.type==='breach')return 'Navigation secured · restore the stone lift';
+ if(action.type==='breach')return ROUTES[s.expedition.route].name+' open · '+ROUTES[s.expedition.route].benefit+' · Echo Crucible awake';
  if(action.type==='power')return 'Three seals secured · open the Tideglass Vault';
  if(action.type==='goal'&&s.stage===0&&s.landingStep===1)return 'Landing secured · Survey Kite unlocked · chart the crossing';
- if(action.type==='goal'&&s.stage===1)return 'Survey complete · choose your breach and 3 Surge pulls';
+ if(action.type==='goal'&&s.stage===1)return 'Tools ready · choose working space or relic supplies';
  if(action.type==='goal'&&s.stage===2)return 'Echo Crucible unlocked · reveal the ampoule';
  if(action.type==='goal'&&s.stage===3)return 'Rings powered · prepare the vault instruments';
  if(action.type==='goal'&&s.stage===4)return 'The crossing is open · chart the star ocean';

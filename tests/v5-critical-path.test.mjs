@@ -1,32 +1,32 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {fresh,act,item,load} from '../v5/core.mjs';
-import {sight,VIEWS} from '../v5/navigation.mjs';
+import {routePrepared} from '../v5/navigation.mjs';
 import {baffles,circuit} from '../v5/seals.mjs';
 import {useAction} from '../v5/interactions.mjs';
 import {deliveryItems} from '../v5/presentation.mjs';
 import {choose} from './v5-policy.mjs';
 import {layouts,arrange} from './v5-optics-policy.mjs';
-import {prepareSight} from './v5-navigation-policy.mjs';
+import {prepareRoute} from './v5-navigation-policy.mjs';
 const ok=(s,a)=>{const r=act(s,a);assert.ok(r.ok,JSON.stringify(a)+r.message);return r;};
 const reject=(s,a)=>{const before=JSON.stringify(s);assert.equal(act(s,a).ok,false);assert.equal(JSON.stringify(s),before);};
 function survey(){const s=fresh(0);while(s.stage<1)ok(s,choose(s,{sideFirst:false,decode:false}));return s;}
-test('navigation requires a real clear sightline; stock and containers obstruct without being consumed',()=>{
- for(const id of Object.keys(VIEWS)){
-  const s=survey(),index=id==='ridge'?24:27,kept=structuredClone(s.board);
-  reject(s,{type:'breach',index});assert.deepEqual(deliveryItems(s,{type:'breach',index}),[]);
-  prepareSight(s,id);const path=sight(s,id).path,from=s.board.findIndex(x=>x?.type==='item'&&x.family===(id==='ridge'?'rig':'chart')&&x.tier===2);
-  assert.ok(useAction(s,from,index));
-  const box=s.board.findIndex(x=>x?.type==='crate');ok(s,{type:'move',from:box,to:path[1]});
-  assert.equal(sight(s,id).ready,false);assert.equal(useAction(s,from,index),null);reject(s,{type:'breach',index});
-  ok(s,{type:'move',from:path[1],to:box});ok(s,{type:'breach',index});
-  assert.equal(s.seals.navigation,true);assert.deepEqual(s.expedition.log.find(x=>x.type==='seal').path,path);
-  assert.ok(kept.filter(x=>x?.type==='item').length>0);
+test('prepared route choice spends one tool anywhere on a cluttered board, keeps the other and opens its reward',()=>{
+ for(const id of ['ridge','conduit']){
+  const s=survey(),index=id==='ridge'?24:27,family=id==='ridge'?'rig':'chart';
+  const from=s.board.findIndex(x=>x?.family===family&&x.tier===2),kept=s.board.findIndex(x=>x?.family===(family==='rig'?'chart':'rig')&&x.tier===2),stock=structuredClone(s.board[kept]);
+  assert.ok(routePrepared(s,id));assert.ok(useAction(s,from,index));
+  assert.deepEqual(deliveryItems(s,{type:'breach',index}).map(x=>x.index),[from]);
+  ok(s,{type:'breach',index});assert.equal(s.board[from],null);assert.deepEqual(s.board[kept],stock);
+  assert.equal(s.seals.navigation,true);assert.equal(s.expedition.log.find(x=>x.type==='seal').method,'prepared-route');
+  assert.equal(s.board[index].type,'glyph');assert.equal(s.board[index+1].family,id==='ridge'?'rig':'flux');
+  if(id==='ridge')assert.equal(s.board[index+2],null);else assert.equal(s.board[index+2].kind,'relic');
+  reject(s,{type:'breach',index:id==='ridge'?27:24});assert.deepEqual(load(JSON.stringify(s)),s);
  }
 });
 test('route and lift repair change legal optical layouts, not merely flags or rewards',()=>{
  const signatures=[];
  for(const route of ['ridge','conduit'])for(const method of ['recover','restore']){
-  const s=survey();prepareSight(s,route);ok(s,{type:'breach',index:route==='ridge'?24:27});
+  const s=survey();prepareRoute(s,route);ok(s,{type:'breach',index:route==='ridge'?24:27});
   const i=s.board.indexOf(null);s.board[i]=item(method==='recover'?'rig':'flux',2);
   if(method==='recover'){ok(s,{type:'clear',index:19,from:i});ok(s,{type:'deploy',index:20,from:19});}
   else ok(s,{type:'restore',index:19,from:i});
@@ -43,7 +43,7 @@ test('route and lift repair change legal optical layouts, not merely flags or re
  assert.equal(new Set(signatures).size,4);
 });
 test('scope restoration cannot refund the spent repair coil',()=>{
- const s=survey();prepareSight(s,'conduit');ok(s,{type:'breach',index:27});
+ const s=survey();prepareRoute(s,'conduit');ok(s,{type:'breach',index:27});
  const before=s.board.filter(x=>x?.family==='flux'&&x.tier===2).length;
  ok(s,{type:'restore',index:32});assert.equal(s.board.filter(x=>x?.family==='flux'&&x.tier===2).length,before-1);
  assert.ok(s.board.some(x=>x?.family==='flux'&&x.tier===1),'finder yields a useful battery instead of a free next repair');

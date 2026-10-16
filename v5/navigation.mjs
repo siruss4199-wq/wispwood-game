@@ -1,8 +1,5 @@
-// Surveying is a physical sightline, not another delivery. Prepared tools stay
-// usable until the chosen breach; loose stock can always be moved back.
-export const VIEWS={ridge:[6,12,18,24],conduit:[9,15,21,27]};
-export function sight(s,id){
- const path=VIEWS[id]??[],lens=s.board[path[0]];
- const blocked=path.slice(1,-1).filter(i=>s.board[i]);
- return {path,blocked,ready:s.routePrepared===true&&lens?.type==='item'&&lens.family==='chart'&&lens.tier===2&&!blocked.length};
+// Route preparation is normal merging. Board placement never gates navigation.
+// Mid-survey saves keep their lens, stock and coordinates exactly as they were.
+export function routePrepared(s,id){
+ return s.stage===1&&s.routePrepared===true&&['ridge','conduit'].includes(id);
 }

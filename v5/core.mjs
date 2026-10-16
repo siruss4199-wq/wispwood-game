@@ -1,7 +1,7 @@
 import {syncRequests,deliverRequest} from './requests.mjs';
 import {workshopState,restoreWorkshop,upgradeWorkshop,fitSpanner} from './workshop.mjs';
 import {container,containerInfo,contents,CONTAINERS} from './containers.mjs';
-import {sight} from './navigation.mjs';
+import {routePrepared} from './navigation.mjs';
 import {freshSeals,allSeals,circuit,migrateSeals,linkPhase,loopCell,movable,optics,unfold,reflector} from './seals.mjs';
 import {ANCHORS,ROUTES,FINDS,surveyFinds,findSite,canRestore,equipment,anchors,activeAnchors,completedAnchors,trace,expeditionState,installSites} from './expedition.mjs';
 // Vaultwake: deterministic rules, independent of rendering and wall-clock timers.
@@ -40,8 +40,8 @@ export function fresh(now=Date.now()){
  const state={version:5,board,stage:0,landingStep:0,routePrepared:false,seals:freshSeals(),producerStreak:0,energy:32,marks:0,moves:0,merges:0,contracts:0,serial:0,charges:{rig:7,chart:7,flux:7},taps:{rig:0,chart:0,flux:0},normal:0,opportunity:null,discovery:false,discoveryDone:false,boost:false,post:0,discovered:[],expedition:expeditionState(),startedAt:now,lastAt:now,rations:0,history:[]};syncRequests(state);workshopState(state);return state;
 }
 export function goal(s){
- if(s.stage===0&&s.landingStep===1)return {name:'Chart the safe crossing',verb:'Mark route',scene:'Survey camp established',needs:[req('chart',2),req('rig',2)],energy:8,next:'Choose a route with prepared equipment',text:'Build a Sight Lens and Split Spanner to survey the crossing. Both stay with you for the route choice.',phase:'LANDING 2 / 2'};
- if(s.stage===1)return {name:'Choose your breach',verb:'Clear',scene:'Survey worksite',needs:[req('rig',2),req('chart',2)],action:'inspect',next:'Either route unlocks Echo Crucible',text:'Place the lens on a survey mark. Clear its sightline, then use the route tool.',phase:'CHOOSE ONE'};
+ if(s.stage===0&&s.landingStep===1)return {name:'Chart the safe crossing',verb:'View routes',scene:'Survey camp established',needs:[req('chart',2),req('rig',2)],energy:8,next:'Choose a route with prepared equipment',text:'Make a Sight Lens and Split Spanner. Choose which one to use on the crossing.',phase:'LANDING 2 / 2'};
+ if(s.stage===1)return {name:'Choose your crossing',verb:'Clear',scene:'Survey worksite',needs:[req('rig',2),req('chart',2)],action:'inspect',next:'Either route unlocks Echo Crucible',text:'Use the spanner for working space, or the lens for relic supplies. Keep the other tool.',phase:'CHOOSE ONE'};
  if(s.stage===2){
   const receivers=anchors(s).filter(x=>x.kind!=='winch'),stable=s.seals?.stabilization,receiver=receivers.some(x=>x.phase==='done');
   return {name:!stable?'Restore the stone lift':!receiver?'Choose a ring receiver':!optics(s).primed?'Light the ring engine':'Guide light to a receiver',verb:'Power rings',scene:'Entrance uncovered',needs:!stable?[equipment('winch')]:!receiver?receivers.filter(x=>x.phase==='idle').map(x=>equipment(x.kind)):[req('chart',2),...(!optics(s).primed?[req('flux',1)]:[])],action:circuit(s)?'power':'inspect',next:!stable?'Lift clears buried ground':!receiver?'Relic finder or Power bridge':'Reflect light around the stone rib',text:!stable?'Recover a winch, or restore the buried lift with a pulse coil.':!receiver?'Choose relic supplies or recharged sources.':!optics(s).primed?'Use one Loop Cell on the lift.':'Move and turn the reflector and Sight Lens. Objects block light.',phase:!stable?'STABILIZATION':'RESONANCE'};
@@ -194,16 +194,15 @@ export function act(s,a,now=Date.now()){
  if(a.type==='breach'){
   const x=s.board[a.index],r=ROUTES[x?.id];
   if(s.stage!==1||!s.routePrepared||x?.type!=='route'||!r)return fail('Survey the crossing, then choose one breach.');
-  const view=sight(s,x.id);if(!view.ready)return fail(view.blocked.length?'Clear the sightline to this breach.':'Place the Sight Lens on this route’s survey mark.');
   const need=req(r.family,2),from=a.from??s.board.findIndex(x=>matches(x,need));if(!valid(from)||!matches(s.board[from],need))return fail(`Bring a ${FAMILIES[r.family].names[2]}.`);
   s.board[from]=null;s.expedition.route=x.id;s.stage=2;s.discovery=true;
-  s.seals.navigation=true;trace(s,'seal',{seal:'navigation',method:'sightline-and-breach',route:x.id,path:view.path});
+  s.seals.navigation=true;trace(s,'seal',{seal:'navigation',method:'prepared-route',route:x.id});
   for(let i=r.start;i<r.start+3;i++)s.board[i]=null;
   s.board[r.start]={type:'glyph'};
   if(x.id==='ridge')s.board[r.start+1]=item('rig',1);
   else {s.board[r.start+1]=item('flux',2);s.board[r.start+2]=container('relic');surge(s);}
   s.energy=Math.min(120,s.energy+6);trace(s,'breach',{route:x.id});
-  return done(`${r.name} opened · Navigation seal secured · Echo Crucible unlocked.`,'milestone',a.index);
+  return {...done(`${r.name} opened · ${r.benefit} · Echo Crucible unlocked.`,'milestone',a.index),opened:[r.start,r.start+1,r.start+2]};
  }
  if(a.type==='deploy'){
   const site=s.board[a.index];if(s.stage<2||site?.type!=='site'||site.phase!=='idle')return fail('Choose an unused device.');

@@ -143,10 +143,6 @@ body[data-art="premium"] .world:has(.premiumScene) .worldLabel b{background:#fff
 .receiverPort{position:absolute;left:36%;width:28%;height:6px;background:#d9fcf4;border:1px solid #6c63a1;border-radius:4px;pointer-events:none}.receiverPort.top{top:1px}.receiverPort.bottom{bottom:1px}
 @media(prefers-reduced-motion:no-preference){.tile.openingPair::after{animation:pairInvite 1.2s ease-in-out 2}@keyframes pairInvite{50%{transform:scale(1.08);opacity:.35}}}
 #board .tile.prism{touch-action:none;-webkit-touch-callout:none}
-.surveyRay{position:absolute;inset:6px;width:calc(100% - 12px);height:calc(100% - 12px);pointer-events:none;z-index:1;fill:none;stroke:#569f9c;stroke-width:4;stroke-dasharray:8 9;opacity:.55}
-.surveyRay.clear{stroke:#13a98f;stroke-dasharray:none;opacity:.85}
-body[data-art] #board .tile.surveyMark{outline:2px dashed #379d9b;outline-offset:-5px}
-.surveyGhost{position:absolute;inset:6px;opacity:.25;pointer-events:none}
 .lensPlane{position:absolute;width:42%;height:4px;left:29%;top:48%;border-radius:3px;background:#dbfffb;box-shadow:0 0 0 1px #489c9b,0 0 5px #d2fff6;transform:rotate(var(--lens-angle));pointer-events:none}
 
 /* TT-1A: three compact optional orders; expedition exchanges stay available. */
@@ -233,3 +229,20 @@ body[data-art="premium"] .boardHeading #hint{font-size:12px;line-height:1.25;fon
  .boardHeading #free{font-size:9px}
 }
 @media(prefers-reduced-motion:reduce){#board.firstMerge .tile.openingPair:after{animation:none}}
+
+/* A destination, the tool spent, and its payoff share one touch target. */
+.objective[data-stage="1"] #goalNeeds{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%}
+.objective[data-stage="1"] .goalBottom{width:100%;grid-column:1/-1}
+body[data-art] .routeChoice{max-width:none;width:100%;min-height:112px;align-items:flex-start;gap:3px;padding:6px 8px;border-radius:13px;background:#f0e8d5;border:1px solid #d6c8a8;text-align:left}
+body[data-art] .routeChoice.available{background:#e7f1df;border-color:#64ad95}
+.routeChoice>b{font-size:13px;line-height:18px}
+.routeChoice .routeCost{display:flex;align-items:center;gap:4px;width:100%}
+.routeChoice .routeCost>span{font-size:10px;white-space:normal;color:#387e70}
+.routeChoice strong{display:block;font-size:11px;color:#284e58;line-height:14px}
+body[data-art] .routeChoice .art{border:0;background:none;box-shadow:none;padding:0;border-radius:0;width:44px;height:44px;flex:none;opacity:1}
+.routeChoice .routeReward{display:flex;align-items:center;gap:3px}
+body[data-art] .routeChoice .routeReward .art{width:24px;height:24px}
+.routeChoice .routeReward span{font-size:11px;white-space:normal}
+.routeChoice small{font-size:10px;color:#526e70;line-height:14px}
+/* Reserve badges for an actual optional tradeoff, not every expedition item. */
+.tile[data-use="expedition"] .useBadge{display:none}

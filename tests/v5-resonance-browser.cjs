@@ -42,12 +42,11 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
   let navigationShot=false;
   while(!(await read()).seals.optics.primed&&steps.length<100){
    if((await read()).stage===1&&!navigationShot){
-    assert.equal(await page.locator('#board .surveyMark').count(),2);assert.equal(await page.locator('#board .surveyRay').count(),2);
-    for(const mark of await page.locator('#board .surveyMark').all())assert.equal(await mark.evaluate(el=>getComputedStyle(el).outlineStyle),'dashed');
+    assert.equal(await page.locator('#board .surveyMark,.surveyRay,.surveyGhost').count(),0);assert.equal(await page.locator('.routeChoice').count(),2);
     await shot('navigation-blocked');navigationShot=true;
    }
    const a=await page.evaluate(async options=>{const {choose}=await import('/tests/v5-policy.mjs');return choose(JSON.parse(localStorage.getItem('vaultwake-v5')),options);},options);
-   if(a.type==='breach'){assert.equal(await page.locator('#board .surveyRay.clear').count(),1);await shot('navigation-aligned');}
+   if(a.type==='breach'){assert.equal(await page.locator('.routeChoice.available').count(),2);await shot('navigation-aligned');}
    await perform(a);
    if(a.type==='restore'||a.type==='deploy')await shot('equipment-'+a.index);
   }

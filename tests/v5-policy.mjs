@@ -1,6 +1,5 @@
 // Intent-based player styles. All actions use the public reducer / real UI.
 import {goal,ready,count,normalContract,SOURCES,sourceUnlocked} from '../v5/core.mjs';
-import {sight} from '../v5/navigation.mjs';
 import {ANCHORS,ROUTES,equipment,anchors} from '../v5/expedition.mjs';
 import {circuit,linkPhase,optics} from '../v5/seals.mjs';
 import {layouts,arrange} from './v5-optics-policy.mjs';
@@ -22,17 +21,7 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
  else if(s.stage===0){needs=goal(s).needs;command={type:'goal'};}
  else if(s.stage===1){
   const id=route??(['contract','aggressive'].includes(style)?'conduit':'ridge');
-  const view=sight(s,id),lens=s.board.findIndex(x=>x?.type==='item'&&x.family==='chart'&&x.tier===2);
-  if(lens>=0&&!view.ready){
-   const start=view.path[0],blocked=lens!==start&&s.board[start]?start:view.blocked[0];
-   if(mergeSight&&blocked!==undefined){const x=s.board[blocked];if(x?.type==='item'&&x.tier<2){const twin=s.board.findIndex((y,i)=>i!==blocked&&!view.path.includes(i)&&y?.type==='item'&&y.family===x.family&&y.tier===x.tier);if(twin>=0)return {type:'merge',from:blocked,to:twin};}}
-   if(blocked!==undefined){const to=s.board.findIndex((x,i)=>!x&&!view.path.includes(i));if(to>=0)return {type:'merge',from:blocked,to};const extra=s.board.findIndex((x,i)=>x?.type==='item'&&i!==lens&&x.tier===0);if(extra>=0)return {type:'recycle',index:extra};}
-   if(lens!==start)return {type:'merge',from:lens,to:start};
-  }
-  if(lens<0){needs=[req('chart',2)];command={type:'breach',index:s.board.findIndex(x=>x?.type==='route'&&x.id===id)};}
-  else{
   needs=[req(ROUTES[id].family,2)];command={type:'breach',index:s.board.findIndex(x=>x?.type==='route'&&x.id===id)};
-  }
  }else{
   const finds=s.board.flatMap((x,i)=>x?.type==='rock'&&x.find&&anchors(s).some(v=>v.kind===x.find&&v.phase==='idle')?[i]:[]);
   if(s.stage===2&&findStrategy&&finds.length){
