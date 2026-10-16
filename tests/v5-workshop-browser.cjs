@@ -4,7 +4,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs');const {chromium
  const browser=await chromium.launch(),context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,recordVideo:{dir:out,size:{width:390,height:844}}});
  try{
   const page=await context.newPage();page.setDefaultTimeout(8000);const errors=[],trace=[];page.on('pageerror',e=>errors.push(e.message));
-  await page.goto('http://127.0.0.1:8080/v5/');await page.waitForSelector('#workshop img');await page.evaluate(async()=>Promise.all([...document.images].map(x=>x.decode())));
+  await page.goto('http://127.0.0.1:8080/v5/');await page.waitForSelector('#workshop img',{state:'attached'});await page.evaluate(async()=>Promise.all([...document.images].map(x=>x.decode())));
   const read=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('vaultwake-v5')));
   const shot=async name=>{await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:`${out}/${name}-390.png`,fullPage:true});};
   assert.equal(await page.locator('#workshop').getAttribute('data-state'),'damaged');await shot('01-damaged');
