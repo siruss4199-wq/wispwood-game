@@ -37,7 +37,7 @@ const {chromium,webkit}=require('playwright');const assert=require('node:assert/
  // Same genuinely earned board, rendered by the previous build for an exact comparison.
  const base=await context.newPage();await base.goto('http://127.0.0.1:8081/v5/');await base.evaluate(s=>localStorage.setItem('vaultwake-v5',JSON.stringify(s)),saved);await base.reload();await base.waitForSelector('#board .tile');await base.evaluate(async()=>Promise.all([...document.images].map(i=>i.decode().catch(()=>{}))));await base.screenshot({path:`${dir}/before-choice-390.png`,fullPage:true});await base.close();
  }
- await page.reload();assert.deepEqual(await read(),saved);
+ await page.reload();assert.deepEqual(await read(),saved);assert.equal(await page.locator("#message").textContent(),"","reload does not repeat the obsolete landing instruction");
  await page.locator(`.routeChoice[data-route="${route}"]`).tap();await page.waitForTimeout(600);
  const after=await read();assert.equal(after.stage,2);assert.equal(after.expedition.route,route);assert.ok(after.seals.navigation);
  const family=route==='ridge'?'rig':'chart',count=(s,f)=>s.board.filter(x=>x?.family===f&&x.tier===2).length;
