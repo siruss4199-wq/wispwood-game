@@ -15,7 +15,7 @@ test('a real repaired Workshop can turn earned supplies into a visible Supply Pi
 });
 
 test('supply cases are purchased from the existing currency and match unlocked production',()=>{
- const s=fresh();s.workshop.repaired=true;s.requests.supplies=PIER_COST+3*PACK_COST;
+ const s=fresh();s.board=s.board.map(x=>x?.type==='crate'?null:x);s.workshop.repaired=true;s.requests.supplies=PIER_COST+3*PACK_COST;
  ok(s,{type:'buildPier'});s.landingStep=1;
  for(const [f,kind] of [['rig','salvage'],['chart','survey']]){
   const before=s.requests.supplies,cases=s.board.filter(x=>x?.type==='crate').length;
