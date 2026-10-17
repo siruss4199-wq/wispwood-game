@@ -1,4 +1,5 @@
 import {journeyState,KITS,ENGINE_NEEDS} from './journey.mjs';
+import {campState,buildPier,packPier} from './camp.mjs';
 import {syncRequests,deliverRequest} from './requests.mjs';
 import {workshopState,restoreWorkshop,upgradeWorkshop,fitSpanner} from './workshop.mjs';
 import {container,containerInfo,contents,CONTAINERS} from './containers.mjs';
@@ -38,7 +39,7 @@ export function fresh(now=Date.now()){
  for(const i of [19,32])board[i]={type:'rock'};
  ['winch','scope','relay'].forEach((kind,n)=>board[[20,23,31][n]]={type:'site',kind,phase:'idle',progress:0});
  board[24]={type:'route',id:'ridge'};board[27]={type:'route',id:'conduit'};board[34]=container('salvage');
- const state={version:5,board,stage:0,landingStep:0,routePrepared:false,seals:freshSeals(),producerStreak:0,energy:32,marks:0,moves:0,merges:0,contracts:0,serial:0,charges:{rig:7,chart:7,flux:7},taps:{rig:0,chart:0,flux:0},normal:0,opportunity:null,discovery:false,discoveryDone:false,boost:false,post:0,discovered:[],expedition:expeditionState(),startedAt:now,lastAt:now,rations:0,history:[]};syncRequests(state);workshopState(state);journeyState(state);return state;
+ const state={version:5,board,stage:0,landingStep:0,routePrepared:false,seals:freshSeals(),producerStreak:0,energy:32,marks:0,moves:0,merges:0,contracts:0,serial:0,charges:{rig:7,chart:7,flux:7},taps:{rig:0,chart:0,flux:0},normal:0,opportunity:null,discovery:false,discoveryDone:false,boost:false,post:0,discovered:[],expedition:expeditionState(),startedAt:now,lastAt:now,rations:0,history:[]};syncRequests(state);workshopState(state);journeyState(state);campState(state);return state;
 }
 export function goal(s){
  if(s.stage===0&&s.landingStep===1)return {name:'Chart the safe crossing',verb:'View routes',scene:'Survey camp established',needs:[req('chart',2),req('rig',2)],energy:8,next:'Choose a route with prepared equipment',text:'Make a Sight Lens and Split Spanner. Choose which one to use on the crossing.',phase:'LANDING 2 / 2'};
@@ -153,6 +154,8 @@ export function act(s,a,now=Date.now()){
   s.board[from]=null;s.journey.boost={family:a.id,left:3};s.journey.infusions++;trace(s,'infusion',{family:a.id});
   return done(SOURCES[a.id].name+' · three enriched pulls ready. Normal energy and charges apply.','discovery',s.board.findIndex(x=>x?.type==='source'&&x.id===a.id));
  }
+ if(a.type==='buildPier'){const result=buildPier(s,container);return result.ok?{...done(result.message,'campBuild',result.index),reveal:[result.index]}:result;}
+ if(a.type==='packPier'){const result=packPier(s,a.family,container,sourceUnlocked);return result.ok?{...done(result.message,'campPack',result.index),reveal:[result.index]}:result;}
  if(a.type==='restoreWorkshop'){const result=restoreWorkshop(s);return result.ok?done(result.message,'restoration'):result;}
  if(a.type==='upgradeWorkshop'){const result=upgradeWorkshop(s);return result.ok?done(result.message,'restoration'):result;}
  if(a.type==='fitSpanner'){const result=fitSpanner(s);return result.ok?done(result.message,'manufacture',result.index):result;}
@@ -380,7 +383,7 @@ export function load(raw,now=Date.now()){
   }else if(![1,2].includes(s.expedition.version)||!integer(s.expedition.trades,0,3)||s.expedition.route!==null&&!ROUTES[s.expedition.route])return fresh(now);
   if(s.expedition.vaultTrade!==undefined&&typeof s.expedition.vaultTrade!=='boolean')delete s.expedition.vaultTrade;
   s.expedition.log=Array.isArray(s.expedition.log)?s.expedition.log.filter(x=>x&&typeof x.type==='string'&&integer(x.move,0,1000000)).slice(-200):[];
-  installSites(s);migrateSeals(s);if(s.expedition.version===1){for(const site of anchors(s))if(site.phase==='active')activate(s,site);s.expedition.version=2;}delete s.mission;
+  installSites(s);migrateSeals(s);campState(s);if(s.expedition.version===1){for(const site of anchors(s))if(site.phase==='active')activate(s,site);s.expedition.version=2;}delete s.mission;
   if(!integer(s.producerStreak,0,1000000))s.producerStreak=0;
   // Idempotent migration from older V5 builds whose survey already
   // consumed both route ingredients. Keep all existing board progress.
