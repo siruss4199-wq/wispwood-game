@@ -24,7 +24,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs');const {chromium
      return {type:s.charges[r.family]?'produce':'service',index:s.board.findIndex(x=>x?.type==='source'&&x.id===r.family)};
     },lane);trace.push(a);
     const card=page.locator('#requests [data-request]').nth(lane);
-    if(a.type==='request'){if(await card.getAttribute('aria-pressed')!=='true')await card.tap();await card.tap();await page.waitForTimeout(1900);return;}
+    if(a.type==='request'){await card.tap();await page.waitForTimeout(1900);return;}
     await card.tap();
     if(a.type==='merge'){await page.locator(`#board [data-index="${a.from}"]`).tap();await page.locator(`#board [data-index="${a.to}"]`).tap();}
     else{await page.locator(`#board [data-index="${a.index}"]`).tap();if(a.type==='service')await page.locator('[data-action="service"]').tap();}
@@ -47,7 +47,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs');const {chromium
   }
   await shot('04-pressed-tools');
   for(let n=0;n<4;n+=2){await page.locator(`#board [data-index="${tools[n]}"]`).tap();await page.locator(`#board [data-index="${tools[n+1]}"]`).tap();trace.push({type:'merge',from:tools[n],to:tools[n+1]});}
-  const long=page.locator('#requests [data-request]').nth(2);assert.match(await long.getAttribute('aria-label'),/Ready/);await long.tap();await shot('05-next-request-ready');await long.tap();trace.push({type:'request',lane:2});await page.waitForTimeout(1900);
+  const long=page.locator('#requests [data-request]').nth(2);assert.match(await long.getAttribute('aria-label'),/Ready/);await shot('05-next-request-ready');await long.tap();trace.push({type:'request',lane:2});await page.waitForTimeout(1900);
   const saved=await read();assert.equal(saved.requests.completed,5);assert.equal(saved.requests.supplies,6);assert.equal(saved.workshop.presses,4);assert.ok(saved.board.some(x=>x?.family==='rig'&&x.tier===2),'expedition spanner remains protected');await page.reload();assert.deepEqual((await read()).workshop,saved.workshop);assert.deepEqual((await read()).requests,saved.requests);assert.deepEqual((await read()).board,saved.board);assert.equal(await page.locator('#workshop').getAttribute('data-state'),'operational');await shot('06-reloaded');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);const box=await page.locator('#workshop').boundingBox();assert.ok(box.width>=44&&box.height>=44);assert.deepEqual(errors,[]);
   fs.writeFileSync(`${out}/walkthrough.json`,JSON.stringify({trace,requests:saved.requests.completed,supplies:saved.requests.supplies,workshop:saved.workshop,taps:saved.taps,merges:saved.merges},null,2));
