@@ -1,4 +1,5 @@
 import {KITS} from './journey.mjs';
+import {PIER_COST,PACK_COST} from './camp.mjs';
 import {requestProgress} from './requests.mjs';
 import {WORKSHOP_COST,BENCH_COST,BENCH_NEEDS,benchInputs} from './workshop.mjs';
 import {containerInfo,contents} from './containers.mjs';
@@ -30,9 +31,9 @@ function hint(){
  if(state.stage===0&&!state.landingStep)return 'GRIP TOOL MADE · Tap CLEAR PATH ↑';
  if(focus==='request'){
   const order=state.requests.orders.find(o=>o?.id===requestId);
-  if(order){const progress=requestProgress(state,order);if(progress.ready)return 'ORDER READY · Tap the chosen request again to deliver';
+  if(order){const progress=requestProgress(state,order);if(progress.ready)return 'ORDER READY · Collect above the board';
    const missing=progress.progress.find(r=>r.current<r.count);
-   if(missing)return 'CAMP ORDER · Make '+nameOf(item(missing.family,missing.tier))+' using the board';
+   if(missing)return 'ORDER · Make '+nameOf(item(missing.family,missing.tier))+' · use the board';
   }
  }
  if(state.stage===0&&state.landingStep===1){
@@ -73,6 +74,9 @@ function renderWorkshop(){
  let button=$('#workshop');
  if(!button){$('#scene').insertAdjacentHTML('beforeend','<button id="workshop"><img width="256" height="256" alt=""><span></span></button>');button=$('#workshop');}
  const restored=state.workshop.repaired,ready=state.requests.supplies>=WORKSHOP_COST;
+ let pier=$('#campPierWorld');
+ if(state.camp.pier&&!pier){$('#scene').insertAdjacentHTML('beforeend',`<div id="campPierWorld" aria-label="Supply Pier operational">${art({type:'crate',kind:'salvage'})}<span>SUPPLY PIER</span></div>`);}
+ else if(!state.camp.pier&&pier)pier.remove();
  // Reveal camp management only after the first landing milestone, not before
  // the player has learned the basic merge interaction.
  button.hidden=state.stage===0&&!state.landingStep&&!restored;
@@ -95,10 +99,16 @@ function renderRequests(){
  $('#requests').hidden=state.stage===0&&!state.landingStep;
  $('#sideTray').hidden=state.stage===0&&!state.landingStep;
  const q=state.requests;
- const purpose=!state.workshop.repaired?'REPAIR THE WORKSHOP':!state.workshop.precision?'UNLOCK THE PRECISION BENCH':'EARN SUPPLIES + ENERGY';
- $('#requests').innerHTML=`<div class="requestHeading"><span>CAMP ORDERS · ${purpose}</span><b title="Saved for future restoration">◆ <span id="supplies">${q.supplies}</span> supplies</b></div><div class="requestShelf">${q.orders.filter(Boolean).map(o=>{
+ const focused=q.orders.find(o=>o?.id===requestId);
+ const missing=focused&&requestProgress(state,focused).progress.find(r=>r.current<r.count);
+ const family=missing?.family&&sourceUnlocked(state,missing.family)?missing.family:focused?.needs.find(r=>sourceUnlocked(state,r.family))?.family??'rig';
+ const action=state.workshop.repaired?(state.camp.pier
+  ?`<button class="campAction ${q.supplies>=PACK_COST?'affordable':''}" data-camp-action="packPier" data-family="${family}" aria-label="Order a ${FAMILIES[family].name} supply case for ${PACK_COST} camp supplies">+${FAMILIES[family].name} case · ${PACK_COST}◆</button>`
+  :`<button class="campAction ${q.supplies>=PIER_COST?'affordable':''}" data-camp-action="buildPier" aria-label="Build Supply Pier for ${PIER_COST} camp supplies">Build Pier · ${PIER_COST}◆</button>`):'';
+ const purpose=!state.workshop.repaired?'Workshop 8◆':!state.camp.pier?'Unlock useful supply cases':state.workshop.precision?'Deliver · restock · discover':'Pier built · Bench 12◆';
+ $('#requests').innerHTML=`<div class="requestHeading"><span>ORDERS <small>${purpose}</small></span><b title="Earn camp supplies by delivering orders">◆ <span id="supplies">${q.supplies}</span></b>${action}</div><div class="requestShelf">${q.orders.filter(Boolean).map(o=>{
  const p=requestProgress(state,o),active=requestId===o.id&&focus==='request',energy=Math.min(o.energy,120-state.energy);
- return `<button class="requestCard ${p.ready?'ready':''} ${active?'active':''}" data-request="${o.id}" aria-pressed="${active}" aria-label="${o.lane} request: ${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier))).join(', ')}. ${p.ready?active?'Deliver':'Ready. Select to deliver':'In progress'}. Reward ${o.supplies} restoration supplies and ${energy} energy"><b class="requestLane">${o.lane==='long'?'Expedition kit':o.lane==='quick'?'Quick':'Standard'}</b><span class="requestItems">${p.progress.map(r=>`<span>${art(item(r.family,r.tier))}<b>${r.current}/${r.count}</b>${r.protected?'<i title="One copy kept for expedition">◆</i>':''}</span>`).join('')}</span><span class="requestReward">+${o.supplies} ◆ · +${energy} ϟ</span><strong>${p.ready?active?'DELIVER':'✓ READY':active&&p.progress.some(r=>r.protected)?'MAKE A SPARE':'COLLECT'}</strong></button>`;
+ return `<button class="requestCard ${p.ready?'ready':''} ${active?'active':''}" data-request="${o.id}" aria-pressed="${active}" aria-label="${o.lane} request: ${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier))).join(', ')}. ${p.ready?active?'Deliver':'Ready. Select to deliver':'In progress'}. Reward ${o.supplies} restoration supplies and ${energy} energy"><b class="requestLane">${o.lane==='long'?'Expedition kit':o.lane==='quick'?'Quick':'Standard'}</b><span class="requestItems">${p.progress.map(r=>`<span>${art(item(r.family,r.tier))}<b>${r.current}/${r.count}</b>${r.protected?'<i title="One copy kept for expedition">◆</i>':''}</span>`).join('')}</span><span class="requestReward">+${o.supplies} ◆ · +${energy} ϟ</span><strong>${p.ready?'✓ COLLECT':active&&p.progress.some(r=>r.protected)?'MAKE SPARE':'MAKE'}</strong></button>`;
  }).join('')}</div>`;
 }
 function renderSide(){
@@ -117,6 +127,7 @@ function render(){
  const viewStage=state.stage===0&&state.landingStep===1?1:state.stage;
  const sceneKey=viewStage+':'+state.post;if($('#scene').dataset.key!==sceneKey){$('#scene').innerHTML=scene(viewStage,state.post);$('#scene').dataset.key=sceneKey;}$('#sceneLabel').textContent=goal(state)?.scene??STAGES[state.stage]?.scene??'The vault is open';
  renderWorkshop();
+ $('.world').classList.toggle('pierBuilt',state.camp.pier);
  $('#chapterLabel').textContent=state.stage===4?'DISCOVERY · THE SKY WITHIN':'THE SALTGLASS REACH';
  $('.objective').dataset.stage=state.stage;$('.objective').dataset.journey=state.stage===4&&!state.journey.infusions?'active':'';
  const baseGoal=goal(state),g=state.stage===3&&!state.journey.kit?{...baseGoal,needs:KITS[kitFocus].needs}:baseGoal;$('#goalTitle').textContent=g?.name??'Expedition complete';$('#step').textContent=state.stage<4?(g?.phase??`${state.stage+1} / 4`):'DISCOVERED';
@@ -244,6 +255,8 @@ function run(a){
  if(result.discoveryReward){board.querySelector(`[data-index="${result.discoveryReward.index}"]`)?.classList.add('rewardLanded');}
  if(a.type==='restoreEngine'){moment('Star-ocean engine restored','Use a Loop Cell on a producer · three enriched pulls',item('flux',5));}
  if(a.type==='infuse'){moment(SOURCES[a.id].name+' enriched','Next three pulls · richer parts',item(a.id,1));}
+ if(a.type==='buildPier'){moment('Supply Pier built','Camp orders now fund useful material cases', {type:'crate',kind:'salvage'});sound.play('milestone');$('.world').classList.add('changed');}
+ if(a.type==='packPier'){moment('Supply case delivered','Tap the new case on the board to unpack useful parts', {type:'crate',kind:{rig:'salvage',chart:'survey',flux:'relic'}[a.family]});sound.play('rare');}
  if(a.type==='press'){sound.play('merge',1);board.querySelector(`[data-index="${result.index}"]`)?.classList.add('merge-pop');}
  if(result.event==='restoration'){moment(a.type==='upgradeWorkshop'?'Precision Bench installed':'Workshop restored',a.type==='upgradeWorkshop'?'Spare tool + chart → spanner':'Tap Workshop or Rivet Rover for a Grip tool · 2 energy + 1 charge',item('rig',a.type==='upgradeWorkshop'?2:1));sound.play('milestone');$('.world').classList.add('changed');board.querySelector('.source[data-family="rig"]')?.classList.add('unlocked');}
  if(a.type==='produce'||a.type==='press'){
@@ -281,7 +294,14 @@ $('#scene').onclick=e=>{
   $('#selection').scrollIntoView({block:'nearest'});return;
  }
  if(!e.target.closest('#workshop'))return;if(!state.workshop.repaired){const result=run({type:'restoreWorkshop'});if(!result.ok)message.textContent=`Camp requests fund repairs · ${state.requests.supplies}/${WORKSHOP_COST} supplies`;return;}selected=state.board.findIndex(x=>x?.type==='source'&&x.id==='rig');if(!state.charges.rig){render();$('#selection').scrollIntoView({block:'nearest'});return;}run({type:'press',id:'rig'});board.scrollIntoView({block:'center'});};
-$('#requests').onclick=e=>{const id=e.target.closest('[data-request]')?.dataset.request;if(!id)return;const o=state.requests.orders.find(o=>o?.id===id);if(!o)return;if(focus==='request'&&requestId===id&&requestProgress(state,o).ready){run({type:'request',id});return;}requestId=id;focus='request';selected=null;render();if(!requestProgress(state,o).ready)board.scrollIntoView({block:'nearest'});};
+$('#requests').onclick=e=>{
+ const camp=e.target.closest('[data-camp-action]');
+ if(camp){const result=run({type:camp.dataset.campAction,family:camp.dataset.family});if(result.ok)board.scrollIntoView({block:'nearest'});return;}
+ const id=e.target.closest('[data-request]')?.dataset.request;if(!id)return;
+ const o=state.requests.orders.find(o=>o?.id===id);if(!o)return;
+ if(requestProgress(state,o).ready){requestId=null;focus='goal';run({type:'request',id});return;}
+ requestId=id;focus='request';selected=null;render();board.scrollIntoView({block:'nearest'});
+};
 $('#contracts').onclick=e=>{if(e.target.closest('[data-side-next]')){const choices=sideOptions();sideView=choices[(choices.indexOf(sideChoice())+1)%choices.length];render();return;}const type=e.target.closest('[data-contract]')?.dataset.contract;if(!type)return;
  if(type==='startOpportunity'){sideView='opportunity';run({type});focus='opportunity';render();return;}
  sideView=type;focus=type;const can=type==='contract'?ready(state,normalContract(state).needs):type==='opportunity'?(state.opportunity&&(Date.now()>state.opportunity.ends||ready(state,state.opportunity.needs))):state.board.some(x=>x?.type==='glyph')&&ready(state,[{family:'chart',tier:2,count:1}]);
