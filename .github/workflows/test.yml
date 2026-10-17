@@ -59,11 +59,11 @@ jobs:
           mkdir -p /tmp/vaultwake-before
           git archive FETCH_HEAD | tar -x -C /tmp/vaultwake-before
           python3 -m http.server 8081 --directory /tmp/vaultwake-before > /tmp/vaultwake-before-http.log 2>&1 &
+          node tests/v5-camp-browser.cjs
           node tests/v5-route-clarity-browser.cjs
           node tests/v5-workshop-evolution-browser.cjs
           node tests/v5-workshop-browser.cjs
           node tests/v5-requests-browser.cjs
-          node tests/v5-camp-browser.cjs
           git fetch --depth=1 origin d16d4921b52f4a93bd929486e9d919228c5192c9
           mkdir -p /tmp/vaultwake-stage2-before
           git archive FETCH_HEAD | tar -x -C /tmp/vaultwake-stage2-before
