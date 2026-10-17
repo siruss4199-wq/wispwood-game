@@ -16,7 +16,7 @@ const {chromium}=require('playwright');
    if(a.type==='request'){
     const indices=await page.evaluate(async id=>{const {requestProgress}=await import('/v5/requests.mjs'),s=JSON.parse(localStorage.getItem('vaultwake-v5'));return requestProgress(s,s.requests.orders.find(o=>o.id===id)).indices;},a.id);
     if(indices.some(i=>lineage.has(i)))deliveredFitting=true;
-    const card=page.locator(`[data-request="${a.id}"]`);if(await card.getAttribute('aria-pressed')!=='true')await card.tap();await card.tap();await page.waitForTimeout(1850);
+    const card=page.locator(`[data-request="${a.id}"]`);await card.tap();await page.waitForTimeout(1850);
    }else if(a.type==='merge'){
     const fitted=lineage.has(a.from)||lineage.has(a.to);lineage.delete(a.from);lineage.delete(a.to);
     await page.locator(`[data-index="${a.from}"]`).tap();await page.locator(`[data-index="${a.to}"]`).tap();if(fitted)lineage.add(a.to);
