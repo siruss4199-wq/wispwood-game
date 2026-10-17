@@ -301,3 +301,47 @@ body[data-art="premium"] .missionSlot.engineChoice .art{background:none;border:0
  #requests .requestCard .requestLane{font-size:10px}
  #requests .requestCard .requestReward{font-size:10px}
 }
+
+
+/* TT-1D2: When a ring receiver is ready, the objective is one clear action.
+   No permanent large dashboard or duplicate abstract READY labels. */
+.world .objective[data-stage="2"]:has(.engineActivate){padding:8px 11px 10px;gap:3px}
+.world .objective[data-stage="2"]:has(.engineActivate) .goalBottom{margin-top:2px}
+.world .objective[data-stage="2"]:has(.engineActivate) #goalNeeds{width:100%;display:flex;gap:7px}
+body[data-art="premium"] .world .objective .missionSlot.engineActivate{
+  display:flex;flex-direction:row;align-items:center;justify-content:flex-start;
+  width:100%;min-height:62px;max-width:none;gap:10px;
+  padding:7px 12px;background:linear-gradient(105deg,#158e80,#0a736a);
+  border:2px solid #83d8bc;border-radius:15px;
+  box-shadow:0 3px 0 #075c55,0 3px 8px #07584c36;
+  color:#f8ffeb;text-align:left;touch-action:manipulation;
+}
+body[data-art="premium"] .world .objective .missionSlot.engineActivate .activateArt{
+ width:46px;height:46px;flex:none;display:grid;place-items:center;
+ border-radius:11px;background:#dbf7da66;
+}
+body[data-art="premium"] .world .objective .missionSlot.engineActivate .activateArt .art{
+ width:44px;height:44px;background:none;border:0;box-shadow:none;opacity:1;padding:0
+}
+.engineActivate .activateCopy{display:flex;flex-direction:column;justify-content:center;gap:3px;flex:1;min-width:0}
+body[data-art="premium"] .world .objective .engineActivate .activateCopy b{
+ display:block;color:#fffefa;font-size:15px;line-height:19px;letter-spacing:.2px
+}
+body[data-art="premium"] .world .objective .engineActivate .activateCopy small{
+ color:#e3fff1;font-size:10px;line-height:1.2
+}
+body[data-art="premium"] .world .objective .engineActivate.blocked{
+ background:#d9ddd7;border-color:#adbfb2;box-shadow:none;color:#34565b
+}
+body[data-art="premium"] .world .objective .engineActivate.blocked .activateCopy b{
+ color:#34565b
+}
+body[data-art="premium"] .world .objective .engineActivate.blocked .activateCopy small{color:#506c71}
+.world .objective[data-stage="2"]:has(.engineActivate) #step{
+ background:#d8f4de;color:#126f60;font-size:11px;white-space:nowrap;
+ padding:4px 6px;border-radius:8px
+}
+@media(max-width:375px){
+ body[data-art="premium"] .world .objective .missionSlot.engineActivate{min-height:58px;padding:5px 7px}
+ body[data-art="premium"] .world .objective .engineActivate .activateCopy b{font-size:14px}
+}
