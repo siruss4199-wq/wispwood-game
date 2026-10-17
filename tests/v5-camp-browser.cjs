@@ -24,8 +24,13 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
     if(action.type==='request'){
      await page.locator(`#requests [data-request="${action.id}"]`).tap();deliveries++;
     }else if(action.type==='merge'){
-     await page.locator(`#board [data-index="${action.from}"]`).tap();
-     await page.locator(`#board [data-index="${action.to}"]`).tap();
+     const from=page.locator(`#board [data-index="${action.from}"]`),to=page.locator(`#board [data-index="${action.to}"]`);
+     if(await from.getAttribute('aria-pressed')!=='true'){
+      const prior=page.locator('#board .selected.item,#board .selected.glyph,#board .selected.brace');
+      if(await prior.count())await prior.tap();
+      await from.tap();
+     }
+     await to.tap();
     }else if(action.type==='produce'||action.type==='service'){
      const source=before.board.findIndex(x=>x?.type==='source'&&x.id===action.id);
      await page.locator(`#board [data-index="${source}"]`).tap();
