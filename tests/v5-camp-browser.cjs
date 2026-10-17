@@ -3,6 +3,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webkit}=require('playwright');
 (async()=>{
  const dir='test-artifacts/v5/camp-pier';fs.mkdirSync(dir,{recursive:true});
+ let earnedState=null;
  for(const [engine,browserType] of [['chromium',chromium],['webkit',webkit]]){
   const browser=await browserType.launch();
   try{
@@ -12,6 +13,18 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
    await page.goto('http://127.0.0.1:8080/v5/');await page.waitForSelector('#board .tile');
    const read=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('vaultwake-v5')));
    const shot=async name=>{await page.evaluate(async()=>Promise.all([...document.images].map(x=>x.decode().catch(()=>{}))));await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:`${dir}/${engine}-${name}-390.png`,fullPage:true});};
+   if(engine==='webkit'){
+    assert.ok(earnedState,'Chromium must earn this state through real UI play first');
+    await page.evaluate(s=>localStorage.setItem('vaultwake-v5',JSON.stringify(s)),earnedState);
+    await page.reload();assert.deepEqual(await read(),earnedState);
+    assert.ok(await page.locator('#campPierWorld').isVisible());
+    const order=await page.locator('#requests').boundingBox(),game=await page.locator('#board').boundingBox();
+    assert.ok(order.y+order.height<=game.y,'WebKit orders remain above board');
+    const tile=await page.locator('#board .tile.item').first().boundingBox();assert.ok(tile.width>=44&&tile.height>=44);
+    await page.locator('#campPierWorld').tap();assert.ok(await page.locator('#requests').isVisible());
+    await shot('05-webkit-pier-resumed');await page.reload();assert.deepEqual(await read(),earnedState);
+    assert.deepEqual(errors,[]);await context.close();console.log('webkit: earned Pier saved from genuine Chromium play renders and survives tap/reload');continue;
+   }
    await page.locator('#board [data-index="7"]').tap();await page.locator('#board [data-index="8"]').tap();await page.locator('#goalButton').tap();
    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5')).landingStep===1);
    let actions=0,deliveries=0;
@@ -93,7 +106,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
    assert.ok(requestBox.y+requestBox.height<=boardBox.y,'orders remain above full-sized merge board');
    const tile=await page.locator('#board .tile.item').first().boundingBox();assert.ok(tile.width>=44&&tile.height>=44);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
-   await page.reload();assert.deepEqual(await read(),packed);assert.ok(await page.locator('#campPierWorld').isVisible());
+   await page.reload();assert.deepEqual(await read(),packed);assert.ok(await page.locator('#campPierWorld').isVisible());earnedState=packed;
    assert.deepEqual(errors,[]);fs.writeFileSync(`${dir}/${engine}-trace.json`,JSON.stringify({actions,deliveries,workshop:packed.workshop,camp:packed.camp,remainingSupplies:packed.requests.supplies,selectedFamily:family},null,2));
    await context.close();console.log(engine,'real orders → Workshop → Pier → targeted case → reload passed');
   }finally{await browser.close();}
