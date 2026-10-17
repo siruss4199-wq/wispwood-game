@@ -1,3 +1,4 @@
+import {KITS,ENGINE_NEEDS} from './journey.mjs';
 import {requestProgress} from './requests.mjs';
 import {benchInputs} from './workshop.mjs';
 import {goal,normalContract,ready,matches,nameOf,item,SOURCES} from './core.mjs';
@@ -23,6 +24,8 @@ export function deliveryItems(s,action,now=Date.now()){
  if(action.type==='fitSpanner')return benchInputs(s).filter(i=>i>=0).map(index=>({index,x:{...s.board[index]}}));
  if(action.type==='request'){const o=s.requests?.orders.find(o=>o?.id===action.id);if(!o)return [];const p=requestProgress(s,o);return p.ready?p.indices.map(index=>({index,x:{...s.board[index]}})):[];}
  if(action.type==='power')return [];
+ if(action.type==='infuse'){const index=action.from??s.board.findIndex(x=>x?.type==='item'&&x.family==='flux'&&x.tier===1);return index<0?[]:[{index,x:{...s.board[index]}}];}
+ if(action.type==='restoreEngine'||action.type==='goal'&&s.stage===3&&!s.journey?.kit){const needs=action.type==='restoreEngine'?ENGINE_NEEDS:KITS[action.kit??Object.keys(KITS).find(k=>ready(s,KITS[k].needs))]?.needs??[];return needs.flatMap(r=>{const index=s.board.findIndex(x=>matches(x,r));return index<0?[]:[{index,x:{...s.board[index]}}];});}
  if(action.type==='prime'){
   const index=action.from??s.board.findIndex(x=>matches(x,{family:'flux',tier:1}));
   return index>=0?[{index,x:{...s.board[index]}}]:[];

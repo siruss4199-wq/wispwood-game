@@ -1,3 +1,4 @@
+import {journeyState,KITS,ENGINE_NEEDS} from './journey.mjs';
 import {syncRequests,deliverRequest} from './requests.mjs';
 import {workshopState,restoreWorkshop,upgradeWorkshop,fitSpanner} from './workshop.mjs';
 import {container,containerInfo,contents,CONTAINERS} from './containers.mjs';
@@ -37,7 +38,7 @@ export function fresh(now=Date.now()){
  for(const i of [19,32])board[i]={type:'rock'};
  ['winch','scope','relay'].forEach((kind,n)=>board[[20,23,31][n]]={type:'site',kind,phase:'idle',progress:0});
  board[24]={type:'route',id:'ridge'};board[27]={type:'route',id:'conduit'};board[34]=container('salvage');
- const state={version:5,board,stage:0,landingStep:0,routePrepared:false,seals:freshSeals(),producerStreak:0,energy:32,marks:0,moves:0,merges:0,contracts:0,serial:0,charges:{rig:7,chart:7,flux:7},taps:{rig:0,chart:0,flux:0},normal:0,opportunity:null,discovery:false,discoveryDone:false,boost:false,post:0,discovered:[],expedition:expeditionState(),startedAt:now,lastAt:now,rations:0,history:[]};syncRequests(state);workshopState(state);return state;
+ const state={version:5,board,stage:0,landingStep:0,routePrepared:false,seals:freshSeals(),producerStreak:0,energy:32,marks:0,moves:0,merges:0,contracts:0,serial:0,charges:{rig:7,chart:7,flux:7},taps:{rig:0,chart:0,flux:0},normal:0,opportunity:null,discovery:false,discoveryDone:false,boost:false,post:0,discovered:[],expedition:expeditionState(),startedAt:now,lastAt:now,rations:0,history:[]};syncRequests(state);workshopState(state);journeyState(state);return state;
 }
 export function goal(s){
  if(s.stage===0&&s.landingStep===1)return {name:'Chart the safe crossing',verb:'View routes',scene:'Survey camp established',needs:[req('chart',2),req('rig',2)],energy:8,next:'Choose a route with prepared equipment',text:'Make a Sight Lens and Split Spanner. Choose which one to use on the crossing.',phase:'LANDING 2 / 2'};
@@ -49,6 +50,9 @@ export function goal(s){
   if(!optics(s).primed)return {name:'Charge the Stone Lift',verb:'Use Loop Cell',scene:'Receiver prepared',needs:[req('flux',1)],action:'prime',next:'Wake your receiver · power the vault rings',text:'Merge Violet Shards from Echo Crucible into a Loop Cell. Use it on the Lift.',phase:'CHARGE'};
   return {name:'Wake the ring engine',verb:'Activate receiver',scene:'Lift charged',needs:[],action:circuit(s)?'power':'inspect',next:'The rings awaken · vault entrance ready',text:'Activate your prepared receiver to claim its reward and raise the rings.',phase:'ACTIVATE'};
  }
+ if(s.stage===3&&!s.journey?.kit)return {name:'Pack for the vault',verb:'Open vault',scene:'Rings awakened',needs:KITS.field.needs,energy:20,action:allSeals(s)?'goal':'inspect',next:'Choose the finds you bring back',text:'Use tools for salvage, or navigation gear for survey finds.',phase:'CHOOSE YOUR FINDS'};
+ if(s.stage===4&&!s.journey?.engine)return {name:'Restore the star-ocean engine',verb:'Restore engine',scene:'A living star ocean',needs:ENGINE_NEEDS,action:'restoreEngine',next:'Loop Cells boost a producer of your choice',text:'Tools, a lens and a coil awaken the engine inside the vault.',phase:'VAULT DISCOVERY'};
+ if(s.stage===4&&s.journey?.engine&&!s.journey.infusions)return {name:'Choose your first enriched run',verb:'Choose producer',scene:'Star-ocean engine restored',needs:[req('flux',1)],action:'inspect',next:'One Loop Cell · three rich producer pulls',text:'Use a Loop Cell on any producer. Its next three pulls yield richer parts.',phase:'NEW CAPABILITY'};
  if(s.stage===3)return {name:'Open the Tideglass Vault',verb:'Open vault',scene:'Rings awakened',needs:[],energy:20,next:'The chamber + relic cache',text:'All three seals are secured.',action:allSeals(s)?'goal':'inspect'};
  return STAGES[s.stage]??POST_GOALS[s.post]??null;
 }
@@ -79,12 +83,12 @@ export function nextOutput(s,id){
  if(n%9===0)return {type:'glyph'};
  // Late-game anti-grind: reward consecutive dry pulls with one actual pair.
  // This never overrides the scheduled ninth-pull glyph.
- if(s.stage>=3&&(s.producerStreak??0)>=2){
+ if(s.stage>=3&&(s.producerStreak??0)>=2&&s.journey?.boost?.family!==id){
   const tier=[3,2,1,0].find(t=>count(s,req(id,t))===1);
   if(tier!==undefined)return item(id,tier);
  }
  const base=s.boost&&n%3===0?2:n%4===0?1:0;
- return item(id,base+(s.surge>0?1:0));
+ return item(id,base+(s.surge>0||s.journey?.boost?.family===id&&s.journey.boost.left>0?1:0));
 }
 // Action-limited, shared across sources: spend the improved pulls where they matter.
 // Never stack or expire while the player thinks. Old saves simply have no active surge.
@@ -137,6 +141,18 @@ export function act(s,a,now=Date.now()){
  const fail=message=>({ok:false,message});
  const done=(message,event='action',index=null)=>{s.moves++;s.lastAt=now;syncRequests(s);if(event!=='produce')s.producerStreak=0;installSites(s);unfold(s);if(event==='milestone')remember(s,event,now);for(const x of s.board)if(x?.type==='item'){const key=x.family+':'+x.tier;if(!s.discovered.includes(key))s.discovered.push(key);}return {ok:true,message,event,index};};
  const valid=i=>Number.isInteger(i)&&i>=0&&i<36;
+ if(a.type==='restoreEngine'){
+  if(s.stage!==4||s.journey?.engine||!ready(s,ENGINE_NEEDS))return fail('Bring a Split Spanner, Sight Lens and Pulse Coil to the vault engine.');
+  consume(s,ENGINE_NEEDS);s.journey.engine=true;put(s,item('flux',1));trace(s,'engine-restored');
+  return done('Star-ocean engine restored · use the returned Loop Cell on a producer.','milestone');
+ }
+ if(a.type==='infuse'){
+  const from=a.from??s.board.findIndex(loopCell);
+  if(!s.journey?.engine||!SOURCES[a.id]||!sourceUnlocked(s,a.id)||!valid(from)||!loopCell(s.board[from]))return fail('Use a Loop Cell on a producer after restoring the vault engine.');
+  if(s.journey.boost?.left)return fail('Use your remaining enriched pulls before charging another run.');
+  s.board[from]=null;s.journey.boost={family:a.id,left:3};s.journey.infusions++;trace(s,'infusion',{family:a.id});
+  return done(SOURCES[a.id].name+' · three enriched pulls ready. Normal energy and charges apply.','discovery',s.board.findIndex(x=>x?.type==='source'&&x.id===a.id));
+ }
  if(a.type==='restoreWorkshop'){const result=restoreWorkshop(s);return result.ok?done(result.message,'restoration'):result;}
  if(a.type==='upgradeWorkshop'){const result=upgradeWorkshop(s);return result.ok?done(result.message,'restoration'):result;}
  if(a.type==='fitSpanner'){const result=fitSpanner(s);return result.ok?done(result.message,'manufacture',result.index):result;}
@@ -166,13 +182,17 @@ export function act(s,a,now=Date.now()){
   const crafted=s.board[a.to];
   const firstCraft=crafted.tier>=2&&!s.discovered.includes(crafted.family+':'+crafted.tier);
   const resupply=firstCraft&&s.stage<4?supplies(s,3):[];
+  // A newly crafted device brings a named, useful cross-family find. Use the
+  // merge-freed cell when crowded; never hide rewards in a counter.
+  let discoveryReward=null;
+  if(firstCraft&&crafted.tier===3){const kind={rig:'survey',chart:'relic',flux:'salvage'}[crafted.family],family={rig:'chart',chart:'flux',flux:'rig'}[crafted.family];const loose=s.board.filter(x=>x?.type==='crate').length>=2;const i=put(s,loose?item(family,1):container(kind));if(i>=0)discoveryReward={index:i,kind,loose};}
   // Large assemblies return reusable offcuts, keeping expensive merges from hollowing the tray.
   const offcuts=!firstCraft&&crafted.tier>=3&&s.board.filter(Boolean).length<23;
   if(offcuts)put(s,item(crafted.family,0));
   const chainFind=false;
   const breakthrough=firstCraft&&crafted.tier>=3;
   if(breakthrough){s.charges[crafted.family]=Math.min(7,s.charges[crafted.family]+2);if(crafted.tier>=5)s.energy=Math.min(120,s.energy+4);}
-  return {...done(`${nameOf(crafted)}${breakthrough?' · source recharged':''}${resupply.length?' · expedition supplies':''}${bonus?' · +1 energy':''}`,'merge',a.to),breakthrough};
+  return {...done(`${nameOf(crafted)}${breakthrough?' · source recharged':''}${resupply.length?' · expedition supplies':''}${bonus?' · +1 energy':''}`,'merge',a.to),breakthrough,discoveryReward};
  }
  if(a.type==='produce'){
   const p=SOURCES[a.id];if(!p||!sourceUnlocked(s,a.id))return fail(`Unlock after ${a.id==='chart'?'stabilizing the landing':'opening a breach'}.`);
@@ -180,8 +200,8 @@ export function act(s,a,now=Date.now()){
   if(!s.charges[a.id])return fail('Service this source: a grip tool or 3 energy.');
   if(s.energy<p.cost)return fail('Deliver a contract, recycle an item, or use a field ration.');
   if(!s.board.includes(null))return fail('Board full. Merge, deliver, recycle, or clear a blocker.');
-  const surged=s.surge>0,burst=burstOutput(s,a.id),x=nextOutput(s,a.id),i=put(s,x);const windfall=burst&&(s.taps[a.id]+1)%7===0;const bonusIndex=burst?put(s,item(a.id,windfall?1:0)):-1;s.energy-=p.cost;s.charges[a.id]--;s.taps[a.id]++;s.producerStreak=(s.producerStreak??0)+1;
-  if(surged&&x.type!=='glyph')s.surge--;
+  const enriched=s.journey?.boost?.family===a.id&&s.journey.boost.left>0,surged=s.surge>0||enriched,burst=burstOutput(s,a.id),x=nextOutput(s,a.id),i=put(s,x);const windfall=burst&&(s.taps[a.id]+1)%7===0;const bonusIndex=burst?put(s,item(a.id,windfall?1:0)):-1;s.energy-=p.cost;s.charges[a.id]--;s.taps[a.id]++;s.producerStreak=(s.producerStreak??0)+1;
+  if(x.type!=='glyph'){if(enriched){s.journey.boost.left--;if(!s.journey.boost.left)s.journey.boost=null;}else if(s.surge>0)s.surge--;}
   if(x.type==='glyph')s.discovery=true;
   return {...done(x.type==='glyph'?'Echo fragment found! A discovery awaits.':`${nameOf(x)}${windfall?' + bonus tool!':burst?' + raw part':''} · ${s.charges[a.id]} charges left`,'produce',i),bonus:windfall?a.id:null,improved:surged&&x.type==='item',reveal:windfall?[i,bonusIndex]:[]};
  }
@@ -242,12 +262,16 @@ export function act(s,a,now=Date.now()){
  }
  if(a.type==='goal'){
   if(s.stage===3&&!allSeals(s))return fail('Resolve all three vault seals first.');
-  const g=goal(s);if(!g||g.action&&g.action!=='goal'||!ready(s,g.needs))return fail('Make the highlighted expedition items.');
+  if(s.stage===3&&a.kit&&!KITS[a.kit])return fail('Choose a salvage or survey kit.');
+  const kit=s.stage===3&&!s.journey?.kit?(KITS[a.kit]?a.kit:Object.keys(KITS).find(k=>ready(s,KITS[k].needs))):null;
+  const g=kit?{...goal(s),needs:KITS[kit].needs}:goal(s);if(s.stage===3&&!s.journey?.kit&&!kit)return fail('Prepare a salvage or survey kit.');if(!g||g.action&&g.action!=='goal'||!ready(s,g.needs))return fail('Make the highlighted expedition items.');
+  if(kit&&s.board.filter(x=>!x||['sealed','route'].includes(x.type)).length+2<3)return fail('Make one free space for your vault finds.');
   // Crossing survey is a preparation milestone, not a delivery.
   // Consuming both route tools here made the player craft them twice.
   const routeSurvey=s.stage===0&&s.landingStep===1;
   if(routeSurvey){s.routePrepared=true;surveyFinds(s);}
   else consume(s,g.needs);
+  if(kit){s.journey.kit=kit;trace(s,'vault-kit',{kit});}
   s.energy=Math.min(120,s.energy+g.energy);
   // The first reward opens a new producer and changes the camp, but not the main stage.
   if(s.stage===0&&s.landingStep===0){
@@ -257,7 +281,7 @@ export function act(s,a,now=Date.now()){
    return done('Landing secured · Survey Kite online · field parts received. Chart the crossing next.','milestone');
   }
   if(s.stage<4){if(s.stage===0)s.landingStep=2;s.stage++;
-   if(s.stage===4){for(let i=0;i<36;i++)if(['sealed','route'].includes(s.board[i]?.type))s.board[i]=null;const packed=s.board.find(x=>x?.type==='crate'&&x.kind==='relic');if(packed)packed.left=5;else put(s,container('relic',5));s.marks+=15;trace(s,'vault',{discovered:[...s.discovered]});}
+   if(s.stage===4){for(let i=0;i<36;i++)if(['sealed','route'].includes(s.board[i]?.type))s.board[i]=null;const packed=s.board.find(x=>x?.type==='crate'&&x.kind==='relic');if(kit){const family=kit==='field'?'rig':'chart';for(const tier of [2,1,1])put(s,item(family,tier));}else if(packed)packed.left=5;else put(s,container('relic',5));s.marks+=15;trace(s,'vault',{discovered:[...s.discovered]});}
   }else{s.post++;s.marks+=10;}
   supplies(s,6,false,s.stage===1?'survey':s.stage===2?'relic':null);
   if(s.stage===1||s.stage===2)surge(s);
@@ -366,6 +390,6 @@ export function load(raw,now=Date.now()){
     s.routePrepared=true;
    }else s.routePrepared=s.stage>=2;
   }
-  syncRequests(s);workshopState(s);return s;
+  journeyState(s);syncRequests(s);workshopState(s);return s;
  }catch{return fresh(now);}
 }

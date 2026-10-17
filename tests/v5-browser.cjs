@@ -104,7 +104,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
     if(!await page.locator(`#board [data-index="${cmd.index}"]`).getAttribute('aria-pressed').then(x=>x==='true'))await page.locator(`#board [data-index="${cmd.index}"]`).tap();
     if((await read()).moves===before.moves)await page.locator(`[data-action="${cmd.type}"]`).tap();
    }else if(cmd.type==='ration')await page.locator('#rationButton').tap();
-   else if(cmd.type==='goal')await page.locator('#goalButton').tap();
+   else if(cmd.type==='goal')await page.locator(before.stage===3&&!before.journey?.kit?'[data-kit=field]':'#goalButton').tap();
    else if(cmd.type==='power'){
     assert.equal(await page.locator('.sealState.secured').count(),2);assert.equal(await page.locator('.sealWire,.turnCue,.saltglassRib').count(),0);await page.locator('.moment').waitFor({state:'detached'});await shot('resonance-connection-ready');
     await page.reload();assert.deepEqual((await read()).seals,before.seals);assert.equal(await page.locator('.engineCharged').count(),1);

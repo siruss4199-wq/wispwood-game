@@ -17,7 +17,7 @@ const {chromium,webkit}=require('playwright');const assert=require('node:assert/
   await page.locator('#board').scrollIntoViewIfNeeded();const from=page.locator(`[data-index="${a.from}"]`),to=page.locator(`[data-index="${a.to}"]`);
   if(trace.length%2){if(await from.getAttribute('aria-pressed')!=='true'){const prior=page.locator('#board .selected.item,#board .selected.glyph,#board .selected.brace');if(await prior.count())await prior.tap();await from.tap();}await to.tap();}
   else {const x=await from.boundingBox(),y=await to.boundingBox();await page.mouse.move(x.x+x.width/2,x.y+x.height/2);await page.mouse.down();await page.mouse.move(y.x+y.width/2,y.y+y.height/2,{steps:9});await page.mouse.up();}
- }else if(a.type==='goal')await page.locator('#goalButton').tap();
+ }else if(a.type==='goal')await page.locator(before.stage===3&&!before.journey?.kit?'[data-kit=field]':'#goalButton').tap();
  else if(a.type==='breach')await page.locator(`[data-route="${route}"]`).tap();
  else if(a.type==='produce'||a.type==='service'){
   const i=before.board.findIndex(x=>x?.type==='source'&&x.id===a.id);await page.locator(`[data-index="${i}"]`).tap();if(a.type==='service')await page.locator('[data-action="service"]').tap();

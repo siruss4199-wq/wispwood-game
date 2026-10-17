@@ -1,3 +1,4 @@
+import {ENGINE_NEEDS} from './journey.mjs';
 // Repeatable optional orders. No timers, board rewards or random rolls.
 const families=['rig','chart','flux'];
 const matches=(x,r)=>x?.type==='item'&&x.family===r.family&&x.tier===r.tier;
@@ -71,6 +72,8 @@ export function reservedItems(s){
   if(s.board.some(x=>x?.type==='rock'))needs.push(req('rig',2));
   if(s.board.some(x=>x?.type==='rock'&&x.find))needs.push(req('flux',2));
  }
+ if(s.stage===3&&!s.journey?.kit)needs.push(req('rig',2),req('chart',1));
+ if(s.stage===4&&!s.journey?.engine)needs.push(...ENGINE_NEEDS);
  const kept=new Set();
  for(const r of needs)for(let n=[...kept].filter(i=>matches(s.board[i],r)).length;n<r.count;n++){
   const i=s.board.findIndex((x,i)=>!kept.has(i)&&matches(x,r));if(i>=0)kept.add(i);

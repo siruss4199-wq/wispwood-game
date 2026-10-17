@@ -250,3 +250,7 @@ body[data-art="premium"] .missionSlot.routeChoice .art,body[data-art="premium"] 
 .engineChoice .engineCost>span{white-space:normal;text-align:left}
 body[data-art="premium"] .missionSlot.engineChoice .art{background:none;border:0;border-radius:0;box-shadow:none;opacity:1}
 .engineChoice.available b{color:#08776a}
+
+.world .objective[data-stage="3"]{grid-template-columns:1fr}.objective[data-stage="3"] .goalBottom{width:100%}.objective[data-stage="3"] #goalNeeds{flex:1}.kitItems{display:flex;gap:5px}.kitItems .need{width:42px;height:42px}.kitItems .art{width:40px;height:40px}
+
+.world .objective[data-journey="active"]{grid-template-columns:1fr}.objective[data-journey="active"] .goalBottom{width:100%}.objective[data-journey="active"] #goalNeeds{flex:1}.objective[data-journey="active"] .engineChoice .art{width:44px;height:44px}

@@ -1,3 +1,4 @@
+import {KITS} from './journey.mjs';
 import {requestProgress} from './requests.mjs';
 import {WORKSHOP_COST,BENCH_COST,BENCH_NEEDS,benchInputs} from './workshop.mjs';
 import {containerInfo,contents} from './containers.mjs';
@@ -41,8 +42,10 @@ function hint(){
   if(missing.family==='chart'&&!state.taps.chart)return 'NEW MACHINE · Tap Survey Kite for map parts';
   return 'NEXT · Merge parts into a '+nameOf(item(missing.family,missing.tier));
  }
- if(state.stage===1)return 'Choose a crossing above · keep the other tool';if(state.stage===2){const g=goal(state);return g.action==='prime'&&ready(state,g.needs)?'LOOP CELL READY · Tap Charge Stone Lift':g.text;}if(state.stage===3)return 'RINGS AWAKE · Open the Tideglass Vault';return 'Merge twins · choose where to use them';}
+ if(state.stage===1)return 'Choose a crossing above · keep the other tool';if(state.stage===2){const g=goal(state);return g.action==='prime'&&ready(state,g.needs)?'LOOP CELL READY · Tap Charge Stone Lift':g.text;}if(state.stage===3)return state.journey.kit?'RINGS AWAKE · Open the Tideglass Vault':'Choose tool finds or survey finds · pack one kit';if(state.stage===4&&!state.journey.engine)return 'Inside: a dormant engine · restore it for enriched production';if(state.stage===4&&!state.journey.infusions)return 'Use a Loop Cell on the producer you want to enrich';return 'Merge twins · choose where to use them';}
 function missionSlots(){
+ if(state.stage===3&&!state.journey.kit)return Object.entries(KITS).map(([id,k])=>`<button class="missionSlot engineChoice ${ready(state,k.needs)?'available':''}" data-kit="${id}" aria-label="${k.name}: ${k.needs.map(r=>nameOf(item(r.family,r.tier))).join(', ')}. ${k.reward}"><b>${k.name}</b><span class="kitItems">${needsHTML(k.needs)}</span><small>${k.reward}</small></button>`).join('');
+ if(state.stage===4&&state.journey.engine&&!state.journey.infusions)return Object.entries(SOURCES).map(([id,p])=>`<button class="missionSlot engineChoice ${count(state,{family:'flux',tier:1})?'available':''}" data-infuse="${id}" aria-label="Enrich ${p.name}: one Loop Cell, three improved pulls">${art({type:'source',id})}<b>${p.name}</b><small>1 Loop Cell → 3 rich pulls</small></button>`).join('');
  if(state.stage===1)return Object.entries(ROUTES).map(([id,r])=>{
   const index=state.board.findIndex(x=>x?.type==='route'&&x.id===id),need={family:r.family,tier:2,count:1},can=routePrepared(state,id)&&ready(state,[need]);
   const reward=id==='ridge'?item('rig',1):item('flux',2);
@@ -115,14 +118,14 @@ function render(){
  const sceneKey=viewStage+':'+state.post;if($('#scene').dataset.key!==sceneKey){$('#scene').innerHTML=scene(viewStage,state.post);$('#scene').dataset.key=sceneKey;}$('#sceneLabel').textContent=goal(state)?.scene??STAGES[state.stage]?.scene??'The vault is open';
  renderWorkshop();
  $('#chapterLabel').textContent=state.stage===4?'DISCOVERY · THE SKY WITHIN':'THE SALTGLASS REACH';
- $('.objective').dataset.stage=state.stage;
+ $('.objective').dataset.stage=state.stage;$('.objective').dataset.journey=state.stage===4&&!state.journey.infusions?'active':'';
  const g=goal(state);$('#goalTitle').textContent=g?.name??'Expedition complete';$('#step').textContent=state.stage<4?(g?.phase??`${state.stage+1} / 4`):'DISCOVERED';
  $('#goalNeeds').innerHTML=missionSlots();$('#goalButton').textContent=g?.verb??'Journal';
- const goalReady=!!g&&g.action!=='inspect'&&ready(state,g.needs);$('#goalButton').hidden=!goalReady||state.stage===2;$('#goalButton').disabled=false;
+ const goalReady=!!g&&g.action!=='inspect'&&ready(state,g.needs);$('#goalButton').hidden=!goalReady||state.stage===2||state.stage===3&&!state.journey.kit;$('#goalButton').disabled=false;
  $('.objective').classList.toggle('ready',goalReady);$('.objective').classList.remove('almost');$('#nextUnlock').textContent=g?.next??'';
  if(goalReady)$('#step').textContent='READY';
  let seals=$('#sealStates');if(!seals){seals=document.createElement('div');seals.id='sealStates';$('.objective').append(seals);}
- seals.hidden=state.stage!==3;seals.innerHTML=['navigation','stabilization','resonance'].map((k,n)=>`<span class="sealState ${state.seals[k]?'secured':''}" aria-label="${k} seal ${state.seals[k]?'secured':'unresolved'}"><i aria-hidden="true">${state.seals[k]?'✓':['◇','⌂','ϟ'][n]}</i>${['Navigate','Stabilize','Resonate'][n]}</span>`).join('');
+ seals.hidden=state.stage!==3||!state.journey.kit;seals.innerHTML=['navigation','stabilization','resonance'].map((k,n)=>`<span class="sealState ${state.seals[k]?'secured':''}" aria-label="${k} seal ${state.seals[k]?'secured':'unresolved'}"><i aria-hidden="true">${state.seals[k]?'✓':['◇','⌂','ϟ'][n]}</i>${['Navigate','Stabilize','Resonate'][n]}</span>`).join('');
  renderRequests();renderSide();const order=focus==='request'?state.requests.orders.find(o=>o?.id===requestId):null,orderProgress=order?requestProgress(state,order):null,c=order??normalContract(state),sideVisible=!!order||!$('#contracts').hidden&&$('#sideTray').open,cr=order?orderProgress.ready:sideVisible&&sideChoice()==='contract'&&ready(state,c.needs);
  const readySignal=sideChoice()==='opportunity'&&state.opportunity&&opportunity(state).remaining>0&&ready(state,state.opportunity.needs);
  const selectedItem=state.board[selected];
@@ -178,9 +181,10 @@ function renderSelection(){
    if(loopCell(x)&&linkPhase(state)&&!optics(state).primed)buttons='<button class="accent" data-action="prime" data-target="'+state.board.findIndex(v=>v?.type==='site'&&v.kind==='winch')+'">Use · Stone Lift</button>'+buttons;
   }else if(x.type==='source'){
    if(!sourceUnlocked(state,x.id))desc=`Unlock: ${x.id==='chart'?'stabilize the landing':'open a breach'}.`;
-   else {desc=`${state.surge>0?'SURGE · '+state.surge+' shared pulls · ':''}${state.charges[x.id]}/7 charges · Next: ${nameOf(nextOutput(state,x.id))}${burstOutput(state,x.id)?(state.taps[x.id]+1)%7===0?' + bonus tool':' + raw part':''}`;
+   else {desc=`${state.journey.boost?.family===x.id?'ENRICHED · '+state.journey.boost.left+' pulls · ':''}${state.surge>0?'SURGE · '+state.surge+' shared pulls · ':''}${state.charges[x.id]}/7 charges · Next: ${nameOf(nextOutput(state,x.id))}${burstOutput(state,x.id)?(state.taps[x.id]+1)%7===0?' + bonus tool':' + raw part':''}`;
     buttons=state.charges[x.id]?`<button class="accent" data-action="produce">Produce · ${SOURCES[x.id].cost} ϟ</button>`:'<button data-action="serviceTool">Service · tool</button><button class="accent" data-action="service">Service · 3 ϟ</button>';
    }
+   if(state.journey.engine)buttons+='<button class="accent" data-action="infuse">Enrich · 1 Loop Cell</button>';
    if(x.id==='rig'&&state.workshop.repaired&&state.charges.rig)buttons+='<button class="accent toolPress" data-action="press">Tool press · 2 ϟ</button>';
    if(x.id==='rig'&&state.workshop.repaired){
     const inputs=benchInputs(state),installed=state.workshop.precision;
@@ -213,7 +217,7 @@ function renderSelection(){
 function run(a){
  const now=Date.now(),delivery=deliveryItems(state,a,now).map(v=>({...v,rect:board.querySelector(`[data-index="${v.index}"]`)?.getBoundingClientRect()}));
  const beforeBoard=state.board.map(x=>x?JSON.stringify(x):null);
- const objectiveAction=['goal','breach','power'].includes(a.type);const taskSelector=a.type==='fitSpanner'?'#workshopBench':['deploy','clear','restore','prime'].includes(a.type)?`[data-index="${a.index??state.board.findIndex(x=>x?.type==='site'&&x.kind==='winch')}"]`:objectiveAction?'.objective':a.type==='request'?`[data-request="${a.id}"]`:`[data-contract="${a.type}"]`;
+ const objectiveAction=['goal','breach','power','restoreEngine'].includes(a.type);const taskSelector=a.type==='infuse'?`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===a.id)}"]`:a.type==='fitSpanner'?'#workshopBench':['deploy','clear','restore','prime'].includes(a.type)?`[data-index="${a.index??state.board.findIndex(x=>x?.type==='site'&&x.kind==='winch')}"]`:objectiveAction?'.objective':a.type==='request'?`[data-request="${a.id}"]`:`[data-contract="${a.type}"]`;
  const taskRect=$(taskSelector)?.getBoundingClientRect();
  const taskSnapshot=delivery.length?snapshotTask($(taskSelector)):null;
  const energyBefore=state.energy,firstContract=state.contracts===0,surgeBefore=state.surge??0;
@@ -224,10 +228,10 @@ function run(a){
  platform.startGameplay();if(result.event==='restoration'){focus='goal';selected=state.board.findIndex(x=>x?.type==='source'&&x.id==='rig');}else if(['milestone','deployment','contract','discovery','clear','turn'].includes(result.event)){focus='goal';selected=null;}if(a.type==='merge')selected=state.board[result.index]?.type==='prism'?null:result.index;render();persist();
  if(a.type==='goal'&&before===0&&landingBefore===1){for(const tile of board.querySelectorAll('.tile.item')){const x=state.board[+tile.dataset.index];if(x.tier===2&&['rig','chart'].includes(x.family))tile.classList.add('unlocked');}board.querySelectorAll('.rock.surveyed').forEach(tile=>tile.classList.add('unlocked'));}
  if(result.event==='milestone'&&state.stage<4)message.textContent=result.message;
- if(!delivery.length)feedback({event:result.event,tile:board.querySelector(`[data-index="${result.index}"]`),x:state.board[result.index],from:rewardOrigin,energyDelta:state.energy-energyBefore,stage:state.stage,firstContract,containerKind:result.containerKind,reveal:result.reveal,bonus:result.bonus,improved:result.improved,breakthrough:result.breakthrough,breakthroughUse:state.stage>=2&&state.board[result.index]?.tier===3?anchors(state).filter(v=>v.phase==='idle'&&ANCHORS[v.kind].equipment===state.board[result.index].family).map(v=>'Use: '+ANCHORS[v.kind].short+' · or merge higher')[0]:null,surgeStarted:state.surge>surgeBefore});
+ if(!delivery.length)feedback({event:result.event,tile:board.querySelector(`[data-index="${result.index}"]`),x:state.board[result.index],from:rewardOrigin,energyDelta:state.energy-energyBefore,stage:state.stage,firstContract,containerKind:result.containerKind,reveal:result.reveal,bonus:result.bonus,improved:result.improved,breakthrough:result.breakthrough,discoveryReward:result.discoveryReward,breakthroughUse:state.stage>=2&&state.board[result.index]?.tier===3?anchors(state).filter(v=>v.phase==='idle'&&ANCHORS[v.kind].equipment===state.board[result.index].family).map(v=>'Use: '+ANCHORS[v.kind].short+' · or merge higher')[0]:null,surgeStarted:state.surge>surgeBefore});
  if(delivery.length){
   const rewards=state.board.flatMap((x,index)=>x&&['item','crate'].includes(x.type)&&JSON.stringify(x)!==beforeBoard[index]?[{index,x,rect:board.querySelector(`[data-index="${index}"]`)?.getBoundingClientRect()}]:[]);
-  const next=['request','fitSpanner'].includes(a.type)?result.message:['deploy','feed','clear','restore','prime'].includes(a.type)?result.message:continuation(state,a,rewards);message.textContent=next;
+  const next=['request','fitSpanner','restoreEngine','infuse'].includes(a.type)?result.message:['deploy','feed','clear','restore','prime'].includes(a.type)?result.message:continuation(state,a,rewards);message.textContent=next;
   deliverFeedback({kind:a.type,delivery,rewards,taskRect,taskSnapshot,task:$(taskSelector),energy:state.energy-energyBefore,next,stage:state.stage});
  }
  for(const i of result.reveal??[])board.querySelector(`[data-index="${i}"]`)?.classList.add('merge-pop');
@@ -236,6 +240,9 @@ function run(a){
  for(const i of result.operated??[])board.querySelector(`[data-index="${i}"]`)?.classList.add('unlocked');
  if(result.event==='milestone'&&(state.stage>before||state.landingStep>landingBefore)){const id=state.landingStep>landingBefore&&state.stage===0?'chart':state.stage===2?'flux':null;if(id)board.querySelector(`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===id)}"]`)?.classList.add('unlocked');}
  if(result.index!==null&&result.event!=='merge')board.querySelector(`[data-index="${result.index}"]`)?.classList.add('pop');
+ if(result.discoveryReward){board.querySelector(`[data-index="${result.discoveryReward.index}"]`)?.classList.add('rewardLanded');}
+ if(a.type==='restoreEngine'){moment('Star-ocean engine restored','Use a Loop Cell on a producer · three enriched pulls',item('flux',5));}
+ if(a.type==='infuse'){moment(SOURCES[a.id].name+' enriched','Next three pulls · richer parts',item(a.id,1));}
  if(a.type==='press'){sound.play('merge',1);board.querySelector(`[data-index="${result.index}"]`)?.classList.add('merge-pop');}
  if(result.event==='restoration'){moment(a.type==='upgradeWorkshop'?'Precision Bench installed':'Workshop restored',a.type==='upgradeWorkshop'?'Spare tool + chart → spanner':'Tap Workshop or Rivet Rover for a Grip tool · 2 energy + 1 charge',item('rig',a.type==='upgradeWorkshop'?2:1));sound.play('milestone');$('.world').classList.add('changed');board.querySelector('.source[data-family="rig"]')?.classList.add('unlocked');}
  if(a.type==='produce'||a.type==='press'){
@@ -245,7 +252,7 @@ function run(a){
  if(result.event==='milestone'){
   $('.world').classList.remove('changed');void $('.world').offsetWidth;$('.world').classList.add('changed');
   platform.event([{type:'milestone_completed'}]);
-  if(state.stage===4&&before<4){const reveal=()=>celebrate('The sky was buried here.', 'The vault opens onto a moving star ocean. You found the first crossing. The expedition continues: chart it, or build an aurora beacon.');if(reduced())reveal();else setTimeout(reveal,850);}
+  if(state.stage===4&&before<4){const reveal=()=>celebrate('The sky was buried here.', 'The vault opens onto a moving star ocean. You found the first crossing. Restore the engine inside. Turn Loop Cells into enriched production runs.');if(reduced())reveal();else setTimeout(reveal,850);}
  }
  return result;
 }
@@ -266,7 +273,7 @@ board.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;co
 board.addEventListener('pointercancel',()=>{drag=null;board.querySelectorAll('.dragging,.target,.picked').forEach(x=>x.classList.remove('dragging','target','picked'));});
 $('#selection').addEventListener('click',e=>{const button=e.target.closest('[data-action]'),type=button?.dataset.action;if(!type)return;const x=state.board[selected];run({type:type==='serviceTool'?'service':type,index:button.dataset.target!==undefined?+button.dataset.target:selected,from:button.dataset.target!==undefined?selected:undefined,id:x?.id,useTool:type==='serviceTool'});});
 $('#goalButton').onclick=()=>{const g=goal(state);if(g?.action==='inspect'){const choices=state.board.flatMap((x,i)=>(state.stage===1?x?.type==='route':x?.type==='site'&&x.phase!=='done')?[i]:[]);selected=choices[(choices.indexOf(selected)+1)%choices.length];focus='goal';render();message.textContent=g.text;return;}g?run({type:g.action??'goal'}):showJournal();};
-$('#goalNeeds').onclick=e=>{focus='goal';const badge=e.target.closest('[data-site-index]');if(badge){selected=+badge.dataset.siteIndex;const x=state.board[selected];if(badge.dataset.engineAction){const action=badge.dataset.engineAction;if(badge.classList.contains('available')){run({type:action,index:selected});return;}render();$('#selection').scrollIntoView({block:'nearest'});return;}if(x?.type==='rock'){render();return;}const need=x?.type==='site'?equipment(x.kind):{family:ROUTES[x.id].family,tier:2,count:1};if((x.type==='route'&&state.stage===1||x.type==='site'&&x.phase==='idle')&&ready(state,[need])){run({type:x.type==='route'?'breach':'deploy',index:selected});return;}}render();message.textContent=goal(state)?.text??'Keep collecting rare discoveries.';};
+$('#goalNeeds').onclick=e=>{focus='goal';const kit=e.target.closest('[data-kit]')?.dataset.kit;if(kit){if(ready(state,KITS[kit].needs))run({type:'goal',kit});else{message.textContent=KITS[kit].needs.map(r=>nameOf(item(r.family,r.tier))).join(' + ');selected=null;render();}return;}const infusion=e.target.closest('[data-infuse]')?.dataset.infuse;if(infusion){run({type:'infuse',id:infusion});return;}const badge=e.target.closest('[data-site-index]');if(badge){selected=+badge.dataset.siteIndex;const x=state.board[selected];if(badge.dataset.engineAction){const action=badge.dataset.engineAction;if(badge.classList.contains('available')){run({type:action,index:selected});return;}render();$('#selection').scrollIntoView({block:'nearest'});return;}if(x?.type==='rock'){render();return;}const need=x?.type==='site'?equipment(x.kind):{family:ROUTES[x.id].family,tier:2,count:1};if((x.type==='route'&&state.stage===1||x.type==='site'&&x.phase==='idle')&&ready(state,[need])){run({type:x.type==='route'?'breach':'deploy',index:selected});return;}}render();message.textContent=goal(state)?.text??'Keep collecting rare discoveries.';};
 $('#scene').onclick=e=>{
  if(e.target.closest('#workshopBench')){
   selected=state.board.findIndex(x=>x?.type==='source'&&x.id==='rig');focus='bench';render();
