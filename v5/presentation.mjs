@@ -68,7 +68,7 @@ export function continuation(s,action,rewards=[]){
  if(action.type==='goal'&&s.stage===1)return 'Tools ready · choose working space or relic supplies';
  if(action.type==='goal'&&s.stage===2)return 'Echo Crucible unlocked · reveal the ampoule';
  if(action.type==='goal'&&s.stage===3)return 'Rings powered · prepare the vault instruments';
- if(action.type==='goal'&&s.stage===4)return 'The crossing is open · chart the star ocean';
+ if(action.type==='goal'&&s.stage===4)return s.journey?.engine?'The crossing is open · chart the star ocean':'Vault finds received · restore the engine for enriched production';
  if(action.type==='discovery')return 'Echo decoded · every third pull now brings richer parts';
  if(s.surge>0)return `Supply Surge · choose a producer for ${s.surge} refined pulls`;
  const box=rewards.find(x=>x.x.type==='crate');if(box)return `Tap your ${nameOf(box.x)} to reveal supplies`;
