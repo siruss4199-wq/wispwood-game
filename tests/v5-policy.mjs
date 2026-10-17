@@ -1,9 +1,10 @@
 // Intent-based player styles. All actions use the public reducer / real UI.
+import {KITS} from '../v5/journey.mjs';
 import {goal,ready,count,normalContract,SOURCES,sourceUnlocked} from '../v5/core.mjs';
 import {ANCHORS,ROUTES,equipment,anchors} from '../v5/expedition.mjs';
 import {circuit,linkPhase,optics} from '../v5/seals.mjs';
 const req=(family,tier,count=1)=>({family,tier,count});
-export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,session=null,style='expedition',findStrategy=null,decode=true,route=null,mergeSight=false,receiver=null}={}){
+export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,session=null,style='expedition',findStrategy=null,decode=true,route=null,mergeSight=false,receiver=null,vaultKit='field'}={}){
  if(!goal(s))return null;
  const spaces=s.board.filter(x=>x===null).length;
  // An impulsive merger compacts ALL families, even when a pair could be installed
@@ -40,7 +41,7 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
   else if((clearSalvage||style==='exploration')&&!s.expedition.log.some(x=>x.type==='brace-clear')&&s.board.some(x=>x?.type==='rock')){
    needs=[req('rig',2)];command={type:'clear',index:s.board.findIndex(x=>x?.type==='rock')};
   }else if(s.stage===2&&style==='contract'&&normalContract(s).vaultTrade){needs=normalContract(s).needs;command={type:'contract'};}
-  else if(s.stage===3){needs=goal(s).needs;command={type:'goal'};}
+  else if(s.stage===3){needs=s.journey?.kit?goal(s).needs:KITS[vaultKit].needs;command={type:'goal',...(s.journey?.kit?{}:{kit:vaultKit})};}
   else{
    const chosen=anchors(s).find(x=>x.kind===(receiver??(['expedition','contract'].includes(style)?'relay':'scope'))&&x.phase==='done');const connected=receiver&&!chosen?null:circuit(s,chosen?s.board.indexOf(chosen):undefined);
    if(connected&&spaces)return {type:'power',index:connected.at(-1)};

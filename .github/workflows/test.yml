@@ -47,6 +47,7 @@ jobs:
           mkdir -p test-artifacts/v5
           node tests/v5-seal-metrics.mjs > test-artifacts/v5/seal-policy-metrics.json
           node tests/v5-resonance-metrics.mjs > test-artifacts/v5/resonance-policy-metrics.json
+          node tests/v5-journey-metrics.mjs > test-artifacts/v5/journey-policy-metrics.json
       - name: Check V5 modules
         run: node --check v5/app.mjs && node --check v5/core.mjs && node --check v5/art.mjs
       - name: Install browser smoke dependencies
