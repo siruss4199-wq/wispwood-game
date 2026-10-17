@@ -254,3 +254,50 @@ body[data-art="premium"] .missionSlot.engineChoice .art{background:none;border:0
 .world .objective[data-stage="3"]{grid-template-columns:1fr}.objective[data-stage="3"] .goalBottom{width:100%}.objective[data-stage="3"] #goalNeeds{flex:1}.kitItems{display:flex;gap:5px}.kitItems .need{width:42px;height:42px}.kitItems .art{width:40px;height:40px}
 
 .world .objective[data-journey="active"]{grid-template-columns:1fr}.objective[data-journey="active"] .goalBottom{width:100%}.objective[data-journey="active"] #goalNeeds{flex:1}.objective[data-journey="active"] .engineChoice .art{width:44px;height:44px}
+
+
+/* TT-1D — orders are play, not a footer. The board remains full-sized. */
+#requests{margin:4px 0 5px;padding:0;border:0}
+#requests[hidden]{display:none}
+.requestHeading{min-height:27px;display:flex;align-items:center;justify-content:space-between;gap:5px;margin:0 1px 4px;font-size:12px;letter-spacing:.04em;line-height:1.1}
+.requestHeading>span{font-weight:900;display:flex;flex-direction:column;min-width:0;color:#285661}
+.requestHeading small{font-size:9px;letter-spacing:0;color:#788c8e;font-weight:650;white-space:nowrap}
+.requestHeading>b{font-size:14px;flex:none;color:#9b722f;font-variant-numeric:tabular-nums}
+#requests .campAction{min-height:44px;max-width:50%;padding:5px 9px;border-radius:11px;background:#ede8d8;border:1px solid #bfb49c;color:#676052;font-size:11px;font-weight:850;line-height:1.18;letter-spacing:0;box-shadow:0 2px 0 #d6cebd;white-space:normal;flex:none}
+#requests .campAction.affordable{background:#f7df9e;border-color:#d49c38;color:#705012;box-shadow:0 2px 0 #bb914d}
+.requestShelf{gap:6px}
+#requests .requestCard{min-height:84px;padding:3px 2px 3px;gap:0;border-radius:13px;justify-content:flex-start}
+#requests .requestCard.active{background:#fff0cf;border-color:#dfab58}
+#requests .requestCard.ready{background:#def3df;border-color:#3aa282;box-shadow:inset 0 0 0 1px #39a284,0 2px 0 #9cc9b6}
+#requests .requestCard .requestLane{font-size:11px;line-height:15px}
+#requests .requestCard .requestItems{height:42px;flex:none}
+#requests .requestItems>span{width:42px;height:42px;flex:none}
+#requests .requestItems svg,#requests .requestItems img{width:42px;height:42px;object-fit:contain}
+#requests .requestCard .requestReward{font-size:11px;line-height:13px}
+#requests .requestCard>strong{font-size:10px;line-height:13px}
+#requests .requestCard.ready>strong{background:#137d67;color:#fff;border-radius:9px;padding:0 9px}
+#requests .requestCard .requestItems b{font-size:10px;right:1px;bottom:-1px}
+#campPierWorld{position:absolute;right:6px;bottom:2px;width:82px;height:72px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0;background:linear-gradient(#fff0cbbe,#ecd8acdb);border:1px solid #dfb978;border-radius:12px;z-index:2;pointer-events:none;box-shadow:0 2px 4px #4b5c6440}
+#campPierWorld .art{width:46px;height:46px;object-fit:contain}
+#campPierWorld span{font-size:8px;line-height:10px;color:#305e62;font-weight:900;letter-spacing:.3px}
+.world.pierBuilt .premiumScene{filter:saturate(1.05)}
+/* Keep mission actions recognizable without giving them half the mobile screen. */
+.world .objective[data-stage="2"]{padding:7px 10px}
+.world .objective[data-stage="2"] .goalBottom{margin:0;gap:4px}
+.world .objective[data-stage="2"] #goalNeeds{gap:5px}
+.world .objective[data-stage="2"] .engineChoice{min-height:64px;padding:3px 5px;gap:2px}
+.world .objective[data-stage="2"] .engineChoice b{font-size:12px;line-height:16px}
+.world .objective[data-stage="2"] .engineChoice small{font-size:10px;line-height:1.15}
+.world .objective[data-stage="2"] .engineCost .art{width:40px;height:40px}
+.world .objective[data-stage="2"] .engineCost span{font-size:10px}
+/* Long selection notes must not push optional orders offscreen. Preserve controls. */
+#selection .copy{min-width:0}
+#selection .copy small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3}
+#selection .mergePreview{flex:none}
+#sideTray{margin:2px 0 0}
+@media(max-width:375px){
+ .requestHeading small{font-size:8px}
+ #requests .campAction{font-size:10px;padding:4px 5px}
+ #requests .requestCard .requestLane{font-size:10px}
+ #requests .requestCard .requestReward{font-size:10px}
+}
