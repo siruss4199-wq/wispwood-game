@@ -8,7 +8,7 @@ const assert=require('node:assert/strict');const {chromium,webkit}=require('play
  assert.equal(await page.locator('#workshop').isVisible(),false,'workshop action waits until supplies matter');
  assert.match(await page.locator('#hint').textContent(),/Tap the glowing pair/);
  assert.equal(await page.locator('#board .openingPair').count(),2);
- assert.ok(await page.evaluate(()=>!!(document.querySelector('#board').compareDocumentPosition(document.querySelector('#requests'))&Node.DOCUMENT_POSITION_FOLLOWING)),'board appears before camp orders in document flow');
+ assert.ok(await page.evaluate(()=>!!(document.querySelector('#requests').compareDocumentPosition(document.querySelector('#board'))&Node.DOCUMENT_POSITION_FOLLOWING)),'compact orders are structurally above the board but remain hidden until landing');
  await page.screenshot({path:`test-artifacts/v5/${engine}-fresh-board-first-${width}.png`,fullPage:true});
  const initial=await read();const a=await page.locator('[data-index="7"]').boundingBox(),b=await page.locator('[data-index="8"]').boundingBox();
  await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:8});await page.mouse.up();await page.waitForTimeout(310);assert.equal((await read()).merges,1,'drag works in '+engine);
@@ -18,10 +18,10 @@ const assert=require('node:assert/strict');const {chromium,webkit}=require('play
  await page.locator('#goalButton').tap();assert.equal((await read()).stage,0);assert.equal((await read()).landingStep,1);await page.waitForTimeout(750);
  assert.equal(await page.locator('#requests').isVisible(),true,'camp requests now appear');
  assert.equal(await page.locator('#workshop').isVisible(),true,'workshop is introduced with supplies');
- assert.match(await page.locator('.requestHeading').textContent(),/REPAIR THE WORKSHOP/);
+ assert.match(await page.locator('.requestHeading').textContent(),/Workshop 8/);
  assert.match(await page.locator('#hint').textContent(),/Survey Kite/,'first newly unlocked producer is explained');
  const boardBox=await page.locator('#board').boundingBox(),requestBox=await page.locator('#requests').boundingBox();
- assert.ok(boardBox.y+boardBox.height<=requestBox.y,'the board takes priority above camp orders');
+ assert.ok(requestBox.y+requestBox.height<=boardBox.y,'camp orders are above the board');assert.ok(boardBox.y<500,'mobile order strip keeps the board near the opening view');
  const firstTile=await page.locator('#board .tile').first().boundingBox();
  assert.ok(firstTile.width>=44&&firstTile.height>=44,'merge touch targets unchanged');
  await page.screenshot({path:`test-artifacts/v5/${engine}-orders-after-landing-${width}.png`,fullPage:true});
