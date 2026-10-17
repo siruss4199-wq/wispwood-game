@@ -32,7 +32,11 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
      if(action.type==='service')await page.locator('#selection [data-action="service"]').tap();
     }else if(action.type==='ration'){await page.locator('#rationButton').tap();}
     else throw Error('Unexpected camp-order policy '+JSON.stringify(action));
-    await page.waitForFunction(n=>JSON.parse(localStorage.getItem('vaultwake-v5')).moves>n,before.moves);
+    try{await page.waitForFunction(n=>JSON.parse(localStorage.getItem('vaultwake-v5')).moves>n,before.moves,{timeout:4000});}
+    catch(error){
+     const after=await read();
+     throw Error(JSON.stringify({engine,actions,deliveries,action,before:{moves:before.moves,energy:before.energy,supplies:before.requests.supplies,board:before.board,orders:before.requests.orders},after:{moves:after.moves,energy:after.energy,supplies:after.requests.supplies},message:await page.locator('#message').textContent()},null,2));
+    }
     actions++;assert.ok(actions<225,'camp Pier must be reachable via ordinary orders');
    };
    // Build the required Workshop from genuinely earned orders first.
