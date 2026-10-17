@@ -277,7 +277,7 @@ body[data-art="premium"] .missionSlot.engineChoice .art{background:none;border:0
 #requests .requestCard>strong{font-size:10px;line-height:13px}
 #requests .requestCard.ready>strong{background:#137d67;color:#fff;border-radius:9px;padding:0 9px}
 #requests .requestCard .requestItems b{font-size:10px;right:1px;bottom:-1px}
-#campPierWorld{position:absolute;right:6px;bottom:2px;width:82px;height:72px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0;background:linear-gradient(#fff0cbbe,#ecd8acdb);border:1px solid #dfb978;border-radius:12px;z-index:2;pointer-events:none;box-shadow:0 2px 4px #4b5c6440}
+#campPierWorld{position:absolute;right:6px;bottom:2px;width:82px;height:72px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0;background:linear-gradient(#fff0cbbe,#ecd8acdb);border:1px solid #dfb978;border-radius:12px;z-index:2;pointer-events:auto;touch-action:manipulation;box-shadow:0 2px 4px #4b5c6440}
 #campPierWorld .art{width:46px;height:46px;object-fit:contain}
 #campPierWorld span{font-size:8px;line-height:10px;color:#305e62;font-weight:900;letter-spacing:.3px}
 .world.pierBuilt .premiumScene{filter:saturate(1.05)}
