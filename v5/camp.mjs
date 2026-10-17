@@ -1,5 +1,5 @@
 // Camp progress from real order rewards; no new currency or producer.
-export const PIER_COST=18,PACK_COST=8;
+export const PIER_COST=12,PACK_COST=8;
 export const PACKS={rig:'salvage',chart:'survey',flux:'relic'};
 export function campState(s){
  const old=s.camp??{};
@@ -10,6 +10,7 @@ export function buildPier(s,container){
  if(!s.workshop?.repaired)return {ok:false,message:'Restore the Workshop before building a supply pier.'};
  if(s.camp?.pier)return {ok:false,message:'Supply Pier already built.'};
  if(s.requests.supplies<PIER_COST)return {ok:false,message:`Supply Pier needs ${PIER_COST} supplies.`};
+ if(s.board.filter(x=>x?.type==='crate').length>=3)return {ok:false,message:'Open a supply case before building the Pier.'};
  const i=s.board.indexOf(null);
  if(i<0)return {ok:false,message:'Merge two items to make room for the first supply case.'};
  s.requests.supplies-=PIER_COST;s.camp.pier=true;s.camp.packs=1;
