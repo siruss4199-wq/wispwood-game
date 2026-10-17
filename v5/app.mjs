@@ -27,6 +27,7 @@ function needsHTML(needs){return needs.map(r=>`<span class="need ${count(state,r
 function sideOptions(){return ['contract',...(state.discovery&&!state.discoveryDone&&state.board.some(x=>x?.type==='glyph')?['discovery']:[]),...(state.stage>=1?[state.opportunity?'opportunity':'startOpportunity']:[])];}
 function sideChoice(){const options=sideOptions();return options.includes(sideView)?sideView:state.opportunity?'opportunity':options.includes('discovery')?'discovery':'contract';}
 function hint(){
+ if(state.stage===2&&optics(state).primed&&receivers(state).some(i=>circuit(state,i)))return state.board.includes(null)?'RINGS READY · ACTIVATE ABOVE ↑':'RINGS READY · MERGE TO FREE ONE SPACE';
  if(!state.merges&&state.stage===0&&!state.landingStep)return 'START · Tap the glowing pair';
  if(state.stage===0&&!state.landingStep)return 'GRIP TOOL MADE · Tap CLEAR PATH ↑';
  if(focus==='request'){
@@ -66,7 +67,8 @@ function missionSlots(){
   const targets=receivers(state);
   if(!targets.length)return anchors(state).filter(x=>x.kind!=='winch').map(x=>slot(equipment(x.kind),state.board.indexOf(x),'deploy',nameOf(x),x.kind==='scope'?'Relic supplies':'Refill sources + rich pulls')).join('');
   if(!optics(state).primed)return slot({family:'flux',tier:1,count:1},lift,'prime','Charge Stone Lift',ready(state,[{family:'flux',tier:1,count:1}])?'Use cell → wake the receiver':'Echo Crucible → merge two Violet Shards');
-  return targets.map(i=>slot(null,i,'power',nameOf(state.board[i]),state.board[i].kind==='scope'?'5 relic finds · rings awaken':'Pocket winch + 3 rich pulls')).join('');
+  const room=state.board.includes(null);
+  return targets.map(i=>`<button class="missionSlot engineActivate ${room?'available':'blocked'}" data-site-index="${i}" data-engine-action="power" aria-label="${room?'Activate the rings':'Make one free space to activate the rings'} using ${nameOf(state.board[i])}. ${state.board[i].kind==='scope'?'Claim a relic case':'Receive a winch and three improved pulls'}"><span class="activateArt">${art(state.board[i])}</span><span class="activateCopy"><b>${room?'ACTIVATE RINGS →':'MAKE ONE SPACE'}</b><small>${nameOf(state.board[i])} · ${state.board[i].kind==='scope'?'Relic rewards':'Producer boost'}</small></span></button>`).join('');
  }
  return needsHTML(goal(state)?.needs??[]);
 }
@@ -108,7 +110,7 @@ function renderRequests(){
  const purpose=!state.workshop.repaired?'Workshop 8◆':!state.camp.pier?'Unlock useful supply cases':state.workshop.precision?'Deliver · restock · discover':'Pier built · Bench 12◆';
  $('#requests').innerHTML=`<div class="requestHeading"><span>ORDERS <small>${purpose}</small></span><b title="Earn camp supplies by delivering orders">◆ <span id="supplies">${q.supplies}</span></b>${action}</div><div class="requestShelf">${q.orders.filter(Boolean).map(o=>{
  const p=requestProgress(state,o),active=requestId===o.id&&focus==='request',energy=Math.min(o.energy,120-state.energy);
- return `<button class="requestCard ${p.ready?'ready':''} ${active?'active':''}" data-request="${o.id}" aria-pressed="${active}" aria-label="${o.lane} request: ${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier))).join(', ')}. ${p.ready?active?'Deliver':'Ready. Tap once to collect':'In progress'}. Reward ${o.supplies} restoration supplies and ${energy} energy"><b class="requestLane">${o.lane==='long'?'Expedition kit':o.lane==='quick'?'Quick':'Standard'}</b><span class="requestItems">${p.progress.map(r=>`<span>${art(item(r.family,r.tier))}<b>${r.current}/${r.count}</b>${r.protected?'<i title="One copy kept for expedition">◆</i>':''}</span>`).join('')}</span><span class="requestReward">+${o.supplies} ◆ · +${energy} ϟ</span><strong>${p.ready?'✓ COLLECT':active&&p.progress.some(r=>r.protected)?'MAKE SPARE':'MAKE'}</strong></button>`;
+ return `<button class="requestCard ${p.ready?'ready':''} ${active?'active':''}" data-request="${o.id}" aria-pressed="${active}" aria-label="${o.lane} request: ${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier))).join(', ')}. ${p.ready?active?'Deliver':'Ready. Tap once to collect':'In progress'}. Reward ${o.supplies} camp supplies${energy?` and ${energy} energy`:`, energy full`}"><b class="requestLane">${o.lane==='long'?'Expedition kit':o.lane==='quick'?'Quick':'Standard'}</b><span class="requestItems">${p.progress.map(r=>`<span>${art(item(r.family,r.tier))}<b>${r.current}/${r.count}</b>${r.protected?'<i title="One copy kept for expedition">◆</i>':''}</span>`).join('')}</span><span class="requestReward">+${o.supplies} ◆${energy?` · +${energy} ϟ`:``}</span><strong>${p.ready?'✓ COLLECT':active&&p.progress.some(r=>r.protected)?'MAKE SPARE':'MAKE'}</strong></button>`;
  }).join('')}</div>`;
 }
 function renderSide(){
@@ -132,9 +134,9 @@ function render(){
  $('.objective').dataset.stage=state.stage;$('.objective').dataset.journey=state.stage===4&&!state.journey.infusions?'active':'';
  const baseGoal=goal(state),g=state.stage===3&&!state.journey.kit?{...baseGoal,needs:KITS[kitFocus].needs}:baseGoal;$('#goalTitle').textContent=g?.name??'Expedition complete';$('#step').textContent=state.stage<4?(g?.phase??`${state.stage+1} / 4`):'DISCOVERED';
  $('#goalNeeds').innerHTML=missionSlots();$('#goalButton').textContent=g?.verb??'Journal';
- const goalReady=!!g&&g.action!=='inspect'&&ready(state,g.needs);$('#goalButton').hidden=!goalReady||state.stage===2||state.stage===3&&!state.journey.kit;$('#goalButton').disabled=false;
+ const goalReady=!!g&&g.action!=='inspect'&&ready(state,g.needs)&&(g.action!=='power'||state.board.includes(null));$('#goalButton').hidden=!goalReady||state.stage===2||state.stage===3&&!state.journey.kit;$('#goalButton').disabled=false;
  $('.objective').classList.toggle('ready',goalReady);$('.objective').classList.remove('almost');$('#nextUnlock').textContent=g?.next??'';
- if(goalReady)$('#step').textContent='READY';
+ if(goalReady)$('#step').textContent=state.stage===2&&g?.action==='power'?'TAP BELOW':'READY';
  let seals=$('#sealStates');if(!seals){seals=document.createElement('div');seals.id='sealStates';$('.objective').append(seals);}
  seals.hidden=state.stage!==3||!state.journey.kit;seals.innerHTML=['navigation','stabilization','resonance'].map((k,n)=>`<span class="sealState ${state.seals[k]?'secured':''}" aria-label="${k} seal ${state.seals[k]?'secured':'unresolved'}"><i aria-hidden="true">${state.seals[k]?'✓':['◇','⌂','ϟ'][n]}</i>${['Navigate','Stabilize','Resonate'][n]}</span>`).join('');
  renderRequests();renderSide();const order=focus==='request'?state.requests.orders.find(o=>o?.id===requestId):null,orderProgress=order?requestProgress(state,order):null,c=order??normalContract(state),sideVisible=!!order||!$('#contracts').hidden&&$('#sideTray').open,cr=order?orderProgress.ready:sideVisible&&sideChoice()==='contract'&&ready(state,c.needs);
