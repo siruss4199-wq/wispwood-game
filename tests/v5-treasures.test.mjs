@@ -1,3 +1,4 @@
+import {requestAction} from './v5-workshop-policy.mjs';
 import test from 'node:test';import assert from 'node:assert/strict';
 import {fresh,act,item,load,count} from '../v5/core.mjs';
 import {LOFT_COST,tideItem} from '../v5/treasures.mjs';import {syncRequests,requestProgress} from '../v5/requests.mjs';import {benchInputs} from '../v5/workshop.mjs';
@@ -28,4 +29,13 @@ test('new requests never appear before unlock; existing orders stay until delive
 });
 test('legacy Pier saves with 20–40 supplies preserve progression and can invest without restarting',()=>{
  for(const stage of [0,2,4])for(const supplies of [20,36,40]){const old=camp();old.stage=stage;old.landingStep=stage?2:1;old.routePrepared=stage>0;old.requests.supplies=supplies;old.workshop.precision=true;old.camp={version:1,pier:true,packs:2};const s=load(JSON.stringify(old));assert.equal(s.requests.supplies,supplies);assert.equal(s.stage,stage);assert.deepEqual(s.board,old.board);assert.equal(s.workshop.precision,true);assert.equal(s.camp.loft,false);ok(s,{type:'buildLoft'});assert.equal(s.requests.supplies,supplies-20);assert.deepEqual(load(JSON.stringify(s)),s);}
+});
+
+test('fresh earned orders fund Workshop, Pier and Loft; the next treasure order is produced, merged and delivered',()=>{
+ const s=fresh();ok(s,{type:'merge',from:7,to:8});ok(s,{type:'goal'});let actions=0,deliveries=0;
+ const step=lane=>{const a=requestAction(s,lane);ok(s,a);actions++;if(a.type==='request')deliveries++;assert.ok(actions<150);};
+ for(const [cost,type] of [[8,'restoreWorkshop'],[12,'buildPier'],[LOFT_COST,'buildLoft']]){while(s.requests.supplies<cost)step(deliveries%3);ok(s,{type});}
+ assert.ok(s.board.filter(Boolean).length>=18);assert.ok(s.taps.rig+s.taps.chart>0);
+ for(let n=0;n<2;n++){const id=s.requests.orders[1].id;if(n===1)assert.equal(s.requests.orders[1].needs[0].line,'tide');while(s.requests.orders[1].id===id)step(1);}
+ assert.equal(s.camp.dives,2);assert.ok(s.discovered.includes('chart:tide:1'));assert.deepEqual(load(JSON.stringify(s)),s);
 });

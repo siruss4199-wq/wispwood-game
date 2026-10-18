@@ -123,6 +123,17 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
    await shot('09-pearl-astrolabe');const finished=await read();await page.reload();assert.deepEqual(await read(),finished);
    for(const width of [360,430]){await page.setViewportSize({width,height:844});await page.locator('#campPierWorld').tap();assert.ok(await page.locator('#selection [data-action="recoverTide"]').isVisible());assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);const cell=await page.locator('#board .tile').first().boundingBox();assert.ok(cell.width>=44);await shot(`10-loft-${width}`);}
    fs.writeFileSync(`${dir}/${engine}-loft-trace.json`,JSON.stringify({actionsToLoft:ready.moves,requestActions:actions,extraRequestActions:actions-preLoftActions,deliveries,merges:finished.merges,dives:finished.camp.dives,discovered:finished.discovered.filter(x=>x.includes('tide')),occupiedBefore:ready.board.filter(Boolean).length,occupiedAfter:finished.board.filter(Boolean).length,occupancyWhileEarning:[low,high],remainingEnergy:finished.energy,remainingSupplies:finished.requests.supplies},null,2));
+   // Resume actual legacy expedition fixtures with banked supplies; only the new purchase changes progress.
+   for(const [phase,supplies] of [['primed',20],['completed',40]]){
+    const legacy=JSON.parse(fs.readFileSync(`tests/fixtures/stage2/ridge-${phase}.json`));
+    legacy.camp={version:1,pier:true,packs:1};legacy.workshop={...finished.workshop};legacy.requests={...finished.requests,supplies,orders:ready.requests.orders,sequences:ready.requests.sequences};
+    await page.evaluate(s=>localStorage.setItem('vaultwake-v5',JSON.stringify(s)),legacy);await page.reload();const beforeUpgrade=await read();
+    assert.equal(beforeUpgrade.stage,legacy.stage);assert.equal(beforeUpgrade.requests.supplies,supplies);assert.deepEqual(beforeUpgrade.requests.orders,legacy.requests.orders);
+    await page.locator('#campPierWorld').tap();await page.locator('#selection [data-action="buildLoft"]').tap();const afterUpgrade=await read();
+    assert.equal(afterUpgrade.stage,beforeUpgrade.stage);assert.deepEqual(afterUpgrade.board,beforeUpgrade.board);assert.deepEqual(afterUpgrade.seals,beforeUpgrade.seals);assert.deepEqual(afterUpgrade.requests.orders,beforeUpgrade.requests.orders);assert.equal(afterUpgrade.requests.supplies,supplies-20);
+    await page.reload();assert.deepEqual(await read(),afterUpgrade);
+    assert.ok(await page.locator('#campPierWorld img').evaluate(img=>img.complete&&img.naturalWidth>0));
+   }
    assert.deepEqual(errors,[]);fs.writeFileSync(`${dir}/${engine}-trace.json`,JSON.stringify({actions,deliveries,workshop:packed.workshop,camp:packed.camp,remainingSupplies:packed.requests.supplies,selectedFamily:family},null,2));
    await context.close();console.log(engine,'real orders → Workshop → Pier → targeted case → reload passed');
   }finally{await browser.close();}
