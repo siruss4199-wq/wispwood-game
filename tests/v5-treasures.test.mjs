@@ -39,3 +39,8 @@ test('fresh earned orders fund Workshop, Pier and Loft; the next treasure order 
  for(let n=0;n<2;n++){const id=s.requests.orders[1].id;if(n===1)assert.equal(s.requests.orders[1].needs[0].line,'tide');while(s.requests.orders[1].id===id)step(1);}
  assert.equal(s.camp.dives,2);assert.ok(s.discovered.includes('chart:tide:1'));assert.deepEqual(load(JSON.stringify(s)),s);
 });
+
+test('banked camp upgrades never make a locked Survey Kite usable or request its treasures',()=>{
+ const s=fresh();s.camp.pier=true;s.camp.loft=true;s.workshop.repaired=true;s.requests.orders=[null,null,null];syncRequests(s);
+ assert.ok(s.requests.orders.filter(Boolean).every(o=>o.needs.every(r=>r.family==='rig'&&!r.line)));reject(s,{type:'recoverTide'});
+});

@@ -57,7 +57,7 @@ export function syncRequests(s){
    options.sort((a,b)=>a.score-b.score);
    needs.push(req(options[0].family,options[0].tier));
   }
-  if(s.camp?.loft&&lane>0&&(s.camp.tideOrders===0||n%2===0)){needs.splice(0,needs.length,{family:'chart',line:'tide',tier:lane===1?1:2,count:1});if(lane===2)needs.push(req('rig',1));s.camp.tideOrders++;}
+  if(s.camp?.loft&&fs.includes('chart')&&lane>0&&(s.camp.tideOrders===0||n%2===0)){needs.splice(0,needs.length,{family:'chart',line:'tide',tier:lane===1?1:2,count:1});if(lane===2)needs.push(req('rig',1));s.camp.tideOrders++;}
   q.orders[lane]={id:`${lane}:${n}`,lane:LANES[lane],needs,energy:[5,10,18][lane],supplies:[1,3,6][lane]};
  }
  return q.orders.filter(Boolean);

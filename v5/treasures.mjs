@@ -16,6 +16,7 @@ export function buildLoft(s){
 }
 export function recoverTide(s){
  if(!s.camp?.loft)return {ok:false,message:'Build the Charting Loft on your Supply Pier first.'};
+ if(s.stage===0&&!s.landingStep)return {ok:false,message:'Clear the landing to unlock Survey Kite.'};
  if(s.energy<2||!s.charges.chart)return {ok:false,message:'Recovery needs 2 energy and 1 Survey Kite charge.'};
  const index=s.board.indexOf(null);if(index<0)return {ok:false,message:'Merge or deliver an item to make room for your find.'};
  s.board[index]=nextTide(s);s.camp.dives++;s.energy-=2;s.charges.chart--;
