@@ -72,9 +72,15 @@ jobs:
           node tests/v45-browser.cjs
           node tests/v5-browser.cjs
           node tests/v5-mobile.cjs
-      - name: Save mobile screenshots
+      # Preserve compact debugging evidence only. Playwright videos can be >100 MB
+      # per run; keep them local to CI instead of uploading on every PR update.
+      - name: Save compact V5 screenshots and traces
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: v5-expedition-review
-          path: test-artifacts/
+          path: |
+            test-artifacts/v5/**/*-390.png
+            test-artifacts/v5/**/*.json
+          retention-days: 2
+          if-no-files-found: ignore
