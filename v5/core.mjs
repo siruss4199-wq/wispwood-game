@@ -184,7 +184,7 @@ export function act(s,a,now=Date.now()){
   }
   if(!y){s.board[a.to]=x;s.board[a.from]=null;return done('Moved.','move',a.to);}
   if(!sameKind(x,y)||x.tier>=maxTier(x,s))return fail('Merge two identical objects.');
-  if(x.tier===3&&anchors(s).some(site=>site.phase==='idle'&&ANCHORS[site.kind].equipment===x.family))trace(s,'kept-for-merge',{family:x.family});
+  if(!isTide(x)&&x.tier===3&&anchors(s).some(site=>site.phase==='idle'&&ANCHORS[site.kind].equipment===x.family))trace(s,'kept-for-merge',{family:x.family});
   s.board[a.to]=item(x.family,x.tier+1,x.line);s.board[a.from]=null;s.merges++;const bonus=s.merges%3===0?1:0;s.energy=Math.min(120,s.energy+bonus);
   const crafted=s.board[a.to];
   const firstCraft=crafted.tier>=2&&!s.discovered.includes(discoveryKey(crafted));

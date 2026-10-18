@@ -1,4 +1,4 @@
-import {LOFT_COST,TIDE_NAMES,isTide,maxTier,sameKind,discoveryKey,tideItem,nextTide} from './treasures.mjs';
+import {LOFT_COST,DEEP_SURVEY_COST,recoveryCost,pearlDiscovered,TIDE_NAMES,isTide,maxTier,sameKind,discoveryKey,tideItem,nextTide} from './treasures.mjs';
 import {KITS} from './journey.mjs';
 import {PIER_COST,PACK_COST} from './camp.mjs';
 import {requestProgress} from './requests.mjs';
@@ -80,7 +80,7 @@ function renderWorkshop(){
  let pier=$('#campPierWorld');
  if(state.camp.pier&&!pier){$('#scene').insertAdjacentHTML('beforeend',`<button type="button" id="campPierWorld" aria-label="Supply Pier: view order rewards and supply cases">${art({type:'crate',kind:'salvage'})}<span>SUPPLY PIER</span></button>`);}
  else if(!state.camp.pier&&pier)pier.remove();
- pier=$('#campPierWorld');if(pier){pier.dataset.loft=state.camp.loft;{pier.innerHTML=state.camp.loft?'<img class="art" src="assets/premium/charting-loft.webp" alt="Charting Loft with treasure winch"><span>CHARTING LOFT</span>':art({type:'crate',kind:'salvage'})+'<span>SUPPLY PIER</span>';pier.setAttribute('aria-label',state.camp.loft?'Charting Loft: recover Wayfinding treasures':'Supply Pier: develop Charting Loft for 20 camp supplies');}}
+ pier=$('#campPierWorld');if(pier){pier.dataset.loft=state.camp.loft;pier.dataset.deep=state.camp.deepSurvey;{pier.innerHTML=state.camp.loft?'<img class="art" src="assets/premium/charting-loft.webp" alt="Charting Loft with treasure winch">'+(state.camp.deepSurvey?'<img class="deepInstrument" src="assets/premium/tide-3.webp" alt="Installed deep-survey instrument">':'')+'<span>'+(state.camp.deepSurvey?'DEEP SURVEY':'CHARTING LOFT')+'</span>':art({type:'crate',kind:'salvage'})+'<span>SUPPLY PIER</span>';pier.setAttribute('aria-label',state.camp.loft?(state.camp.deepSurvey?'Deep Survey Loft: recover Reef Compasses':'Charting Loft: recover treasures or upgrade Deep Survey'):'Supply Pier: develop Charting Loft for 20 camp supplies');}}
  // Reveal camp management only after the first landing milestone, not before
  // the player has learned the basic merge interaction.
  button.hidden=state.stage===0&&!state.landingStep&&!restored;
@@ -107,9 +107,9 @@ function renderRequests(){
  const missing=focused&&requestProgress(state,focused).progress.find(r=>r.current<r.count);
  const family=missing?.family&&sourceUnlocked(state,missing.family)?missing.family:focused?.needs.find(r=>sourceUnlocked(state,r.family))?.family??'rig';
  const action=state.workshop.repaired?(state.camp.pier
-  ?state.camp.loft&&missing?.line==='tide'?`<button class="campAction" data-camp-action="recoverTide">Recover treasure · 2ϟ</button>`:`<button class="campAction ${q.supplies>=PACK_COST?'affordable':''}" data-camp-action="packPier" data-family="${family}" aria-label="Order a ${FAMILIES[family].name} supply case for ${PACK_COST} camp supplies">+${FAMILIES[family].name} case · ${PACK_COST}◆</button>`
+  ?state.camp.loft&&missing?.line==='tide'?`<button class="campAction" data-camp-action="recoverTide">${state.camp.deepSurvey?'Deep Survey':'Recover treasure'} · ${recoveryCost(state)}ϟ</button>`:`<button class="campAction ${q.supplies>=PACK_COST?'affordable':''}" data-camp-action="packPier" data-family="${family}" aria-label="Order a ${FAMILIES[family].name} supply case for ${PACK_COST} camp supplies">+${FAMILIES[family].name} case · ${PACK_COST}◆</button>`
   :`<button class="campAction ${q.supplies>=PIER_COST?'affordable':''}" data-camp-action="buildPier" aria-label="Build Supply Pier for ${PIER_COST} camp supplies">Build Pier · ${PIER_COST}◆</button>`):'';
- const purpose=!state.workshop.repaired?'Workshop 8◆':!state.camp.pier?'Unlock useful supply cases':!state.camp.loft?'Charting Loft 20◆':state.workshop.precision?'Discover the Pearl Astrolabe':'Precision Bench 12◆';
+ const purpose=!state.workshop.repaired?'Workshop 8◆':!state.camp.pier?'Unlock useful supply cases':!state.camp.loft?'Charting Loft 20◆':state.camp.deepSurvey?(state.discovered.includes('chart:tide:4')?'Fulfill treasure orders':'Discover the Ocean Crown'):pearlDiscovered(state)?'Deep Survey 18◆':'Discover a Pearl Astrolabe';
  $('#requests').innerHTML=`<div class="requestHeading"><span>ORDERS <small>${purpose}</small></span><b title="Earn camp supplies by delivering orders">◆ <span id="supplies">${q.supplies}</span></b>${action}</div><div class="requestShelf">${q.orders.filter(Boolean).map(o=>{
  const p=requestProgress(state,o),active=requestId===o.id&&focus==='request',energy=Math.min(o.energy,120-state.energy);
  return `<button class="requestCard ${p.ready?'ready':''} ${active?'active':''}" data-request="${o.id}" aria-pressed="${active}" aria-label="${o.lane} request: ${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier,r.line))).join(', ')}. ${p.ready?active?'Deliver':'Ready. Tap once to collect':'In progress'}. Reward ${o.supplies} camp supplies${energy?` and ${energy} energy`:`, energy full`}"><b class="requestLane">${o.lane==='long'?'Expedition kit':o.lane==='quick'?'Quick':'Standard'}</b><span class="requestItems">${p.progress.map(r=>`<span>${art(item(r.family,r.tier,r.line))}<b>${r.current}/${r.count}</b>${r.protected?'<i title="One copy kept for expedition">◆</i>':''}</span>`).join('')}</span><span class="requestReward">+${o.supplies} ◆${energy?` · +${energy} ϟ`:``}</span><strong>${p.ready?'✓ COLLECT':active&&p.progress.some(r=>r.protected)?'MAKE SPARE':'MAKE'}</strong></button>`;
@@ -187,13 +187,23 @@ function renderSelection(){
  }
  if(!x&&!state.merges&&state.stage===0&&!state.landingStep){title='Start with the glowing pair';desc='Tap one Copper Offcut, then tap its twin. They become a Grip Tool.';}
  else if(!x&&state.stage===0&&!state.landingStep){title='Landing ready';desc='You made a Grip Tool. Tap CLEAR PATH above to open the landing.';}
- if(!x&&focus==='pier'){title=state.camp.loft?'Charting Loft':'Develop the Supply Pier';desc=state.camp.loft?'Survey Kite recovery · 2 energy + 1 charge · every fourth find is a compass.':'Build a Charting Loft · permanently unlock three Wayfinding treasures.';buttons='<span class="benchRoute tidePreview">'+TIDE_NAMES.map((_,tier)=>art(tideItem(tier))).join('<span>→</span>')+'</span>'+(state.camp.loft?'<button class="accent" data-action="recoverTide">Recover treasure · 2 ϟ</button>':`<button class="accent" data-action="buildLoft">Build Loft · ${state.requests.supplies}/${LOFT_COST} ◆</button>`);if(state.camp.loft&&!state.charges.chart)buttons+='<button data-action="service" data-source="chart">Service Kite · 3 ϟ</button>'; }
+ if(!x&&focus==='pier'){
+  title=state.camp.deepSurvey?'Deep Survey Loft':state.camp.loft?'Charting Loft':'Develop the Supply Pier';
+  desc=state.camp.deepSurvey?'Every recovery: Reef Compass · 3 energy + 1 Kite charge.':state.camp.loft?'Recovery: 2 energy + 1 Kite charge. Deep Survey unlocks two treasures and guaranteed compasses.':'Build a Charting Loft · permanently unlock Wayfinding treasures.';
+  buttons='<span class="benchRoute tidePreview">'+TIDE_NAMES.map((_,tier)=>'<span class="'+(tier>2&&!state.camp.deepSurvey?'futureTreasure':'')+'">'+art(tideItem(tier))+'</span>').join('<span>→</span>')+'</span>';
+  if(!state.camp.loft)buttons+=`<button class="accent" data-action="buildLoft">Build Loft · ${state.requests.supplies}/${LOFT_COST} ◆</button>`;
+  else{
+   buttons+=`<button class="accent" data-action="recoverTide">${state.camp.deepSurvey?'Deep Survey · Reef Compass':'Recover treasure'} · ${recoveryCost(state)} ϟ</button>`;
+   if(!state.camp.deepSurvey)buttons+=`<button class="benchAction ${pearlDiscovered(state)&&state.requests.supplies>=DEEP_SURVEY_COST?'available':''}" data-action="upgradeLoft">${pearlDiscovered(state)?'Deep Survey · '+state.requests.supplies+'/'+DEEP_SURVEY_COST+' ◆':'Deep Survey · discover a Pearl Astrolabe'}</button>`;
+   if(!state.charges.chart)buttons+='<button data-action="service" data-source="chart">Service Kite · 3 ϟ</button>';
+  }
+ }
  if(x){title=nameOf(x);
   if(x.type==='item'){
    const used=goal(state)?.needs.some(r=>matches(x,r)),cn=normalContract(state).needs.some(r=>matches(x,r));
-   desc=(used&&cn?'◆ Expedition · ▰ Contract':used?'◆ Keep for expedition':cn?'▰ Deliver now, or merge further':'')+(x.tier===maxTier(x,state)?' · Top discovery':` · ${nameOf(item(x.family,x.tier+1,x.line))}`);
+   desc=(used&&cn?'◆ Expedition · ▰ Contract':used?'◆ Keep for expedition':cn?'▰ Deliver now, or merge further':'')+(x.tier===maxTier(x,state)?isTide(x)&&!state.camp.deepSurvey?' · Deep Survey unlocks two more treasures':' · Top discovery':` · ${nameOf(item(x.family,x.tier+1,x.line))}`);
    const site=anchors(state).find(v=>v.phase==='idle'&&matches(x,equipment(v.kind)));if(site&&state.stage>=2)desc=`Keep to merge · or use on ${nameOf(site)}${cn?' · also exchangeable':''}`;
-   if(isTide(x))desc='Charting Loft → Survey Kite recovery · '+(x.tier<2?'merge twins or deliver a tide order':'complete collectible · deliver a tide order');
+   if(isTide(x))desc='Charting Loft → Survey Kite recovery · '+(x.tier<maxTier(x,state)?'merge twins or deliver a tide order':!state.camp.deepSurvey?'Deep Survey unlocks two more treasures':'top treasure · deliver a tide order');
    if(loopCell(x)&&linkPhase(state)&&!optics(state).primed)desc='Use on the Stone Lift · power your receiver';
    buttons=`${site&&state.stage>=2?`<button class="accent" data-action="deploy" data-target="${state.board.indexOf(site)}">Use · ${ANCHORS[site.kind].short}</button>`:''}<button data-action="recycle">Recycle +${2**x.tier} ϟ</button>`;
    if(loopCell(x)&&linkPhase(state)&&!optics(state).primed)buttons='<button class="accent" data-action="prime" data-target="'+state.board.findIndex(v=>v?.type==='site'&&v.kind==='winch')+'">Use · Stone Lift</button>'+buttons;
@@ -202,7 +212,7 @@ function renderSelection(){
    else {desc=`${state.journey.boost?.family===x.id?'ENRICHED · '+state.journey.boost.left+' pulls · ':''}${state.surge>0?'SURGE · '+state.surge+' shared pulls · ':''}${state.charges[x.id]}/7 charges · Next: ${nameOf(nextOutput(state,x.id))}${burstOutput(state,x.id)?(state.taps[x.id]+1)%7===0?' + bonus tool':' + raw part':''}`;
     buttons=state.charges[x.id]?`<button class="accent" data-action="produce">Produce · ${SOURCES[x.id].cost} ϟ</button>`:'<button data-action="serviceTool">Service · tool</button><button class="accent" data-action="service">Service · 3 ϟ</button>';
    }
-   if(x.id==='chart'&&state.camp.loft)buttons+=`<button class="accent" data-action="recoverTide">Recover ${nameOf(nextTide(state))} · 2 ϟ</button>`;
+   if(x.id==='chart'&&state.camp.loft)buttons+=`<button class="accent" data-action="recoverTide">${state.camp.deepSurvey?'Deep Survey':'Recover'} ${nameOf(nextTide(state))} · ${recoveryCost(state)} ϟ</button>`;
    if(state.journey.engine)buttons+='<button class="accent" data-action="infuse">Enrich · 1 Loop Cell</button>';
    if(x.id==='rig'&&state.workshop.repaired&&state.charges.rig)buttons+='<button class="accent toolPress" data-action="press">Tool press · 2 ϟ</button>';
    if(x.id==='rig'&&state.workshop.repaired){
@@ -247,7 +257,7 @@ function run(a){
  platform.startGameplay();if(result.event==='restoration'){focus='goal';selected=state.board.findIndex(x=>x?.type==='source'&&x.id==='rig');}else if(['milestone','deployment','contract','discovery','clear','turn'].includes(result.event)){focus='goal';selected=null;}if(a.type==='merge')selected=state.board[result.index]?.type==='prism'?null:result.index;render();persist();
  if(a.type==='goal'&&before===0&&landingBefore===1){for(const tile of board.querySelectorAll('.tile.item')){const x=state.board[+tile.dataset.index];if(x.tier===2&&['rig','chart'].includes(x.family))tile.classList.add('unlocked');}board.querySelectorAll('.rock.surveyed').forEach(tile=>tile.classList.add('unlocked'));}
  if(result.event==='milestone'&&state.stage<4)message.textContent=result.message;
- if(!delivery.length)feedback({event:result.event,tile:board.querySelector(`[data-index="${result.index}"]`),x:state.board[result.index],from:rewardOrigin,energyDelta:state.energy-energyBefore,stage:state.stage,firstContract,containerKind:result.containerKind,reveal:result.reveal,bonus:result.bonus,improved:result.improved,breakthrough:result.breakthrough,newDiscovery:result.newDiscovery,discoveryReward:result.discoveryReward,breakthroughUse:state.stage>=2&&state.board[result.index]?.tier===3?anchors(state).filter(v=>v.phase==='idle'&&ANCHORS[v.kind].equipment===state.board[result.index].family).map(v=>'Use: '+ANCHORS[v.kind].short+' · or merge higher')[0]:null,surgeStarted:state.surge>surgeBefore});
+ if(!delivery.length)feedback({event:result.event,tile:board.querySelector(`[data-index="${result.index}"]`),x:state.board[result.index],from:rewardOrigin,energyDelta:state.energy-energyBefore,stage:state.stage,firstContract,containerKind:result.containerKind,reveal:result.reveal,bonus:result.bonus,improved:result.improved,breakthrough:result.breakthrough,newDiscovery:result.newDiscovery,discoveryReward:result.discoveryReward,breakthroughUse:state.stage>=2&&!isTide(state.board[result.index])&&state.board[result.index]?.tier===3?anchors(state).filter(v=>v.phase==='idle'&&ANCHORS[v.kind].equipment===state.board[result.index].family).map(v=>'Use: '+ANCHORS[v.kind].short+' · or merge higher')[0]:null,surgeStarted:state.surge>surgeBefore});
  if(delivery.length){
   const rewards=state.board.flatMap((x,index)=>x&&['item','crate'].includes(x.type)&&JSON.stringify(x)!==beforeBoard[index]?[{index,x,rect:board.querySelector(`[data-index="${index}"]`)?.getBoundingClientRect()}]:[]);
   const next=['request','fitSpanner','restoreEngine','infuse'].includes(a.type)?result.message:['deploy','feed','clear','restore','prime'].includes(a.type)?result.message:continuation(state,a,rewards);message.textContent=next;
@@ -262,9 +272,10 @@ function run(a){
  if(result.discoveryReward){board.querySelector(`[data-index="${result.discoveryReward.index}"]`)?.classList.add('rewardLanded');}
  if(a.type==='restoreEngine'){moment('Star-ocean engine restored','Use a Loop Cell on a producer · three enriched pulls',item('flux',5));}
  if(a.type==='infuse'){moment(SOURCES[a.id].name+' enriched','Next three pulls · richer parts',item(a.id,1));}
+ if(a.type==='upgradeLoft'){selected=null;focus='pier';render();moment('Deep Survey installed','Guaranteed compasses · two new treasures to merge',tideItem(3));sound.play('milestone');$('.world').classList.add('changed');}
  if(a.type==='buildLoft'){selected=null;focus='pier';render();moment('Charting Loft built','Survey Kite now recovers new tide treasures',tideItem(1));sound.play('milestone');$('.world').classList.add('changed');}
  if(a.type==='recoverTide'){if(!knownBefore.has(discoveryKey(state.board[result.index]))){moment(nameOf(state.board[result.index]),'Wayfinding treasure · merge twins or deliver an order',state.board[result.index]);sound.play('rare');}board.querySelector(`[data-index="${result.index}"]`)?.classList.add('merge-pop');}
- if(result.tideDiscovery){moment(nameOf(state.board[result.index]),state.board[result.index].tier===2?'Pearl Astrolabe discovered · your tide collection is complete':'Reef Compass discovered · keep merging for a Pearl Astrolabe',state.board[result.index]);}
+ if(result.tideDiscovery){moment(nameOf(state.board[result.index]),state.board[result.index].tier===4?'Ocean Crown discovered · a treasure for expedition orders':state.board[result.index].tier===2&&!state.camp.deepSurvey?'Pearl discovered · Deep Survey is now available at the Loft':'New treasure · deliver it or merge toward '+TIDE_NAMES[Math.min(4,state.board[result.index].tier+1)],state.board[result.index]);}
  if(a.type==='buildPier'){moment('Supply Pier built','Camp orders now fund useful material cases', {type:'crate',kind:'salvage'});sound.play('milestone');$('.world').classList.add('changed');}
  if(a.type==='packPier'){moment('Supply case delivered','Tap the new case on the board to unpack useful parts', {type:'crate',kind:{rig:'salvage',chart:'survey',flux:'relic'}[a.family]});sound.play('rare');}
  if(a.type==='press'){sound.play('merge',1);board.querySelector(`[data-index="${result.index}"]`)?.classList.add('merge-pop');}

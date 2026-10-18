@@ -14,7 +14,7 @@ export function requestState(s){
  if(!Array.isArray(q.orders)||q.orders.length!==3)q.orders=[null,null,null];
  const available=requestFamilies(s);
  q.sequences=q.sequences.map(n=>Number.isSafeInteger(n)&&n>=0?n:0);
- q.orders=q.orders.map((o,i)=>o&&o.id===`${i}:${q.sequences[i]}`&&Array.isArray(o.needs)&&o.needs.length>0&&o.needs.length<=2&&o.needs.every(r=>available.includes(r.family)&&Number.isInteger(r.tier)&&r.tier>=0&&r.tier<=3&&(r.line===undefined||s.camp?.loft&&r.line==='tide'&&r.family==='chart'&&r.tier<=2)&&[1,2].includes(r.count))&&Number.isInteger(o.energy)&&o.energy>0&&o.energy<=24&&Number.isInteger(o.supplies)&&o.supplies>0&&o.supplies<=8?o:null);
+ q.orders=q.orders.map((o,i)=>o&&o.id===`${i}:${q.sequences[i]}`&&Array.isArray(o.needs)&&o.needs.length>0&&o.needs.length<=2&&o.needs.every(r=>available.includes(r.family)&&Number.isInteger(r.tier)&&r.tier>=0&&r.tier<=(r.line==='tide'?(s.camp?.deepSurvey?4:2):3)&&(r.line===undefined||s.camp?.loft&&r.line==='tide'&&r.family==='chart'&&r.tier<=(s.camp?.deepSurvey?4:2))&&[1,2].includes(r.count))&&Number.isInteger(o.energy)&&o.energy>0&&o.energy<=24&&Number.isInteger(o.supplies)&&o.supplies>0&&o.supplies<=8?o:null);
  return q;
 }
 export function syncRequests(s){
@@ -57,8 +57,8 @@ export function syncRequests(s){
    options.sort((a,b)=>a.score-b.score);
    needs.push(req(options[0].family,options[0].tier));
   }
-  if(s.camp?.loft&&fs.includes('chart')&&lane>0&&(s.camp.tideOrders===0||n%2===0)){needs.splice(0,needs.length,{family:'chart',line:'tide',tier:lane===1?1:2,count:1});if(lane===2)needs.push(req('rig',1));s.camp.tideOrders++;}
-  q.orders[lane]={id:`${lane}:${n}`,lane:LANES[lane],needs,energy:[5,10,18][lane],supplies:[1,3,6][lane]};
+  if(s.camp?.loft&&fs.includes('chart')&&lane>0&&(s.camp.tideOrders===0||n%2===0)){const tier=lane===1?(s.camp.deepSurvey&&n%4===0?2:1):!s.camp.deepSurvey?2:s.discovered.includes('chart:tide:3')&&n%4===0?4:3;needs.splice(0,needs.length,{family:'chart',line:'tide',tier,count:1});if(lane===2&&tier===2)needs.push(req('rig',1));s.camp.tideOrders++;}
+  q.orders[lane]={id:`${lane}:${n}`,lane:LANES[lane],needs,energy:needs[0].line==='tide'&&needs[0].tier===4?24:[5,10,18][lane],supplies:needs[0].line==='tide'&&needs[0].tier===4?8:[1,3,6][lane]};
  }
  return q.orders.filter(Boolean);
 }

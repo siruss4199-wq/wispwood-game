@@ -123,6 +123,33 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
    await shot('09-pearl-astrolabe');const finished=await read();await page.reload();assert.deepEqual(await read(),finished);
    for(const width of [360,430]){await page.setViewportSize({width,height:844});await page.locator('#campPierWorld').tap();assert.ok(await page.locator('#selection [data-action="recoverTide"]').isVisible());assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);const cell=await page.locator('#board .tile').first().boundingBox();assert.ok(cell.width>=44);await shot(`10-loft-${width}`);}
    fs.writeFileSync(`${dir}/${engine}-loft-trace.json`,JSON.stringify({actionsToLoft:ready.moves+1,totalActions:finished.moves,requestActions:actions,extraRequestActions:actions-preLoftActions,deliveries,merges:finished.merges,dives:finished.camp.dives,discovered:finished.discovered.filter(x=>x.includes('tide')),occupiedBefore:ready.board.filter(Boolean).length,occupiedAfter:finished.board.filter(Boolean).length,occupancyWhileEarning:[low,high],remainingEnergy:finished.energy,remainingSupplies:finished.requests.supplies},null,2));
+   // TT-1F1: continue the SAME fresh save with earned currency, not developer stock.
+   await page.setViewportSize({width:390,height:844});
+   while((await read()).requests.supplies<18)await requestStep(deliveries%3);
+   const deepReady=await read();assert.ok(deepReady.discovered.includes('chart:tide:2'));
+   await page.locator('#campPierWorld').tap();await shot('11-deep-survey-ready');
+   await page.locator('#selection [data-action="upgradeLoft"]').tap();const deepInstalled=await read();
+   assert.equal(deepInstalled.camp.deepSurvey,true);assert.equal(deepInstalled.requests.supplies,deepReady.requests.supplies-18);assert.deepEqual(deepInstalled.board,deepReady.board);assert.deepEqual(deepInstalled.requests.orders,deepReady.requests.orders);
+   assert.equal(await page.locator('#campPierWorld').getAttribute('data-deep'),'true');await shot('12-deep-survey-installed');
+   if(!deepInstalled.charges.chart){await page.locator('#selection [data-action="service"]').tap();}
+   const preRecovery=await read();await page.locator('#selection [data-action="recoverTide"]').tap();const postRecovery=await read();
+   assert.equal(postRecovery.energy,preRecovery.energy-3);assert.equal(postRecovery.charges.chart,preRecovery.charges.chart-1);assert.deepEqual(postRecovery.taps,preRecovery.taps);assert.ok(postRecovery.board.some((x,i)=>x?.line==='tide'&&x.tier===1&&!preRecovery.board[i]));await shot('13-guaranteed-compass');
+   let replacements=0;
+   while(!(await read()).requests.orders[2].needs.some(r=>r.line==='tide'&&r.tier>=3)){
+    assert.ok(replacements++<4);const id=(await read()).requests.orders[2].id;while((await read()).requests.orders[2].id===id)await requestStep(2);
+   }
+   const newGoal=(await read()).requests.orders[2];assert.equal(newGoal.needs[0].tier,3,'Crown is not demanded before Sextant discovery');
+   while(true){const action=await page.evaluate(async()=>{const {requestAction}=await import('/tests/v5-workshop-policy.mjs');return requestAction(JSON.parse(localStorage.getItem('vaultwake-v5')),2);});if(action.type==='request')break;await requestStep(2);}
+   await shot('14-celestial-sextant-ready');const beforeDelivery=await read();await requestStep(2);const deepDone=await read();
+   assert.equal(deepDone.requests.supplies,beforeDelivery.requests.supplies+newGoal.supplies);assert.equal(deepDone.requests.completed,beforeDelivery.requests.completed+1);assert.ok(deepDone.discovered.includes('chart:tide:3'));assert.ok(!deepDone.discovered.includes('chart:tide:4'),'Ocean Crown remains an unfinished collectible goal');
+   await shot('15-new-treasure-delivered');await page.reload();assert.deepEqual(await read(),deepDone);
+   const supplySpent=8+12+8+20+18;fs.writeFileSync(`${dir}/${engine}-deep-survey-trace.json`,JSON.stringify({requests:deepDone.requests.completed,suppliesSpent:supplySpent,suppliesEarned:supplySpent+deepDone.requests.supplies,remainingSupplies:deepDone.requests.supplies,upgradeMove:deepReady.moves+1,upgradeCost:18,tideRecoveries:deepDone.camp.dives,deepRecoveries:deepDone.camp.deepDives,merges:deepDone.merges,newOrder:newGoal,discovered:deepDone.discovered.filter(x=>x.includes('tide')),unfinished:'Ocean Crown',occupied:deepDone.board.filter(Boolean).length,energy:deepDone.energy},null,2));
+   // A previous TT-1E Loft save keeps all its treasures and pending orders on migration.
+   const legacyLoft=structuredClone(deepReady);delete legacyLoft.camp.deepSurvey;delete legacyLoft.camp.deepDives;
+   await page.evaluate(s=>localStorage.setItem('vaultwake-v5',JSON.stringify(s)),legacyLoft);await page.reload();const migratedLoft=await read();assert.deepEqual(migratedLoft.board,legacyLoft.board);assert.deepEqual(migratedLoft.requests,legacyLoft.requests);assert.equal(migratedLoft.camp.deepSurvey,false);
+   await page.locator('#campPierWorld').tap();await page.locator('#selection [data-action="upgradeLoft"]').tap();const resumedDeep=await read();await page.reload();assert.deepEqual(await read(),resumedDeep);assert.equal(resumedDeep.camp.deepSurvey,true);
+   for(const width of [360,390,430]){await page.setViewportSize({width,height:844});await page.locator('#campPierWorld').tap();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);for(const sel of ['#campPierWorld','#selection [data-action="recoverTide"]']){const b=await page.locator(sel).boundingBox();assert.ok(b.width>=44&&b.height>=44);}await shot(`16-deep-${width}`);}
+   console.log(engine,'Deep Survey: earned upgrade, guaranteed Compass, Sextant request, unfinished Crown, legacy Loft and reload passed');
    // Resume actual legacy expedition fixtures with banked supplies; only the new purchase changes progress.
    for(const [phase,supplies] of [['primed',20],['completed',40]]){
     const legacy=JSON.parse(fs.readFileSync(`tests/fixtures/stage2/ridge-${phase}.json`));

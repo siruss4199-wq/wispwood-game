@@ -351,3 +351,8 @@ body[data-art="premium"] .world .objective .engineActivate.blocked .activateCopy
 #campPierWorld[data-loft="true"] .art{width:92px;height:78px;filter:drop-shadow(0 3px 2px #31475b55)}
 #campPierWorld[data-loft="true"] span{font-size:9px;background:#fff0d0df;padding:2px 5px;border-radius:5px}
 .tidePreview .art{width:44px;height:44px}.tidePreview{flex-wrap:nowrap}
+
+/* Deep Survey reuses the Loft with a visible installed instrument; no extra panel. */
+#campPierWorld .deepInstrument{position:absolute;right:0;bottom:16px;width:39px;height:39px;filter:drop-shadow(0 2px 1px #19394860);pointer-events:none}
+#campPierWorld[data-deep="true"] span{background:#ffe3a2;color:#254d61}
+.tidePreview .futureTreasure{filter:grayscale(1);opacity:.35}
