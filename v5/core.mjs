@@ -1,3 +1,4 @@
+import {TIDE_NAMES,isTide,maxTier,sameKind,discoveryKey,tideItem,buildLoft,recoverTide} from './treasures.mjs';
 import {journeyState,KITS,ENGINE_NEEDS} from './journey.mjs';
 import {campState,buildPier,packPier} from './camp.mjs';
 import {syncRequests,deliverRequest} from './requests.mjs';
@@ -26,8 +27,8 @@ export const POST_GOALS=[
  {name:'Chart the next crossing',verb:'Chart crossing',scene:'Vault opened',needs:[req('chart',6),req('rig',5)],energy:35,next:'Archive expedition badge'},
  {name:'Build an aurora beacon',verb:'Light beacon',scene:'Vault opened',needs:[req('flux',7)],energy:50,next:'Aurora collector badge'}
 ];
-export const nameOf=x=>!x?'Empty space':x.type==='prism'?'Ring reflector':x.type==='site'?ANCHORS[x.kind].name:x.type==='route'?ROUTES[x.id].name:x.type==='item'?FAMILIES[x.family].names[x.tier]:x.type==='source'?SOURCES[x.id].name:x.type==='rock'?'Saltstone blocker':x.type==='marker'?'Buried survey marker':x.type==='lock'?'Dormant relic lock':x.type==='crate'?containerInfo(x).name:x.type==='brace'?'Trail brace':x.type==='glyph'?'Echo fragment':'Buried ground';
-export const item=(family,tier)=>({type:'item',family,tier});
+export const nameOf=x=>!x?'Empty space':x.type==='prism'?'Ring reflector':x.type==='site'?ANCHORS[x.kind].name:x.type==='route'?ROUTES[x.id].name:x.type==='item'?(isTide(x)?TIDE_NAMES[x.tier]:FAMILIES[x.family].names[x.tier]):x.type==='source'?SOURCES[x.id].name:x.type==='rock'?'Saltstone blocker':x.type==='marker'?'Buried survey marker':x.type==='lock'?'Dormant relic lock':x.type==='crate'?containerInfo(x).name:x.type==='brace'?'Trail brace':x.type==='glyph'?'Echo fragment':'Buried ground';
+export const item=(family,tier,line)=>({type:'item',family,tier,...(line?{line}:{})});
 const source=id=>({type:'source',id});
 export function fresh(now=Date.now()){
  const board=Array(36).fill(null);
@@ -57,9 +58,9 @@ export function goal(s){
  if(s.stage===3)return {name:'Open the Tideglass Vault',verb:'Open vault',scene:'Rings awakened',needs:[],energy:20,next:'The chamber + relic cache',text:'All three seals are secured.',action:allSeals(s)?'goal':'inspect'};
  return STAGES[s.stage]??POST_GOALS[s.post]??null;
 }
-export function count(s,r){return s.board.filter(x=>x?.type==='item'&&x.family===r.family&&x.tier===r.tier).length;}
+export function count(s,r){return s.board.filter(x=>matches(x,r)).length;}
 export function ready(s,needs){return needs.every(r=>count(s,r)>=r.count);}
-export function matches(x,r){return x?.type==='item'&&x.family===r.family&&x.tier===r.tier;}
+export function matches(x,r){return x?.type==='item'&&x.family===r.family&&x.tier===r.tier&&(x.line??'')===(r.line??'');}
 function consume(s,needs){for(const r of needs)for(let n=0;n<r.count;n++)s.board[s.board.findIndex(x=>matches(x,r))]=null;}
 export function normalContract(s){
  // Keep two cells for wiring, or buy receiver equipment and improved pulls.
@@ -97,7 +98,7 @@ function surge(s){s.surge=3;}
 export function near(s,needs){
  const missing=needs.flatMap(r=>Array(Math.max(0,r.count-count(s,r))).fill(r));
  if(!missing.length)return 'READY';
- if(missing.length===1){const r=missing[0];return r.tier>0&&count(s,{family:r.family,tier:r.tier-1})>=2?'1 MERGE AWAY':'1 ITEM LEFT';}
+ if(missing.length===1){const r=missing[0];return r.tier>0&&count(s,{family:r.family,tier:r.tier-1,line:r.line})>=2?'1 MERGE AWAY':'1 ITEM LEFT';}
  return '';
 }
 function put(s,x){const i=s.board.indexOf(null);if(i<0)return -1;s.board[i]=x;return i;}
@@ -140,7 +141,7 @@ function activate(s,site){
 // Mutating reducer is intentionally atomic: failed commands leave all state untouched.
 export function act(s,a,now=Date.now()){
  const fail=message=>({ok:false,message});
- const done=(message,event='action',index=null)=>{s.moves++;s.lastAt=now;syncRequests(s);if(event!=='produce')s.producerStreak=0;installSites(s);unfold(s);if(event==='milestone')remember(s,event,now);for(const x of s.board)if(x?.type==='item'){const key=x.family+':'+x.tier;if(!s.discovered.includes(key))s.discovered.push(key);}return {ok:true,message,event,index};};
+ const done=(message,event='action',index=null)=>{s.moves++;s.lastAt=now;syncRequests(s);if(event!=='produce')s.producerStreak=0;installSites(s);unfold(s);if(event==='milestone')remember(s,event,now);for(const x of s.board)if(x?.type==='item'){const key=discoveryKey(x);if(!s.discovered.includes(key))s.discovered.push(key);}return {ok:true,message,event,index};};
  const valid=i=>Number.isInteger(i)&&i>=0&&i<36;
  if(a.type==='restoreEngine'){
   if(s.stage!==4||s.journey?.engine||!ready(s,ENGINE_NEEDS))return fail('Bring a Split Spanner, Sight Lens and Pulse Coil to the vault engine.');
@@ -154,6 +155,8 @@ export function act(s,a,now=Date.now()){
   s.board[from]=null;s.journey.boost={family:a.id,left:3};s.journey.infusions++;trace(s,'infusion',{family:a.id});
   return done(SOURCES[a.id].name+' · three enriched pulls ready. Normal energy and charges apply.','discovery',s.board.findIndex(x=>x?.type==='source'&&x.id===a.id));
  }
+ if(a.type==='buildLoft'){const r=buildLoft(s);return r.ok?done(r.message,'loft'):r;}
+ if(a.type==='recoverTide'){const r=recoverTide(s);return r.ok?done(r.message,'tide',r.index):r;}
  if(a.type==='buildPier'){const result=buildPier(s,container);return result.ok?{...done(result.message,'campBuild',result.index),reveal:[result.index]}:result;}
  if(a.type==='packPier'){const result=packPier(s,a.family,container,sourceUnlocked);return result.ok?{...done(result.message,'campPack',result.index),reveal:[result.index]}:result;}
  if(a.type==='restoreWorkshop'){const result=restoreWorkshop(s);return result.ok?done(result.message,'restoration'):result;}
@@ -179,11 +182,12 @@ export function act(s,a,now=Date.now()){
    s.board[a.to]=x;s.board[a.from]=y;trace(s,'reflector-move',{from:a.from,to:a.to,swapped:true});return done('Reflector repositioned.','move',a.to);
   }
   if(!y){s.board[a.to]=x;s.board[a.from]=null;return done('Moved.','move',a.to);}
-  if(x.type!=='item'||y.type!=='item'||x.family!==y.family||x.tier!==y.tier||x.tier>=7)return fail('Merge two identical objects.');
+  if(!sameKind(x,y)||x.tier>=maxTier(x))return fail('Merge two identical objects.');
   if(x.tier===3&&anchors(s).some(site=>site.phase==='idle'&&ANCHORS[site.kind].equipment===x.family))trace(s,'kept-for-merge',{family:x.family});
-  s.board[a.to]=item(x.family,x.tier+1);s.board[a.from]=null;s.merges++;const bonus=s.merges%3===0?1:0;s.energy=Math.min(120,s.energy+bonus);
+  s.board[a.to]=item(x.family,x.tier+1,x.line);s.board[a.from]=null;s.merges++;const bonus=s.merges%3===0?1:0;s.energy=Math.min(120,s.energy+bonus);
   const crafted=s.board[a.to];
-  const firstCraft=crafted.tier>=2&&!s.discovered.includes(crafted.family+':'+crafted.tier);
+  const firstCraft=crafted.tier>=2&&!s.discovered.includes(discoveryKey(crafted));
+  if(isTide(crafted)){const tideDiscovery=!s.discovered.includes(discoveryKey(crafted));return {...done(nameOf(crafted)+' · fulfill tide orders or keep your collection.','merge',a.to),tideDiscovery};}
   const resupply=firstCraft&&s.stage<4?supplies(s,3):[];
   // A newly crafted device brings a named, useful cross-family find. Use the
   // merge-freed cell when crowded; never hide rewards in a counter.
@@ -361,7 +365,7 @@ export function load(raw,now=Date.now()){
   if(!integer(s.landingStep,0,2)||s.stage===0&&s.landingStep===2)return fresh(now);
   if(s.stage>0)s.landingStep=2;
   for(const x of s.board){if(x===null)continue;if(!x||typeof x!=='object')return fresh(now);
-   if(x.type==='item'){if(!FAMILIES[x.family]||!integer(x.tier,0,7))return fresh(now);}
+   if(x.type==='item'){if(!FAMILIES[x.family]||!integer(x.tier,0,maxTier(x))||x.line!==undefined&&(!isTide(x)||x.family!=='chart'))return fresh(now);}
    else if(x.type==='source'){if(!SOURCES[x.id])return fresh(now);}
    else if(x.type==='crate'){if(!integer(x.left,1,5)||x.kind!==undefined&&!CONTAINERS[x.kind])return fresh(now);x.kind??='locker';}
    else if(x.type==='site'){if(!ANCHORS[x.kind]||!['idle','active','done'].includes(x.phase)||!integer(x.progress,0,2)||x.phase==='idle'&&x.progress!==0||x.phase==='done'&&x.progress!==2||x.phase==='active'&&x.progress>1||x.reclaimed!==undefined&&typeof x.reclaimed!=='boolean')return fresh(now);}
@@ -372,7 +376,7 @@ export function load(raw,now=Date.now()){
   }
   for(const id of Object.keys(SOURCES))if(!integer(s.charges?.[id],0,7)||!integer(s.taps?.[id],0,1000000)||s.board.filter(x=>x?.type==='source'&&x.id===id).length!==1)return fresh(now);
   for(const k of ['normal','moves','merges','marks','contracts','rations'])if(!integer(s[k],0,1000000))return fresh(now);
-  if(!Array.isArray(s.discovered)||!s.discovered.every(x=>typeof x==='string'&&/^(rig|chart|flux):[0-7]$/.test(x)))return fresh(now);
+  if(!Array.isArray(s.discovered)||!s.discovered.every(x=>typeof x==='string'&&/^((rig|chart|flux):[0-7]|chart:tide:[0-2])$/.test(x)))return fresh(now);
   if(s.opportunity&&(!Number.isFinite(s.opportunity.ends)||!Array.isArray(s.opportunity.needs)||s.opportunity.needs.length!==1||!['chart','flux'].includes(s.opportunity.needs[0]?.family)||s.opportunity.needs[0].tier!==3||s.opportunity.needs[0].count!==1))s.opportunity=null;
   if(s.opportunity)s.opportunity.energy=s.opportunity.energy===28?28:12;
   s.history=Array.isArray(s.history)?s.history.filter(x=>x?.event==='milestone'&&Number.isFinite(x.at)).slice(-40):[];

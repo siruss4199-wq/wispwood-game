@@ -3,7 +3,7 @@ export const WORKSHOP_COST=8, BENCH_COST=12;
 export const BENCH_NEEDS=[{family:'rig',tier:1,count:1},{family:'chart',tier:0,count:1}];
 export function benchInputs(s){
  const kept=reservedItems(s);
- return BENCH_NEEDS.map(r=>s.board.findIndex((x,i)=>x?.type==='item'&&x.family===r.family&&x.tier===r.tier&&!kept.has(i)));
+ return BENCH_NEEDS.map(r=>s.board.findIndex((x,i)=>x?.type==='item'&&!x.line&&x.family===r.family&&x.tier===r.tier&&!kept.has(i)));
 }
 export function workshopState(s){
  const old=s.workshop;

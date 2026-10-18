@@ -1,8 +1,8 @@
 // Earned world state, separate from inventory. No timers or additional currency.
 export const freshSeals=()=>({version:1,navigation:false,stabilization:false,resonance:false,link:[],optics:{version:1,primed:false,direction:0}});
 export const allSeals=s=>['navigation','stabilization','resonance'].every(k=>s.seals?.[k]===true);
-export const loopCell=x=>x?.type==='item'&&x.family==='flux'&&x.tier===1;
-export const sightLens=x=>x?.type==='item'&&x.family==='chart'&&x.tier===2;
+export const loopCell=x=>x?.type==='item'&&!x.line&&x.family==='flux'&&x.tier===1;
+export const sightLens=x=>x?.type==='item'&&!x.line&&x.family==='chart'&&x.tier===2;
 export const reflector=x=>x?.type==='prism'||sightLens(x);
 export const linkPhase=s=>s.stage===2&&s.seals?.navigation&&s.seals?.stabilization&&!s.seals.resonance;
 // Keep the old serialized charge field: an already-spent Loop Cell stays spent.

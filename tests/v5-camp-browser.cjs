@@ -35,14 +35,14 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
      const source=before.board.findIndex(x=>x?.type==='source'&&x.id===action.id);
      await page.locator(`#board [data-index="${source}"]`).tap();
      if(action.type==='service')await page.locator('#selection [data-action="service"]').tap();
-    }else if(action.type==='ration'){await page.locator('#rationButton').tap();}
+    }else if(action.type==='recoverTide'){await page.locator('#campPierWorld').tap();await page.locator('#selection [data-action="recoverTide"]').tap();}else if(action.type==='ration'){await page.locator('#rationButton').tap();}
     else throw Error('Unexpected camp-order policy '+JSON.stringify(action));
     try{await page.waitForFunction(n=>JSON.parse(localStorage.getItem('vaultwake-v5')).moves>n,before.moves,{timeout:4000});}
     catch(error){
      const after=await read();
      throw Error(JSON.stringify({engine,actions,deliveries,action,before:{moves:before.moves,energy:before.energy,supplies:before.requests.supplies,board:before.board,orders:before.requests.orders},after:{moves:after.moves,energy:after.energy,supplies:after.requests.supplies},message:await page.locator('#message').textContent()},null,2));
     }
-    actions++;assert.ok(actions<225,'camp Pier must be reachable via ordinary orders');
+    actions++;assert.ok(actions<400,'camp Pier must be reachable via ordinary orders');
    };
    // Build the required Workshop from genuinely earned orders first.
    while(!(await read()).workshop.repaired){
@@ -94,6 +94,35 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
    const tile=await page.locator('#board .tile.item').first().boundingBox();assert.ok(tile.width>=44&&tile.height>=44);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
    await page.reload();assert.deepEqual(await read(),packed);assert.ok(await page.locator('#campPierWorld').isVisible());
+   const preLoftActions=actions;let low=36,high=0;
+   while((await read()).requests.supplies<20){await requestStep(deliveries%3);const n=(await read()).board.filter(Boolean).length;low=Math.min(low,n);high=Math.max(high,n);}
+   const ready=await read();await page.locator('#campPierWorld').tap();await shot('05-loft-upgrade-ready');
+   await page.locator('#selection [data-action="buildLoft"]').tap();
+   let upgraded=await read();assert.equal(upgraded.camp.loft,true);assert.equal(upgraded.requests.supplies,ready.requests.supplies-20);assert.deepEqual(upgraded.requests.orders,ready.requests.orders);
+   await shot('06-loft-built');
+   // Finish the existing Standard order: replacements, never pending orders, introduce treasure.
+   const oldId=upgraded.requests.orders[1].id;
+   while((await read()).requests.orders[1].id===oldId)await requestStep(1);
+   assert.equal((await read()).requests.orders[1].needs[0].line,'tide');
+   await page.locator(`#requests [data-request="${(await read()).requests.orders[1].id}"]`).tap();await shot('07-treasure-order');
+   const treasureId=(await read()).requests.orders[1].id;
+   while((await read()).requests.orders[1].id===treasureId)await requestStep(1);
+   assert.ok((await read()).camp.dives>=2);await shot('08-treasure-delivered');
+   // Discover the top collectible using real production and merges, including a pointer drag.
+   let dragged=false;
+   for(let guard=0;!(await read()).board.some(x=>x?.line==='tide'&&x.tier===2);guard++){
+    assert.ok(guard<25);const current=await read();let pair;
+    for(const tier of [1,0]){const ids=current.board.flatMap((x,i)=>x?.line==='tide'&&x.tier===tier?[i]:[]);if(ids.length>=2){pair=ids.slice(0,2);break;}}
+    if(pair){
+     const a=page.locator(`#board [data-index="${pair[0]}"]`),b=page.locator(`#board [data-index="${pair[1]}"]`);
+     if(!dragged){await a.scrollIntoViewIfNeeded();const x=await a.boundingBox(),y=await b.boundingBox();await page.mouse.move(x.x+x.width/2,x.y+x.height/2);await page.mouse.down();await page.mouse.move(y.x+y.width/2,y.y+y.height/2,{steps:10});await page.mouse.up();dragged=true;}
+     else{const prior=page.locator('#board .selected.item');if(await prior.count())await prior.tap();await a.tap();await b.tap();}
+    }else if(!current.charges.chart){const index=current.board.findIndex(x=>x?.type==='source'&&x.id==='chart');await page.locator(`#board [data-index="${index}"]`).tap();await page.locator('#selection [data-action="service"]').tap();}
+    else{await page.locator('#campPierWorld').tap();await page.locator('#selection [data-action="recoverTide"]').tap();}
+   }
+   await shot('09-pearl-astrolabe');const finished=await read();await page.reload();assert.deepEqual(await read(),finished);
+   for(const width of [360,430]){await page.setViewportSize({width,height:844});await page.locator('#campPierWorld').tap();assert.ok(await page.locator('#selection [data-action="recoverTide"]').isVisible());assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);const cell=await page.locator('#board .tile').first().boundingBox();assert.ok(cell.width>=44);await shot(`10-loft-${width}`);}
+   fs.writeFileSync(`${dir}/${engine}-loft-trace.json`,JSON.stringify({actionsToLoft:ready.moves,requestActions:actions,extraRequestActions:actions-preLoftActions,deliveries,merges:finished.merges,dives:finished.camp.dives,discovered:finished.discovered.filter(x=>x.includes('tide')),occupiedBefore:ready.board.filter(Boolean).length,occupiedAfter:finished.board.filter(Boolean).length,occupancyWhileEarning:[low,high],remainingEnergy:finished.energy,remainingSupplies:finished.requests.supplies},null,2));
    assert.deepEqual(errors,[]);fs.writeFileSync(`${dir}/${engine}-trace.json`,JSON.stringify({actions,deliveries,workshop:packed.workshop,camp:packed.camp,remainingSupplies:packed.requests.supplies,selectedFamily:family},null,2));
    await context.close();console.log(engine,'real orders → Workshop → Pier → targeted case → reload passed');
   }finally{await browser.close();}
