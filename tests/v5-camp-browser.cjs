@@ -11,7 +11,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
    const errors=[];page.on('pageerror',e=>errors.push(e.message));
    await page.goto('http://127.0.0.1:8080/v5/');await page.waitForSelector('#board .tile');
    const read=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('vaultwake-v5')));
-   const shot=async name=>{await page.evaluate(async()=>Promise.all([...document.images].map(x=>x.decode().catch(()=>{}))));await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:`${dir}/${engine}-${name}-390.png`,fullPage:true});};
+   const shot=async name=>{await page.evaluate(async()=>Promise.all([...document.images].map(x=>x.decode().catch(()=>{}))));await page.evaluate(()=>scrollTo(0,0));if(name==='06-loft-built'||name==='08-treasure-delivered')await page.screenshot({path:`${dir}/${engine}-${name}-moment-390.png`,fullPage:true});await page.waitForFunction(()=>!document.querySelector('.moment,.deliveryReceipt'));await page.screenshot({path:`${dir}/${engine}-${name}-390.png`,fullPage:true});};
    await page.locator('#board [data-index="7"]').tap();await page.locator('#board [data-index="8"]').tap();await page.locator('#goalButton').tap();
    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5')).landingStep===1);
    let actions=0,deliveries=0;
@@ -122,7 +122,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
    }
    await shot('09-pearl-astrolabe');const finished=await read();await page.reload();assert.deepEqual(await read(),finished);
    for(const width of [360,430]){await page.setViewportSize({width,height:844});await page.locator('#campPierWorld').tap();assert.ok(await page.locator('#selection [data-action="recoverTide"]').isVisible());assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);const cell=await page.locator('#board .tile').first().boundingBox();assert.ok(cell.width>=44);await shot(`10-loft-${width}`);}
-   fs.writeFileSync(`${dir}/${engine}-loft-trace.json`,JSON.stringify({actionsToLoft:ready.moves,requestActions:actions,extraRequestActions:actions-preLoftActions,deliveries,merges:finished.merges,dives:finished.camp.dives,discovered:finished.discovered.filter(x=>x.includes('tide')),occupiedBefore:ready.board.filter(Boolean).length,occupiedAfter:finished.board.filter(Boolean).length,occupancyWhileEarning:[low,high],remainingEnergy:finished.energy,remainingSupplies:finished.requests.supplies},null,2));
+   fs.writeFileSync(`${dir}/${engine}-loft-trace.json`,JSON.stringify({actionsToLoft:ready.moves+1,totalActions:finished.moves,requestActions:actions,extraRequestActions:actions-preLoftActions,deliveries,merges:finished.merges,dives:finished.camp.dives,discovered:finished.discovered.filter(x=>x.includes('tide')),occupiedBefore:ready.board.filter(Boolean).length,occupiedAfter:finished.board.filter(Boolean).length,occupancyWhileEarning:[low,high],remainingEnergy:finished.energy,remainingSupplies:finished.requests.supplies},null,2));
    // Resume actual legacy expedition fixtures with banked supplies; only the new purchase changes progress.
    for(const [phase,supplies] of [['primed',20],['completed',40]]){
     const legacy=JSON.parse(fs.readFileSync(`tests/fixtures/stage2/ridge-${phase}.json`));
@@ -135,7 +135,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
     assert.ok(await page.locator('#campPierWorld img').evaluate(img=>img.complete&&img.naturalWidth>0));
    }
    assert.deepEqual(errors,[]);fs.writeFileSync(`${dir}/${engine}-trace.json`,JSON.stringify({actions,deliveries,workshop:packed.workshop,camp:packed.camp,remainingSupplies:packed.requests.supplies,selectedFamily:family},null,2));
-   await context.close();console.log(engine,'real orders → Workshop → Pier → targeted case → reload passed');
+   await context.close();console.log(engine,'real orders → Workshop → Pier → Loft → recover → merge → treasure order → reload; legacy 20/40-supply saves passed');
   }finally{await browser.close();}
  }
 })().catch(e=>{console.error(e);process.exitCode=1;});
