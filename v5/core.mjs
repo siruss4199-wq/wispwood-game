@@ -1,4 +1,4 @@
-import {TIDE_NAMES,isTide,maxTier,sameKind,discoveryKey,tideItem,buildLoft,recoverTide} from './treasures.mjs';
+import {TIDE_NAMES,isTide,maxTier,sameKind,discoveryKey,tideItem,buildLoft,upgradeLoft,recoverTide} from './treasures.mjs';
 import {journeyState,KITS,ENGINE_NEEDS} from './journey.mjs';
 import {campState,buildPier,packPier} from './camp.mjs';
 import {syncRequests,deliverRequest} from './requests.mjs';
@@ -155,6 +155,7 @@ export function act(s,a,now=Date.now()){
   s.board[from]=null;s.journey.boost={family:a.id,left:3};s.journey.infusions++;trace(s,'infusion',{family:a.id});
   return done(SOURCES[a.id].name+' · three enriched pulls ready. Normal energy and charges apply.','discovery',s.board.findIndex(x=>x?.type==='source'&&x.id===a.id));
  }
+ if(a.type==='upgradeLoft'){const r=upgradeLoft(s);return r.ok?done(r.message,'loft'):r;}
  if(a.type==='buildLoft'){const r=buildLoft(s);return r.ok?done(r.message,'loft'):r;}
  if(a.type==='recoverTide'){const r=recoverTide(s);return r.ok?done(r.message,'tide',r.index):r;}
  if(a.type==='buildPier'){const result=buildPier(s,container);return result.ok?{...done(result.message,'campBuild',result.index),reveal:[result.index]}:result;}
@@ -182,7 +183,7 @@ export function act(s,a,now=Date.now()){
    s.board[a.to]=x;s.board[a.from]=y;trace(s,'reflector-move',{from:a.from,to:a.to,swapped:true});return done('Reflector repositioned.','move',a.to);
   }
   if(!y){s.board[a.to]=x;s.board[a.from]=null;return done('Moved.','move',a.to);}
-  if(!sameKind(x,y)||x.tier>=maxTier(x))return fail('Merge two identical objects.');
+  if(!sameKind(x,y)||x.tier>=maxTier(x,s))return fail('Merge two identical objects.');
   if(x.tier===3&&anchors(s).some(site=>site.phase==='idle'&&ANCHORS[site.kind].equipment===x.family))trace(s,'kept-for-merge',{family:x.family});
   s.board[a.to]=item(x.family,x.tier+1,x.line);s.board[a.from]=null;s.merges++;const bonus=s.merges%3===0?1:0;s.energy=Math.min(120,s.energy+bonus);
   const crafted=s.board[a.to];
@@ -376,7 +377,7 @@ export function load(raw,now=Date.now()){
   }
   for(const id of Object.keys(SOURCES))if(!integer(s.charges?.[id],0,7)||!integer(s.taps?.[id],0,1000000)||s.board.filter(x=>x?.type==='source'&&x.id===id).length!==1)return fresh(now);
   for(const k of ['normal','moves','merges','marks','contracts','rations'])if(!integer(s[k],0,1000000))return fresh(now);
-  if(!Array.isArray(s.discovered)||!s.discovered.every(x=>typeof x==='string'&&/^((rig|chart|flux):[0-7]|chart:tide:[0-2])$/.test(x)))return fresh(now);
+  if(!Array.isArray(s.discovered)||!s.discovered.every(x=>typeof x==='string'&&/^((rig|chart|flux):[0-7]|chart:tide:[0-4])$/.test(x)))return fresh(now);
   if(s.opportunity&&(!Number.isFinite(s.opportunity.ends)||!Array.isArray(s.opportunity.needs)||s.opportunity.needs.length!==1||!['chart','flux'].includes(s.opportunity.needs[0]?.family)||s.opportunity.needs[0].tier!==3||s.opportunity.needs[0].count!==1))s.opportunity=null;
   if(s.opportunity)s.opportunity.energy=s.opportunity.energy===28?28:12;
   s.history=Array.isArray(s.history)?s.history.filter(x=>x?.event==='milestone'&&Number.isFinite(x.at)).slice(-40):[];

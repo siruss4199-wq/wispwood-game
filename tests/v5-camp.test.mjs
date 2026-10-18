@@ -46,7 +46,7 @@ test('legacy and upgraded saves preserve original progress and have an idempoten
   const old=fresh(0);old.stage=stage;if(stage)old.landingStep=2;old.workshop={...old.workshop,repaired:true,precision:true,fittings:3};
   old.requests.supplies=37;delete old.camp;
   const s=load(JSON.stringify(old));
-  assert.deepEqual(s.camp,{version:1,pier:false,packs:0,loft:false,dives:0,tideOrders:0});
+  assert.deepEqual(s.camp,{version:1,pier:false,packs:0,loft:false,deepSurvey:false,deepDives:0,dives:0,tideOrders:0});
   assert.equal(s.requests.supplies,37);assert.deepEqual(s.board,old.board);
   assert.deepEqual(s.workshop,old.workshop);assert.deepEqual(load(JSON.stringify(s)),s);
   ok(s,{type:'buildPier'});assert.equal(s.requests.supplies,37-PIER_COST);

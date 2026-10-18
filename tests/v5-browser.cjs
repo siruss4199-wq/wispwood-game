@@ -136,7 +136,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
   assert.ok(Math.min(...timeline.map(x=>x.occupied))>=17);let run=0;for(const sample of timeline){run=sample.action==='produce'?run+1:0;assert.ok(run<=3);}
   fs.writeFileSync(`test-artifacts/v5/${style}-session-${width}.json`,JSON.stringify({style,timeline,decisions:saved.expedition.log,discovered:saved.discovered},null,2));
   await page.reload();assert.equal((await read()).stage,4);assert.deepEqual((await read()).expedition,saved.expedition);
-  await page.locator('#journalButton').tap();assert.equal(await page.locator('#journal .art').count(),27);assert.equal(await page.locator('#journal img[src*="tide-"]').count(),3);await shot('aspirational-journal');await page.locator('#journal .close').tap();
+  await page.locator('#journalButton').tap();assert.equal(await page.locator('#journal .art').count(),29);assert.equal(await page.locator('#journal img[src*="tide-"]').count(),5);await shot('aspirational-journal');await page.locator('#journal .close').tap();
   assert.equal(await page.evaluate(()=>localStorage.getItem('wispwood-v4')),null);assert.deepEqual(errors,[]);
   console.log(JSON.stringify({width,style,actions,merges:saved.merges,stage:saved.stage,discovered:saved.discovered.length}));await page.close();
  }

@@ -3,7 +3,7 @@ export const PIER_COST=12,PACK_COST=8;
 export const PACKS={rig:'salvage',chart:'survey',flux:'relic'};
 export function campState(s){
  const old=s.camp??{};
- s.camp={version:1,pier:old.pier===true,loft:old.pier===true&&old.loft===true,dives:Number.isSafeInteger(old.dives)&&old.dives>=0?old.dives:0,tideOrders:Number.isSafeInteger(old.tideOrders)&&old.tideOrders>=0?old.tideOrders:0,packs:Number.isSafeInteger(old.packs)&&old.packs>=0?old.packs:0};
+ s.camp={version:1,pier:old.pier===true,loft:old.pier===true&&old.loft===true,deepSurvey:old.pier===true&&old.loft===true&&old.deepSurvey===true,deepDives:Number.isSafeInteger(old.deepDives)&&old.deepDives>=0?old.deepDives:0,dives:Number.isSafeInteger(old.dives)&&old.dives>=0?old.dives:0,tideOrders:Number.isSafeInteger(old.tideOrders)&&old.tideOrders>=0?old.tideOrders:0,packs:Number.isSafeInteger(old.packs)&&old.packs>=0?old.packs:0};
  return s.camp;
 }
 export function buildPier(s,container){
