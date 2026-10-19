@@ -1,5 +1,11 @@
 /* Earned discovery, anchored beside the existing Loft; no board layout changes. */
-#fleetCrown{position:absolute;right:103px;bottom:5px;width:76px;height:76px;z-index:3;border:1px solid #f4ce74;border-radius:50% 50% 12px 12px;background:radial-gradient(ellipse,#fff4bd 0%,#53d9d599 48%,#167d8a77 72%);box-shadow:0 0 18px #5fe5d9;display:grid;place-items:center;padding:2px;touch-action:manipulation}
+/* Give the completed camp two scenic depths: signal above, workbenches below.
+   The header keeps its own clear strip, including the longer viewed-state label. */
+body[data-art] #scene.fleetAwake,body[data-art] #scene.fleetAwake>.premiumScene,#scene.fleetAwake,#scene.fleetAwake>svg{height:160px}
+#scene.fleetAwake #workshop{top:auto;bottom:0}
+#scene.fleetAwake #workshopBench{left:124px;right:114px;max-width:none;min-height:44px;justify-content:center;padding:4px}
+.world:has(.fleetAwake) .worldLabel{max-width:calc(100% - 20px);line-height:14px}
+#fleetCrown{position:absolute;left:calc(50% - 38px);top:36px;width:76px;height:76px;z-index:3;border:1px solid #f4ce74;border-radius:50% 50% 12px 12px;background:radial-gradient(ellipse,#fff4bd 0%,#53d9d599 48%,#167d8a77 72%);box-shadow:0 0 18px #5fe5d9;display:grid;place-items:center;padding:2px;touch-action:manipulation}
 #fleetCrown img{width:56px;height:56px;object-fit:contain;filter:drop-shadow(0 2px 3px #155666)}
 #fleetCrown span{font-size:8px;font-weight:900;color:#123f4d;background:#fff0c4;border-radius:4px;padding:3px;white-space:nowrap}
 #fleetCrown.pending{animation:fleetGlow 2s ease-in-out 3}

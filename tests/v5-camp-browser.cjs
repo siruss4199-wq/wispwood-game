@@ -152,13 +152,55 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
     if(!action)action=s.energy<3?{type:'ration'}:s.charges.chart?{type:'recoverTide'}:{type:'service',id:'chart'};
     await requestStep(0,action);
    }
-   const crownSave=await read();assert.ok(!crownSave.camp.fleetViewed);
+   let crownSave=await read();assert.ok(!crownSave.camp.fleetViewed);
+   const sceneGeometry=async label=>{
+    await page.evaluate(()=>scrollTo(0,0));
+    const selectors=['#fleetCrown','#workshop','#workshopBench','#campPierWorld'];
+    const rects=await page.evaluate(selectors=>selectors.map(selector=>{
+     const el=document.querySelector(selector),r=el.getBoundingClientRect();
+     const points=[[.5,.5],[.15,.15],[.85,.15],[.15,.85],[.85,.85]];
+     return {selector,x:r.x,y:r.y,width:r.width,height:r.height,uncovered:points.every(([x,y])=>el.contains(document.elementFromPoint(r.x+r.width*x,r.y+r.height*y)))};
+    }),selectors);
+    const overlap=(a,b)=>Math.min(a.x+a.width,b.x+b.width)-Math.max(a.x,b.x)>.5&&Math.min(a.y+a.height,b.y+b.height)-Math.max(a.y,b.y)>.5;
+    const scene=await page.locator('#scene').boundingBox(),title=await page.locator('.worldLabel').boundingBox();
+    for(const [i,a] of rects.entries()){
+     assert.ok(a.width>=44&&a.height>=44,`${label}: ${a.selector} touch size`);
+     assert.ok(a.uncovered,`${label}: ${a.selector} receives pointer hits`);
+     assert.ok(a.x>=scene.x&&a.x+a.width<=scene.x+scene.width+.5&&a.y>=scene.y&&a.y+a.height<=scene.y+scene.height+.5,`${label}: ${a.selector} stays inside scene`);
+     assert.ok(!overlap(a,title),`${label}: ${a.selector} covers scene label`);
+     for(const b of rects.slice(i+1))assert.ok(!overlap(a,b),`${label}: ${a.selector} overlaps ${b.selector}: ${JSON.stringify(rects)}`);
+    }
+    console.log('TT1H1_GEOMETRY',engine,label,JSON.stringify(rects));
+   };
+   const evidence=async name=>{
+    await page.evaluate(()=>scrollTo(0,0));
+    const bytes=await page.screenshot({path:`${dir}/${engine}-${name}.jpg`,type:'jpeg',quality:72,fullPage:false});
+    // Bounded visual diagnostics remain retrievable while optional artifact upload is disabled.
+    if(process.env.TT1H1_VISUAL_EVIDENCE==='1')console.log('TT1H1_SCREENSHOT',`${engine}-${name}`,bytes.toString('base64'));
+   };
    assert.equal(await page.locator('#fleetReveal').evaluate(x=>x.open),false,'never force a modal on discovery');
    await shot('17-earned-crown');await page.reload();assert.deepEqual(await read(),crownSave);
+   for(const width of [360,390,430]){await page.setViewportSize({width,height:844});await sceneGeometry(`upgrade-${width}`);}
+   // Earn the Precision Bench as well: its installed icon must coexist with the Crown.
+   while((await read()).requests.supplies<12)await requestStep(0);
+   await page.locator('#workshopBench').tap();await page.locator('[data-action="upgradeWorkshop"]').tap();
+   assert.equal((await read()).workshop.precision,true);crownSave=await read();
+   // Reproduce the reported original geometry on the earned save for visual comparison.
+   await page.setViewportSize({width:390,height:844});
+   const originalLayout=await page.addStyleTag({content:'#scene.fleetAwake,#scene.fleetAwake>.premiumScene,#scene.fleetAwake>svg{height:104px!important}#scene.fleetAwake #workshop{top:14px;bottom:auto}#scene.fleetAwake #workshopBench{left:124px;right:auto;max-width:128px;padding:4px 7px;justify-content:normal}#fleetCrown{left:auto;top:auto;right:103px;bottom:5px}.world:has(.fleetAwake) .worldLabel{max-width:none;line-height:normal}'});
+   await page.waitForFunction(()=>!document.querySelector('.moment,.deliveryReceipt'));
+   await evidence('fleet-collision-before-390');
+   const oldCrown=await page.locator('#fleetCrown').boundingBox(),oldBench=await page.locator('#workshopBench').boundingBox();
+   assert.ok(Math.min(oldCrown.x+oldCrown.width,oldBench.x+oldBench.width)>Math.max(oldCrown.x,oldBench.x)&&Math.min(oldCrown.y+oldCrown.height,oldBench.y+oldBench.height)>Math.max(oldCrown.y,oldBench.y),'original scene reproduces reported collision');
+   console.log('TT1H1_BEFORE',engine,JSON.stringify({crown:oldCrown,bench:oldBench}));
+   await originalLayout.evaluate(el=>el.remove());
    for(const width of [360,390,430]){
     await page.setViewportSize({width,height:844});
     // This is the same earned save, also the legacy shape (no receipt flag).
     await page.evaluate(s=>localStorage.setItem('vaultwake-v5',JSON.stringify(s)),crownSave);await page.reload();
+    await sceneGeometry(`pending-${width}`);
+    await page.locator('#workshopBench').tap();assert.ok(await page.locator('#selection [data-action="fitSpanner"]').count(),'Bench opens its own fitting control');
+    await page.locator('#campPierWorld').tap();assert.ok(await page.locator('#selection [data-action="recoverTide"]').isVisible(),'Loft opens recovery');
     await page.locator('#fleetCrown').tap();await page.locator('#fleetNext').tap();
     await page.locator('#fleetReveal .close').tap();await page.reload();
     assert.ok(!(await read()).camp.fleetViewed,'closing midway leaves the scene pending');
@@ -167,11 +209,13 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
     for(const selector of ['#fleetNext','#fleetReveal .close','#fleetCrown']){const box=await page.locator(selector).boundingBox();assert.ok(box.width>=44&&box.height>=44);}
     await page.screenshot({path:`${dir}/${engine}-fleet-reveal-${width}.png`,fullPage:true});
+    if(width===390)await evidence('fleet-dialog-390');
     await page.locator('#fleetNext').tap();const viewed=await read();
     assert.deepEqual(viewed,{...crownSave,camp:{...crownSave.camp,fleetViewed:true}},'story acknowledgement changes no gameplay resources');
     await page.reload();assert.deepEqual(await read(),viewed);
     assert.equal(await page.locator('#fleetReveal').evaluate(x=>x.open),false);
     assert.ok(await page.locator('#fleetCrown').isVisible());
+    await sceneGeometry(`viewed-${width}`);await evidence(`fleet-scene-${width}`);
     await page.screenshot({path:`${dir}/${engine}-fleet-world-${width}.png`,fullPage:true});
    }
    console.log(engine,'TT-1H earned Crown, pending/closed/viewed reloads, legacy discovery, 360/390/430 reveal and world passed');

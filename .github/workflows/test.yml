@@ -57,7 +57,7 @@ jobs:
         run: |
           python3 -m http.server 8080 > /tmp/wispwood-http.log 2>&1 &
           # TT-1H earned Crown and reveal matrix first, then the full regression.
-          node tests/v5-camp-browser.cjs
+          TT1H1_VISUAL_EVIDENCE=1 node tests/v5-camp-browser.cjs
           git fetch --depth=1 origin 847bb89263f27d8763d233ce8ea9f838bdb3a8a7
           mkdir -p /tmp/vaultwake-before
           git archive FETCH_HEAD | tar -x -C /tmp/vaultwake-before
