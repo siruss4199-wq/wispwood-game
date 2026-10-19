@@ -15,7 +15,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs');const {chromium
     const s=JSON.parse(localStorage.getItem('vaultwake-v5'));const {requestProgress,reservedItems}=await import('/v5/requests.mjs');const o=s.requests.orders[lane],p=requestProgress(s,o);
     if(p.ready)return {type:'deliver',id:o.id,supplies:o.supplies,energy:Math.min(o.energy,120-s.energy)};
     const need=p.progress.find(r=>r.current<r.count),kept=reservedItems(s);
-    for(let t=need.tier-1;t>=0;t--){const pair=s.board.flatMap((x,i)=>x?.type==='item'&&x.family===need.family&&x.tier===t&&!kept.has(i)?[i]:[]);if(pair.length>=2)return {type:'merge',from:pair[0],to:pair[1]};}
+    for(let t=need.tier-1;t>=0;t--){const pair=s.board.flatMap((x,i)=>x?.type==='item'&&(x.line??'')===(need.line??'')&&x.family===need.family&&x.tier===t&&!kept.has(i)?[i]:[]);if(pair.length>=2)return {type:'merge',from:pair[0],to:pair[1]};}
     const index=s.board.findIndex(x=>x?.type==='source'&&x.id===need.family);return {type:s.charges[need.family]?'produce':'service',index};
    },lane);
    timeline.push(decision);

@@ -20,14 +20,16 @@ const assert=require('node:assert/strict'),fs=require('node:fs');const {chromium
      const s=JSON.parse(localStorage.getItem('vaultwake-v5')),{requestProgress,reservedItems}=await import('/v5/requests.mjs');const o=s.requests.orders[lane],p=requestProgress(s,o);
      if(p.ready)return {type:'request',id:o.id};
      const r=p.progress.find(r=>r.current<r.count),kept=reservedItems(s);
-     for(let tier=r.tier-1;tier>=0;tier--){const pair=s.board.flatMap((x,i)=>x?.type==='item'&&x.family===r.family&&x.tier===tier&&!kept.has(i)?[i]:[]);if(pair.length>=2)return {type:'merge',from:pair[0],to:pair[1]};}
+     // Tide fragments share the chart family, but are not ordinary map scraps.
+     for(let tier=r.tier-1;tier>=0;tier--){const pair=s.board.flatMap((x,i)=>x?.type==='item'&&(x.line??'')===(r.line??'')&&x.family===r.family&&x.tier===tier&&!kept.has(i)?[i]:[]);if(pair.length>=2)return {type:'merge',from:pair[0],to:pair[1]};}
      return {type:s.charges[r.family]?'produce':'service',index:s.board.findIndex(x=>x?.type==='source'&&x.id===r.family)};
     },lane);trace.push(a);
     const card=page.locator('#requests [data-request]').nth(lane);
     if(a.type==='request'){await card.tap();await page.waitForTimeout(1900);return;}
-    await card.tap();
+    const before=await read();await card.tap();
     if(a.type==='merge'){await page.locator(`#board [data-index="${a.from}"]`).tap();await page.locator(`#board [data-index="${a.to}"]`).tap();}
     else{await page.locator(`#board [data-index="${a.index}"]`).tap();if(a.type==='service')await page.locator('[data-action="service"]').tap();}
+    assert.ok((await read()).moves>before.moves,`Workshop strategy stalled: ${JSON.stringify(a)}; ${await page.locator('#message').textContent()}`);
    }
    throw Error('Request failed to finish');
   }
