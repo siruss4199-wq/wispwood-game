@@ -397,3 +397,6 @@ body[data-art="premium"] .world.compassFound #scene>.premiumScene{filter:saturat
 .world.signalPending .chapterEndObjective .primary{background:#087f76;color:#fff;min-height:44px}
 .world.signalPending #workshop,.world.signalPending #workshopBench,.world.signalPending #campPierWorld{opacity:.55}
 .world.chapterEnded.campExpanded #workshop,.world.chapterEnded.campExpanded #workshopBench,.world.chapterEnded.campExpanded #campPierWorld{opacity:1}
+
+/* Opening optional camp activities restores the action labels as well as the hit targets. */
+.world.chapterEnded.campExpanded #workshop>span,.world.chapterEnded.campExpanded #workshopBench>span,.world.chapterEnded.campExpanded #campPierWorld>span{display:initial}
