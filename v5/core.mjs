@@ -1,3 +1,4 @@
+import {campGoal} from './camp-goals.mjs';
 import {TIDE_NAMES,isTide,maxTier,sameKind,discoveryKey,tideItem,buildLoft,upgradeLoft,recoverTide} from './treasures.mjs';
 import {journeyState,KITS,ENGINE_NEEDS} from './journey.mjs';
 import {campState,buildPier,packPier} from './camp.mjs';
@@ -42,7 +43,8 @@ export function fresh(now=Date.now()){
  board[24]={type:'route',id:'ridge'};board[27]={type:'route',id:'conduit'};board[34]=container('salvage');
  const state={version:5,board,stage:0,landingStep:0,routePrepared:false,seals:freshSeals(),producerStreak:0,energy:32,marks:0,moves:0,merges:0,contracts:0,serial:0,charges:{rig:7,chart:7,flux:7},taps:{rig:0,chart:0,flux:0},normal:0,opportunity:null,discovery:false,discoveryDone:false,boost:false,post:0,discovered:[],expedition:expeditionState(),startedAt:now,lastAt:now,rations:0,history:[]};syncRequests(state);workshopState(state);journeyState(state);campState(state);return state;
 }
-export function goal(s){
+export function goal(s){return s.stage===4?(campGoal(s)??expeditionGoal(s)):expeditionGoal(s);}
+export function expeditionGoal(s){
  if(s.stage===0&&s.landingStep===1)return {name:'Chart the safe crossing',verb:'View routes',scene:'Survey camp established',needs:[req('chart',2),req('rig',2)],energy:8,next:'Choose a route with prepared equipment',text:'Make a Sight Lens and Split Spanner. Choose which one to use on the crossing.',phase:'LANDING 2 / 2'};
  if(s.stage===1)return {name:'Choose your crossing',verb:'Clear',scene:'Survey worksite',needs:[req('rig',2),req('chart',2)],action:'inspect',next:'Either route unlocks Echo Crucible',text:'Use the spanner for working space, or the lens for relic supplies. Keep the other tool.',phase:'CHOOSE ONE'};
  if(s.stage===2){
@@ -272,7 +274,7 @@ export function act(s,a,now=Date.now()){
   if(s.stage===3&&!allSeals(s))return fail('Resolve all three vault seals first.');
   if(s.stage===3&&a.kit&&!KITS[a.kit])return fail('Choose a salvage or survey kit.');
   const kit=s.stage===3&&!s.journey?.kit?(KITS[a.kit]?a.kit:Object.keys(KITS).find(k=>ready(s,KITS[k].needs))):null;
-  const g=kit?{...goal(s),needs:KITS[kit].needs}:goal(s);if(s.stage===3&&!s.journey?.kit&&!kit)return fail('Prepare a salvage or survey kit.');if(!g||g.action&&g.action!=='goal'||!ready(s,g.needs))return fail('Make the highlighted expedition items.');
+  const g=kit?{...expeditionGoal(s),needs:KITS[kit].needs}:expeditionGoal(s);if(s.stage===3&&!s.journey?.kit&&!kit)return fail('Prepare a salvage or survey kit.');if(!g||g.action&&g.action!=='goal'||!ready(s,g.needs))return fail('Make the highlighted expedition items.');
   if(kit&&s.board.filter(x=>!x||['sealed','route'].includes(x.type)).length+2<3)return fail('Make one free space for your vault finds.');
   // Crossing survey is a preparation milestone, not a delivery.
   // Consuming both route tools here made the player craft them twice.
