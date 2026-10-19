@@ -69,25 +69,27 @@ export function storySnapshot(s){
 }
 
  
+import {campGoal} from './camp-goals.mjs';
 // Existing requests gain character motivation without changing rewards,
 // generation, pending orders or save data. Display only on selection.
-export function requestBrief(order){
+export function requestBrief(order,s){
  const needs=order?.needs??[];
- if(needs.some(x=>x.line==='tide'))return {
-  title:'Neri · missing-coast survey',
-  reason:'Neri needs these Tide Treasures to trace the erased shoreline.'
- };
  const first=needs[0]?.family;
- if(first==='rig')return {
-  title:'Ivo · camp repairs',
-  reason:'Ivo needs working tools to keep the coastal expedition running.'
- };
- if(first==='chart')return {
-  title:'Neri · navigation charts',
-  reason:'Neri needs survey instruments to follow the shifting tide.'
- };
- return {
-  title:'Ivo · relic power',
-  reason:'Ivo needs charged parts to keep the ancient machinery awake.'
- };
+ const brief=needs.some(x=>x.line==='tide')
+  ?{title:'Neri · missing-coast survey',reason:'Neri needs these Tide Treasures to trace the erased shoreline.'}
+  :first==='rig'
+  ?{title:'Ivo · camp repairs',reason:'Ivo needs working tools to keep the coastal expedition running.'}
+  :first==='chart'
+  ?{title:'Neri · navigation charts',reason:'Neri needs survey instruments to follow the shifting tide.'}
+  :{title:'Ivo · relic power',reason:'Ivo needs charged parts to keep the ancient machinery awake.'};
+ if(!s)return brief;
+ const project=campGoal(s);
+ if(project?.cost&&project.kind==='camp'){
+  const have=s.requests?.supplies??0;
+  const next=Math.min(project.cost,have+(order?.supplies??0));
+  return {...brief,reason:(have>=project.cost
+   ?project.name+' is ready to build. '
+   :'This order funds '+project.name+': '+have+' → '+next+'/'+project.cost+' supplies. ')+brief.reason};
+ }
+ return {...brief,reason:brief.reason+' Supplies can be spent on useful Supply Pier cases.'};
 }

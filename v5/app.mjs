@@ -127,8 +127,8 @@ function renderRequests(){
  const action=state.workshop.repaired?(state.camp.pier
   ?state.camp.loft&&missing?.line==='tide'?`<button class="campAction" data-camp-action="recoverTide">${state.camp.deepSurvey?'Deep Survey':'Recover treasure'} · ${recoveryCost(state)}ϟ</button>`:`<button class="campAction ${q.supplies>=PACK_COST?'affordable':''}" data-camp-action="packPier" data-family="${family}" aria-label="Order a ${FAMILIES[family].name} supply case for ${PACK_COST} camp supplies">+${FAMILIES[family].name} case · ${PACK_COST}◆</button>`
   :`<button class="campAction ${q.supplies>=PIER_COST?'affordable':''}" data-camp-action="buildPier" aria-label="Build Supply Pier for ${PIER_COST} camp supplies">Build Pier · ${PIER_COST}◆</button>`):'';
- const primary=state.stage===4?campGoal(state):null;
- const purpose=primary?.cost?'Next upgrade · '+Math.min(primary.supplies,primary.cost)+'/'+primary.cost+' ◆':primary?.action==='treasure'?'Recover & merge the next treasure':primary?.action==='orders'?'Orders fund Supply Pier cases':(state.camp.earlyFragments??0)<2?'Next order: Tide Dial Fragment':!state.workshop.repaired?'Workshop 8◆':!state.camp.pier?'Unlock useful supply cases':!state.camp.loft?'Charting Loft 20◆':state.camp.deepSurvey?(state.discovered.includes('chart:tide:4')?'Fulfill treasure orders':'Discover the Ocean Crown'):pearlDiscovered(state)?'Deep Survey 18◆':'Discover a Pearl Astrolabe';
+ const primary=campGoal(state);
+ const purpose=primary?.cost?primary.name+' · '+Math.min(primary.supplies,primary.cost)+'/'+primary.cost+' ◆'+(primary.supplies>=primary.cost?' · READY':''):primary?.action==='treasure'?'Recover & merge the next treasure':primary?.action==='orders'?'Orders fund Supply Pier cases':(state.camp.earlyFragments??0)<2?'Next order: Tide Dial Fragment':!state.workshop.repaired?'Workshop 8◆':!state.camp.pier?'Unlock useful supply cases':!state.camp.loft?'Charting Loft 20◆':state.camp.deepSurvey?(state.discovered.includes('chart:tide:4')?'Fulfill treasure orders':'Discover the Ocean Crown'):pearlDiscovered(state)?'Deep Survey 18◆':'Discover a Pearl Astrolabe';
  $('#requests').innerHTML=`<div class="requestHeading"><span>ORDERS <small>${purpose}</small></span><b title="Earn camp supplies by delivering orders">◆ <span id="supplies">${q.supplies}</span></b>${action}</div><div class="requestShelf">${q.orders.filter(Boolean).map(o=>{
  const p=requestProgress(state,o),active=requestId===o.id&&focus==='request',energy=Math.min(o.energy,120-state.energy);
  return `<button class="requestCard ${p.ready?'ready':''} ${active?'active':''}" data-request="${o.id}" aria-pressed="${active}" aria-label="${o.lane} request: ${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier,r.line))).join(', ')}. ${p.ready?active?'Deliver':'Ready. Tap once to collect':'In progress'}. Reward ${o.supplies} camp supplies${energy?` and ${energy} energy`:`, energy full`}"><b class="requestLane">${o.lane==='long'?'Expedition kit':o.lane==='quick'?'Quick':'Standard'}</b><span class="requestItems">${p.progress.map(r=>`<span>${art(item(r.family,r.tier,r.line))}<b>${r.current}/${r.count}</b>${r.protected?'<i title="One copy kept for expedition">◆</i>':''}</span>`).join('')}</span><span class="requestReward">+${o.supplies} ◆${energy?` · +${energy} ϟ`:``}</span><strong>${p.ready?'✓ COLLECT':active&&p.progress.some(r=>r.protected)?'MAKE SPARE':'MAKE'}</strong></button>`;
@@ -202,7 +202,7 @@ function renderSelection(){
  if(!x&&focus==='request'){
   const order=state.requests.orders.find(o=>o?.id===requestId);
   if(order){const p=requestProgress(state,order),missing=p.progress.find(r=>r.current<r.count);
-   const brief=requestBrief(order);
+   const brief=requestBrief(order,state);
    title=p.ready?brief.title+' · ready':brief.title;
    desc=brief.reason+' '+(p.ready?'Tap the ready order to collect its reward.':missing?.line==='tide'?'Recover and merge Tide Treasures with Survey Kite.':'Make '+nameOf(item(missing.family,missing.tier,missing.line))+' using its producer.');
   }
@@ -271,6 +271,7 @@ function run(a){
  const objectiveAction=['goal','breach','power','restoreEngine'].includes(a.type);const taskSelector=a.type==='infuse'?`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===a.id)}"]`:a.type==='fitSpanner'?'#workshopBench':['deploy','clear','restore','prime'].includes(a.type)?`[data-index="${a.index??state.board.findIndex(x=>x?.type==='site'&&x.kind==='winch')}"]`:objectiveAction?'.objective':a.type==='request'?`[data-request="${a.id}"]`:`[data-contract="${a.type}"]`;
  const taskRect=$(taskSelector)?.getBoundingClientRect();
  const taskSnapshot=delivery.length?snapshotTask($(taskSelector)):null;
+ const projectBefore=a.type==='request'?campGoal(state):null;
  const energyBefore=state.energy,firstContract=state.contracts===0,surgeBefore=state.surge??0;
  const rewardOrigin=document.querySelector(a.type==='contract'||a.type==='opportunity'?'#contracts':'.objective')?.getBoundingClientRect();
  const before=state.stage,landingBefore=state.landingStep,from=['produce','press'].includes(a.type)?board.querySelector(`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===a.id)}"]`)?.getBoundingClientRect():null;
@@ -299,6 +300,13 @@ function run(a){
  if(a.type==='recoverTide'){if(!knownBefore.has(discoveryKey(state.board[result.index]))){moment(nameOf(state.board[result.index]),'Wayfinding treasure · merge twins or deliver an order',state.board[result.index]);sound.play('rare');}board.querySelector(`[data-index="${result.index}"]`)?.classList.add('merge-pop');}
  if(result.tideFragment&&state.camp.earlyFragments===1){moment('First Tide Dial fragment','Neri: This fragment points toward a coast erased from the charts.',tideItem(0));}
  if(result.tideDiscovery){moment(nameOf(state.board[result.index]),state.board[result.index].tier===4?'Ocean Crown installed at the Loft · tap REVEAL SIGNAL to uncover the fleet’s message':state.board[result.index].tier===2&&!state.camp.deepSurvey?'Pearl discovered · Deep Survey is now available at the Loft':'New treasure · deliver it or merge toward '+TIDE_NAMES[Math.min(4,state.board[result.index].tier+1)],state.board[result.index]);}
+ if(a.type==='request'&&projectBefore?.cost&&projectBefore.supplies<projectBefore.cost){
+  const nowReady=campGoal(state);
+  if(nowReady.name===projectBefore.name&&nowReady.supplies>=nowReady.cost){
+   moment(projectBefore.name+' ready','You earned enough supplies · tap the camp improvement to build it');
+   sound.play('milestone');$('.world').classList.add('changed');
+  }
+ }
  if(a.type==='buildPier'){moment('Supply Pier built','Camp orders now fund useful material cases', {type:'crate',kind:'salvage'});sound.play('milestone');$('.world').classList.add('changed');}
  if(a.type==='packPier'){moment('Supply case delivered','Tap the new case on the board to unpack useful parts', {type:'crate',kind:{rig:'salvage',chart:'survey',flux:'relic'}[a.family]});sound.play('rare');}
  if(a.type==='press'){sound.play('merge',1);board.querySelector(`[data-index="${result.index}"]`)?.classList.add('merge-pop');}

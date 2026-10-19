@@ -21,10 +21,12 @@ export function syncRequests(s){
  const q=requestState(s),fs=requestFamilies(s);
  const unlocked=s.stage>0||s.landingStep>=1||q.completed>=2?3:s.merges>0?2:1;
  for(let lane=0;lane<unlocked;lane++)if(!q.orders[lane]){
-  const n=q.sequences[lane],preferred=fs[(Math.floor(n/2)+lane)%fs.length];
+  const n=q.sequences[lane],preferred=fs[(n+lane)%fs.length];
   // Select a different achievable *item*, not the same tool in another quantity.
   // Keep existing orders untouched: a player's partially prepared request never changes.
-  const occupied=new Set(q.orders.filter(Boolean).flatMap(o=>o.needs.map(r=>r.family+':'+r.tier)));
+  const live=q.orders.filter(Boolean);
+  const occupied=new Set(live.flatMap(o=>o.needs.map(r=>r.family+':'+(r.line??'ordinary')+':'+r.tier)));
+  const usedFamilies=new Set(live.flatMap(o=>o.needs.filter(r=>!r.line).map(r=>r.family)));
   const protectedIndices=reservedItems(s);
   const tierBase=lane===0?n%2:lane===1?1+n%2:2+(s.stage>=2?n%2:0);
   const maxTier=s.stage===0&&!s.landingStep?1:s.stage===0?2:3;
@@ -32,13 +34,16 @@ export function syncRequests(s){
    .filter((t,i,a)=>t<=maxTier&&a.indexOf(t)===i);
   const familyOrder=[preferred,...fs.filter(f=>f!==preferred)];
   const choices=familyOrder.flatMap((family,fi)=>tiers.map((tier,ti)=>{
-   const key=family+':'+tier;
-   const protectedOnly=s.board.some((x,i)=>matches(x,req(family,tier))&&protectedIndices.has(i))&&
-    !s.board.some((x,i)=>matches(x,req(family,tier))&&!protectedIndices.has(i));
-   // New Standard orders favour bench output when it adds variety. Existing
-   // orders never change; competing lanes keep distinct goals where possible.
+   const key=family+':ordinary:'+tier;
+   const matchingSpare=s.board.filter((x,i)=>!protectedIndices.has(i)&&matches(x,req(family,tier))).length;
+   const pairBelow=tier>0?s.board.filter((x,i)=>!protectedIndices.has(i)&&matches(x,req(family,tier-1))).length:0;
+   const protectedOnly=!matchingSpare&&s.board.some((x,i)=>matches(x,req(family,tier))&&protectedIndices.has(i));
+   // Fast orders favour a real spare or nearly finished pair; longer orders
+   // distribute demand across producers. Never consume protected equipment.
+   // This affects only newly generated orders, never an existing pending order.
    const bench=s.workshop?.precision&&lane===1&&family==='rig'&&tier===2;
-   return {family,tier,score:(occupied.has(key)?100:0)+(protectedOnly?15:0)+fi*6+ti*9-(bench?40:0)};
+   const effortCredit=(matchingSpare?(lane===0?18:lane===1?10:6):0)+(pairBelow>=2?4:0);
+   return {family,tier,score:(occupied.has(key)?100:0)+(protectedOnly?30:0)+(usedFamilies.has(family)?20:0)+fi*7+ti*9-(bench?40:0)-effortCredit};
   }));
   // Before Survey Kite unlocks, early Quick orders can ask for more raw copper
   // instead of consuming the two Grip tools reserved for the landing.
@@ -52,12 +57,23 @@ export function syncRequests(s){
    // from the main goal and all other current requests.
    const secondary=[fs[(n+lane+1)%fs.length],...fs].filter((f,i,a)=>a.indexOf(f)===i);
    const options=secondary.flatMap((f,fi)=>[0,1].map((t,ti)=>({
-    family:f,tier:t,score:(f===family&&t===tier?1000:0)+(occupied.has(f+':'+t)?100:0)+fi*6+ti*8
+    family:f,tier:t,score:(f===family&&t===tier?1000:0)+(occupied.has(f+':ordinary:'+t)?100:0)+(f===family?20:0)+fi*6+ti*8
    })));
    options.sort((a,b)=>a.score-b.score);
    needs.push(req(options[0].family,options[0].tier));
   }
-  if(s.camp?.loft&&fs.includes('chart')&&lane>0&&(s.camp.tideOrders===0||n%2===0)){const tier=lane===1?(s.camp.deepSurvey&&n%4===0?2:1):!s.camp.deepSurvey?2:s.discovered.includes('chart:tide:3')&&n%4===0?4:3;needs.splice(0,needs.length,{family:'chart',line:'tide',tier,count:1});if(lane===2&&tier===2)needs.push(req('rig',1));s.camp.tideOrders++;}
+  if(s.camp?.loft&&fs.includes('chart')&&lane>0&&(s.camp.tideOrders===0||n%2===0)){
+   // Never demand a Sextant or Crown before its first actual discovery:
+   // the player should enjoy the milestone before a repeat order asks for it.
+   // High-tier repeat orders remain occasional after discovery.
+   const seen=s.discovered??[];
+   const tier=lane===1?(s.camp.deepSurvey&&n%4===0?2:1):
+    !s.camp.deepSurvey||!seen.includes('chart:tide:3')?2:
+    seen.includes('chart:tide:4')&&n%8===0?4:n%2===0?3:2;
+   needs.splice(0,needs.length,{family:'chart',line:'tide',tier,count:1});
+   if(lane===2&&tier===2)needs.push(req('rig',1));
+   s.camp.tideOrders++;
+  }
   q.orders[lane]={id:`${lane}:${n}`,lane:LANES[lane],needs,energy:needs[0].line==='tide'&&needs[0].tier===4?24:[5,10,18][lane],supplies:needs[0].line==='tide'&&needs[0].tier===4?8:[1,3,6][lane]};
  }
  return q.orders.filter(Boolean);
