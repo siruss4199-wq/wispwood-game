@@ -134,9 +134,24 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
    if(!deepInstalled.charges.chart){await page.locator('#selection [data-action="service"]').tap();}
    const preRecovery=await read();await page.locator('#selection [data-action="recoverTide"]').tap();const postRecovery=await read();
    assert.equal(postRecovery.energy,preRecovery.energy-3);assert.equal(postRecovery.charges.chart,preRecovery.charges.chart-1);assert.deepEqual(postRecovery.taps,preRecovery.taps);assert.ok(postRecovery.board.some((x,i)=>x?.line==='tide'&&x.tier===1&&!preRecovery.board[i]));await shot('13-guaranteed-compass');
+   // TT-1I: earn the first Sextant via actual recovery + merging.
+   // Only after discovering it may a replacement order request that tier.
+   for(let guard=0;!(await read()).discovered.includes('chart:tide:3');guard++){
+    assert.ok(guard<48,'first Sextant must be discoverable before its request');
+    const saved=await read();let action;
+    for(const tier of [2,1,0]){
+     const ids=saved.board.flatMap((x,i)=>x?.line==='tide'&&x.tier===tier?[i]:[]);
+     if(ids.length>=2){action={type:'merge',from:ids[0],to:ids[1]};break;}
+    }
+    if(!action)action=saved.energy<3?{type:'ration'}:saved.charges.chart?{type:'recoverTide'}:{type:'service',id:'chart'};
+    await requestStep(2,action);
+   }
+   assert.ok((await read()).discovered.includes('chart:tide:3'));
    let replacements=0;
-   while(!(await read()).requests.orders[2].needs.some(r=>r.line==='tide'&&r.tier>=3)){
-    assert.ok(replacements++<4);const id=(await read()).requests.orders[2].id;while((await read()).requests.orders[2].id===id)await requestStep(2);
+   while(!(await read()).requests.orders[2].needs.some(r=>r.line==='tide'&&r.tier===3)){
+    assert.ok(replacements++<5,'new Long orders should eventually ask for a discovered Sextant');
+    const id=(await read()).requests.orders[2].id;
+    while((await read()).requests.orders[2].id===id)await requestStep(2);
    }
    const newGoal=(await read()).requests.orders[2];assert.equal(newGoal.needs[0].tier,3,'Crown is not demanded before Sextant discovery');
    while(true){const action=await page.evaluate(async()=>{const {requestAction}=await import('/tests/v5-workshop-policy.mjs');return requestAction(JSON.parse(localStorage.getItem('vaultwake-v5')),2);});if(action.type==='request')break;await requestStep(2);}
