@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {fresh,act,goal,expeditionGoal,load} from '../v5/core.mjs';
 import {choose} from './v5-policy.mjs';
 import {requestAction} from './v5-workshop-policy.mjs';
-import {requestProgress} from '../v5/requests.mjs';
+import {requestProgress,syncRequests} from '../v5/requests.mjs';
 import {storySnapshot} from '../v5/story.mjs';
 
 const checked=(s,a)=>{const r=act(s,a);assert.ok(r.ok,JSON.stringify({action:a,message:r.message}));return r;};
@@ -50,6 +50,7 @@ test('studio simulation: the returning Vault player has a real goal, relevant or
  s.workshop.repaired=true;s.camp.pier=true;s.camp.loft=true;s.camp.deepSurvey=true;
  for(let i=0;i<=4;i++)s.discovered.push('chart:tide:'+i);
  s.requests.supplies=5;
+ syncRequests(s); // Simulate a complete, already-migrated returning save.
  const old=JSON.stringify(s),g=goal(s);
  assert.equal(g.name,'Install Precision Bench');
  assert.equal(g.action,'orders');
