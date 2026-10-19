@@ -14,7 +14,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs');const {chromium
   const shelf=await page.locator('#requests').boundingBox();assert.ok(shelf.height<=135,'request shelf stays compact at 390px');
   for(const c of await page.locator('.requestCard').all())assert.ok((await c.boundingBox()).height>=44,'request is a large tap target');
   await shot('01b-compact-variety');
-  async function fulfill(lane){
+  async function fulfill(lane,deliver=true){
    for(let step=0;step<100;step++){
     const a=await page.evaluate(async lane=>{
      const s=JSON.parse(localStorage.getItem('vaultwake-v5')),{requestProgress,reservedItems}=await import('/v5/requests.mjs');const o=s.requests.orders[lane],p=requestProgress(s,o);
@@ -25,7 +25,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs');const {chromium
      return {type:s.charges[r.family]?'produce':'service',index:s.board.findIndex(x=>x?.type==='source'&&x.id===r.family)};
     },lane);trace.push(a);
     const card=page.locator('#requests [data-request]').nth(lane);
-    if(a.type==='request'){await card.tap();await page.waitForTimeout(1900);return;}
+    if(a.type==='request'){if(!deliver)return;await card.tap();await page.waitForTimeout(1900);return;}
     const before=await read();await card.tap();
     if(a.type==='merge'){await page.locator(`#board [data-index="${a.from}"]`).tap();await page.locator(`#board [data-index="${a.to}"]`).tap();}
     else{await page.locator(`#board [data-index="${a.index}"]`).tap();if(a.type==='service')await page.locator('[data-action="service"]').tap();}
@@ -49,6 +49,9 @@ const assert=require('node:assert/strict'),fs=require('node:fs');const {chromium
   }
   await shot('04-pressed-tools');
   for(let n=0;n<4;n+=2){await page.locator(`#board [data-index="${tools[n]}"]`).tap();await page.locator(`#board [data-index="${tools[n+1]}"]`).tap();trace.push({type:'merge',from:tools[n],to:tools[n+1]});}
+  // Pressing supplies the spanners; produce any remaining companion ingredient
+  // through the real controls instead of assuming an unused map scrap remains.
+  await fulfill(2,false);
   const long=page.locator('#requests [data-request]').nth(2);assert.match(await long.getAttribute('aria-label'),/Ready/);await shot('05-next-request-ready');await long.tap();trace.push({type:'request',lane:2});await page.waitForTimeout(1900);
   const saved=await read();assert.equal(saved.requests.completed,5);assert.equal(saved.requests.supplies,6);assert.equal(saved.workshop.presses,4);assert.ok(saved.board.some(x=>x?.family==='rig'&&x.tier===2),'expedition spanner remains protected');await page.reload();assert.deepEqual((await read()).workshop,saved.workshop);assert.deepEqual((await read()).requests,saved.requests);assert.deepEqual((await read()).board,saved.board);assert.equal(await page.locator('#workshop').getAttribute('data-state'),'operational');await shot('06-reloaded');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);const box=await page.locator('#workshop').boundingBox();assert.ok(box.width>=44&&box.height>=44);assert.deepEqual(errors,[]);
