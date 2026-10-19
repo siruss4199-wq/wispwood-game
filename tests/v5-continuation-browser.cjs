@@ -19,7 +19,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
    for(const width of [360,390,430]){
     await page.setViewportSize({width,height:844});
     assert.equal(await page.locator('#goalTitle').textContent(),'Restore Coastal Workshop');
-    assert.match(await page.locator('#goalNeeds').textContent(),/6\\/8/);
+    assert.match(await page.locator('#goalNeeds').textContent(),new RegExp('6/8'));
     assert.equal(await page.locator('#goalButton').isVisible(),true);
     const expected=await page.evaluate(async()=>{
      const {goal}=await import('/v5/core.mjs');
