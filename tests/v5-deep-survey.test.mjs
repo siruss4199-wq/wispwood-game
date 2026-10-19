@@ -28,7 +28,14 @@ test('TT-1E Loft saves preserve items, banked supplies, requests and seals; merg
 test('higher requests follow capability and discovery; pending orders survive upgrade and reload',()=>{
  const s=loft();pearl(s);const replace=n=>{s.requests.sequences[2]=n;s.requests.orders[2]=null;syncRequests(s);return s.requests.orders[2];};
  assert.equal(replace(2).needs[0].tier,2);const pending=structuredClone(s.requests.orders);ok(s,{type:'upgradeLoft'});assert.deepEqual(s.requests.orders,pending);
- const sextant=replace(4);assert.equal(sextant.needs[0].line,'tide');assert.equal(sextant.needs[0].tier,3);assert.equal(sextant.needs.length,1);
- s.board[7]=tideItem(2);ok(s,{type:'merge',from:7,to:8});assert.equal(requestProgress(s,sextant).ready,true);ok(s,{type:'request',id:sextant.id});
+ // A rare request cannot spoil an undiscovered milestone. Live requests
+ // remain unchanged even when the first Sextant or Crown is discovered.
+ const first=replace(4);assert.equal(first.needs[0].line,'tide');assert.equal(first.needs[0].tier,2);
+ s.board[7]=tideItem(2);ok(s,{type:'merge',from:7,to:8});assert.equal(s.discovered.includes('chart:tide:3'),true);
+ assert.deepEqual(s.requests.orders[2],first,'discovery must not reroll a pending order');
+ const sextant=replace(4);assert.equal(sextant.needs[0].tier,3);assert.equal(sextant.needs.length,1);
+ assert.equal(requestProgress(s,sextant).ready,true);ok(s,{type:'request',id:sextant.id});
+ assert.ok(replace(8).needs[0].tier<4,'no Crown request before a real discovery');
+ s.board[7]=tideItem(3);s.board[8]=tideItem(3);ok(s,{type:'merge',from:7,to:8});
  const crown=replace(8);assert.equal(crown.needs[0].tier,4);assert.equal(crown.supplies,8);assert.equal(crown.energy,24);assert.deepEqual(load(JSON.stringify(s)).requests,s.requests);
 });
