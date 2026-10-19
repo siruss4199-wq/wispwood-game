@@ -174,7 +174,17 @@ export function act(s,a,now=Date.now()){
   const i=put(s,item('rig',1));s.energy-=2;s.charges.rig--;s.workshop.presses++;
   return done('Grip tool pressed · 2 energy · one Rover charge','produce',i);
  }
- if(a.type==='request'){const result=deliverRequest(s,a.id);if(!result.ok)return result;s.contracts++;return {...done(result.message,'contract'),reward:result.reward};}
+ if(a.type==='request'){
+  const result=deliverRequest(s,a.id);if(!result.ok)return result;s.contracts++;
+  // Each delivery frees a consumed item cell. The first two deliveries after
+  // landing earn real fragments, without replacing supplies or requiring a Loft.
+  let fragment=-1;
+  if(sourceUnlocked(s,'chart')&&(s.camp.earlyFragments??0)<2){
+   fragment=put(s,tideItem(0));
+   if(fragment>=0)s.camp.earlyFragments=(s.camp.earlyFragments??0)+1;
+  }
+  return {...done(result.message+(fragment>=0?' · Tide Dial Fragment earned! Merge two into a Reef Compass.':''),'contract',fragment>=0?fragment:null),reward:result.reward,...(fragment>=0?{reveal:[fragment],tideFragment:true}:{})};
+ }
  if(a.type==='merge'||a.type==='move'){
   if(!valid(a.from)||!valid(a.to)||a.from===a.to)return fail('Choose another space.');
   const x=s.board[a.from],y=s.board[a.to];

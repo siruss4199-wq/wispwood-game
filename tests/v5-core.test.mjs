@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';
-import {fresh,act,load,SAVE_KEY,goal,ready,item,FAMILIES,SOURCES,nextOutput,normalContract,near} from '../v5/core.mjs';
+import {fresh,act,load,SAVE_KEY,goal,expeditionGoal,ready,item,FAMILIES,SOURCES,nextOutput,normalContract,near} from '../v5/core.mjs';
 import {container,contents,CONTAINERS} from '../v5/containers.mjs';
 import {art,scene} from '../v5/art.mjs';import {choose} from './v5-policy.mjs';
 function success(s,a,t=1000){const r=act(s,a,t);assert.equal(r.ok,true,r.message);return r;}
@@ -67,7 +67,7 @@ test('24 original item silhouettes, distinct producers and five actual world tra
 test('fresh-player simulation opens vault and continues through two optional discoveries without deadlock',()=>{
  for(const sideFirst of [true,false]){
   const s=fresh(0),milestones=[];let actions=0;
-  while(goal(s)&&actions<1500){const a=choose(s,{sideFirst});const r=success(s,a,actions*4500);if(r.event==='milestone')milestones.push({stage:s.stage,post:s.post,actions:actions+1,minutes:((actions+1)*4.5/60).toFixed(1)});assert.equal(s.board.length,36);assert.ok(s.energy>=0);actions++;}
+  while(expeditionGoal(s)&&actions<1500){const a=choose(s,{sideFirst});const r=success(s,a,actions*4500);if(r.event==='milestone')milestones.push({stage:s.stage,post:s.post,actions:actions+1,minutes:((actions+1)*4.5/60).toFixed(1)});assert.equal(s.board.length,36);assert.ok(s.energy>=0);actions++;}
   assert.equal(s.stage,4);assert.equal(s.post,2);assert.ok(actions<1500);assert.ok(s.rations<20);
   console.log(JSON.stringify({sideFirst,actions,rations:s.rations,milestones}));
  }

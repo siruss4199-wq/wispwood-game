@@ -49,7 +49,7 @@ test('twelve consecutive requests use actual production, service and merging wit
    const o=s.requests.orders[lane],p=requestProgress(s,o);
    if(p.ready){assert.ok(act(s,{type:'request',id:o.id}).ok);delivered=true;break;}
    const need=p.progress.find(r=>r.current<r.count),kept=reservedItems(s);let command;
-   for(let tier=need.tier-1;tier>=0;tier--){const pair=s.board.flatMap((x,i)=>x?.type==='item'&&x.family===need.family&&x.tier===tier&&!kept.has(i)?[i]:[]);if(pair.length>=2){command={type:'merge',from:pair[0],to:pair[1]};break;}}
+   for(let tier=need.tier-1;tier>=0;tier--){const pair=s.board.flatMap((x,i)=>x?.type==='item'&&!x.line&&x.family===need.family&&x.tier===tier&&!kept.has(i)?[i]:[]);if(pair.length>=2){command={type:'merge',from:pair[0],to:pair[1]};break;}}
    command??={type:s.charges[need.family]?'produce':'service',id:need.family};
    const result=act(s,command);assert.ok(result.ok,result.message);
   }

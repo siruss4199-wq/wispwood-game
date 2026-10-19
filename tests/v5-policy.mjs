@@ -1,6 +1,6 @@
 // Intent-based player styles. All actions use the public reducer / real UI.
 import {KITS} from '../v5/journey.mjs';
-import {goal,ready,count,normalContract,SOURCES,sourceUnlocked} from '../v5/core.mjs';
+import {expeditionGoal as goal,ready,count,normalContract,SOURCES,sourceUnlocked} from '../v5/core.mjs';
 import {ANCHORS,ROUTES,equipment,anchors} from '../v5/expedition.mjs';
 import {circuit,linkPhase,optics} from '../v5/seals.mjs';
 const req=(family,tier,count=1)=>({family,tier,count});

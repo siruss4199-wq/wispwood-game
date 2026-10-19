@@ -59,6 +59,7 @@ jobs:
           mkdir -p /tmp/vaultwake-before
           git archive FETCH_HEAD | tar -x -C /tmp/vaultwake-before
           python3 -m http.server 8081 --directory /tmp/vaultwake-before > /tmp/vaultwake-before-http.log 2>&1 &
+          node tests/v5-continuation-browser.cjs
           node tests/v5-camp-browser.cjs
           node tests/v5-route-clarity-browser.cjs
           node tests/v5-workshop-evolution-browser.cjs
