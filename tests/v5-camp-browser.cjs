@@ -15,9 +15,9 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
    await page.locator('#board [data-index="7"]').tap();await page.locator('#board [data-index="8"]').tap();await page.locator('#goalButton').tap();
    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5')).landingStep===1);
    let actions=0,deliveries=0;
-   const requestStep=async lane=>{
+   const requestStep=async (lane,override)=>{
     const before=await read();
-    const action=await page.evaluate(async lane=>{
+    const action=override??await page.evaluate(async lane=>{
      const {requestAction}=await import('/tests/v5-workshop-policy.mjs');
      return requestAction(JSON.parse(localStorage.getItem('vaultwake-v5')),lane);
     },lane);
@@ -144,6 +144,37 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
    assert.equal(deepDone.requests.supplies,beforeDelivery.requests.supplies+newGoal.supplies);assert.equal(deepDone.requests.completed,beforeDelivery.requests.completed+1);assert.ok(deepDone.discovered.includes('chart:tide:3'));assert.ok(!deepDone.discovered.includes('chart:tide:4'),'Ocean Crown remains an unfinished collectible goal');
    await shot('15-new-treasure-delivered');await page.reload();assert.deepEqual(await read(),deepDone);
    const supplySpent=8+12+8+20+18;fs.writeFileSync(`${dir}/${engine}-deep-survey-trace.json`,JSON.stringify({requests:deepDone.requests.completed,suppliesSpent:supplySpent,suppliesEarned:supplySpent+deepDone.requests.supplies,remainingSupplies:deepDone.requests.supplies,upgradeMove:deepReady.moves+1,upgradeCost:18,tideRecoveries:deepDone.camp.dives,deepRecoveries:deepDone.camp.deepDives,merges:deepDone.merges,newOrder:newGoal,discovered:deepDone.discovered.filter(x=>x.includes('tide')),unfinished:'Ocean Crown',occupied:deepDone.board.filter(Boolean).length,energy:deepDone.energy},null,2));
+   // TT-1H: continue this earned save all the way to the Crown. No seeded stock.
+   for(let guard=0;!(await read()).discovered.includes('chart:tide:4');guard++){
+    assert.ok(guard<90,'Crown must be reachable with Deep Survey');
+    const s=await read();let action;
+    for(const tier of [3,2,1,0]){const ids=s.board.flatMap((x,i)=>x?.line==='tide'&&x.tier===tier?[i]:[]);if(ids.length>=2){action={type:'merge',from:ids[0],to:ids[1]};break;}}
+    if(!action)action=s.energy<3?{type:'ration'}:s.charges.chart?{type:'recoverTide'}:{type:'service',id:'chart'};
+    await requestStep(0,action);
+   }
+   const crownSave=await read();assert.ok(!crownSave.camp.fleetViewed);
+   assert.equal(await page.locator('#fleetReveal').evaluate(x=>x.open),false,'never force a modal on discovery');
+   await shot('17-earned-crown');await page.reload();assert.deepEqual(await read(),crownSave);
+   for(const width of [360,390,430]){
+    await page.setViewportSize({width,height:844});
+    // This is the same earned save, also the legacy shape (no receipt flag).
+    await page.evaluate(s=>localStorage.setItem('vaultwake-v5',JSON.stringify(s)),crownSave);await page.reload();
+    await page.locator('#fleetCrown').tap();await page.locator('#fleetNext').tap();
+    await page.locator('#fleetReveal .close').tap();await page.reload();
+    assert.ok(!(await read()).camp.fleetViewed,'closing midway leaves the scene pending');
+    await page.locator('#fleetCrown').tap();await page.locator('#fleetNext').tap();await page.locator('#fleetNext').tap();
+    assert.match(await page.locator('#fleetMilestone').textContent(),/Chapter 1 mystery milestone reached/);
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+    for(const selector of ['#fleetNext','#fleetReveal .close','#fleetCrown']){const box=await page.locator(selector).boundingBox();assert.ok(box.width>=44&&box.height>=44);}
+    await page.screenshot({path:`${dir}/${engine}-fleet-reveal-${width}.png`,fullPage:true});
+    await page.locator('#fleetNext').tap();const viewed=await read();
+    assert.deepEqual(viewed,{...crownSave,camp:{...crownSave.camp,fleetViewed:true}},'story acknowledgement changes no gameplay resources');
+    await page.reload();assert.deepEqual(await read(),viewed);
+    assert.equal(await page.locator('#fleetReveal').evaluate(x=>x.open),false);
+    assert.ok(await page.locator('#fleetCrown').isVisible());
+    await page.screenshot({path:`${dir}/${engine}-fleet-world-${width}.png`,fullPage:true});
+   }
+   console.log(engine,'TT-1H earned Crown, pending/closed/viewed reloads, legacy discovery, 360/390/430 reveal and world passed');
    // A previous TT-1E Loft save keeps all its treasures and pending orders on migration.
    const legacyLoft=structuredClone(deepReady);delete legacyLoft.camp.deepSurvey;delete legacyLoft.camp.deepDives;
    await page.evaluate(s=>localStorage.setItem('vaultwake-v5',JSON.stringify(s)),legacyLoft);await page.reload();const migratedLoft=await read();assert.deepEqual(migratedLoft.board,legacyLoft.board);assert.deepEqual(migratedLoft.requests,legacyLoft.requests);assert.equal(migratedLoft.camp.deepSurvey,false);
@@ -166,3 +197,4 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
   }finally{await browser.close();}
  }
 })().catch(e=>{console.error(e);process.exitCode=1;});
+

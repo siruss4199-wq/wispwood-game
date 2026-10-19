@@ -1,4 +1,5 @@
 import {campGoal} from './camp-goals.mjs';
+import {fleetEarned} from './fleet.mjs';
 import {TIDE_NAMES,isTide,maxTier,sameKind,discoveryKey,tideItem,buildLoft,upgradeLoft,recoverTide} from './treasures.mjs';
 import {journeyState,KITS,ENGINE_NEEDS} from './journey.mjs';
 import {campState,buildPier,packPier} from './camp.mjs';
@@ -143,6 +144,12 @@ function activate(s,site){
 // Mutating reducer is intentionally atomic: failed commands leave all state untouched.
 export function act(s,a,now=Date.now()){
  const fail=message=>({ok:false,message});
+ // Acknowledging a story changes only its receipt, never gameplay resources.
+ if(a.type==='viewFleet'){
+  if(!fleetEarned(s))return fail('Merge two Celestial Sextants to discover the Ocean Crown.');
+  s.camp.fleetViewed=true;
+  return {ok:true,message:'Chapter 1 mystery milestone reached · camp orders and optional discoveries continue.',event:'story',index:null};
+ }
  const done=(message,event='action',index=null)=>{s.moves++;s.lastAt=now;syncRequests(s);if(event!=='produce')s.producerStreak=0;installSites(s);unfold(s);if(event==='milestone')remember(s,event,now);for(const x of s.board)if(x?.type==='item'){const key=discoveryKey(x);if(!s.discovered.includes(key))s.discovered.push(key);}return {ok:true,message,event,index};};
  const valid=i=>Number.isInteger(i)&&i>=0&&i<36;
  if(a.type==='restoreEngine'){
@@ -413,3 +420,4 @@ export function load(raw,now=Date.now()){
   journeyState(s);syncRequests(s);workshopState(s);return s;
  }catch{return fresh(now);}
 }
+

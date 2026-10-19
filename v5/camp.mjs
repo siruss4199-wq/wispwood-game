@@ -6,6 +6,7 @@ export function campState(s){
  s.camp={version:1,pier:old.pier===true,loft:old.pier===true&&old.loft===true,deepSurvey:old.pier===true&&old.loft===true&&old.deepSurvey===true,deepDives:Number.isSafeInteger(old.deepDives)&&old.deepDives>=0?old.deepDives:0,dives:Number.isSafeInteger(old.dives)&&old.dives>=0?old.dives:0,tideOrders:Number.isSafeInteger(old.tideOrders)&&old.tideOrders>=0?old.tideOrders:0,packs:Number.isSafeInteger(old.packs)&&old.packs>=0?old.packs:0};
  // Legacy saves earn these through their next deliveries; loading grants nothing.
  s.camp.earlyFragments=Number.isInteger(old.earlyFragments)?Math.max(0,Math.min(2,old.earlyFragments)):0;
+ if(old.fleetViewed===true&&s.discovered?.includes('chart:tide:4'))s.camp.fleetViewed=true;
  return s.camp;
 }
 export function buildPier(s,container){
@@ -30,3 +31,4 @@ export function packPier(s,family,container,sourceUnlocked){
  s.board[i]=container(PACKS[family]);
  return {ok:true,index:i,message:`New ${PACKS[family]} case delivered. Tap it on the board to reveal useful parts.`};
 }
+

@@ -1,4 +1,5 @@
 import {campGoal} from './camp-goals.mjs';
+import {fleetEarned,fleetPending,FLEET_LINES} from './fleet.mjs';
 import {storySnapshot,requestBrief} from './story.mjs';
 import {LOFT_COST,DEEP_SURVEY_COST,recoveryCost,pearlDiscovered,TIDE_NAMES,isTide,maxTier,sameKind,discoveryKey,tideItem,nextTide} from './treasures.mjs';
 import {KITS} from './journey.mjs';
@@ -84,6 +85,13 @@ function missionSlots(){
  return needsHTML(visibleGoal()?.needs??[]);
 }
 function renderWorkshop(){
+ let crown=$('#fleetCrown');
+ if(fleetEarned(state)){
+  if(!crown){$('#scene').insertAdjacentHTML('beforeend','<button id="fleetCrown" type="button"><img src="assets/premium/tide-4.webp" alt="Ocean Crown"><span></span></button>');crown=$('#fleetCrown');}
+  crown.classList.toggle('pending',fleetPending(state));crown.querySelector('span').textContent=fleetPending(state)?'REVEAL SIGNAL':'FLEET SIGNAL';
+  crown.setAttribute('aria-label',fleetPending(state)?'Ocean Crown discovered: reveal the missing fleet signal':'Ocean Crown: revisit the fleet signal');
+ }else crown?.remove();
+ $('#scene').classList.toggle('fleetAwake',fleetEarned(state));
  let button=$('#workshop');
  if(!button){$('#scene').insertAdjacentHTML('beforeend','<button id="workshop"><img width="256" height="256" alt=""><span></span></button>');button=$('#workshop');}
  const restored=state.workshop.repaired,ready=state.requests.supplies>=WORKSHOP_COST;
@@ -141,7 +149,7 @@ function render(){
  $('.world').classList.toggle('opened',state.stage===4);$('.destination').textContent=state.stage===4?'VAULT DISCOVERED':'OPEN THE TIDEGLASS VAULT';
  $('#energy').textContent=state.energy;$('#marks').textContent=state.marks;
  const viewStage=state.stage===0&&state.landingStep===1?1:state.stage;
- const sceneKey=viewStage+':'+state.post;if($('#scene').dataset.key!==sceneKey){$('#scene').innerHTML=scene(viewStage,state.post);$('#scene').dataset.key=sceneKey;}$('#sceneLabel').textContent=visibleGoal()?.scene??STAGES[state.stage]?.scene??'The vault is open';
+ const sceneKey=viewStage+':'+state.post;if($('#scene').dataset.key!==sceneKey){$('#scene').innerHTML=scene(viewStage,state.post);$('#scene').dataset.key=sceneKey;}$('#sceneLabel').textContent=state.camp.fleetViewed?'Chapter 1 · fleet mystery milestone reached':visibleGoal()?.scene??STAGES[state.stage]?.scene??'The vault is open';
  renderWorkshop();
  $('.world').classList.toggle('pierBuilt',state.camp.pier);
  $('#chapterLabel').textContent=state.stage===4?'DISCOVERY · THE SKY WITHIN':'THE SALTGLASS REACH';
@@ -290,7 +298,7 @@ function run(a){
  if(a.type==='buildLoft'){selected=null;focus='pier';render();moment('Charting Loft built','Survey Kite now recovers Tide Treasures · Neri can trace the missing coast',tideItem(1));sound.play('milestone');$('.world').classList.add('changed');}
  if(a.type==='recoverTide'){if(!knownBefore.has(discoveryKey(state.board[result.index]))){moment(nameOf(state.board[result.index]),'Wayfinding treasure · merge twins or deliver an order',state.board[result.index]);sound.play('rare');}board.querySelector(`[data-index="${result.index}"]`)?.classList.add('merge-pop');}
  if(result.tideFragment&&state.camp.earlyFragments===1){moment('First Tide Dial fragment','Neri: This fragment points toward a coast erased from the charts.',tideItem(0));}
- if(result.tideDiscovery){moment(nameOf(state.board[result.index]),state.board[result.index].tier===4?'Ivo: The Crown was a signal for the missing fleet. Who was meant to answer?':state.board[result.index].tier===2&&!state.camp.deepSurvey?'Pearl discovered · Deep Survey is now available at the Loft':'New treasure · deliver it or merge toward '+TIDE_NAMES[Math.min(4,state.board[result.index].tier+1)],state.board[result.index]);}
+ if(result.tideDiscovery){moment(nameOf(state.board[result.index]),state.board[result.index].tier===4?'Ocean Crown installed at the Loft · tap REVEAL SIGNAL to uncover the fleet’s message':state.board[result.index].tier===2&&!state.camp.deepSurvey?'Pearl discovered · Deep Survey is now available at the Loft':'New treasure · deliver it or merge toward '+TIDE_NAMES[Math.min(4,state.board[result.index].tier+1)],state.board[result.index]);}
  if(a.type==='buildPier'){moment('Supply Pier built','Camp orders now fund useful material cases', {type:'crate',kind:'salvage'});sound.play('milestone');$('.world').classList.add('changed');}
  if(a.type==='packPier'){moment('Supply case delivered','Tap the new case on the board to unpack useful parts', {type:'crate',kind:{rig:'salvage',chart:'survey',flux:'relic'}[a.family]});sound.play('rare');}
  if(a.type==='press'){sound.play('merge',1);board.querySelector(`[data-index="${result.index}"]`)?.classList.add('merge-pop');}
@@ -333,6 +341,7 @@ $('#goalButton').onclick=()=>{const g=visibleGoal();if(g?.kind==='camp'){
  }if(g?.action==='inspect'){const choices=state.board.flatMap((x,i)=>(state.stage===1?x?.type==='route':x?.type==='site'&&x.phase!=='done')?[i]:[]);selected=choices[(choices.indexOf(selected)+1)%choices.length];focus='goal';render();message.textContent=g.text;return;}g?run({type:g.action??'goal'}):showJournal();};
 $('#goalNeeds').onclick=e=>{focus='goal';const kit=e.target.closest('[data-kit]')?.dataset.kit;if(kit){kitFocus=kit;if(ready(state,KITS[kit].needs))run({type:'goal',kit});else{message.textContent=KITS[kit].needs.map(r=>nameOf(item(r.family,r.tier,r.line))).join(' + ');selected=null;render();}return;}const infusion=e.target.closest('[data-infuse]')?.dataset.infuse;if(infusion){run({type:'infuse',id:infusion});return;}const badge=e.target.closest('[data-site-index]');if(badge){selected=+badge.dataset.siteIndex;const x=state.board[selected];if(badge.dataset.engineAction){const action=badge.dataset.engineAction;if(badge.classList.contains('available')){run({type:action,index:selected});return;}render();$('#selection').scrollIntoView({block:'nearest'});return;}if(x?.type==='rock'){render();return;}const need=x?.type==='site'?equipment(x.kind):{family:ROUTES[x.id].family,tier:2,count:1};if((x.type==='route'&&state.stage===1||x.type==='site'&&x.phase==='idle')&&ready(state,[need])){run({type:x.type==='route'?'breach':'deploy',index:selected});return;}}render();message.textContent=visibleGoal()?.text??'Keep collecting rare discoveries.';};
 $('#scene').onclick=e=>{
+ if(e.target.closest('#fleetCrown')){showFleet();return;}
  if(e.target.closest('#campPierWorld')){selected=null;focus='pier';render();$('#selection').scrollIntoView({block:'nearest'});return;}
  if(e.target.closest('#workshopBench')){
   selected=state.board.findIndex(x=>x?.type==='source'&&x.id==='rig');focus='bench';render();
@@ -356,6 +365,23 @@ $('#soundButton').textContent=sound.enabled()?'Sound on':'Sound off';
 $('#soundButton').onclick=()=>{$('#soundButton').textContent=sound.toggle()?'Sound on':'Sound off';sound.play('merge',2);};
 $('#rationButton').onclick=()=>run({type:'ration'});
 function celebrate(title,text){$('#celebrationContent').innerHTML=`${scene(state.stage,state.post)}<h2>${title}</h2><p>${text}</p>`;$('#celebration').showModal();}
+function showFleet(){
+ if(!fleetEarned(state))return;
+ let step=0;const dialog=$('#fleetReveal');
+ const draw=()=>{
+  const entry=FLEET_LINES[step];
+  $('#fleetDialogue').innerHTML=`<b>${entry.voice}</b><p>${entry.line}</p>`;
+  $('#fleetProgress').textContent=`${step+1} / ${FLEET_LINES.length}`;
+  $('#fleetNext').textContent=step===2?'Keep exploring':'Continue';
+  $('#fleetMilestone').hidden=step!==2;
+  dialog.dataset.beat=step;
+ };
+ $('#fleetNext').onclick=()=>{
+  if(step<2){step++;draw();return;}
+  run({type:'viewFleet'});dialog.close();
+ };
+ draw();dialog.showModal();sound.play('milestone');
+}
 function showJournal(){
  const story=storySnapshot(state);
  $('#journalContent').innerHTML=`<small>VAULTWAKE · FIELD JOURNAL</small><h2>The coast that vanished</h2><h3>Expedition report · ${story.expedition.title}</h3><p><b>${story.expedition.voice}:</b> ${story.expedition.line}</p><p><b>Unanswered:</b> ${story.expedition.question}</p><h3>Camp discoveries · ${story.camp.title}</h3><p><b>${story.camp.voice}:</b> ${story.camp.line}</p><p><b>Next clue:</b> ${story.camp.question}</p><h3>Your discoveries · ${state.discovered.length}/29</h3>${Object.entries(FAMILIES).map(([f,d])=>`<h3>${d.name}</h3><div class="collection">${d.names.map((n,t)=>`<div class="${state.discovered.includes(f+':'+t)?'':'unknown'}">${art(item(f,t))}<small>${n}</small></div>`).join('')}</div>`).join('')}<h3>Wayfinding · Tide treasures${state.camp.loft?'':' · build the Charting Loft'}</h3><div class="collection">${TIDE_NAMES.map((n,t)=>`<div class="${state.discovered.includes('chart:tide:'+t)?'':'unknown'}">${art(tideItem(t))}<small>${n}</small></div>`).join('')}</div><p>${state.contracts} contracts · ${state.merges} merges · ${state.marks} expedition merit</p>`;$('#journal').showModal();
@@ -365,3 +391,4 @@ $('#helpButton').onclick=()=>{$('#journalContent').innerHTML='<h2>The Tideglass 
 for(const dialog of document.querySelectorAll('dialog')){dialog.querySelector('.close').onclick=()=>dialog.close();dialog.querySelector('.continue')?.addEventListener('click',()=>dialog.close());dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close();});}
 setInterval(()=>{const op=opportunity(state),clock=$('#opClock');if(op&&clock){clock.textContent=op.remaining?(ready(state,op.needs)?'✓ READY · ':'MAKE · ')+Math.ceil(op.remaining/1000)+'s':'PASSED · DISMISS';if(!op.remaining){const card=clock.closest('.contract');card.classList.remove('ready');card.removeAttribute('aria-label');}}},1000);
 render();persist();platform.init();
+
