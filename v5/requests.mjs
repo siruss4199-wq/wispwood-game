@@ -44,7 +44,8 @@ export function syncRequests(s){
    // A bought Precision Bench must have a useful destination, without
    // turning Standard into an endless spanner-only lane. Every second new
    // Standard offer favors its fitting output; intervening offers rotate.
-   const bench=s.workshop?.precision&&lane===1&&family==='rig'&&tier===2&&n%2===0;
+   // The first relevant order comes promptly after purchase, before the first fitting.
+   const bench=s.workshop?.precision&&lane===1&&family==='rig'&&tier===2&&((s.workshop.fittings??0)===0||n%2===0);
    const effortCredit=(matchingSpare?(lane===0?6:5):0)+(pairBelow>=2?3:0);
    return {family,tier,score:(occupied.has(key)?100:0)+(protectedOnly?30:0)+(usedFamilies.has(family)?8:0)+fi*15+ti*9-(bench?85:0)-effortCredit};
   }));
