@@ -9,8 +9,8 @@ test('reported open-vault 6/8 save has an actionable continuing Workshop goal',(
  s.requests.supplies=8;assert.equal(goal(s).action,'restoreWorkshop');ok(s,{type:goal(s).action});assert.equal(goal(s).name,'Build Supply Pier');assert.equal(s.requests.supplies,0);
 });
 test('camp continuation advances without consuming collectibles or erasing optional vault progress',()=>{
- const s=fresh();s.stage=4;s.workshop.repaired=true;s.requests.supplies=60;
+ const s=fresh();s.stage=4;s.workshop.repaired=true;s.requests.supplies=62;
  assert.equal(goal(s).action,'buildPier');ok(s,{type:'buildPier'});assert.equal(goal(s).action,'buildLoft');ok(s,{type:'buildLoft'});assert.equal(goal(s).needs[0].tier,2);
  s.discovered.push('chart:tide:2');assert.equal(goal(s).action,'upgradeLoft');ok(s,{type:'upgradeLoft'});assert.equal(goal(s).needs[0].tier,3);s.discovered.push('chart:tide:3');assert.equal(goal(s).needs[0].tier,4);
- assert.equal(expeditionGoal(s).action,'restoreEngine');s.discovered.push('chart:tide:4');assert.equal(goal(s).action,'restoreEngine');assert.deepEqual(load(JSON.stringify(s)).camp,s.camp);
+ assert.equal(expeditionGoal(s).action,'restoreEngine');s.discovered.push('chart:tide:4');assert.equal(goal(s).name,'Install Precision Bench');assert.equal(goal(s).action,'upgradeWorkshop');ok(s,{type:'upgradeWorkshop'});assert.equal(s.workshop.precision,true);assert.equal(goal(s).action,'orders');assert.equal(expeditionGoal(s).action,'restoreEngine','the vault path stays optional and unchanged');assert.deepEqual(load(JSON.stringify(s)).camp,s.camp);
 });
