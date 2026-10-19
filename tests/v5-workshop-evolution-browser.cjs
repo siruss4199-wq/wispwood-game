@@ -63,6 +63,13 @@ const {chromium}=require('playwright');
   const supported=upgraded.requests.orders.findIndex(o=>o.needs.some(r=>r.family==='rig'&&r.tier===2));
   if(supported>=0)await fulfill(supported);
   for(let n=0;n<6&&!deliveredFitting;n++)await fulfill(n%3);
+  // The first fitted Spanner is still expedition-protected. When its first
+  // real replacement order is now pending, finish that order with a *spare*
+  // instead of stopping the walkthrough at an arbitrary six deliveries.
+  if(!deliveredFitting){
+   const pending=await read(),lane=pending.requests.orders.findIndex(o=>o?.needs.some(r=>r.family==='rig'&&r.tier===2&&!r.line));
+   if(lane>=0)await fulfill(lane);
+  }
   if(!deliveredFitting){
    const diagnostic=await read();
    console.log('TT1I_BENCH_TRACE',JSON.stringify({mode,completed:diagnostic.requests.completed,sequences:diagnostic.requests.sequences,orders:diagnostic.requests.orders,workshop:diagnostic.workshop,kept:[...lineage],trace:trace.slice(-48)}));
