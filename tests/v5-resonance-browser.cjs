@@ -51,6 +51,7 @@ const {chromium,webkit}=require('playwright');const assert=require('node:assert/
  await shot('vault-open');await page.reload();assert.deepEqual(await read(),saved);
  // The primary objective now continues camp development. Explicitly select
  // the preserved optional vault-engine objective for this engine walkthrough.
+ if(!await page.locator('#sideTray').evaluate(el=>el.open))await page.locator('#sideTray > summary').tap();
  await page.locator('#vaultGoalSwitch').tap();
  // Entire continuation is played through visible controls, with no inventory injection.
  for(let n=0;n<120&&!(await read()).journey.infusions;n++){
