@@ -46,7 +46,7 @@ test('studio simulation: a request-first player earns meaningful rewards before 
 });
 
 test('studio simulation: the returning Vault player has a real goal, relevant order and preserved history',()=>{
- const s=fresh(0);s.stage=4;s.post=2;s.landingStep=2;s.routePrepared=true;
+ const s=fresh(0);s.stage=4;s.post=0;s.landingStep=2;s.routePrepared=true;s.journey.engine=true;s.journey.infusions=1;
  s.workshop.repaired=true;s.camp.pier=true;s.camp.loft=true;s.camp.deepSurvey=true;
  for(let i=0;i<=4;i++)s.discovered.push('chart:tide:'+i);
  s.requests.supplies=5;
