@@ -1,5 +1,6 @@
 // Intent-based player styles. All actions use the public reducer / real UI.
 import {KITS} from '../v5/journey.mjs';
+import {sameKind} from '../v5/treasures.mjs';
 import {expeditionGoal as goal,ready,count,normalContract,SOURCES,sourceUnlocked} from '../v5/core.mjs';
 import {ANCHORS,ROUTES,equipment,anchors} from '../v5/expedition.mjs';
 import {circuit,linkPhase,optics} from '../v5/seals.mjs';
@@ -12,7 +13,7 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
  if(style==='aggressive'&&s.stage>0&&s.stage<4&&!linkPhase(s)&&!(s.stage===3&&ready(s,goal(s).needs))){
   for(let tier=6;tier>=0;tier--)for(const family of Object.keys(SOURCES)){
    const pair=s.board.flatMap((x,i)=>x?.type==='item'&&x.family===family&&x.tier===tier?[i]:[]);
-   if(pair.length>=2)return {type:'merge',from:pair[0],to:pair[1]};
+   for(let a=0;a<pair.length;a++)for(let b=a+1;b<pair.length;b++)if(sameKind(s.board[pair[a]],s.board[pair[b]]))return {type:'merge',from:pair[a],to:pair[b]};
   }
  }
  let needs,command;
@@ -47,7 +48,7 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
    if(connected&&spaces)return {type:'power',index:connected.at(-1)};
    if(linkPhase(s)&&anchors(s).some(x=>x.kind!=='winch'&&(!receiver||x.kind===receiver)&&x.phase==='done')){
     if(!optics(s).primed){needs=[req('flux',1)];command={type:'prime'};}
-    else {const pair=s.board.flatMap((x,i)=>x?.type==='item'&&x.tier<7?[i]:[]);for(const i of pair)for(const j of pair)if(i<j&&s.board[i].family===s.board[j].family&&s.board[i].tier===s.board[j].tier)return {type:'merge',from:i,to:j};return {type:'recycle',index:pair[0]};}
+    else {const pair=s.board.flatMap((x,i)=>x?.type==='item'&&x.tier<7?[i]:[]);for(const i of pair)for(const j of pair)if(i<j&&sameKind(s.board[i],s.board[j]))return {type:'merge',from:i,to:j};return {type:'recycle',index:pair[0]};}
    }else{
    const order=['winch',receiver??(['expedition','contract'].includes(style)?'relay':'scope')];
    const site=order.map(kind=>anchors(s).find(x=>x.kind===kind)).find(x=>x.phase!=='done');
@@ -60,9 +61,10 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
  if(openCaches&&spaces>8){const box=s.board.findIndex(x=>x?.type==='crate');if(box>=0)return {type:'crate',index:box};}
  const r=needs.find(r=>count(s,r)<r.count);
  if(!r)throw Error('Intent did not progress: '+JSON.stringify({style,needs,command}));
- for(let tier=r.tier-1;tier>=0;tier--){const pair=s.board.flatMap((x,i)=>x?.type==='item'&&x.family===r.family&&x.tier===tier?[i]:[]);if(pair.length>=2)return {type:'merge',from:pair[0],to:pair[1]};}
+ for(let tier=r.tier-1;tier>=0;tier--){const pair=s.board.flatMap((x,i)=>x?.type==='item'&&x.family===r.family&&x.tier===tier&&(x.line??'')===(r.line??'')?[i]:[]);if(pair.length>=2)return {type:'merge',from:pair[0],to:pair[1]};}
  if(!spaces){
-  for(const family of Object.keys(SOURCES))for(let tier=0;tier<3;tier++){const p=s.board.flatMap((x,i)=>x?.type==='item'&&x.family===family&&x.tier===tier?[i]:[]);if(p.length>=2)return {type:'merge',from:p[0],to:p[1]};}
+  for(const family of Object.keys(SOURCES))for(let tier=0;tier<3;tier++){const p=s.board.flatMap((x,i)=>x?.type==='item'&&x.family===family&&x.tier===tier?[i]:[]);
+  for(let a=0;a<p.length;a++)for(let b=a+1;b<p.length;b++)if(sameKind(s.board[p[a]],s.board[p[b]]))return {type:'merge',from:p[a],to:p[b]};}
   const i=s.board.findIndex(x=>x?.type==='item'&&x.tier<3&&x.family!==r.family);if(i>=0)return {type:'recycle',index:i};
  }
  if(s.energy<=3)return {type:'ration'};
