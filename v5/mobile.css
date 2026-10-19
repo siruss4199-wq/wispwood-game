@@ -367,3 +367,8 @@ body[data-art="premium"] .world .objective .engineActivate.blocked .activateCopy
 #board .tile.storyPair .art{filter:drop-shadow(0 2px 5px #36b5bcaa)}
 @media(max-width:375px){#selection .copy small{font-size:10px}#selection:not(:has(.benchRoute)) .actionGroup{max-width:175px}}
 @media(prefers-reduced-motion:reduce){#board .tile.storyPair{animation:none}}
+
+/* Earned first-session direction: show where the next order lives without more panels. */
+#requests .requestCard.storySuggested:not(.ready){border-color:#d99d42;box-shadow:inset 0 0 0 1px #f3c86b,0 2px 0 #d8bd7d}
+#requests .requestCard.storySuggested .requestLane::before{content:'➜ ';color:#bd7a29}
+body[data-art="premium"] .world.compassFound #scene>.premiumScene{filter:saturate(1.11) brightness(1.055) drop-shadow(0 0 5px #5ecfbd88)}

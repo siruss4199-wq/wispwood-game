@@ -7,15 +7,17 @@ test('first actions lead from a real merge to the landing, without creating ques
  assert.match(firstSessionCue(s).hint,/COPPER PAIR/);assert.equal(JSON.stringify(s),old);
  assert.ok(act(s,{type:'merge',from:7,to:8}).ok);assert.match(firstSessionCue(s).hint,/CLEAR PATH/);
  assert.ok(act(s,{type:'goal'}).ok);assert.equal(s.landingStep,1);
- assert.match(firstSessionCue(s).hint,/CAMP ORDER/);
+ assert.match(firstSessionCue(s).hint,/HIGHLIGHTED ORDER/);
+ assert.ok(firstSessionCue(s).requestId,'first reward identifies an actual existing order');
 });
 test('earned fragments invite an attainable pair merge then return to expedition gear',()=>{
  const s=fresh(0);act(s,{type:'merge',from:7,to:8});act(s,{type:'goal'});
  s.camp.earlyFragments=1;assert.match(firstSessionCue(s).hint,/ONE MORE ORDER/);
+ assert.ok(s.requests.orders.some(o=>o?.id===firstSessionCue(s).requestId));
  s.camp.earlyFragments=2;
  s.board[3]=item('chart',0,'tide');s.board[4]=item('chart',0,'tide');
  const before=JSON.stringify(s),cue=firstSessionCue(s);
- assert.deepEqual(cue.pairs,[3,4]);assert.equal(JSON.stringify(s),before);
+ assert.deepEqual(cue.pairs,[3,4]);assert.equal(cue.requestId,undefined,'a real merge pair takes priority over any new order');assert.equal(JSON.stringify(s),before);
  assert.ok(act(s,{type:'merge',from:3,to:4}).ok);
  assert.ok(s.discovered.includes('chart:tide:1'));
  assert.match(firstSessionCue(s).hint,/SIGHT LENS/);

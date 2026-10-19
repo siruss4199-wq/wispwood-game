@@ -34,7 +34,7 @@ function sideOptions(){return ['contract',...(state.discovery&&!state.discoveryD
 function sideChoice(){const options=sideOptions();return options.includes(sideView)?sideView:state.opportunity?'opportunity':options.includes('discovery')?'discovery':'contract';}
 function hint(){
  const opening=firstSessionCue(state);
- if(opening?.pairs.length===2&&focus!=='request')return opening.hint;
+ if((opening?.pairs.length===2||opening?.requestId)&&focus!=='request')return opening.hint;
  if(state.stage===4&&visibleGoal()?.kind==='camp'&&focus!=='request'){
   const g=visibleGoal();
   if(g.action==='orders'){const o=state.requests.orders.find(x=>x?.id===g.orderId);if(o){const p=requestProgress(state,o),missing=p.progress.find(r=>r.current<r.count);return p.ready?'ORDER READY · collect '+o.supplies+' supplies above':missing?'NEXT ORDER · make '+nameOf(item(missing.family,missing.tier,missing.line)):'Complete the highlighted order';}return 'Deliver camp orders to earn supplies';}
@@ -124,6 +124,7 @@ function renderRequests(){
  $('#requests').hidden=state.stage===0&&!state.landingStep;
  $('#sideTray').hidden=state.stage===0&&!state.landingStep;
  const q=state.requests;
+ const suggestedRequest=firstSessionCue(state)?.requestId??null;
  const focused=q.orders.find(o=>o?.id===requestId);
  const missing=focused&&requestProgress(state,focused).progress.find(r=>r.current<r.count);
  const family=missing?.family&&sourceUnlocked(state,missing.family)?missing.family:focused?.needs.find(r=>sourceUnlocked(state,r.family))?.family??'rig';
@@ -134,7 +135,7 @@ function renderRequests(){
  const purpose=(state.camp.earlyFragments??0)<2?'Next order: Tide Dial Fragment':primary?.cost?primary.name+' · '+Math.min(primary.supplies,primary.cost)+'/'+primary.cost+' ◆'+(primary.supplies>=primary.cost?' · READY':''):primary?.action==='treasure'?'Recover & merge the next treasure':primary?.action==='orders'?'Orders fund Supply Pier cases':(state.camp.earlyFragments??0)<2?'Next order: Tide Dial Fragment':!state.workshop.repaired?'Workshop 8◆':!state.camp.pier?'Unlock useful supply cases':!state.camp.loft?'Charting Loft 20◆':state.camp.deepSurvey?(state.discovered.includes('chart:tide:4')?'Fulfill treasure orders':'Discover the Ocean Crown'):pearlDiscovered(state)?'Deep Survey 18◆':'Discover a Pearl Astrolabe';
  $('#requests').innerHTML=`<div class="requestHeading"><span>ORDERS <small>${purpose}</small></span><b title="Earn camp supplies by delivering orders">◆ <span id="supplies">${q.supplies}</span></b>${action}</div><div class="requestShelf">${q.orders.filter(Boolean).map(o=>{
  const p=requestProgress(state,o),active=requestId===o.id&&focus==='request',energy=Math.min(o.energy,120-state.energy);
- return `<button class="requestCard ${p.ready?'ready':''} ${active?'active':''}" data-request="${o.id}" aria-pressed="${active}" aria-label="${o.lane} request: ${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier,r.line))).join(', ')}. ${p.ready?active?'Deliver':'Ready. Tap once to collect':'In progress'}. Reward ${o.supplies} camp supplies${energy?` and ${energy} energy`:`, energy full`}"><b class="requestLane">${o.lane==='long'?'Expedition kit':o.lane==='quick'?'Quick':'Standard'}</b><span class="requestItems">${p.progress.map(r=>`<span>${art(item(r.family,r.tier,r.line))}<b>${r.current}/${r.count}</b>${r.protected?'<i title="One copy kept for expedition">◆</i>':''}</span>`).join('')}</span><span class="requestReward">+${o.supplies} ◆${energy?` · +${energy} ϟ`:``}</span><strong>${p.ready?'✓ COLLECT':active&&p.progress.some(r=>r.protected)?'MAKE SPARE':'MAKE'}</strong></button>`;
+ return `<button class="requestCard ${p.ready?'ready':''} ${active?'active':''} ${o.id===suggestedRequest?'storySuggested':''}" data-request="${o.id}" aria-pressed="${active}" aria-label="${o.id===suggestedRequest?'Suggested next: ':''}${o.lane} request: ${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier,r.line))).join(', ')}. ${p.ready?active?'Deliver':'Ready. Tap once to collect':'In progress'}. Reward ${o.supplies} camp supplies${energy?` and ${energy} energy`:`, energy full`}"><b class="requestLane">${o.lane==='long'?'Expedition kit':o.lane==='quick'?'Quick':'Standard'}</b><span class="requestItems">${p.progress.map(r=>`<span>${art(item(r.family,r.tier,r.line))}<b>${r.current}/${r.count}</b>${r.protected?'<i title="One copy kept for expedition">◆</i>':''}</span>`).join('')}</span><span class="requestReward">+${o.supplies} ◆${energy?` · +${energy} ϟ`:``}</span><strong>${p.ready?'✓ COLLECT':active&&p.progress.some(r=>r.protected)?'MAKE SPARE':'MAKE'}</strong></button>`;
  }).join('')}</div>`;
 }
 function renderSide(){
@@ -149,7 +150,9 @@ function renderSide(){
  $('#contracts').innerHTML=`<button class="contract ${rare?'discovery':choice.includes('pportunity')?'opportunity':''} ${can?'ready':''}" data-contract="${choice}" data-requirements="${needs.length}" aria-label="Optional: ${title} ${can?'ready to use':''}"><span class="contractHead">${portrait(rare?'neri':'ivo')}<span><small>OPTIONAL</small><b>${title}</b></span></span><span class="needs">${rare?art({type:'glyph'}):''}${needsHTML(needs)}</span><span class="reward">${reward}<small ${choice==='opportunity'?'id="opClock"':''}>${can?'✓ READY':choice==='startOpportunity'?'OPEN · 3 MIN':choice==='opportunity'?Math.ceil(op.remaining/1000)+'s':'COLLECT'}</small></span></button><button class="sideMore" data-side-next aria-label="Other optional tasks" ${sideOptions().length<2?'hidden':''}>•••</button>`;
 }
 function render(){
- $('.world').classList.toggle('opened',state.stage===4);$('.destination').textContent=state.stage===4?'VAULT DISCOVERED':'OPEN THE TIDEGLASS VAULT';
+ $('.world').classList.toggle('opened',state.stage===4);
+ $('.world').classList.toggle('compassFound',state.stage===0&&state.landingStep===1&&state.discovered.includes('chart:tide:1'));
+ $('.destination').textContent=state.stage===4?'VAULT DISCOVERED':'OPEN THE TIDEGLASS VAULT';
  $('#energy').textContent=state.energy;$('#marks').textContent=state.marks;
  const viewStage=state.stage===0&&state.landingStep===1?1:state.stage;
  const sceneKey=viewStage+':'+state.post;if($('#scene').dataset.key!==sceneKey){$('#scene').innerHTML=scene(viewStage,state.post);$('#scene').dataset.key=sceneKey;}$('#sceneLabel').textContent=state.camp.fleetViewed?'Chapter 1 · fleet mystery milestone reached':visibleGoal()?.scene??STAGES[state.stage]?.scene??'The vault is open';
