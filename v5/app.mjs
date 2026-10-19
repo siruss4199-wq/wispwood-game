@@ -1,5 +1,5 @@
 import {campGoal} from './camp-goals.mjs';
-import {storySnapshot} from './story.mjs';
+import {storySnapshot,requestBrief} from './story.mjs';
 import {LOFT_COST,DEEP_SURVEY_COST,recoveryCost,pearlDiscovered,TIDE_NAMES,isTide,maxTier,sameKind,discoveryKey,tideItem,nextTide} from './treasures.mjs';
 import {KITS} from './journey.mjs';
 import {PIER_COST,PACK_COST} from './camp.mjs';
@@ -194,8 +194,9 @@ function renderSelection(){
  if(!x&&focus==='request'){
   const order=state.requests.orders.find(o=>o?.id===requestId);
   if(order){const p=requestProgress(state,order),missing=p.progress.find(r=>r.current<r.count);
-   title=p.ready?'Request ready to deliver':missing?'Make '+nameOf(item(missing.family,missing.tier,missing.line)):'Camp request';
-   desc=p.ready?'Tap the ready order once to collect its reward.':missing?.line==='tide'?'Survey Kite → Recover treasure. Merge twins for this order.':'Merge matching objects or tap their producer. Expedition equipment is kept safe.';
+   const brief=requestBrief(order);
+   title=p.ready?brief.title+' · ready':brief.title;
+   desc=brief.reason+' '+(p.ready?'Tap the ready order to collect its reward.':missing?.line==='tide'?'Recover and merge Tide Treasures with Survey Kite.':'Make '+nameOf(item(missing.family,missing.tier,missing.line))+' using its producer.');
   }
  }
  if(!x&&!state.merges&&state.stage===0&&!state.landingStep){title='Start with the glowing pair';desc='Tap one Copper Offcut, then tap its twin. They become a Grip Tool.';}
