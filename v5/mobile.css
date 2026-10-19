@@ -356,3 +356,14 @@ body[data-art="premium"] .world .objective .engineActivate.blocked .activateCopy
 #campPierWorld .deepInstrument{position:absolute;right:0;bottom:16px;width:39px;height:39px;filter:drop-shadow(0 2px 1px #19394860);pointer-events:none}
 #campPierWorld[data-deep="true"] span{background:#ffe3a2;color:#254d61}
 .tidePreview .futureTreasure{filter:grayscale(1);opacity:.35}
+
+/* First-session focused interactions, not a second control dashboard. */
+#selection:not(:has(.benchRoute)) .actionGroup{max-width:196px;gap:5px}
+#selection:not(:has(.benchRoute)) .actionGroup button{min-height:44px;font-size:11px;line-height:1.2;padding:7px 10px}
+#selection:not(:has(.benchRoute)) .actionGroup button:disabled{opacity:.5}
+#selection .copy b{font-size:13px;line-height:1.2}
+#selection .copy small{font-size:11px;line-height:1.35;color:#476775}
+#board .tile.storyPair{outline:3px solid #e6a747;outline-offset:-3px;box-shadow:0 0 0 2px #fff4c6,0 0 12px #edbb65ab;z-index:2}
+#board .tile.storyPair .art{filter:drop-shadow(0 2px 5px #36b5bcaa)}
+@media(max-width:375px){#selection .copy small{font-size:10px}#selection:not(:has(.benchRoute)) .actionGroup{max-width:175px}}
+@media(prefers-reduced-motion:reduce){#board .tile.storyPair{animation:none}}

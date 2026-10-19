@@ -1,4 +1,5 @@
 import {campGoal} from './camp-goals.mjs';
+import {firstSessionCue} from './first-session.mjs';
 import {fleetEarned,fleetPending,FLEET_LINES} from './fleet.mjs';
 import {storySnapshot,requestBrief} from './story.mjs';
 import {LOFT_COST,DEEP_SURVEY_COST,recoveryCost,pearlDiscovered,TIDE_NAMES,isTide,maxTier,sameKind,discoveryKey,tideItem,nextTide} from './treasures.mjs';
@@ -32,6 +33,8 @@ function needsHTML(needs){return needs.map(r=>`<span class="need ${count(state,r
 function sideOptions(){return ['contract',...(state.discovery&&!state.discoveryDone&&state.board.some(x=>x?.type==='glyph')?['discovery']:[]),...(state.stage>=1?[state.opportunity?'opportunity':'startOpportunity']:[])];}
 function sideChoice(){const options=sideOptions();return options.includes(sideView)?sideView:state.opportunity?'opportunity':options.includes('discovery')?'discovery':'contract';}
 function hint(){
+ const opening=firstSessionCue(state);
+ if(opening?.pairs.length===2&&focus!=='request')return opening.hint;
  if(state.stage===4&&visibleGoal()?.kind==='camp'&&focus!=='request'){
   const g=visibleGoal();
   if(g.action==='orders'){const o=state.requests.orders.find(x=>x?.id===g.orderId);if(o){const p=requestProgress(state,o),missing=p.progress.find(r=>r.current<r.count);return p.ready?'ORDER READY · collect '+o.supplies+' supplies above':missing?'NEXT ORDER · make '+nameOf(item(missing.family,missing.tier,missing.line)):'Complete the highlighted order';}return 'Deliver camp orders to earn supplies';}
@@ -180,6 +183,10 @@ function render(){
   tile.insertAdjacentHTML('beforeend',`<span class="findPeek" aria-hidden="true">${art(item(FINDS[x.find].family,3))}</span>`);
  }
  const pair=openingPair(state);if(pair.length===2)for(const i of pair)board.querySelector(`[data-index="${i}"]`).classList.add('openingPair');
+ const opening=firstSessionCue(state);
+ for(const i of opening?.pairs??[])board.querySelector(`[data-index="${i}"]`)?.classList.add('storyPair');
+ if(opening?.pairs.length===2)board.setAttribute('aria-description',opening.why);
+ else board.removeAttribute('aria-description');
  for(const tile of board.querySelectorAll('.tile')){const i=+tile.dataset.index;if(useAction(state,selected,i)||useAction(state,i,selected))tile.classList.add('useTarget','match');}
  for(const tile of board.querySelectorAll('.tile.item')){const x=state.board[+tile.dataset.index];tile.dataset.tier=x.tier;tile.classList.toggle('deliveryReady',(goalReady&&g.needs.some(r=>matches(x,r)))||(cr&&(orderProgress?orderProgress.indices.includes(+tile.dataset.index):c.needs.some(r=>matches(x,r)))));}
  for(const tile of board.querySelectorAll('.tile.site,.tile.route')){
@@ -207,8 +214,19 @@ function renderSelection(){
    desc=brief.reason+' '+(p.ready?'Tap the ready order to collect its reward.':missing?.line==='tide'?'Recover and merge Tide Treasures with Survey Kite.':'Make '+nameOf(item(missing.family,missing.tier,missing.line))+' using its producer.');
   }
  }
+ if(!x&&focus==='bench'){
+  title=state.workshop.precision?'Precision Bench':'Install Precision Bench';
+  desc=state.workshop.precision?'Spare Grip Tool + Ink Scrap makes a Split Spanner. Expedition equipment stays protected.':'Upgrade the Workshop to fit expedition tools from spare materials.';
+  const inputs=benchInputs(state);
+  buttons='<span class="benchRoute">'+BENCH_NEEDS.map((r,n)=>'<span class="benchInput '+(inputs[n]>=0?'present':'missing')+'">'+art(item(r.family,r.tier,r.line))+'<small>'+(inputs[n]>=0?'✓':'0/1')+'</small></span>').join('')+'<span>→</span>'+art(item('rig',2))+'</span>';
+  buttons+=state.workshop.precision?'<button class="benchAction '+(inputs.every(i=>i>=0)&&state.energy>=1&&state.charges.rig?'available':'')+'" data-action="fitSpanner">Fit Spanner · 1 ϟ + 1 charge</button>':'<button class="benchAction '+(state.requests.supplies>=BENCH_COST?'available':'')+'" data-action="upgradeWorkshop">Install bench · 12 ◆</button>';
+ }
  if(!x&&!state.merges&&state.stage===0&&!state.landingStep){title='Start with the glowing pair';desc='Tap one Copper Offcut, then tap its twin. They become a Grip Tool.';}
  else if(!x&&state.stage===0&&!state.landingStep){title='Landing ready';desc='You made a Grip Tool. Tap CLEAR PATH above to open the landing.';}
+ if(!x&&focus!=='bench'&&focus!=='pier'){
+  const cue=firstSessionCue(state);
+  if(cue?.pairs.length===2){title='The missing pieces fit';desc=cue.why;}
+ }
  if(!x&&focus==='pier'){
   title=state.camp.deepSurvey?'Deep Survey Loft':state.camp.loft?'Charting Loft':'Develop the Supply Pier';
   desc=state.camp.deepSurvey?'Every recovery: Reef Compass · 3 energy + 1 Kite charge.':state.camp.loft?'Recovery: 2 energy + 1 Kite charge. Deep Survey unlocks two treasures and guaranteed compasses.':'Build a Charting Loft · permanently unlock Wayfinding treasures.';
@@ -230,19 +248,19 @@ function renderSelection(){
    buttons=`${site&&state.stage>=2?`<button class="accent" data-action="deploy" data-target="${state.board.indexOf(site)}">Use · ${ANCHORS[site.kind].short}</button>`:''}<button data-action="recycle">Recycle +${2**x.tier} ϟ</button>`;
    if(loopCell(x)&&linkPhase(state)&&!optics(state).primed)buttons='<button class="accent" data-action="prime" data-target="'+state.board.findIndex(v=>v?.type==='site'&&v.kind==='winch')+'">Use · Stone Lift</button>'+buttons;
   }else if(x.type==='source'){
-   if(!sourceUnlocked(state,x.id))desc=`Unlock: ${x.id==='chart'?'stabilize the landing':'open a breach'}.`;
-   else {desc=`${state.journey.boost?.family===x.id?'ENRICHED · '+state.journey.boost.left+' pulls · ':''}${state.surge>0?'SURGE · '+state.surge+' shared pulls · ':''}${state.charges[x.id]}/7 charges · Next: ${nameOf(nextOutput(state,x.id))}${burstOutput(state,x.id)?(state.taps[x.id]+1)%7===0?' + bonus tool':' + raw part':''}`;
-    buttons=state.charges[x.id]?`<button class="accent" data-action="produce">Produce · ${SOURCES[x.id].cost} ϟ</button>`:'<button data-action="serviceTool">Service · tool</button><button class="accent" data-action="service">Service · 3 ϟ</button>';
-   }
-   if(x.id==='chart'&&state.camp.loft)buttons+=`<button class="accent" data-action="recoverTide">${state.camp.deepSurvey?'Deep Survey':'Recover'} ${nameOf(nextTide(state))} · ${recoveryCost(state)} ϟ</button>`;
-   if(state.journey.engine)buttons+='<button class="accent" data-action="infuse">Enrich · 1 Loop Cell</button>';
-   if(x.id==='rig'&&state.workshop.repaired&&state.charges.rig)buttons+='<button class="accent toolPress" data-action="press">Tool press · 2 ϟ</button>';
-   if(x.id==='rig'&&state.workshop.repaired){
-    const inputs=benchInputs(state),installed=state.workshop.precision;
-    desc=installed?'Precision Bench · use spare materials, or keep them for requests':'Next: Precision Bench · fit a spanner from a tool and chart';
-    const recipe=BENCH_NEEDS.map((r,n)=>'<span class="benchInput '+(inputs[n]>=0?'present':'missing')+'">'+art(item(r.family,r.tier,r.line))+'<small>'+(inputs[n]>=0?'✓':'0/1')+'</small></span>').join('');
-    buttons+='<span class="benchRoute">'+recipe+'<span>→</span>'+art(item('rig',2))+'</span>';
-    buttons+=installed?'<button class="benchAction '+(inputs.every(i=>i>=0)&&state.energy>=1&&state.charges.rig?'available':'')+'" data-action="fitSpanner">Fit spanner · 1 ϟ + 1 charge</button>':'<button class="benchAction '+(state.requests.supplies>=BENCH_COST?'available':'')+'" data-action="upgradeWorkshop">Install bench · 12 ◆</button>';
+   if(!sourceUnlocked(state,x.id))desc=`Unlock: ${x.id==='chart'?'secure the landing':'open a crossing'}.`;
+   else{
+    desc=`${state.charges[x.id]}/7 charges · Next: ${nameOf(nextOutput(state,x.id))}`;
+    if(state.charges[x.id])buttons=`<button class="accent" data-action="produce">Create · ${SOURCES[x.id].cost} ϟ</button>`;
+    else{
+     const canTool=state.board.some(y=>matches(y,{family:'rig',tier:1})),canEnergy=state.energy>=3;
+     desc='Out of charges. Choose one way to refill this producer.';
+     buttons=`<button class="accent" data-action="service"${canEnergy?'':' disabled'}>Refill · 3 ϟ</button>`+
+      (canTool?'<button data-action="serviceTool">Refill with Grip Tool</button>':'');
+    }
+    if(x.id==='chart'&&state.camp.loft)buttons+=`<button class="accent" data-action="recoverTide">${state.camp.deepSurvey?'Deep Survey':'Recover'} ${nameOf(nextTide(state))} · ${recoveryCost(state)} ϟ</button>`;
+    if(state.journey.engine)buttons+='<button class="accent" data-action="infuse">Enrich · 1 Loop Cell</button>';
+    if(x.id==='rig'&&state.workshop.repaired&&state.charges.rig)buttons+='<button class="accent toolPress" data-action="press">Press Grip Tool · 2 ϟ</button>';
    }
   }else if(x.type==='rock'){
    const find=FINDS[x.find];
@@ -299,7 +317,10 @@ function run(a){
  if(a.type==='buildLoft'){selected=null;focus='pier';render();moment('Charting Loft built','Survey Kite now recovers Tide Treasures · Neri can trace the missing coast',tideItem(1));sound.play('milestone');$('.world').classList.add('changed');}
  if(a.type==='recoverTide'){if(!knownBefore.has(discoveryKey(state.board[result.index]))){moment(nameOf(state.board[result.index]),'Wayfinding treasure · merge twins or deliver an order',state.board[result.index]);sound.play('rare');}board.querySelector(`[data-index="${result.index}"]`)?.classList.add('merge-pop');}
  if(result.tideFragment&&state.camp.earlyFragments===1){moment('First Tide Dial fragment','Neri: This fragment points toward a coast erased from the charts.',tideItem(0));}
- if(result.tideDiscovery){moment(nameOf(state.board[result.index]),state.board[result.index].tier===4?'Ocean Crown installed at the Loft · tap REVEAL SIGNAL to uncover the fleet’s message':state.board[result.index].tier===2&&!state.camp.deepSurvey?'Pearl discovered · Deep Survey is now available at the Loft':'New treasure · deliver it or merge toward '+TIDE_NAMES[Math.min(4,state.board[result.index].tier+1)],state.board[result.index]);}
+ if(result.tideDiscovery&&state.board[result.index]?.tier===1&&!knownBefore.has('chart:tide:1')){
+  moment('The first Reef Compass','Neri: Its needle points toward the missing coast. Now prepare a Lens and Spanner to follow it.',state.board[result.index]);
+  sound.play('rare');$('.world').classList.add('changed');
+ }else if(result.tideDiscovery){moment(nameOf(state.board[result.index]),state.board[result.index].tier===4?'Ocean Crown installed at the Loft · tap REVEAL SIGNAL to uncover the fleet’s message':state.board[result.index].tier===2&&!state.camp.deepSurvey?'Pearl discovered · Deep Survey is now available at the Loft':'New treasure · deliver it or merge toward '+TIDE_NAMES[Math.min(4,state.board[result.index].tier+1)],state.board[result.index]);}
  if(a.type==='request'&&projectBefore?.cost&&projectBefore.supplies<projectBefore.cost){
   const nowReady=campGoal(state);
   if(nowReady.name===projectBefore.name&&nowReady.supplies>=nowReady.cost){
@@ -324,6 +345,7 @@ function run(a){
 }
 function clickTile(i){
  const x=state.board[i],prev=state.board[selected];
+ if(focus==='bench')focus='goal';
  const link=circuit(state,i);if(x?.type==='site'&&link){run({type:'power',index:i});return;}
  if(selected===i&&['item','glyph','brace'].includes(x?.type)){selected=null;render();return;}
  const use=useAction(state,selected,i)??useAction(state,i,selected);if(use){run(use);return;}
@@ -352,7 +374,7 @@ $('#scene').onclick=e=>{
  if(e.target.closest('#fleetCrown')){showFleet();return;}
  if(e.target.closest('#campPierWorld')){selected=null;focus='pier';render();$('#selection').scrollIntoView({block:'nearest'});return;}
  if(e.target.closest('#workshopBench')){
-  selected=state.board.findIndex(x=>x?.type==='source'&&x.id==='rig');focus='bench';render();
+  selected=null;focus='bench';render();
   $('#selection').scrollIntoView({block:'nearest'});return;
  }
  if(!e.target.closest('#workshop'))return;if(!state.workshop.repaired){const result=run({type:'restoreWorkshop'});if(!result.ok)message.textContent=`Camp requests fund repairs · ${state.requests.supplies}/${WORKSHOP_COST} supplies`;return;}selected=state.board.findIndex(x=>x?.type==='source'&&x.id==='rig');if(!state.charges.rig){render();$('#selection').scrollIntoView({block:'nearest'});return;}run({type:'press',id:'rig'});board.scrollIntoView({block:'center'});};
