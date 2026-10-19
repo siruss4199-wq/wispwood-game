@@ -42,8 +42,8 @@ export function syncRequests(s){
    // distribute demand across producers. Never consume protected equipment.
    // This affects only newly generated orders, never an existing pending order.
    const bench=s.workshop?.precision&&lane===1&&family==='rig'&&tier===2;
-   const effortCredit=(matchingSpare?(lane===0?18:lane===1?10:6):0)+(pairBelow>=2?4:0);
-   return {family,tier,score:(occupied.has(key)?100:0)+(protectedOnly?30:0)+(usedFamilies.has(family)?20:0)+fi*7+ti*9-(bench?40:0)-effortCredit};
+   const effortCredit=(matchingSpare?(lane===0?6:5):0)+(pairBelow>=2?3:0);
+   return {family,tier,score:(occupied.has(key)?100:0)+(protectedOnly?30:0)+(usedFamilies.has(family)?8:0)+fi*15+ti*9-(bench?40:0)-effortCredit};
   }));
   // Before Survey Kite unlocks, early Quick orders can ask for more raw copper
   // instead of consuming the two Grip tools reserved for the landing.
