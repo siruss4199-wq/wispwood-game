@@ -170,7 +170,8 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
    let crownSave=await read();assert.ok(!crownSave.camp.fleetViewed);
    const sceneGeometry=async label=>{
     await page.evaluate(()=>scrollTo(0,0));
-    const selectors=label.startsWith('viewed-')?['#fleetCrown']:['#fleetCrown','#workshop','#workshopBench','#campPierWorld'];
+    const endCollapsed=label.startsWith('viewed-')&&await page.locator('.world.chapterEnded:not(.campExpanded)').count()>0;
+    const selectors=endCollapsed?['#fleetCrown']:['#fleetCrown','#workshop','#workshopBench','#campPierWorld'];
     const rects=await page.evaluate(selectors=>selectors.map(selector=>{
      const el=document.querySelector(selector),r=el.getBoundingClientRect();
      const points=[[.5,.5],[.15,.15],[.85,.15],[.15,.85],[.85,.85]];
@@ -220,8 +221,12 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
     await page.locator('#fleetCrown').tap();await page.locator('#fleetNext').tap();
     await page.locator('#fleetReveal .close').tap();await page.reload();
     assert.ok(!(await read()).camp.fleetViewed,'closing midway leaves the scene pending');
-    assert.match(await page.locator('#goalTitle').textContent(),/Ocean Crown is a signal/i,'Crown discovery overrides repetitive camp orders');
-    assert.equal(await page.locator('#requests .requestShelf').isVisible(),false);
+    if((await read()).stage===4){
+     assert.match(await page.locator('#goalTitle').textContent(),/Ocean Crown is a signal/i,'Crown discovery overrides repetitive camp orders once Vault is open');
+     assert.equal(await page.locator('#requests .requestShelf').isVisible(),false);
+    }else{
+     assert.equal(await page.locator('.world.chapterEnded').count(),0,'the story cannot finish while the Vault is still unopened');
+    }
     await page.locator('#fleetCrown').tap();await page.locator('#fleetNext').tap();await page.locator('#fleetNext').tap();
     assert.match(await page.locator('#fleetMilestone').textContent(),/Chapter 1 mystery milestone reached/);
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
@@ -233,18 +238,39 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
     await page.reload();assert.deepEqual(await read(),viewed);
     assert.equal(await page.locator('#fleetReveal').evaluate(x=>x.open),false);
     assert.ok(await page.locator('#fleetCrown').isVisible());
-    for(const sel of ['#workshop','#workshopBench','#campPierWorld'])assert.equal(await page.locator(sel).isVisible(),false,'camp controls wait until player opens optional activities: '+sel);
-    assert.match(await page.locator('#goalTitle').textContent(),/fleet left a signal/i,'story has a truthful Chapter 1 endpoint');
-    assert.match(await page.locator('#step').textContent(),/FINISHED/);
-    assert.equal(await page.locator('#requests .requestShelf').isVisible(),false,'endless orders are not a forced primary quest');
-    const savedEnding=await read();
-    await page.locator('#ordersToggle').tap();
-    assert.equal(await page.locator('#requests .requestShelf').isVisible(),true,'optional orders are accessible on demand');
-    for(const sel of ['#workshop','#workshopBench','#campPierWorld'])assert.equal(await page.locator(sel).isVisible(),true,'camp machines return when optional activities are opened: '+sel);
-    assert.deepEqual(await read(),savedEnding,'folding optional tasks must not modify gameplay saves');
-    await page.locator('#ordersToggle').tap();
-    assert.equal(await page.locator('#requests .requestShelf').isVisible(),false);
-    for(const sel of ['#workshop','#workshopBench','#campPierWorld'])assert.equal(await page.locator(sel).isVisible(),false,'folding camp activities declutters the scene: '+sel);
+    if(viewed.stage===4){
+     for(const sel of ['#workshop','#workshopBench','#campPierWorld'])assert.equal(await page.locator(sel).isVisible(),false,'camp controls fold after completed chapter: '+sel);
+     assert.match(await page.locator('#goalTitle').textContent(),/fleet left a signal/i,'Chapter 1 has a truthful endpoint');
+     assert.match(await page.locator('#step').textContent(),/FINISHED/);
+     assert.equal(await page.locator('#requests .requestShelf').isVisible(),false);
+     const savedEnding=await read();
+     await page.locator('#ordersToggle').tap();
+     assert.equal(await page.locator('#requests .requestShelf').isVisible(),true,'camp orders can be reopened voluntarily');
+     for(const sel of ['#workshop','#workshopBench','#campPierWorld'])assert.equal(await page.locator(sel).isVisible(),true,'camp machines return with optional activities: '+sel);
+     assert.deepEqual(await read(),savedEnding,'display toggle never affects saved gameplay');
+     await page.locator('#ordersToggle').tap();
+     assert.equal(await page.locator('#requests .requestShelf').isVisible(),false);
+    }else{
+     assert.equal(await page.locator('.world.chapterEnded').count(),0,'Crown signal alone must not falsely complete the Vault');
+     assert.equal(await page.locator('#requests .requestShelf').isVisible(),true,'unfinished expedition retains accessible orders');
+    }
+    // In this early earned-treasure walkthrough, the Vault may still be
+    // unopened. A separate UI-only projection verifies the complete layout;
+    // this is never presented as earned gameplay or saved over the walkthrough.
+    if(width===390&&viewed.stage!==4){
+     const uiFixture={...structuredClone(viewed),stage:4};
+     await page.evaluate(s=>localStorage.setItem('vaultwake-v5',JSON.stringify(s)),uiFixture);
+     await page.reload();
+     assert.match(await page.locator('#step').textContent(),/FINISHED/);
+     assert.match(await page.locator('#goalTitle').textContent(),/fleet left a signal/i);
+     assert.equal(await page.locator('#requests .requestShelf').isVisible(),false);
+     for(const sel of ['#workshop','#workshopBench','#campPierWorld'])assert.equal(await page.locator(sel).isVisible(),false);
+     await page.locator('#ordersToggle').tap();
+     assert.equal(await page.locator('#requests .requestShelf').isVisible(),true);
+     for(const sel of ['#workshop','#workshopBench','#campPierWorld'])assert.equal(await page.locator(sel).isVisible(),true);
+     await page.evaluate(s=>localStorage.setItem('vaultwake-v5',JSON.stringify(s)),viewed);
+     await page.reload();assert.deepEqual(await read(),viewed);
+    }
     await sceneGeometry(`viewed-${width}`);await evidence(`fleet-scene-${width}`);
     await page.screenshot({path:`${dir}/${engine}-fleet-world-${width}.png`,fullPage:true});
    }
