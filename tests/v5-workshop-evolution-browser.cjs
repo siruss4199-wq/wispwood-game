@@ -82,8 +82,13 @@ const {chromium}=require('playwright');
   const saved=await rp.evaluate(()=>JSON.parse(localStorage.getItem('vaultwake-v5')));assert.deepEqual(saved.workshop,completed.workshop);assert.deepEqual(saved.requests,completed.requests);assert.deepEqual(saved.board,completed.board);
   for(const width of [360,390,430]){await rp.setViewportSize({width,height:844});await rp.locator('#workshopBench').tap();
    assert.equal(await rp.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
-   for(const selector of ['#workshopBench','[data-action="fitSpanner"]','[data-action="press"]']){const b=await rp.locator(selector).boundingBox();assert.ok(b&&b.width>=44&&b.height>=44,selector);}
+   for(const selector of ['#workshopBench','[data-action="fitSpanner"]']){const b=await rp.locator(selector).boundingBox();assert.ok(b&&b.width>=44&&b.height>=44,selector);}
+   assert.equal(await rp.locator('[data-action="press"]').count(),0,'Bench screen must not duplicate producer actions');
    await rp.screenshot({path:`${out}/${mode}-layout-${width}.png`,fullPage:true});
+   const rover=(await rp.evaluate(()=>JSON.parse(localStorage.getItem('vaultwake-v5')))).board.findIndex(x=>x?.type==='source'&&x.id==='rig');
+   await rp.locator(`#board [data-index="${rover}"]`).tap();
+   assert.equal(await rp.locator('.benchRoute').count(),0,'Selecting the producer must not open the Bench recipe');
+   assert.ok(await rp.locator('[data-action="produce"],[data-action="service"]').count(),'Rover retains a playable producer/refill action');
   }
   await reloaded.close();assert.deepEqual(errors,[]);
   fs.writeFileSync(`${out}/${mode}-trace.json`,JSON.stringify({mode,trace,requests:completed.requests.completed,supplies:completed.requests.supplies,workshop:completed.workshop,taps:completed.taps,merges:completed.merges,occupied:completed.board.filter(Boolean).length},null,2));
