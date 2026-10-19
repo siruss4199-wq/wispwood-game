@@ -163,6 +163,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
     }),selectors);
     const overlap=(a,b)=>Math.min(a.x+a.width,b.x+b.width)-Math.max(a.x,b.x)>.5&&Math.min(a.y+a.height,b.y+b.height)-Math.max(a.y,b.y)>.5;
     const scene=await page.locator('#scene').boundingBox(),title=await page.locator('.worldLabel').boundingBox();
+    console.log('TT1H1_BOUNDS',engine,label,JSON.stringify({scene,title,rects}));
     for(const [i,a] of rects.entries()){
      assert.ok(a.width>=44&&a.height>=44,`${label}: ${a.selector} touch size`);
      assert.ok(a.uncovered,`${label}: ${a.selector} receives pointer hits`);
@@ -180,7 +181,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
    };
    assert.equal(await page.locator('#fleetReveal').evaluate(x=>x.open),false,'never force a modal on discovery');
    await shot('17-earned-crown');await page.reload();assert.deepEqual(await read(),crownSave);
-   for(const width of [360,390,430]){await page.setViewportSize({width,height:844});await sceneGeometry(`upgrade-${width}`);}
+   for(const width of [360,390,430]){await page.setViewportSize({width,height:844});await evidence(`fleet-upgrade-${width}`);await sceneGeometry(`upgrade-${width}`);}
    // Earn the Precision Bench as well: its installed icon must coexist with the Crown.
    while((await read()).requests.supplies<12)await requestStep(0);
    await page.locator('#workshopBench').tap();await page.locator('[data-action="upgradeWorkshop"]').tap();
