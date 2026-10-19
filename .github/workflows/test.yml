@@ -14,7 +14,8 @@ jobs:
   test:
     name: Game rule and markup tests
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Full mobile matrix approaches 15 minutes before the final viewport checks.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -60,6 +61,7 @@ jobs:
           git archive FETCH_HEAD | tar -x -C /tmp/vaultwake-before
           python3 -m http.server 8081 --directory /tmp/vaultwake-before > /tmp/vaultwake-before-http.log 2>&1 &
           # Run the stabilization targets first, then the complete remaining suite.
+          node tests/v5-mobile.cjs
           node tests/v5-workshop-browser.cjs
           node tests/v5-requests-browser.cjs
           git fetch --depth=1 origin d16d4921b52f4a93bd929486e9d919228c5192c9
@@ -73,7 +75,6 @@ jobs:
           node tests/v5-workshop-evolution-browser.cjs
           node tests/v45-browser.cjs
           node tests/v5-browser.cjs
-          node tests/v5-mobile.cjs
       # Preserve compact debugging evidence only. Playwright videos can be >100 MB
       # per run; keep them local to CI instead of uploading on every PR update.
       - name: Save compact V5 screenshots and traces
