@@ -387,3 +387,13 @@ body[data-art="premium"] .world.compassFound #scene>.premiumScene{filter:saturat
 .ordersToggle span{float:right}
 #requests.postChapterCollapsed .requestHeading,#requests.postChapterCollapsed .requestShelf{display:none}
 @media(max-width:375px){.world.chapterEnded .chapterEndObjective h1{font-size:18px}.world.chapterEnded .chapterEndObjective .primary{font-size:11px;min-width:98px}.chapterEndDetail{font-size:11px}}
+
+/* Once the story has been viewed, optional machinery must not compete with the chapter ending. */
+.world.chapterEnded:not(.campExpanded) #workshop,
+.world.chapterEnded:not(.campExpanded) #workshopBench,
+.world.chapterEnded:not(.campExpanded) #campPierWorld{display:none!important}
+.world.signalPending .objective.chapterEndObjective{background:linear-gradient(#fff5dfee,#dbf4ed);border-top:3px solid #e9b75b;padding:10px 14px}
+.world.signalPending .chapterEndObjective h1{font-size:18px;color:#124e5b}
+.world.signalPending .chapterEndObjective .primary{background:#087f76;color:#fff;min-height:44px}
+.world.signalPending #workshop,.world.signalPending #workshopBench,.world.signalPending #campPierWorld{opacity:.55}
+.world.chapterEnded.campExpanded #workshop,.world.chapterEnded.campExpanded #workshopBench,.world.chapterEnded.campExpanded #campPierWorld{opacity:1}

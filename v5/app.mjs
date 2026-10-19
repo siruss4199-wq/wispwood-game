@@ -34,6 +34,9 @@ function needsHTML(needs){return needs.map(r=>`<span class="need ${count(state,r
 function sideOptions(){return ['contract',...(state.discovery&&!state.discoveryDone&&state.board.some(x=>x?.type==='glyph')?['discovery']:[]),...(state.stage>=1?[state.opportunity?'opportunity':'startOpportunity']:[])];}
 function sideChoice(){const options=sideOptions();return options.includes(sideView)?sideView:state.opportunity?'opportunity':options.includes('discovery')?'discovery':'contract';}
 function hint(){
+ // An already-prepared crossing is the player's next real action; never
+ // override it with an optional first-fragment suggestion.
+ if(state.stage===0&&state.landingStep===1&&ready(state,visibleGoal()?.needs??[]))return 'CROSSING READY · View routes above';
  const finished=chapterEndView(state);
  if(finished&&focus!=='request')return finished.hint;
  const opening=firstSessionCue(state);
@@ -158,7 +161,9 @@ function renderSide(){
 function render(){
  const ending=chapterEndView(state);
  $('.world').classList.toggle('opened',state.stage===4);
- $('.world').classList.toggle('chapterEnded',!!ending);
+ $('.world').classList.toggle('chapterEnded',ending?.status==='complete');
+ $('.world').classList.toggle('signalPending',ending?.status==='pending');
+ $('.world').classList.toggle('campExpanded',postChapterOrdersOpen);
  $('.world').classList.toggle('compassFound',state.stage===0&&state.landingStep===1&&state.discovered.includes('chart:tide:1'));
  $('.destination').textContent=state.stage===4?'VAULT DISCOVERED':'OPEN THE TIDEGLASS VAULT';
  $('#energy').textContent=state.energy;$('#marks').textContent=state.marks;

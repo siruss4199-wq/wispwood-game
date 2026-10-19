@@ -6,10 +6,12 @@ test('Chapter 1 end screen is only displayed after a genuinely viewed earned fle
  const s=fresh(0);s.stage=4;
  assert.equal(chapterEndView(s),null);
  s.discovered.push('chart:tide:4');
- assert.equal(chapterEndView(s),null,'discovery still requires the earned signal reveal');
+ assert.equal(chapterEndView(s).status,'pending','discovery must offer a real reveal instead of mandatory orders');
+ assert.match(chapterEndView(s).action,/REVEAL SIGNAL/);
  s.camp.fleetViewed=true;
  const before=JSON.stringify(s),end=chapterEndView(s);
  assert.equal(end.phase,'CHAPTER 1 COMPLETE');
+ assert.equal(end.status,'complete');
  assert.match(end.detail,/fleet discovery|fleet|signal/i);
  assert.doesNotMatch(end.hint,/MAKE|NEXT ORDER|BUILD/i);
  assert.equal(JSON.stringify(s),before);
