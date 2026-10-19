@@ -63,6 +63,10 @@ const {chromium}=require('playwright');
   const supported=upgraded.requests.orders.findIndex(o=>o.needs.some(r=>r.family==='rig'&&r.tier===2));
   if(supported>=0)await fulfill(supported);
   for(let n=0;n<6&&!deliveredFitting;n++)await fulfill(n%3);
+  if(!deliveredFitting){
+   const diagnostic=await read();
+   console.log('TT1I_BENCH_TRACE',JSON.stringify({mode,completed:diagnostic.requests.completed,sequences:diagnostic.requests.sequences,orders:diagnostic.requests.orders,workshop:diagnostic.workshop,kept:[...lineage],trace:trace.slice(-48)}));
+  }
   assert.ok(deliveredFitting,'a manufactured spanner or its merged descendant is consumed by a real request');
   completed=await read();assert.ok(completed.workshop.fittings>0);await shot('06-request-delivered');
   // Remove the legacy init script by reusing storage in a clean page context.
