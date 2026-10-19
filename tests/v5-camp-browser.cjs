@@ -107,7 +107,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
    await page.locator(`#requests [data-request="${(await read()).requests.orders[1].id}"]`).tap();await shot('07-treasure-order');
    const treasureId=(await read()).requests.orders[1].id;
    while((await read()).requests.orders[1].id===treasureId)await requestStep(1);
-   assert.ok((await read()).camp.dives>=2);await shot('08-treasure-delivered');
+   assert.ok((await read()).camp.dives+(await read()).camp.earlyFragments>=2);assert.ok((await read()).discovered.includes('chart:tide:1'));await shot('08-treasure-delivered');
    // Discover the top collectible using real production and merges, including a pointer drag.
    let dragged=false;
    for(let guard=0;!(await read()).board.some(x=>x?.line==='tide'&&x.tier===2);guard++){
