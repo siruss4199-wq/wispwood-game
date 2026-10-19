@@ -231,6 +231,15 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
     await page.reload();assert.deepEqual(await read(),viewed);
     assert.equal(await page.locator('#fleetReveal').evaluate(x=>x.open),false);
     assert.ok(await page.locator('#fleetCrown').isVisible());
+    assert.match(await page.locator('#goalTitle').textContent(),/fleet left a signal/i,'story has a truthful Chapter 1 endpoint');
+    assert.match(await page.locator('#step').textContent(),/FINISHED/);
+    assert.equal(await page.locator('#requests .requestShelf').isVisible(),false,'endless orders are not a forced primary quest');
+    const savedEnding=await read();
+    await page.locator('#ordersToggle').tap();
+    assert.equal(await page.locator('#requests .requestShelf').isVisible(),true,'optional orders are accessible on demand');
+    assert.deepEqual(await read(),savedEnding,'folding optional tasks must not modify gameplay saves');
+    await page.locator('#ordersToggle').tap();
+    assert.equal(await page.locator('#requests .requestShelf').isVisible(),false);
     await sceneGeometry(`viewed-${width}`);await evidence(`fleet-scene-${width}`);
     await page.screenshot({path:`${dir}/${engine}-fleet-world-${width}.png`,fullPage:true});
    }

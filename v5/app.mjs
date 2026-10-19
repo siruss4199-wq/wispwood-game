@@ -1,4 +1,5 @@
 import {campGoal} from './camp-goals.mjs';
+import {chapterEndView} from './chapter-end.mjs';
 import {firstSessionCue} from './first-session.mjs';
 import {fleetEarned,fleetPending,FLEET_LINES} from './fleet.mjs';
 import {storySnapshot,requestBrief} from './story.mjs';
@@ -24,7 +25,7 @@ if(premium){enablePremium(new URLSearchParams(location.search).get('art'));docum
 const scene=premium?prototypeScene:vectorScene;
 const $=s=>document.querySelector(s);
 let state;try{state=load(localStorage.getItem(SAVE_KEY));}catch{state=fresh();}
-let selected=null,focus='goal',drag=null,suppressUntil=0,sideView=null,requestId=null,kitFocus='field',showVaultGoal=false;
+let selected=null,focus='goal',drag=null,suppressUntil=0,sideView=null,requestId=null,kitFocus='field',showVaultGoal=false,postChapterOrdersOpen=false;
 function visibleGoal(){return state.stage===4&&showVaultGoal?expeditionGoal(state):goal(state);}
 const board=$('#board'),message=$('#message');
 function persist(){try{const raw=JSON.stringify(state);localStorage.setItem(SAVE_KEY,raw);platform.save(raw);}catch{message.textContent='Storage unavailable. This session is playable, but progress cannot be saved.';}}
@@ -33,6 +34,8 @@ function needsHTML(needs){return needs.map(r=>`<span class="need ${count(state,r
 function sideOptions(){return ['contract',...(state.discovery&&!state.discoveryDone&&state.board.some(x=>x?.type==='glyph')?['discovery']:[]),...(state.stage>=1?[state.opportunity?'opportunity':'startOpportunity']:[])];}
 function sideChoice(){const options=sideOptions();return options.includes(sideView)?sideView:state.opportunity?'opportunity':options.includes('discovery')?'discovery':'contract';}
 function hint(){
+ const finished=chapterEndView(state);
+ if(finished&&focus!=='request')return finished.hint;
  const opening=firstSessionCue(state);
  if((opening?.pairs.length===2||opening?.requestId)&&focus!=='request')return opening.hint;
  if(state.stage===4&&visibleGoal()?.kind==='camp'&&focus!=='request'){
@@ -121,7 +124,10 @@ function renderWorkshop(){
  button.setAttribute('aria-label',restored?'Coastal Workshop operational. Tap here to press a Grip tool for 2 energy and one Rover charge, or select Rivet Rover.':`Coastal Workshop damaged. Repair for 8 supplies. You have ${state.requests.supplies}.`);
 }
 function renderRequests(){
+ const ending=chapterEndView(state);
  $('#requests').hidden=state.stage===0&&!state.landingStep;
+ $('#requests').classList.toggle('postChapterCollapsed',!!ending&&!postChapterOrdersOpen);
+ $('#requests').classList.toggle('postChapterOrders',!!ending);
  $('#sideTray').hidden=state.stage===0&&!state.landingStep;
  const q=state.requests;
  const suggestedRequest=firstSessionCue(state)?.requestId??null;
@@ -133,7 +139,7 @@ function renderRequests(){
   :`<button class="campAction ${q.supplies>=PIER_COST?'affordable':''}" data-camp-action="buildPier" aria-label="Build Supply Pier for ${PIER_COST} camp supplies">Build Pier · ${PIER_COST}◆</button>`):'';
  const primary=campGoal(state);
  const purpose=(state.camp.earlyFragments??0)<2?'Next order: Tide Dial Fragment':primary?.cost?primary.name+' · '+Math.min(primary.supplies,primary.cost)+'/'+primary.cost+' ◆'+(primary.supplies>=primary.cost?' · READY':''):primary?.action==='treasure'?'Recover & merge the next treasure':primary?.action==='orders'?'Orders fund Supply Pier cases':(state.camp.earlyFragments??0)<2?'Next order: Tide Dial Fragment':!state.workshop.repaired?'Workshop 8◆':!state.camp.pier?'Unlock useful supply cases':!state.camp.loft?'Charting Loft 20◆':state.camp.deepSurvey?(state.discovered.includes('chart:tide:4')?'Fulfill treasure orders':'Discover the Ocean Crown'):pearlDiscovered(state)?'Deep Survey 18◆':'Discover a Pearl Astrolabe';
- $('#requests').innerHTML=`<div class="requestHeading"><span>ORDERS <small>${purpose}</small></span><b title="Earn camp supplies by delivering orders">◆ <span id="supplies">${q.supplies}</span></b>${action}</div><div class="requestShelf">${q.orders.filter(Boolean).map(o=>{
+ $('#requests').innerHTML=`${ending?`<button id="ordersToggle" type="button" aria-expanded="${postChapterOrdersOpen}" class="ordersToggle">${postChapterOrdersOpen?'Hide optional camp orders':'Optional camp orders'} · ◆${q.supplies} <span aria-hidden="true">${postChapterOrdersOpen?'▴':'▾'}</span></button>`:''}<div class="requestHeading"><span>${ending?'OPTIONAL ORDERS':'ORDERS'} <small>${purpose}</small></span><b title="Earn camp supplies by delivering orders">◆ <span id="supplies">${q.supplies}</span></b>${action}</div><div class="requestShelf">${q.orders.filter(Boolean).map(o=>{
  const p=requestProgress(state,o),active=requestId===o.id&&focus==='request',energy=Math.min(o.energy,120-state.energy);
  return `<button class="requestCard ${p.ready?'ready':''} ${active?'active':''} ${o.id===suggestedRequest?'storySuggested':''}" data-request="${o.id}" aria-pressed="${active}" aria-label="${o.id===suggestedRequest?'Suggested next: ':''}${o.lane} request: ${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier,r.line))).join(', ')}. ${p.ready?active?'Deliver':'Ready. Tap once to collect':'In progress'}. Reward ${o.supplies} camp supplies${energy?` and ${energy} energy`:`, energy full`}"><b class="requestLane">${o.lane==='long'?'Expedition kit':o.lane==='quick'?'Quick':'Standard'}</b><span class="requestItems">${p.progress.map(r=>`<span>${art(item(r.family,r.tier,r.line))}<b>${r.current}/${r.count}</b>${r.protected?'<i title="One copy kept for expedition">◆</i>':''}</span>`).join('')}</span><span class="requestReward">+${o.supplies} ◆${energy?` · +${energy} ϟ`:``}</span><strong>${p.ready?'✓ COLLECT':active&&p.progress.some(r=>r.protected)?'MAKE SPARE':'MAKE'}</strong></button>`;
  }).join('')}</div>`;
@@ -150,21 +156,23 @@ function renderSide(){
  $('#contracts').innerHTML=`<button class="contract ${rare?'discovery':choice.includes('pportunity')?'opportunity':''} ${can?'ready':''}" data-contract="${choice}" data-requirements="${needs.length}" aria-label="Optional: ${title} ${can?'ready to use':''}"><span class="contractHead">${portrait(rare?'neri':'ivo')}<span><small>OPTIONAL</small><b>${title}</b></span></span><span class="needs">${rare?art({type:'glyph'}):''}${needsHTML(needs)}</span><span class="reward">${reward}<small ${choice==='opportunity'?'id="opClock"':''}>${can?'✓ READY':choice==='startOpportunity'?'OPEN · 3 MIN':choice==='opportunity'?Math.ceil(op.remaining/1000)+'s':'COLLECT'}</small></span></button><button class="sideMore" data-side-next aria-label="Other optional tasks" ${sideOptions().length<2?'hidden':''}>•••</button>`;
 }
 function render(){
+ const ending=chapterEndView(state);
  $('.world').classList.toggle('opened',state.stage===4);
+ $('.world').classList.toggle('chapterEnded',!!ending);
  $('.world').classList.toggle('compassFound',state.stage===0&&state.landingStep===1&&state.discovered.includes('chart:tide:1'));
  $('.destination').textContent=state.stage===4?'VAULT DISCOVERED':'OPEN THE TIDEGLASS VAULT';
  $('#energy').textContent=state.energy;$('#marks').textContent=state.marks;
  const viewStage=state.stage===0&&state.landingStep===1?1:state.stage;
- const sceneKey=viewStage+':'+state.post;if($('#scene').dataset.key!==sceneKey){$('#scene').innerHTML=scene(viewStage,state.post);$('#scene').dataset.key=sceneKey;}$('#sceneLabel').textContent=state.camp.fleetViewed?'Chapter 1 · fleet mystery milestone reached':visibleGoal()?.scene??STAGES[state.stage]?.scene??'The vault is open';
+ const sceneKey=viewStage+':'+state.post;if($('#scene').dataset.key!==sceneKey){$('#scene').innerHTML=scene(viewStage,state.post);$('#scene').dataset.key=sceneKey;}$('#sceneLabel').textContent=ending?'The fleet signal is found':visibleGoal()?.scene??STAGES[state.stage]?.scene??'The vault is open';
  renderWorkshop();
  $('.world').classList.toggle('pierBuilt',state.camp.pier);
- $('#chapterLabel').textContent=state.stage===4?'DISCOVERY · THE SKY WITHIN':'THE SALTGLASS REACH';
+ $('#chapterLabel').textContent=ending?'CHAPTER 1 · COMPLETE':state.stage===4?'DISCOVERY · THE SKY WITHIN':'THE SALTGLASS REACH';
  $('.objective').dataset.stage=state.stage;$('.objective').dataset.journey=state.stage===4&&!state.journey.infusions?'active':'';
- const baseGoal=visibleGoal(),g=state.stage===3&&!state.journey.kit?{...baseGoal,needs:KITS[kitFocus].needs}:baseGoal;$('#goalTitle').textContent=g?.name??'Keep exploring the coast';$('#step').textContent=g?.phase??(state.stage<4?`${state.stage+1} / 4`:'DISCOVERED');
- $('#goalNeeds').innerHTML=missionSlots();$('#goalButton').textContent=g?.verb??'Journal';
- const goalReady=g?.kind==='camp'?!!g.ready:!!g&&g.action!=='inspect'&&ready(state,g.needs)&&(g.action!=='power'||state.board.includes(null));$('#goalButton').hidden=g?.kind==='camp'?false:!goalReady||state.stage===2||state.stage===3&&!state.journey.kit;$('#goalButton').disabled=false;
- $('.objective').classList.toggle('ready',goalReady);$('.objective').classList.remove('almost');$('#nextUnlock').textContent=g?.next??'';
- if(goalReady)$('#step').textContent=state.stage===2&&g?.action==='power'?'TAP BELOW':'READY';
+ const baseGoal=visibleGoal(),g=ending?{name:ending.title,phase:ending.phase,next:ending.detail,verb:ending.action,kind:'chapterEnd',needs:[],action:'viewFleet'}:state.stage===3&&!state.journey.kit?{...baseGoal,needs:KITS[kitFocus].needs}:baseGoal;$('#goalTitle').textContent=g?.name??'Keep exploring the coast';$('#step').textContent=g?.phase??(state.stage<4?`${state.stage+1} / 4`:'DISCOVERED');
+ $('#goalNeeds').innerHTML=ending?`<span class="chapterEndDetail">${ending.detail}</span>`:missionSlots();$('#goalButton').textContent=g?.verb??'Journal';
+ const goalReady=ending?true:g?.kind==='camp'?!!g.ready:!!g&&g.action!=='inspect'&&ready(state,g.needs)&&(g.action!=='power'||state.board.includes(null));$('#goalButton').hidden=ending?false:g?.kind==='camp'?false:!goalReady||state.stage===2||state.stage===3&&!state.journey.kit;$('#goalButton').disabled=false;
+ $('.objective').classList.toggle('ready',goalReady);$('.objective').classList.toggle('chapterEndObjective',!!ending);$('.objective').classList.remove('almost');$('#nextUnlock').textContent=g?.next??'';
+ if(goalReady)$('#step').textContent=ending?'FINISHED':state.stage===2&&g?.action==='power'?'TAP BELOW':'READY';
  let seals=$('#sealStates');if(!seals){seals=document.createElement('div');seals.id='sealStates';$('.objective').append(seals);}
  seals.hidden=state.stage!==3||!state.journey.kit;seals.innerHTML=['navigation','stabilization','resonance'].map((k,n)=>`<span class="sealState ${state.seals[k]?'secured':''}" aria-label="${k} seal ${state.seals[k]?'secured':'unresolved'}"><i aria-hidden="true">${state.seals[k]?'✓':['◇','⌂','ϟ'][n]}</i>${['Navigate','Stabilize','Resonate'][n]}</span>`).join('');
  renderRequests();renderSide();const order=focus==='request'?state.requests.orders.find(o=>o?.id===requestId):null,orderProgress=order?requestProgress(state,order):null,c=order??normalContract(state),sideVisible=!!order||!$('#contracts').hidden&&$('#sideTray').open,cr=order?orderProgress.ready:sideVisible&&sideChoice()==='contract'&&ready(state,c.needs);
@@ -207,7 +215,7 @@ function render(){
  if(state.discovery&&!state.discoveryDone&&!state.opportunity&&state.board.some(x=>x?.type==='glyph')){const label=$('.discovery .reward small');if(label&&state.board.some(x=>x?.type==='glyph')&&!ready(state,[{family:'chart',tier:2,count:1}]))label.textContent='1 LENS LEFT';}
 }
 function renderSelection(){
- const x=state.board[selected];let title=state.stage<4?'Open the Tideglass Vault':'The star ocean awaits',desc=state.stage<4?'Merge identical objects. Choose expedition progress or supplies.':state.journey.engine?'Use Loop Cells on producers for enriched runs.':'Restore the engine inside with a spanner, lens and coil.',buttons='';
+ const x=state.board[selected],ending=chapterEndView(state);let title=ending?'Chapter 1 complete':state.stage<4?'Open the Tideglass Vault':'The star ocean awaits',desc=ending?'Your fleet discovery is complete. Camp orders and crafting are optional; choose what you enjoy.':state.stage<4?'Merge identical objects. Choose expedition progress or supplies.':state.journey.engine?'Use Loop Cells on producers for enriched runs.':'Restore the engine inside with a spanner, lens and coil.',buttons='';
  if(!x&&focus==='goal'&&visibleGoal()?.kind==='camp'){title=visibleGoal().name;desc=visibleGoal().next;}
  if(!x&&focus==='request'){
   const order=state.requests.orders.find(o=>o?.id===requestId);
@@ -363,7 +371,7 @@ board.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)return;
 board.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;const d=drag;drag=null;board.querySelectorAll('.dragging,.target,.picked').forEach(x=>x.classList.remove('dragging','target','picked'));if(!d.moved)return;suppressUntil=performance.now()+300;const tile=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-index]');if(tile){selected=d.from;const index=+tile.dataset.index,x=state.board[index];const use=useAction(state,d.from,index);if(use)run(use);else if(!x||movable(x))run({type:'merge',from:d.from,to:index});else render();}});
 board.addEventListener('pointercancel',()=>{drag=null;board.querySelectorAll('.dragging,.target,.picked').forEach(x=>x.classList.remove('dragging','target','picked'));});
 $('#selection').addEventListener('click',e=>{const button=e.target.closest('[data-action]'),type=button?.dataset.action;if(!type)return;const x=state.board[selected];run({type:type==='serviceTool'?'service':type,index:button.dataset.target!==undefined?+button.dataset.target:selected,from:button.dataset.target!==undefined?selected:undefined,id:button.dataset.source??x?.id,useTool:type==='serviceTool'});});
-$('#goalButton').onclick=()=>{const g=visibleGoal();if(g?.kind==='camp'){
+$('#goalButton').onclick=()=>{if(chapterEndView(state)){showFleet();return;}const g=visibleGoal();if(g?.kind==='camp'){
  if(g.action==='orders'){
    const o=state.requests.orders.find(o=>o?.id===g.orderId)??state.requests.orders.find(o=>o&&requestProgress(state,o).ready)??state.requests.orders.find(Boolean);
    if(o&&requestProgress(state,o).ready){requestId=null;focus='goal';run({type:'request',id:o.id});return;}
@@ -382,6 +390,7 @@ $('#scene').onclick=e=>{
  }
  if(!e.target.closest('#workshop'))return;if(!state.workshop.repaired){const result=run({type:'restoreWorkshop'});if(!result.ok)message.textContent=`Camp requests fund repairs · ${state.requests.supplies}/${WORKSHOP_COST} supplies`;return;}selected=state.board.findIndex(x=>x?.type==='source'&&x.id==='rig');if(!state.charges.rig){render();$('#selection').scrollIntoView({block:'nearest'});return;}run({type:'press',id:'rig'});board.scrollIntoView({block:'center'});};
 $('#requests').onclick=e=>{
+ if(e.target.closest('#ordersToggle')){postChapterOrdersOpen=!postChapterOrdersOpen;render();return;}
  const camp=e.target.closest('[data-camp-action]');
  if(camp){const result=run({type:camp.dataset.campAction,family:camp.dataset.family});if(result.ok)board.scrollIntoView({block:'nearest'});return;}
  const id=e.target.closest('[data-request]')?.dataset.request;if(!id)return;

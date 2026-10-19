@@ -372,3 +372,18 @@ body[data-art="premium"] .world .objective .engineActivate.blocked .activateCopy
 #requests .requestCard.storySuggested:not(.ready){border-color:#d99d42;box-shadow:inset 0 0 0 1px #f3c86b,0 2px 0 #d8bd7d}
 #requests .requestCard.storySuggested .requestLane::before{content:'➜ ';color:#bd7a29}
 body[data-art="premium"] .world.compassFound #scene>.premiumScene{filter:saturate(1.11) brightness(1.055) drop-shadow(0 0 5px #5ecfbd88)}
+
+/* Chapter closure: finishing the mystery must NOT funnel players into an endless mandatory order. */
+.world.chapterEnded .objective.chapterEndObjective{background:linear-gradient(#fff4dbee,#ebf9ef);padding:12px 14px 13px;border-top:3px solid #63bda4}
+.world.chapterEnded .chapterEndObjective h1{font-size:20px;line-height:1.15;color:#164e58}
+.world.chapterEnded .chapterEndObjective #step{color:#216e60;background:#d6f2e3;padding:4px 6px;border-radius:7px}
+.chapterEndDetail{display:block;flex:1;min-width:0;font-size:12px;line-height:1.4;color:#315a5d;font-weight:650}
+.world.chapterEnded .chapterEndObjective .goalBottom{gap:10px;align-items:center;min-height:52px}
+.world.chapterEnded .chapterEndObjective .primary{min-width:106px;min-height:44px;white-space:normal}
+.world.chapterEnded #workshop>span,.world.chapterEnded #workshopBench>span,.world.chapterEnded #campPierWorld>span{display:none}
+.world.chapterEnded #fleetCrown span{font-size:9px}
+#requests.postChapterOrders{margin:9px 0 5px}
+.ordersToggle{display:block;width:100%;min-height:48px;border:1px solid #8abcb3;border-radius:13px;background:#e0f0e9;color:#245761;text-align:left;padding:10px 12px;font-size:13px;font-weight:850}
+.ordersToggle span{float:right}
+#requests.postChapterCollapsed .requestHeading,#requests.postChapterCollapsed .requestShelf{display:none}
+@media(max-width:375px){.world.chapterEnded .chapterEndObjective h1{font-size:18px}.world.chapterEnded .chapterEndObjective .primary{font-size:11px;min-width:98px}.chapterEndDetail{font-size:11px}}
