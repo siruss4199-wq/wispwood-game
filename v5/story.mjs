@@ -67,3 +67,27 @@ export function storySnapshot(s){
 
  return {expedition,camp};
 }
+
+ 
+// Existing requests gain character motivation without changing rewards,
+// generation, pending orders or save data. Display only on selection.
+export function requestBrief(order){
+ const needs=order?.needs??[];
+ if(needs.some(x=>x.line==='tide'))return {
+  title:'Neri · missing-coast survey',
+  reason:'Neri needs these Tide Treasures to trace the erased shoreline.'
+ };
+ const first=needs[0]?.family;
+ if(first==='rig')return {
+  title:'Ivo · camp repairs',
+  reason:'Ivo needs working tools to keep the coastal expedition running.'
+ };
+ if(first==='chart')return {
+  title:'Neri · navigation charts',
+  reason:'Neri needs survey instruments to follow the shifting tide.'
+ };
+ return {
+  title:'Ivo · relic power',
+  reason:'Ivo needs charged parts to keep the ancient machinery awake.'
+ };
+}
