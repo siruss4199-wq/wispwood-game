@@ -52,7 +52,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs');const {chromium
   // Pressing supplies the spanners; produce any remaining companion ingredient
   // through the real controls instead of assuming an unused map scrap remains.
   await fulfill(2,false);
-  const long=page.locator('#requests [data-request]').nth(2);assert.match(await long.getAttribute('aria-label'),/Ready/);await shot('05-next-request-ready');await long.tap();trace.push({type:'request',lane:2});await page.waitForTimeout(1900);
+  const long=page.locator('#requests [data-request]').nth(2);assert.ok(await long.evaluate(el=>el.classList.contains('ready')),'prepared order is deliverable');await shot('05-next-request-ready');await long.tap();trace.push({type:'request',lane:2});await page.waitForTimeout(1900);
   const saved=await read();assert.equal(saved.requests.completed,5);assert.equal(saved.requests.supplies,6);assert.equal(saved.workshop.presses,4);assert.ok(saved.board.some(x=>x?.family==='rig'&&x.tier===2),'expedition spanner remains protected');await page.reload();assert.deepEqual((await read()).workshop,saved.workshop);assert.deepEqual((await read()).requests,saved.requests);assert.deepEqual((await read()).board,saved.board);assert.equal(await page.locator('#workshop').getAttribute('data-state'),'operational');await shot('06-reloaded');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);const box=await page.locator('#workshop').boundingBox();assert.ok(box.width>=44&&box.height>=44);assert.deepEqual(errors,[]);
   fs.writeFileSync(`${out}/walkthrough.json`,JSON.stringify({trace,requests:saved.requests.completed,supplies:saved.requests.supplies,workshop:saved.workshop,taps:saved.taps,merges:saved.merges},null,2));
