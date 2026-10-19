@@ -19,15 +19,38 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
    for(const width of [360,390,430]){
     await page.setViewportSize({width,height:844});
     assert.equal(await page.locator('#goalTitle').textContent(),'Restore Coastal Workshop');
-    assert.match(await page.locator('#goalNeeds').textContent(),/6\/8/);
+    assert.match(await page.locator('#goalNeeds').textContent(),/6\\/8/);
     assert.equal(await page.locator('#goalButton').isVisible(),true);
-    assert.equal(await page.locator('#goalButton').textContent(),'Earn supplies');
-    await page.locator('#goalButton').tap();assert.match(await page.locator('#message').textContent(),/Deliver orders/);
+    const expected=await page.evaluate(async()=>{
+     const {goal}=await import('/v5/core.mjs');
+     return goal(JSON.parse(localStorage.getItem('vaultwake-v5'))).verb;
+    });
+    assert.equal(await page.locator('#goalButton').textContent(),expected,'camp goal CTA must match the recommended order');
     assert.ok((await page.locator('#goalButton').boundingBox()).height>=44);
     assert.equal(await page.locator('#board .tile').count(),36);
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
    }
-   assert.deepEqual(await read(),legacy);await page.reload();
+   assert.deepEqual(await read(),legacy,'responsive review must not change progress');
+   // Verify the CTA using real UI controls without silently spending resources.
+   const suggested=await page.evaluate(async()=>{
+    const s=JSON.parse(localStorage.getItem('vaultwake-v5'));
+    const {goal}=await import('/v5/core.mjs');
+    const {requestProgress}=await import('/v5/requests.mjs');
+    const g=goal(s),o=s.requests.orders.find(x=>x?.id===g.orderId);
+    return {ready:o?requestProgress(s,o).ready:false,supplies:o?.supplies??0};
+   });
+   await page.locator('#goalButton').tap();
+   if(suggested.ready){
+    const after=await read();
+    assert.equal(after.requests.completed,legacy.requests.completed+1);
+    assert.equal(after.requests.supplies,legacy.requests.supplies+suggested.supplies);
+   }else{
+    assert.match(await page.locator('#message').textContent(),/Make the highlighted order items/);
+    assert.deepEqual(await read(),legacy,'selecting an order does not spend resources');
+   }
+   // Restore the exact 6/8 save before asserting reload persistence.
+   await page.evaluate(raw=>localStorage.setItem('vaultwake-v5',raw),JSON.stringify(legacy));
+   await page.reload();
    assert.equal(await page.locator('#goalTitle').textContent(),'Restore Coastal Workshop');
    assert.equal((await read()).discovered.some(k=>k.includes(':tide:')),false);
    await page.setViewportSize({width:390,height:844});await page.screenshot({path:`${dir}/${engine}-legacy-390.png`,fullPage:true});
