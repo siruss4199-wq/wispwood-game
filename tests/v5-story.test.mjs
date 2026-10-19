@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fresh,load} from '../v5/core.mjs';
-import {storySnapshot} from '../v5/story.mjs';
+import {storySnapshot,requestBrief} from '../v5/story.mjs';
 
 test('story starts with a human mystery, advances with expedition discoveries and never changes the save',()=>{
  const s=fresh(0),initial=JSON.stringify(s);
@@ -39,4 +39,15 @@ test('camp clues reveal only earned discoveries and leave mystery ahead after th
  assert.match(end.camp.line,/return/);
  assert.match(end.camp.question,/next coast remains uncharted/);
  assert.equal(typeof end.expedition.line,'string');
+});
+
+test('normal and Tide orders identify meaningful characters without changing request state',()=>{
+ const order={lane:'quick',needs:[{family:'rig',tier:1,count:1}],supplies:1};
+ const before=JSON.stringify(order);
+ assert.match(requestBrief(order).title,/Ivo/);
+ order.needs=[{family:'chart',tier:2,count:1}];assert.match(requestBrief(order).title,/Neri/);
+ order.needs=[{family:'chart',line:'tide',tier:1,count:1}];assert.match(requestBrief(order).reason,/shoreline/);
+ order.needs=[{family:'flux',tier:1,count:1}];assert.match(requestBrief(order).reason,/machinery/);
+ assert.ok(before.includes('"rig"'));
+ assert.equal(Object.hasOwn(order,'purpose'),false,'no new persistence fields are added');
 });
