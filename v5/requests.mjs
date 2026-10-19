@@ -41,9 +41,12 @@ export function syncRequests(s){
    // Fast orders favour a real spare or nearly finished pair; longer orders
    // distribute demand across producers. Never consume protected equipment.
    // This affects only newly generated orders, never an existing pending order.
-   const bench=s.workshop?.precision&&lane===1&&family==='rig'&&tier===2;
+   // A bought Precision Bench must have a useful destination, without
+   // turning Standard into an endless spanner-only lane. Every second new
+   // Standard offer favors its fitting output; intervening offers rotate.
+   const bench=s.workshop?.precision&&lane===1&&family==='rig'&&tier===2&&n%2===0;
    const effortCredit=(matchingSpare?(lane===0?6:5):0)+(pairBelow>=2?3:0);
-   return {family,tier,score:(occupied.has(key)?100:0)+(protectedOnly?30:0)+(usedFamilies.has(family)?8:0)+fi*15+ti*9-(bench?40:0)-effortCredit};
+   return {family,tier,score:(occupied.has(key)?100:0)+(protectedOnly?30:0)+(usedFamilies.has(family)?8:0)+fi*15+ti*9-(bench?85:0)-effortCredit};
   }));
   // Before Survey Kite unlocks, early Quick orders can ask for more raw copper
   // instead of consuming the two Grip tools reserved for the landing.
