@@ -44,3 +44,24 @@ test('never highlights a protected expedition ingredient as a disposable merge i
  const d=orderDirection(s,o);assert.equal(d.kind,'merge');assert.equal(d.indices.length,2);
  assert.equal(d.indices.every(i=>s.board[i].family==='rig'),true);
 });
+
+test('the director never sends a player to an unaffordable source action',()=>{
+ const s=fresh(0);act(s,{type:'merge',from:7,to:8});act(s,{type:'goal'});
+ s.board=s.board.map(x=>x?.type==='item'&&x.family==='chart'?null:x);
+ const o={id:'need-chart',needs:[{family:'chart',tier:2,count:1}]};
+ s.energy=0;
+ assert.equal(orderDirection(s,o).kind,'energy');
+ assert.deepEqual(orderDirection(s,o).indices,[]);
+ s.energy=5;s.charges.chart=0;
+ assert.equal(orderDirection(s,o).kind,'refill');
+ s.energy=2;
+ assert.equal(orderDirection(s,o).kind,'energy');
+});
+test('full-board advice never marks a top-tier duplicate as mergeable',()=>{
+ const s=fresh(0);s.stage=4;s.camp.loft=true;s.camp.deepSurvey=true;
+ s.board=s.board.map((x,i)=>x?.type==='source'?x:item('rig',7));
+ const o={id:'late',needs:[{family:'chart',tier:1,count:1}]};
+ const d=orderDirection(s,o);
+ assert.equal(d.kind,'full','max-tier duplicates cannot be merged to free space');
+ assert.deepEqual(d.indices,[]);
+});

@@ -1,5 +1,6 @@
 import {requestProgress,reservedItems} from './requests.mjs';
-import {sameKind} from './treasures.mjs';
+import {sameKind,maxTier,recoveryCost} from './treasures.mjs';
+import {SOURCES} from './core.mjs';
 
 // Advice only. No mutations, artificial inventory or automatic moves.
 // Highlight a *legal* pair (including its distinct treasure line), or the
@@ -27,7 +28,7 @@ export function orderDirection(s,order){
   const pool=s.board.flatMap((x,i)=>x?.type==='item'&&!kept.has(i)?[i]:[]);
   for(let i=0;i<pool.length;i++)for(let j=i+1;j<pool.length;j++){
    const a=pool[i],b=pool[j];
-   if(sameKind(s.board[a],s.board[b]))
+   if(sameKind(s.board[a],s.board[b])&&s.board[a].tier<maxTier(s.board[a],s))
     return {kind:'make-space',orderId:order.id,need,family:need.family,indices:[a,b]};
   }
   return {kind:'full',orderId:order.id,need,family:need.family,indices:[]};
@@ -35,6 +36,8 @@ export function orderDirection(s,order){
  const index=s.board.findIndex(x=>x?.type==='source'&&x.id===need.family);
  if(index<0)return {kind:'unavailable',orderId:order.id,need,indices:[]};
  const lowCharge=(s.charges?.[need.family]??0)<=0;
+ const energyCost=line==='tide'?recoveryCost(s):SOURCES[need.family]?.cost??1;
+ if(s.energy<(lowCharge?3:energyCost))return {kind:'energy',orderId:order.id,need,family:need.family,indices:[],index};
  return {kind:lowCharge?'refill':line==='tide'?'recover':'produce',
   orderId:order.id,need,family:need.family,indices:[index],index};
 }

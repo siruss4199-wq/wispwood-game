@@ -7,6 +7,26 @@ const assert=require('node:assert/strict'),fs=require('node:fs');const {chromium
  await shot('fresh');
  await page.locator('#board [data-index="7"]').tap();await page.locator('#board [data-index="8"]').tap();await page.locator('#goalButton').tap();await page.waitForTimeout(1800);
  assert.equal((await read()).landingStep,1);assert.equal(await page.locator('#requests [data-request]').count(),3);await shot('before');
+ // Focus one real unfinished order; the existing board, not a helper panel,
+ // must identify an actionable source or matching merge pair.
+ const unfinished=page.locator('#requests .requestCard:not(.ready)').first();
+ assert.ok(await unfinished.count(),'there must be a working order');
+ await unfinished.tap();
+ const advisory=await page.evaluate(async()=>{
+  const s=JSON.parse(localStorage.getItem('vaultwake-v5'));
+  const {orderDirection}=await import('/v5/order-direction.mjs');
+  const id=document.querySelector('#requests .requestCard.active')?.dataset.request;
+  return orderDirection(s,s.requests.orders.find(o=>o?.id===id));
+ });
+ assert.ok(advisory,'a focused order has a usable direction');
+ const highlights=await page.locator('#board .tile.nextAction').evaluateAll(xs=>xs.map(x=>+x.dataset.index));
+ assert.deepEqual(highlights,advisory.indices,'only real advised objects are highlighted');
+ for(const i of highlights){
+  const box=await page.locator(`#board [data-index="${i}"]`).boundingBox();
+  assert.ok(box.width>=44&&box.height>=44,'existing board touch geometry unchanged');
+ }
+ assert.equal(await page.locator('#guideButton,#guidePanel').count(),0,'no second guide dashboard');
+ await shot('focused-next-action');
  const timeline=[];
  for(const lane of [0,1,0,2,1,0]){
   let delivered=false;

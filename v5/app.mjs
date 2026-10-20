@@ -56,6 +56,7 @@ function directionText(direction){
  if(direction.kind==='merge')return 'MERGE THE HIGHLIGHTED PAIR → '+name;
  if(direction.kind==='make-space')return 'BOARD FULL · merge the highlighted pair';
  if(direction.kind==='full')return 'BOARD FULL · deliver an order or recycle a spare';
+ if(direction.kind==='energy')return 'NEED ENERGY · deliver a ready order or use a field ration';
  if(direction.kind==='refill')return 'REFILL '+source.toUpperCase()+' · then make '+name;
  if(direction.kind==='recover')return 'TAP '+source.toUpperCase()+' · recover Tide Treasures toward '+name;
  if(direction.kind==='produce')return 'TAP '+source.toUpperCase()+' · make parts for '+name;
