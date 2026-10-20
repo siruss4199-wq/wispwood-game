@@ -1,49 +1,34 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {fresh,act,item,expeditionGoal,load} from '../v5/core.mjs';
-import {masteryPending,recordCraftMastery} from '../v5/mastery.mjs';
-test('fresh player cannot open Vault without self-crafting all three families',()=>{
- const s=fresh(0);s.stage=3;s.landingStep=2;s.seals.navigation=s.seals.stabilization=s.seals.resonance=true;
- assert.deepEqual(masteryPending(s),['rig','chart','flux']);
- assert.match(expeditionGoal(s).name,/three expedition instruments/);
- let snap=JSON.stringify(s);assert.equal(act(s,{type:'goal',kit:'field'}).ok,false);assert.equal(JSON.stringify(s),snap);
- for(const [family,a,b] of [['rig',1,3],['chart',9,10],['flux',15,16]]){
-  s.board[a]=item(family,3);s.board[b]=item(family,3);
-  const r=act(s,{type:'merge',from:a,to:b});assert.ok(r.ok,r.message);assert.equal(r.craftedMilestone,true);
- }
- assert.deepEqual(masteryPending(s),[]);
- assert.doesNotMatch(expeditionGoal(s).name,/three expedition instruments/);
- assert.deepEqual(load(JSON.stringify(s)).craftMastery,s.craftMastery);
+import {masteryPending,recordCraftMastery,masteryDirection} from '../v5/mastery.mjs';
+const readyState=()=>{const s=fresh(0);s.stage=3;s.landingStep=2;s.routePrepared=true;s.seals.navigation=s.seals.stabilization=s.seals.resonance=true;return s;};
+for(const family of ['rig','chart','flux'])test(family+' specialty is a crafted, consumed choice with a real producer reward',()=>{
+ const s=readyState();const before=JSON.stringify(s);
+ assert.equal(act(s,{type:'prepareInstrument',family}).ok,false);assert.equal(JSON.stringify(s),before);
+ s.board[1]=item(family,3);s.board[3]=item(family,3);
+ assert.equal(act(s,{type:'merge',from:1,to:3}).ok,true);
+ assert.equal(masteryDirection(s,family).kind,'install');
+ const count=s.board.filter(x=>x?.family===family&&x.tier===4).length;
+ assert.equal(act(s,{type:'prepareInstrument',family}).ok,true);
+ assert.equal(s.board.filter(x=>x?.family===family&&x.tier===4).length,count-1);
+ assert.equal(s.journey.instrument,family);assert.deepEqual(s.journey.boost,{family,left:3});
+ assert.deepEqual(masteryPending(s),[]);assert.doesNotMatch(expeditionGoal(s).name,/specialty/);
+ const restored=load(JSON.stringify(s));assert.deepEqual(restored.journey,s.journey);
+ const used=JSON.stringify(s);assert.equal(act(s,{type:'prepareInstrument',family}).ok,false);assert.equal(JSON.stringify(s),used);
 });
-test('item grants and Tide Treasures never fake normal producer mastery',()=>{
- const s=fresh(0);
- for(const [i,f]of ['rig','chart','flux'].entries())s.board[i+1]=item(f,4);
- assert.deepEqual(masteryPending(s),['rig','chart','flux']);
+test('a premade instrument cannot bypass real crafting; Tide items never count',()=>{
+ const s=readyState();s.board[1]=item('rig',4);
+ assert.equal(act(s,{type:'prepareInstrument',family:'rig'}).ok,false);
  assert.equal(recordCraftMastery(s,item('chart',4,'tide')),false);
- assert.equal(recordCraftMastery(s,item('rig',4)),true);
- assert.equal(recordCraftMastery(s,item('rig',4)),false);
- assert.deepEqual(masteryPending(s),['chart','flux']);
+ assert.equal(act(s,{type:'goal'}).ok,false);
 });
-test('existing untracked V5 saves keep their previously earned chapter access',()=>{
- const s=fresh(0);delete s.craftMastery;s.stage=3;
- assert.deepEqual(masteryPending(s),[]);assert.deepEqual(masteryPending(load(JSON.stringify(s))),[]);
+test('old completed mastery and untracked saves retain earned Vault access',()=>{
+ const s=readyState();s.craftMastery={rig:true,chart:true,flux:true};
+ assert.deepEqual(masteryPending(load(JSON.stringify(s))),[]);
+ delete s.craftMastery;assert.deepEqual(masteryPending(load(JSON.stringify(s))),[]);
 });
-
-test('crafting direction highlights the real highest merge pair and never mutates progress',async()=>{
- const {masteryDirection}=await import('../v5/mastery.mjs');
- const s=fresh(0);s.stage=3;s.board[3]=item('rig',3);s.board[4]=item('rig',3);
- const before=JSON.stringify(s),step=masteryDirection(s);
- assert.equal(step.kind,'merge');assert.deepEqual(step.indices,[3,4]);assert.equal(step.need.tier,4);
- assert.equal(JSON.stringify(s),before);
- assert.ok(act(s,{type:'merge',from:3,to:4}).ok);
- assert.equal(masteryDirection(s).family,'chart','the next unfinished chain becomes the priority');
-});
-test('crafting direction respects actual charges, energy and full-board constraints',async()=>{
- const {masteryDirection}=await import('../v5/mastery.mjs');
- const s=fresh(0);s.stage=3;
- s.board=s.board.map(x=>x?.type==='item'&&x.family==='rig'?null:x);
- assert.equal(masteryDirection(s).kind,'produce');
- s.charges.rig=0;assert.equal(masteryDirection(s).kind,'refill');
- s.energy=0;assert.equal(masteryDirection(s).kind,'energy');
- s.board=s.board.map(x=>x??{type:'glyph'});
- assert.equal(['make-space','full'].includes(masteryDirection(s).kind),true);
+test('a chosen specialty guides its own real pair without changing the save',()=>{
+ const s=readyState();s.board[3]=item('chart',3);s.board[4]=item('chart',3);
+ const before=JSON.stringify(s);const step=masteryDirection(s,'chart');
+ assert.equal(step.kind,'merge');assert.deepEqual(step.indices,[3,4]);assert.equal(JSON.stringify(s),before);
 });

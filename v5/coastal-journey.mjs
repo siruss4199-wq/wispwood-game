@@ -21,6 +21,7 @@ export function coastalObjective(s,expedition){
 }
 
 export function orderPurpose(s){
+ if(s.stage<4&&s.camp.loft&&s.discovered.includes('chart:tide:2')&&!s.camp.deepSurvey)return 'Follow the Pearl’s route through the Vault';
  if((s.camp.earlyFragments??0)<2)return 'A delivery uncovers a compass piece';
  const next=campGoal(s);
  if(next.cost)return `${next.name} · ${Math.min(next.supplies,next.cost)}/${next.cost} ◆`;

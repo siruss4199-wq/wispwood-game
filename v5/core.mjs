@@ -1,5 +1,5 @@
 import {campGoal} from './camp-goals.mjs';
-import {freshMastery,masteryPending,recordCraftMastery} from './mastery.mjs';
+import {freshMastery,masteryPending,instrumentReady,recordCraftMastery} from './mastery.mjs';
 import {fleetEarned} from './fleet.mjs';
 import {TIDE_NAMES,isTide,maxTier,sameKind,discoveryKey,tideItem,buildLoft,upgradeLoft,recoverTide} from './treasures.mjs';
 import {journeyState,KITS,ENGINE_NEEDS} from './journey.mjs';
@@ -48,8 +48,7 @@ export function fresh(now=Date.now()){
 export function goal(s){return s.stage===4?(campGoal(s)??expeditionGoal(s)):expeditionGoal(s);}
 export function expeditionGoal(s){
  if(s.stage===3&&masteryPending(s).length){
-  const missing=masteryPending(s),labels={rig:'Crawler jack',chart:'Bearing dial',flux:'Phase lantern'};
-  return {name:'Calibrate three expedition instruments',verb:'Merge instruments',scene:'Rings powered · prepare the expedition',needs:missing.map(f=>req(f,4)),action:'inspect',next:'Merge your own '+missing.map(f=>labels[f]).join(' · ')+'. Crate rewards do not count.',text:'Each of the three producer families must contribute one handmade instrument.',phase:'CREW PREPARATION'};
+  return {name:'Choose your expedition specialty',verb:'Equip one instrument',scene:'The rings reveal a sealed passage',needs:[req('rig',4)],action:'inspect',next:'Build and equip ONE instrument. Its producer gains three enriched pulls for your next restoration.',text:'Jack for repair parts, Dial for navigation, or Lantern for power. Choose the chain you want to develop.',phase:'CHOOSE ONE · CRAFT & EQUIP'};
  }
  if(s.stage===0&&s.landingStep===1)return {name:'Chart the safe crossing',verb:'View routes',scene:'Survey camp established',needs:[req('chart',2),req('rig',2)],energy:8,next:'Choose a route with prepared equipment',text:'Make a Sight Lens and Split Spanner. Choose which one to use on the crossing.',phase:'LANDING 2 / 2'};
  if(s.stage===1)return {name:'Choose your crossing',verb:'Clear',scene:'Survey worksite',needs:[req('rig',2),req('chart',2)],action:'inspect',next:'Either route unlocks Echo Crucible',text:'Use the spanner for working space, or the lens for relic supplies. Keep the other tool.',phase:'CHOOSE ONE'};
@@ -62,6 +61,7 @@ export function expeditionGoal(s){
  }
  if(s.stage===3&&!s.journey?.kit)return {name:'Pack for the vault',verb:'Open vault',scene:'Rings awakened',needs:KITS.field.needs,energy:20,action:allSeals(s)?'goal':'inspect',next:'Choose the finds you bring back',text:'Use tools for salvage, or navigation gear for survey finds.',phase:'CHOOSE YOUR FINDS'};
  if(s.stage===4&&!s.journey?.engine)return {name:'Restore the star-ocean engine',verb:'Restore engine',scene:'A living star ocean',needs:ENGINE_NEEDS,action:'restoreEngine',next:'Loop Cells boost a producer of your choice',text:'Tools, a lens and a coil awaken the engine inside the vault.',phase:'VAULT DISCOVERY'};
+ if(s.stage===4&&s.journey?.engine&&!s.journey.infusions&&s.journey.boost)return {name:'Use your prepared '+SOURCES[s.journey.boost.family].name,verb:'Use enriched pull',scene:'Star-ocean engine restored',needs:[],action:'useEnriched',next:'Finish these enriched pulls, then charge a producer of your choice with a Loop Cell.',text:'Your expedition instrument still has '+s.journey.boost.left+' enriched pulls.',phase:'YOUR SPECIALTY'};
  if(s.stage===4&&s.journey?.engine&&!s.journey.infusions)return {name:'Choose your first enriched run',verb:'Choose producer',scene:'Star-ocean engine restored',needs:[req('flux',1)],action:'inspect',next:'One Loop Cell · three rich producer pulls',text:'Use a Loop Cell on any producer. Its next three pulls yield richer parts.',phase:'NEW CAPABILITY'};
  if(s.stage===3)return {name:'Open the Tideglass Vault',verb:'Open vault',scene:'Rings awakened',needs:[],energy:20,next:'The chamber + relic cache',text:'All three seals are secured.',action:allSeals(s)?'goal':'inspect'};
  return STAGES[s.stage]??POST_GOALS[s.post]??null;
@@ -149,6 +149,10 @@ function activate(s,site){
 // Mutating reducer is intentionally atomic: failed commands leave all state untouched.
 export function act(s,a,now=Date.now()){
  const fail=message=>({ok:false,message});
+ if(a.type==='useEnriched'){
+  const id=s.journey?.boost?.family;if(!id)return fail('No enriched pulls remain.');
+  return act(s,{type:s.charges[id]?'produce':'service',id},now);
+ }
  // Acknowledging a story changes only its receipt, never gameplay resources.
  if(a.type==='viewFleet'){
   if(!fleetEarned(s))return fail('Merge two Celestial Sextants to discover the Ocean Crown.');
@@ -157,6 +161,13 @@ export function act(s,a,now=Date.now()){
  }
  const done=(message,event='action',index=null)=>{s.moves++;s.lastAt=now;syncRequests(s);if(event!=='produce')s.producerStreak=0;installSites(s);unfold(s);if(event==='milestone')remember(s,event,now);for(const x of s.board)if(x?.type==='item'){const key=discoveryKey(x);if(!s.discovered.includes(key))s.discovered.push(key);}return {ok:true,message,event,index};};
  const valid=i=>Number.isInteger(i)&&i>=0&&i<36;
+ if(a.type==='prepareInstrument'){
+  if(s.stage!==3||!masteryPending(s).length)return fail('Your expedition is already prepared.');
+  if(!instrumentReady(s,a.family))return fail('Merge this instrument yourself, then equip it from the objective.');
+  consume(s,[req(a.family,4)]);s.journey.instrument=a.family;s.journey.boost={family:a.family,left:3};
+  trace(s,'instrument-equipped',{family:a.family});
+  return done('Expedition equipped · '+SOURCES[a.family].name+' gains three enriched pulls. Choose your Vault kit.','milestone');
+ }
  if(a.type==='restoreEngine'){
   if(s.stage!==4||s.journey?.engine||!ready(s,ENGINE_NEEDS))return fail('Bring a Split Spanner, Sight Lens and Pulse Coil to the vault engine.');
   consume(s,ENGINE_NEEDS);s.journey.engine=true;put(s,item('flux',1));trace(s,'engine-restored');
@@ -294,7 +305,7 @@ export function act(s,a,now=Date.now()){
   s.board[from]=null;s.seals.optics={...optics(s),primed:true};trace(s,'engine-charged');return done('Lift charged · activate your prepared receiver.','deployment',lift);
  }
  if(a.type==='goal'){
-  if(s.stage===3&&masteryPending(s).length)return fail('Merge a Crawler jack, Bearing dial and Phase lantern yourself before opening the Vault.');
+  if(s.stage===3&&masteryPending(s).length)return fail('Craft and equip one expedition instrument before opening the Vault.');
   if(s.stage===3&&!allSeals(s))return fail('Resolve all three vault seals first.');
   if(s.stage===3&&a.kit&&!KITS[a.kit])return fail('Choose a salvage or survey kit.');
   const kit=s.stage===3&&!s.journey?.kit?(KITS[a.kit]?a.kit:Object.keys(KITS).find(k=>ready(s,KITS[k].needs))):null;
@@ -427,4 +438,3 @@ export function load(raw,now=Date.now()){
   journeyState(s);syncRequests(s);workshopState(s);return s;
  }catch{return fresh(now);}
 }
-

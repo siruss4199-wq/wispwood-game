@@ -4,7 +4,11 @@ import {fresh,act,load,item} from '../v5/core.mjs';
 import {tideItem,DEEP_SURVEY_COST} from '../v5/treasures.mjs';
 const ok=(s,a)=>{const r=act(s,a);assert.ok(r.ok,r.message);return r;};
 const reject=(s,a)=>{const before=JSON.stringify(s);assert.equal(act(s,a).ok,false);assert.equal(JSON.stringify(s),before);};
-function loft(){const s=fresh();s.landingStep=1;s.workshop.repaired=true;s.camp.pier=true;s.camp.loft=true;s.requests.supplies=DEEP_SURVEY_COST;return s;}
+function loft(){const s=fresh();s.stage=4;s.landingStep=2;s.routePrepared=true;s.workshop.repaired=true;s.camp.pier=true;s.camp.loft=true;s.requests.supplies=DEEP_SURVEY_COST;return s;}
+test('the Pearl cannot bypass the expedition; an already upgraded old camp stays intact',()=>{
+ const s=loft();pearl(s);s.stage=0;s.landingStep=1;reject(s,{type:'upgradeLoft'});
+ s.camp.deepSurvey=true;const saved=load(JSON.stringify(s));assert.equal(saved.camp.deepSurvey,true);assert.deepEqual(saved.board,s.board);
+});
 function pearl(s){s.board[7]=tideItem(1);s.board[8]=tideItem(1);ok(s,{type:'merge',from:7,to:8});}
 test('Deep Survey needs Loft, actual Pearl discovery and supplies; purchase preserves pending orders and inventory',()=>{
  const s=loft();reject(s,{type:'upgradeLoft'});pearl(s);s.requests.supplies--;reject(s,{type:'upgradeLoft'});s.requests.supplies++;

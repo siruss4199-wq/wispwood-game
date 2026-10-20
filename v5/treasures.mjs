@@ -12,6 +12,7 @@ export const pearlDiscovered=s=>s.discovered.includes('chart:tide:2');
 export function upgradeLoft(s){
  if(!s.camp?.loft)return {ok:false,message:'Build the Charting Loft first.'};
  if(s.camp.deepSurvey)return {ok:false,message:'Deep Survey is already installed.'};
+ if(s.stage<4)return {ok:false,message:'The Pearl’s lost passage runs through the Tideglass Vault. Open the Vault before launching Deep Survey.'};
  if(!pearlDiscovered(s))return {ok:false,message:'Merge treasures into your first Pearl Astrolabe.'};
  if(s.requests.supplies<DEEP_SURVEY_COST)return {ok:false,message:`Deep Survey needs ${DEEP_SURVEY_COST} camp supplies.`};
  s.requests.supplies-=DEEP_SURVEY_COST;s.camp.deepSurvey=true;

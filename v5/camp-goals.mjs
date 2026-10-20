@@ -11,9 +11,11 @@ export function recommendedOrder(s){
  const choices=orders.map(order=>{
   const progress=requestProgress(s,order);
   const effort=progress.progress.reduce((total,r)=>total+Math.max(0,r.count-r.current)*Math.pow(2,Math.min(r.tier,4)),0);
-  return {order,ready:progress.ready,effort};
+  // Delivery attention has a cost too. Prefer a useful restoration commission
+  // over an endless stream of one-supply raw-part errands.
+  return {order,ready:progress.ready,effort,workPerSupply:(effort+4)/order.supplies};
  });
- choices.sort((a,b)=>Number(b.ready)-Number(a.ready)||a.effort-b.effort||b.order.supplies-a.order.supplies);
+ choices.sort((a,b)=>a.workPerSupply-b.workPerSupply||Number(b.ready)-Number(a.ready)||b.order.supplies-a.order.supplies);
  return choices[0]?.order??null;
 }
 const laneName=lane=>lane==='long'?'Expedition kit':lane==='standard'?'Standard':'Quick';

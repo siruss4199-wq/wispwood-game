@@ -1,6 +1,6 @@
 // Intent-based player styles. All actions use the public reducer / real UI.
 import {KITS} from '../v5/journey.mjs';
-import {masteryPending} from '../v5/mastery.mjs';
+import {masteryPending,instrumentReady} from '../v5/mastery.mjs';
 import {sameKind} from '../v5/treasures.mjs';
 import {expeditionGoal as goal,ready,count,normalContract,SOURCES,sourceUnlocked} from '../v5/core.mjs';
 import {ANCHORS,ROUTES,equipment,anchors} from '../v5/expedition.mjs';
@@ -10,6 +10,8 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
  if(!goal(s))return null;
  // Scripted policy must actually craft all three instruments. No milestone seeding.
  if(s.stage===3&&masteryPending(s).length){
+  const equipped=masteryPending(s).find(f=>instrumentReady(s,f));
+  if(equipped)return {type:'prepareInstrument',family:equipped};
   const family=masteryPending(s)[0],free=s.board.filter(x=>x===null).length;
   for(const tier of [3,2,1,0]){
    const pair=s.board.flatMap((x,i)=>x?.type==='item'&&!x.line&&x.family===family&&x.tier===tier?[i]:[]);
@@ -28,6 +30,12 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
   return {type:s.charges[family]?'produce':'service',id:family};
  }
  const spaces=s.board.filter(x=>x===null).length;
+ // Use the earned specialty before charging an engine infusion. A remaining
+ // reward must not make the scripted player repeat an impossible infusion.
+ if(s.journey?.instrument&&s.journey.boost&&spaces){
+  if(s.energy<=3)return {type:'ration'};
+  const id=s.journey.boost.family;return {type:s.charges[id]?'produce':'service',id};
+ }
  // An impulsive merger compacts ALL families, even when a pair could be installed
  // or traded separately. Do not fake this style by targeting one extra story tier.
  if(style==='aggressive'&&s.stage>0&&s.stage<4&&!linkPhase(s)&&!(s.stage===3&&ready(s,goal(s).needs))){

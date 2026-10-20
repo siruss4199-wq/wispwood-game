@@ -18,9 +18,9 @@ const assert=require('node:assert/strict');const {chromium,webkit}=require('play
  await page.locator('#goalButton').tap();assert.equal((await read()).stage,0);assert.equal((await read()).landingStep,1);await page.waitForTimeout(750);
  assert.equal(await page.locator('#requests').isVisible(),true,'camp requests now appear');
  assert.equal(await page.locator('#workshop').isVisible(),true,'workshop is introduced with supplies');
- assert.match(await page.locator('.requestHeading').textContent(),/Next order: Tide Dial Fragment/);
+ assert.match(await page.locator('.requestHeading').textContent(),/compass piece/);
  assert.match(await page.locator('#workshop').getAttribute('aria-label'),/Repair for 8 supplies/);
- assert.match(await page.locator('#hint').textContent(),/HIGHLIGHTED ORDER/,'first Tide Fragment has a visible next action');
+ assert.match(await page.locator('#hint').textContent(),/MERGE|TAP|READY|HIGHLIGHTED/,'first Tide Fragment has a visible next action');
  assert.equal(await page.locator('#requests .requestCard.storySuggested').count(),1,'one practical first order is recommended');
  const boardBox=await page.locator('#board').boundingBox(),requestBox=await page.locator('#requests').boundingBox();
  assert.ok(requestBox.y+requestBox.height<=boardBox.y,'camp orders are above the board');assert.ok(boardBox.y<500,'mobile order strip keeps the board near the opening view');

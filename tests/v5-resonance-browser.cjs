@@ -25,6 +25,7 @@ const {chromium,webkit}=require('playwright');const assert=require('node:assert/
  else if(a.type==='infuse'){const from=before.board.findIndex(x=>x?.family==='flux'&&x.tier===1),to=before.board.findIndex(x=>x?.type==='source'&&x.id===a.id);if(route==='ridge'){const prior=page.locator('#board .selected.item');if(await prior.count())await prior.tap();await page.locator(`[data-index="${from}"]`).tap();assert.ok(await page.locator('.source.useTarget').count());await page.locator(`[data-index="${to}"]`).tap();}else await page.locator(`[data-infuse="${a.id}"]`).tap();}
  else if(a.type==='request'){const card=page.locator(`[data-request="${a.id}"]`);await card.tap();}
  else if(a.type==='ration')await page.locator('#rationButton').tap();
+ else if(a.type==='prepareInstrument')await page.locator(`[data-instrument="${a.family}"]`).tap();
  else if(a.type==='crate')await page.locator(`[data-index="${a.index}"]`).tap();
  else{
   const index=a.index??20,slot=page.locator(`[data-engine-action="${a.type}"][data-site-index="${index}"]`);

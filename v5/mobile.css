@@ -433,3 +433,9 @@ body .world .objective.crewObjective{grid-template-columns:1fr;gap:7px}
 .world .objective.crewObjective .next{display:block;grid-column:1/-1;padding:0;margin:0;border:0;font-size:12px;line-height:1.35;color:#42656b}
 .world .objective.crewObjective .next>span{display:none}
 .world .objective.crewObjective .next b{font-weight:500}
+.instrumentChoice{display:flex;flex:1;min-width:0;min-height:120px;flex-direction:column;align-items:center;gap:3px;padding:7px 3px;border:1px solid #b8cfc3;border-radius:12px;background:#edf3e9;color:#244f59;touch-action:manipulation}
+.instrumentChoice.chosen{border:2px solid #c99a45;background:#fff0cb}
+.instrumentChoice .art{width:46px;height:46px}
+.instrumentChoice b{font-size:11px;line-height:1.2}
+.instrumentChoice small{font-size:10px}
+.instrumentChoice strong{font-size:10px;color:#167567;margin-top:auto}

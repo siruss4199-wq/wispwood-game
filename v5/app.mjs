@@ -1,7 +1,7 @@
 import {campGoal} from './camp-goals.mjs';
 import {chapterEndView} from './chapter-end.mjs';
 import {coastalObjective,orderPurpose} from './coastal-journey.mjs';
-import {masteryPending,MASTERY_NAMES,masteryDirection} from './mastery.mjs';
+import {masteryPending,MASTERY_NAMES,masteryDirection,instrumentReady} from './mastery.mjs';
 import {firstSessionCue} from './first-session.mjs';
 import {orderDirection} from './order-direction.mjs';
 import {loadSlot,beginReplay,returnOriginal,slotKey} from './replay.mjs';
@@ -30,10 +30,11 @@ const scene=premium?prototypeScene:vectorScene;
 const $=s=>document.querySelector(s);
 let state,replayActive=false;try{({state,active:replayActive}=loadSlot(localStorage));}catch{state=fresh();}
 let selected=null,focus='goal',drag=null,suppressUntil=0,sideView=null,requestId=null,kitFocus='field',showVaultGoal=false,postChapterOrdersOpen=false;
+let instrumentFocus='rig';
 function visibleGoal(){return state.stage===4&&showVaultGoal?expeditionGoal(state):coastalObjective(state,expeditionGoal(state));}
 const board=$('#board'),message=$('#message');
 function persist(){try{const raw=JSON.stringify(state);localStorage.setItem(slotKey(replayActive),raw);if(!replayActive)platform.save(raw);}catch{message.textContent='Storage unavailable. This session is playable, but progress cannot be saved.';}}
-function needed(){if(focus==='goal'&&state.stage===3&&masteryPending(state).length)return [{family:masteryPending(state)[0],tier:4,count:1}];if(focus==='goal'&&state.stage===3&&!state.journey.kit)return KITS[kitFocus].needs;if(focus==='bench')return BENCH_NEEDS;if(focus==='request')return state.requests.orders.find(o=>o?.id===requestId)?.needs??[];const x=state.board[selected];if(x?.type==='rock'&&FINDS[x.find])return [{family:'rig',tier:2,count:1},...(canRestore(state,x)?[{family:'flux',tier:2,count:1}]:[])];if(focus==='goal'&&x?.type==='site')return x.phase==='idle'?[equipment(x.kind)]:[];if(focus==='goal'&&x?.type==='route')return [{family:ROUTES[x.id].family,tier:2,count:1}];return focus==='contract'?normalContract(state).needs:focus==='opportunity'?state.opportunity?.needs??[]:focus==='discovery'?[{family:'chart',tier:2,count:1}]:visibleGoal()?.needs??[];}
+function needed(){if(focus==='goal'&&state.stage===3&&masteryPending(state).length)return [{family:instrumentFocus,tier:4,count:1}];if(focus==='goal'&&state.stage===3&&!state.journey.kit)return KITS[kitFocus].needs;if(focus==='bench')return BENCH_NEEDS;if(focus==='request')return state.requests.orders.find(o=>o?.id===requestId)?.needs??[];const x=state.board[selected];if(x?.type==='rock'&&FINDS[x.find])return [{family:'rig',tier:2,count:1},...(canRestore(state,x)?[{family:'flux',tier:2,count:1}]:[])];if(focus==='goal'&&x?.type==='site')return x.phase==='idle'?[equipment(x.kind)]:[];if(focus==='goal'&&x?.type==='route')return [{family:ROUTES[x.id].family,tier:2,count:1}];return focus==='contract'?normalContract(state).needs:focus==='opportunity'?state.opportunity?.needs??[]:focus==='discovery'?[{family:'chart',tier:2,count:1}]:visibleGoal()?.needs??[];}
 function needsHTML(needs){return needs.map(r=>`<span class="need ${count(state,r)>=r.count?'done':near(state,[r])==='1 MERGE AWAY'?'almost':''}" title="${nameOf(item(r.family,r.tier,r.line))}">${art(item(r.family,r.tier,r.line))}<b>${count(state,r)>=r.count&&r.count===1?'✓':Math.min(count(state,r),r.count)+'/'+r.count}</b></span>`).join('');}
 function sideOptions(){return ['contract',...(state.discovery&&!state.discoveryDone&&state.board.some(x=>x?.type==='glyph')?['discovery']:[]),...(state.stage>=1?[state.opportunity?'opportunity':'startOpportunity']:[])];}
 function sideChoice(){const options=sideOptions();return options.includes(sideView)?sideView:state.opportunity?'opportunity':options.includes('discovery')?'discovery':'contract';}
@@ -41,7 +42,7 @@ const GUIDE_PRODUCERS={rig:'Rivet Rover',chart:'Survey Kite',flux:'Echo Crucible
 const GUIDE_NAMES={quick:'Quick',standard:'Standard',long:'Expedition kit'};
 function currentOrderDirection(){
  if(chapterEndView(state))return null;
- if(state.stage===3&&masteryPending(state).length)return masteryDirection(state);
+ if(state.stage===3&&masteryPending(state).length)return masteryDirection(state,instrumentFocus);
  let order=focus==='request'?state.requests.orders.find(o=>o?.id===requestId):null;
  if(!order&&state.stage===0&&state.landingStep===1&&!ready(state,visibleGoal()?.needs??[])){
   const id=firstSessionCue(state)?.requestId;
@@ -56,6 +57,7 @@ function directionText(direction){
  if(!direction)return '';
  const name=direction.need?nameOf(item(direction.need.family,direction.need.tier,direction.need.line)):'';
  const source=GUIDE_PRODUCERS[direction.family]??'producer';
+ if(direction.kind==='install')return 'INSTRUMENT READY · tap EQUIP above';
  if(direction.kind==='collect')return (GUIDE_NAMES[state.requests.orders.find(o=>o?.id===direction.orderId)?.lane]??'Order').toUpperCase()+' READY · tap its card to collect';
  if(direction.kind==='merge')return 'MERGE THE HIGHLIGHTED PAIR → '+name;
  if(direction.kind==='make-space')return 'BOARD FULL · merge the highlighted pair';
@@ -103,9 +105,10 @@ function hint(){
  if(state.stage===1)return 'Choose a crossing above · keep the other tool';if(state.stage===2){const g=visibleGoal();return g.action==='prime'&&ready(state,g.needs)?'LOOP CELL READY · Tap Charge Stone Lift':g.text;}if(state.stage===3&&masteryPending(state).length)return 'CREW PREPARATION · merge '+MASTERY_NAMES[masteryPending(state)[0]]+' yourself';if(state.stage===3)return state.journey.kit?'RINGS AWAKE · Open the Tideglass Vault':'Choose tool finds or survey finds · pack one kit';if(state.stage===4&&!state.journey.engine)return 'Inside: a dormant engine · restore it for enriched production';if(state.stage===4&&!state.journey.infusions)return 'Use a Loop Cell on the producer you want to enrich';if(state.journey.boost)return SOURCES[state.journey.boost.family].name+' · '+state.journey.boost.left+' enriched pulls ready';return 'Merge twins · choose where to use them';}
 function missionSlots(){
  const g=visibleGoal();if(g?.kind==='camp')return g.cost?`<span class="need campNeed"><img class="art" src="assets/premium/${g.image}.webp" alt=""><b>${Math.min(g.supplies,g.cost)}/${g.cost} ◆</b></span>`:needsHTML(g.needs);
+ if(g?.action==='useEnriched')return `<span class="need">${art({type:'source',id:state.journey.boost.family})}<b>${state.journey.boost.left} pulls</b></span>`;
  if(state.stage===3&&masteryPending(state).length)return ['rig','chart','flux'].map(f=>{
-  const done=state.craftMastery[f]===true;
-  return `<span class="need ${done?'done':''}" aria-label="${MASTERY_NAMES[f]} ${done?'crafted':'still needs a real merge'}">${art(item(f,4))}<b>${done?'✓':'MAKE'}</b></span>`;
+  const done=instrumentReady(state,f);
+  return `<button class="instrumentChoice ${f===instrumentFocus?'chosen':''}" data-instrument="${f}" aria-pressed="${f===instrumentFocus}" aria-label="${done?'Equip':'Choose'} ${MASTERY_NAMES[f]}. Three enriched ${SOURCES[f].name} pulls.">${art(item(f,4))}<b>${MASTERY_NAMES[f]}</b><small>${{rig:'Repair parts',chart:'Navigation parts',flux:'Power parts'}[f]}</small><strong>${done?'EQUIP':f===instrumentFocus?'MAKE THIS':'CHOOSE'}</strong></button>`;
  }).join('');
  if(state.stage===3&&!state.journey.kit)return Object.entries(KITS).map(([id,k])=>`<button class="missionSlot engineChoice ${ready(state,k.needs)?'available':''}" data-kit="${id}" aria-label="${k.name}: ${k.needs.map(r=>nameOf(item(r.family,r.tier,r.line))).join(', ')}. ${k.reward}"><b>Open · ${k.name}</b><span class="kitItems">${needsHTML(k.needs)}</span><small>${k.reward}</small></button>`).join('');
  if(state.stage===4&&state.journey.engine&&!state.journey.infusions)return Object.entries(SOURCES).map(([id,p])=>`<button class="missionSlot engineChoice ${count(state,{family:'flux',tier:1})?'available':''}" data-infuse="${id}" aria-label="Enrich ${p.name}: one Loop Cell, three improved pulls">${art({type:'source',id})}<b>${p.name}</b><small>1 Loop Cell → 3 rich pulls</small></button>`).join('');
@@ -295,7 +298,7 @@ function renderSelection(){
   if(!state.camp.loft)buttons+=`<button class="accent" data-action="buildLoft">Build Loft · ${state.requests.supplies}/${LOFT_COST} ◆</button>`;
   else{
    buttons+=`<button class="accent" data-action="recoverTide">${state.camp.deepSurvey?'Deep Survey · Reef Compass':'Recover treasure'} · ${recoveryCost(state)} ϟ</button>`;
-   if(!state.camp.deepSurvey)buttons+=`<button class="benchAction ${pearlDiscovered(state)&&state.requests.supplies>=DEEP_SURVEY_COST?'available':''}" data-action="upgradeLoft">${pearlDiscovered(state)?'Deep Survey · '+state.requests.supplies+'/'+DEEP_SURVEY_COST+' ◆':'Deep Survey · discover a Pearl Astrolabe'}</button>`;
+   if(!state.camp.deepSurvey)buttons+=state.stage<4?'<span class="benchRoute">Deep Survey follows the Pearl’s passage through the Vault. Continue the expedition above.</span>':`<button class="benchAction ${pearlDiscovered(state)&&state.requests.supplies>=DEEP_SURVEY_COST?'available':''}" data-action="upgradeLoft">${pearlDiscovered(state)?'Deep Survey · '+state.requests.supplies+'/'+DEEP_SURVEY_COST+' ◆':'Deep Survey · discover a Pearl Astrolabe'}</button>`;
    if(!state.charges.chart)buttons+='<button data-action="service" data-source="chart">Service Kite · 3 ϟ</button>';
   }
  }
@@ -379,7 +382,7 @@ function run(a){
  if(a.type==='recoverTide'){if(!knownBefore.has(discoveryKey(state.board[result.index]))){moment(nameOf(state.board[result.index]),'Wayfinding treasure · merge twins or deliver an order',state.board[result.index]);sound.play('rare');}board.querySelector(`[data-index="${result.index}"]`)?.classList.add('merge-pop');}
  if(result.craftedMilestone&&state.stage===3){
   const pending=masteryPending(state);
-  moment(nameOf(state.board[result.index])+' calibrated',pending.length?'Next: '+pending.map(f=>MASTERY_NAMES[f]).join(', '):'Three crew instruments ready · choose your Vault kit',state.board[result.index]);
+  moment(nameOf(state.board[result.index])+' crafted',pending.length?'Equip this instrument above to prepare the expedition.':'Expedition prepared · choose your Vault kit',state.board[result.index]);
   sound.play('milestone');
  }
  if(result.tideFragment&&state.camp.earlyFragments===1){moment('First Tide Dial fragment','Neri: This fragment points toward a coast erased from the charts.',tideItem(0));}
@@ -435,7 +438,7 @@ $('#goalButton').onclick=()=>{const ending=chapterEndView(state);if(ending?.stat
  if(g.action==='treasure'){const pair=state.board.flatMap((x,i)=>isTide(x)&&x.tier<maxTier(x,state)&&state.board.some((y,j)=>i!==j&&sameKind(x,y))?[i]:[]);selected=pair[0]??null;focus=pair.length?'goal':'pier';render();(pair.length?board:$('#selection')).scrollIntoView({block:'nearest'});return;}
  run({type:g.action});return;
  }if(g?.action==='inspect'){const choices=state.board.flatMap((x,i)=>(state.stage===1?x?.type==='route':x?.type==='site'&&x.phase!=='done')?[i]:[]);selected=choices[(choices.indexOf(selected)+1)%choices.length];focus='goal';render();message.textContent=g.text;return;}g?run({type:g.action??'goal'}):showJournal();};
-$('#goalNeeds').onclick=e=>{focus='goal';const kit=e.target.closest('[data-kit]')?.dataset.kit;if(kit){kitFocus=kit;if(ready(state,KITS[kit].needs))run({type:'goal',kit});else{message.textContent=KITS[kit].needs.map(r=>nameOf(item(r.family,r.tier,r.line))).join(' + ');selected=null;render();}return;}const infusion=e.target.closest('[data-infuse]')?.dataset.infuse;if(infusion){run({type:'infuse',id:infusion});return;}const badge=e.target.closest('[data-site-index]');if(badge){selected=+badge.dataset.siteIndex;const x=state.board[selected];if(badge.dataset.engineAction){const action=badge.dataset.engineAction;if(badge.classList.contains('available')){run({type:action,index:selected});return;}render();$('#selection').scrollIntoView({block:'nearest'});return;}if(x?.type==='rock'){render();return;}const need=x?.type==='site'?equipment(x.kind):{family:ROUTES[x.id].family,tier:2,count:1};if((x.type==='route'&&state.stage===1||x.type==='site'&&x.phase==='idle')&&ready(state,[need])){run({type:x.type==='route'?'breach':'deploy',index:selected});return;}}render();message.textContent=visibleGoal()?.text??'Keep collecting rare discoveries.';};
+$('#goalNeeds').onclick=e=>{focus='goal';const instrument=e.target.closest('[data-instrument]')?.dataset.instrument;if(instrument){instrumentFocus=instrument;selected=null;if(instrumentReady(state,instrument))run({type:'prepareInstrument',family:instrument});else render();return;}const kit=e.target.closest('[data-kit]')?.dataset.kit;if(kit){kitFocus=kit;if(ready(state,KITS[kit].needs))run({type:'goal',kit});else{message.textContent=KITS[kit].needs.map(r=>nameOf(item(r.family,r.tier,r.line))).join(' + ');selected=null;render();}return;}const infusion=e.target.closest('[data-infuse]')?.dataset.infuse;if(infusion){run({type:'infuse',id:infusion});return;}const badge=e.target.closest('[data-site-index]');if(badge){selected=+badge.dataset.siteIndex;const x=state.board[selected];if(badge.dataset.engineAction){const action=badge.dataset.engineAction;if(badge.classList.contains('available')){run({type:action,index:selected});return;}render();$('#selection').scrollIntoView({block:'nearest'});return;}if(x?.type==='rock'){render();return;}const need=x?.type==='site'?equipment(x.kind):{family:ROUTES[x.id].family,tier:2,count:1};if((x.type==='route'&&state.stage===1||x.type==='site'&&x.phase==='idle')&&ready(state,[need])){run({type:x.type==='route'?'breach':'deploy',index:selected});return;}}render();message.textContent=visibleGoal()?.text??'Keep collecting rare discoveries.';};
 $('#scene').onclick=e=>{
  if(e.target.closest('#fleetCrown')){showFleet();return;}
  if(e.target.closest('#campPierWorld')){selected=null;focus='pier';render();$('#selection').scrollIntoView({block:'nearest'});return;}

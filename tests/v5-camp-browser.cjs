@@ -125,6 +125,8 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
    fs.writeFileSync(`${dir}/${engine}-loft-trace.json`,JSON.stringify({actionsToLoft:ready.moves+1,totalActions:finished.moves,requestActions:actions,extraRequestActions:actions-preLoftActions,deliveries,merges:finished.merges,dives:finished.camp.dives,discovered:finished.discovered.filter(x=>x.includes('tide')),occupiedBefore:ready.board.filter(Boolean).length,occupiedAfter:finished.board.filter(Boolean).length,occupancyWhileEarning:[low,high],remainingEnergy:finished.energy,remainingSupplies:finished.requests.supplies},null,2));
    // TT-1F1: continue the SAME fresh save with earned currency, not developer stock.
    await page.setViewportSize({width:390,height:844});
+   // The Pearl now leads through the actual expedition before Deep Survey.
+   await require('./v5-coastal-browser-actions.cjs').advanceToVault(page);
    while((await read()).requests.supplies<18)await requestStep(deliveries%3);
    const deepReady=await read();assert.ok(deepReady.discovered.includes('chart:tide:2'));
    await page.locator('#campPierWorld').tap();await shot('11-deep-survey-ready');
@@ -297,4 +299,3 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
   }finally{await browser.close();}
  }
 })().catch(e=>{console.error(e);process.exitCode=1;});
-
