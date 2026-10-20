@@ -408,3 +408,13 @@ body[data-art="premium"] .world.compassFound #scene>.premiumScene{filter:saturat
 #board .tile.nextAction .art{filter:drop-shadow(0 2px 4px #3cad9e77)}
 #board .tile.selected.nextAction{outline-color:#208d81}
 @media(max-width:375px){.boardHeading #hint{font-size:10px}}
+
+/* Separate replay slot, visible return path; no persistent dashboard panel. */
+#replayNotice{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 0 8px;padding:5px 8px;border-radius:12px;border:1px solid #8dc3af;background:#e0f2e9;color:#24666a;font-size:10px;font-weight:850}
+#replayNotice[hidden]{display:none}
+#returnSave{font-size:10px;font-weight:900;padding:6px 9px;min-height:44px;max-width:55%;border-radius:10px;background:#187f76;color:#fff}
+#replayConfirm{max-width:390px;padding:30px 22px 24px;text-align:center;background:#fff5de;color:#244c56;border:2px solid #e8ba73}
+#replayConfirm h2{font-size:23px;margin:8px 0 14px}
+#replayConfirm p{font-size:14px;line-height:1.5;margin-bottom:22px}
+#replayBegin{min-height:48px;width:100%;white-space:normal;font-size:13px}
+@media(max-width:375px){#replayNotice{font-size:9px}#returnSave{font-size:9px;padding:5px 7px}}
