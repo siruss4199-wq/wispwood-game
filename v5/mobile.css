@@ -404,9 +404,7 @@ body[data-art="premium"] .world.compassFound #scene>.premiumScene{filter:saturat
 /* Studio direction pass — show one actionable board target, never add another panel. */
 .boardHeading{height:auto;min-height:33px;align-items:center;gap:5px}
 .boardHeading #hint{flex:1;min-width:0;white-space:normal;overflow:visible;line-height:1.2;font-size:11px}
-#guideButton{flex:none;min-height:44px;min-width:58px;border:1px solid #80bbad;background:#e1f1e8;color:#196d6b;border-radius:11px;font-size:10px;font-weight:900;padding:6px 8px}
-#guideButton[hidden]{display:none}
 #board .tile.nextAction{outline:3px solid #eaa54d;outline-offset:-2px;box-shadow:inset 0 0 0 2px #fff4be,0 0 10px #e6c06666;z-index:2}
 #board .tile.nextAction .art{filter:drop-shadow(0 2px 4px #3cad9e77)}
 #board .tile.selected.nextAction{outline-color:#208d81}
-@media(max-width:375px){#guideButton{min-width:54px;font-size:9px}.boardHeading #hint{font-size:10px}}
+@media(max-width:375px){.boardHeading #hint{font-size:10px}}
