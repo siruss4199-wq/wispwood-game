@@ -1,6 +1,7 @@
 import {campGoal} from './camp-goals.mjs';
 import {chapterEndView} from './chapter-end.mjs';
 import {firstSessionCue} from './first-session.mjs';
+import {orderDirection} from './order-direction.mjs';
 import {fleetEarned,fleetPending,FLEET_LINES} from './fleet.mjs';
 import {storySnapshot,requestBrief} from './story.mjs';
 import {LOFT_COST,DEEP_SURVEY_COST,recoveryCost,pearlDiscovered,TIDE_NAMES,isTide,maxTier,sameKind,discoveryKey,tideItem,nextTide} from './treasures.mjs';
@@ -33,6 +34,33 @@ function needed(){if(focus==='goal'&&state.stage===3&&!state.journey.kit)return 
 function needsHTML(needs){return needs.map(r=>`<span class="need ${count(state,r)>=r.count?'done':near(state,[r])==='1 MERGE AWAY'?'almost':''}" title="${nameOf(item(r.family,r.tier,r.line))}">${art(item(r.family,r.tier,r.line))}<b>${count(state,r)>=r.count&&r.count===1?'✓':Math.min(count(state,r),r.count)+'/'+r.count}</b></span>`).join('');}
 function sideOptions(){return ['contract',...(state.discovery&&!state.discoveryDone&&state.board.some(x=>x?.type==='glyph')?['discovery']:[]),...(state.stage>=1?[state.opportunity?'opportunity':'startOpportunity']:[])];}
 function sideChoice(){const options=sideOptions();return options.includes(sideView)?sideView:state.opportunity?'opportunity':options.includes('discovery')?'discovery':'contract';}
+const GUIDE_PRODUCERS={rig:'Rivet Rover',chart:'Survey Kite',flux:'Echo Crucible'};
+const GUIDE_NAMES={quick:'Quick',standard:'Standard',long:'Expedition kit'};
+function currentOrderDirection(){
+ if(chapterEndView(state))return null;
+ let order=focus==='request'?state.requests.orders.find(o=>o?.id===requestId):null;
+ if(!order&&state.stage===0&&state.landingStep===1&&!ready(state,visibleGoal()?.needs??[])){
+  const id=firstSessionCue(state)?.requestId;
+  order=state.requests.orders.find(o=>o?.id===id);
+ }
+ if(!order&&state.stage===4&&visibleGoal()?.kind==='camp'&&visibleGoal().action==='orders'){
+  order=state.requests.orders.find(o=>o?.id===visibleGoal().orderId);
+ }
+ return orderDirection(state,order);
+}
+function directionText(direction){
+ if(!direction)return '';
+ const name=direction.need?nameOf(item(direction.need.family,direction.need.tier,direction.need.line)):'';
+ const source=GUIDE_PRODUCERS[direction.family]??'producer';
+ if(direction.kind==='collect')return (GUIDE_NAMES[state.requests.orders.find(o=>o?.id===direction.orderId)?.lane]??'Order').toUpperCase()+' READY · tap its card to collect';
+ if(direction.kind==='merge')return 'MERGE THE HIGHLIGHTED PAIR → '+name;
+ if(direction.kind==='make-space')return 'BOARD FULL · merge the highlighted pair';
+ if(direction.kind==='full')return 'BOARD FULL · deliver an order or recycle a spare';
+ if(direction.kind==='refill')return 'REFILL '+source.toUpperCase()+' · then make '+name;
+ if(direction.kind==='recover')return 'TAP '+source.toUpperCase()+' · recover Tide Treasures toward '+name;
+ if(direction.kind==='produce')return 'TAP '+source.toUpperCase()+' · make parts for '+name;
+ return 'Find the producer needed for '+name;
+}
 function hint(){
  // An already-prepared crossing is the player's next real action; never
  // override it with an optional first-fragment suggestion.
@@ -40,7 +68,10 @@ function hint(){
  const finished=chapterEndView(state);
  if(finished&&focus!=='request')return finished.hint;
  const opening=firstSessionCue(state);
- if((opening?.pairs.length===2||opening?.requestId)&&focus!=='request')return opening.hint;
+ if(opening?.pairs.length===2&&focus!=='request')return opening.hint;
+ const route=currentOrderDirection();
+ if(route&&(focus==='request'||state.stage===4&&visibleGoal()?.action==='orders'))return directionText(route);
+ if(opening?.requestId&&focus!=='request')return opening.hint;
  if(state.stage===4&&visibleGoal()?.kind==='camp'&&focus!=='request'){
   const g=visibleGoal();
   if(g.action==='orders'){const o=state.requests.orders.find(x=>x?.id===g.orderId);if(o){const p=requestProgress(state,o),missing=p.progress.find(r=>r.current<r.count);return p.ready?'ORDER READY · collect '+o.supplies+' supplies above':missing?'NEXT ORDER · make '+nameOf(item(missing.family,missing.tier,missing.line)):'Complete the highlighted order';}return 'Deliver camp orders to earn supplies';}
@@ -191,6 +222,13 @@ function render(){
   const matching=selectedItem?.type==='item'&&x?.type==='item'&&i!==selected&&sameKind(x,selectedItem)&&x.tier<maxTier(x,state);
   return `<button class="tile ${x?.type??'empty'} ${locked?'locked':''} ${useful?'useful':''} ${selected===i?'selected':''} ${matching?'match':''} ${needed().some(r=>matches(x,r))?'wanted':''}" data-index="${i}" ${x?.family||isSource||x?.type==='crate'?`data-family="${x.family??(isSource?x.id:containerInfo(x).family)}"`:''} data-variant="${i%3}" data-use="${expedition&&contract?'both':expedition?'expedition':contract?'contract':''}" aria-label="${nameOf(x)}${x?.type==='crate'?' · tap to reveal · '+contents(x).map(nameOf).join(', '):''}${expedition&&contract?' · needed for expedition and contract':expedition?' · needed for expedition':contract?' · useful for contract':''}${locked?' · locked':isSource?' · '+SOURCES[x.id].cost+' energy · '+state.charges[x.id]+' charges':''}. Space ${i+1}" aria-pressed="${selected===i}">${art((x?.type==='site'&&state.stage<2||x?.type==='route'&&state.stage!==1)?{type:'sealed'}:x)}${expedition||contract?`<span class="useBadge" aria-hidden="true">${expedition?'◆':''}${contract?'▰':''}</span>`:''}${isSource?(locked?`<span class="lockedLabel">${x.id==='chart'?'CLEAR PATH':'EXCAVATE'}</span>`:`<span class="energyCue">ϟ${SOURCES[x.id].cost}</span><span class="charge">${Array.from({length:7},(_,n)=>`<i class="${n>=state.charges[x.id]?'used':''}"></i>`).join('')}</span>`):x?.type==='crate'?`<span class="pulls">${x.left}</span>`:''}</button>`;
  }).join('');
+ const direction=currentOrderDirection();
+ const guideButton=$('#guideButton');
+ guideButton.hidden=!direction?.indices?.length;
+ guideButton.setAttribute('aria-label',direction?.indices?.length?'Show the next item to tap: '+directionText(direction):'');
+ for(const index of direction?.indices??[]){
+  board.querySelector(`[data-index="${index}"]`)?.classList.add('nextAction');
+ }
  const poweredTargets=linkPhase(state)&&optics(state).primed?receivers(state):[];
  for(const tile of board.querySelectorAll('.tile.source'))tile.classList.toggle('engineCharged',state.journey.boost?.family===state.board[+tile.dataset.index].id);
  for(const tile of board.querySelectorAll('.tile.rock')){
@@ -375,6 +413,16 @@ board.addEventListener('pointerdown',e=>{const tile=e.target.closest('[data-inde
 board.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)return;if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>8)drag.moved=true;if(drag.moved){board.querySelector(`[data-index="${drag.from}"]`)?.classList.add('dragging');board.querySelectorAll('.target').forEach(x=>x.classList.remove('target'));const target=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-index]');const to=target?+target.dataset.index:-1,a=state.board[drag.from],b=state.board[to];if(to>=0&&to!==drag.from&&(!b||(a?.type==='prism'&&movable(b))||b?.type==='prism'||(a?.type==='item'&&b.type==='item'&&sameKind(a,b)&&a.tier<maxTier(a,state))||useAction(state,drag.from,to)))target.classList.add('target');}});
 board.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;const d=drag;drag=null;board.querySelectorAll('.dragging,.target,.picked').forEach(x=>x.classList.remove('dragging','target','picked'));if(!d.moved)return;suppressUntil=performance.now()+300;const tile=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-index]');if(tile){selected=d.from;const index=+tile.dataset.index,x=state.board[index];const use=useAction(state,d.from,index);if(use)run(use);else if(!x||movable(x))run({type:'merge',from:d.from,to:index});else render();}});
 board.addEventListener('pointercancel',()=>{drag=null;board.querySelectorAll('.dragging,.target,.picked').forEach(x=>x.classList.remove('dragging','target','picked'));});
+$('#guideButton').onclick=()=>{
+ const direction=currentOrderDirection();
+ if(!direction?.indices?.length)return;
+ if(direction.orderId){requestId=direction.orderId;focus='request';}
+ selected=direction.indices[0];
+ render();
+ const tile=board.querySelector(`[data-index="${selected}"]`);
+ tile?.scrollIntoView({block:'center',behavior:'instant'});
+ message.textContent=directionText(direction);
+};
 $('#selection').addEventListener('click',e=>{const button=e.target.closest('[data-action]'),type=button?.dataset.action;if(!type)return;const x=state.board[selected];run({type:type==='serviceTool'?'service':type,index:button.dataset.target!==undefined?+button.dataset.target:selected,from:button.dataset.target!==undefined?selected:undefined,id:button.dataset.source??x?.id,useTool:type==='serviceTool'});});
 $('#goalButton').onclick=()=>{if(chapterEndView(state)){showFleet();return;}const g=visibleGoal();if(g?.kind==='camp'){
  if(g.action==='orders'){
