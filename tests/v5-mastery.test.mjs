@@ -11,7 +11,7 @@ test('fresh player cannot open Vault without self-crafting all three families',(
   const r=act(s,{type:'merge',from:a,to:b});assert.ok(r.ok,r.message);assert.equal(r.craftedMilestone,true);
  }
  assert.deepEqual(masteryPending(s),[]);
- assert.notMatch(expeditionGoal(s).name,/three expedition instruments/);
+ assert.doesNotMatch(expeditionGoal(s).name,/three expedition instruments/);
  assert.deepEqual(load(JSON.stringify(s)).craftMastery,s.craftMastery);
 });
 test('item grants and Tide Treasures never fake normal producer mastery',()=>{
