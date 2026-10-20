@@ -1,6 +1,6 @@
 import {campGoal} from './camp-goals.mjs';
 import {chapterEndView} from './chapter-end.mjs';
-import {masteryPending,MASTERY_NAMES} from './mastery.mjs';
+import {masteryPending,MASTERY_NAMES,masteryDirection} from './mastery.mjs';
 import {firstSessionCue} from './first-session.mjs';
 import {orderDirection} from './order-direction.mjs';
 import {loadSlot,beginReplay,returnOriginal,slotKey} from './replay.mjs';
@@ -32,7 +32,7 @@ let selected=null,focus='goal',drag=null,suppressUntil=0,sideView=null,requestId
 function visibleGoal(){return state.stage===4&&showVaultGoal?expeditionGoal(state):goal(state);}
 const board=$('#board'),message=$('#message');
 function persist(){try{const raw=JSON.stringify(state);localStorage.setItem(slotKey(replayActive),raw);if(!replayActive)platform.save(raw);}catch{message.textContent='Storage unavailable. This session is playable, but progress cannot be saved.';}}
-function needed(){if(focus==='goal'&&state.stage===3&&!state.journey.kit)return KITS[kitFocus].needs;if(focus==='bench')return BENCH_NEEDS;if(focus==='request')return state.requests.orders.find(o=>o?.id===requestId)?.needs??[];const x=state.board[selected];if(x?.type==='rock'&&FINDS[x.find])return [{family:'rig',tier:2,count:1},...(canRestore(state,x)?[{family:'flux',tier:2,count:1}]:[])];if(focus==='goal'&&x?.type==='site')return x.phase==='idle'?[equipment(x.kind)]:[];if(focus==='goal'&&x?.type==='route')return [{family:ROUTES[x.id].family,tier:2,count:1}];return focus==='contract'?normalContract(state).needs:focus==='opportunity'?state.opportunity?.needs??[]:focus==='discovery'?[{family:'chart',tier:2,count:1}]:visibleGoal()?.needs??[];}
+function needed(){if(focus==='goal'&&state.stage===3&&masteryPending(state).length)return [{family:masteryPending(state)[0],tier:4,count:1}];if(focus==='goal'&&state.stage===3&&!state.journey.kit)return KITS[kitFocus].needs;if(focus==='bench')return BENCH_NEEDS;if(focus==='request')return state.requests.orders.find(o=>o?.id===requestId)?.needs??[];const x=state.board[selected];if(x?.type==='rock'&&FINDS[x.find])return [{family:'rig',tier:2,count:1},...(canRestore(state,x)?[{family:'flux',tier:2,count:1}]:[])];if(focus==='goal'&&x?.type==='site')return x.phase==='idle'?[equipment(x.kind)]:[];if(focus==='goal'&&x?.type==='route')return [{family:ROUTES[x.id].family,tier:2,count:1}];return focus==='contract'?normalContract(state).needs:focus==='opportunity'?state.opportunity?.needs??[]:focus==='discovery'?[{family:'chart',tier:2,count:1}]:visibleGoal()?.needs??[];}
 function needsHTML(needs){return needs.map(r=>`<span class="need ${count(state,r)>=r.count?'done':near(state,[r])==='1 MERGE AWAY'?'almost':''}" title="${nameOf(item(r.family,r.tier,r.line))}">${art(item(r.family,r.tier,r.line))}<b>${count(state,r)>=r.count&&r.count===1?'✓':Math.min(count(state,r),r.count)+'/'+r.count}</b></span>`).join('');}
 function sideOptions(){return ['contract',...(state.discovery&&!state.discoveryDone&&state.board.some(x=>x?.type==='glyph')?['discovery']:[]),...(state.stage>=1?[state.opportunity?'opportunity':'startOpportunity']:[])];}
 function sideChoice(){const options=sideOptions();return options.includes(sideView)?sideView:state.opportunity?'opportunity':options.includes('discovery')?'discovery':'contract';}
@@ -40,6 +40,7 @@ const GUIDE_PRODUCERS={rig:'Rivet Rover',chart:'Survey Kite',flux:'Echo Crucible
 const GUIDE_NAMES={quick:'Quick',standard:'Standard',long:'Expedition kit'};
 function currentOrderDirection(){
  if(chapterEndView(state))return null;
+ if(state.stage===3&&masteryPending(state).length)return masteryDirection(state);
  let order=focus==='request'?state.requests.orders.find(o=>o?.id===requestId):null;
  if(!order&&state.stage===0&&state.landingStep===1&&!ready(state,visibleGoal()?.needs??[])){
   const id=firstSessionCue(state)?.requestId;
@@ -73,7 +74,7 @@ function hint(){
  const opening=firstSessionCue(state);
  if(opening?.pairs.length===2&&focus!=='request')return opening.hint;
  const route=currentOrderDirection();
- if(route&&(focus==='request'||state.stage===4&&visibleGoal()?.action==='orders'))return directionText(route);
+ if(route&&(state.stage===3&&masteryPending(state).length||focus==='request'||state.stage===4&&visibleGoal()?.action==='orders'))return directionText(route);
  if(opening?.requestId&&focus!=='request')return opening.hint;
  if(state.stage===4&&visibleGoal()?.kind==='camp'&&focus!=='request'){
   const g=visibleGoal();

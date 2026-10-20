@@ -27,3 +27,23 @@ test('existing untracked V5 saves keep their previously earned chapter access',(
  const s=fresh(0);delete s.craftMastery;s.stage=3;
  assert.deepEqual(masteryPending(s),[]);assert.deepEqual(masteryPending(load(JSON.stringify(s))),[]);
 });
+
+test('crafting direction highlights the real highest merge pair and never mutates progress',async()=>{
+ const {masteryDirection}=await import('../v5/mastery.mjs');
+ const s=fresh(0);s.stage=3;s.board[3]=item('rig',3);s.board[4]=item('rig',3);
+ const before=JSON.stringify(s),step=masteryDirection(s);
+ assert.equal(step.kind,'merge');assert.deepEqual(step.indices,[3,4]);assert.equal(step.need.tier,4);
+ assert.equal(JSON.stringify(s),before);
+ assert.ok(act(s,{type:'merge',from:3,to:4}).ok);
+ assert.equal(masteryDirection(s).family,'chart','the next unfinished chain becomes the priority');
+});
+test('crafting direction respects actual charges, energy and full-board constraints',async()=>{
+ const {masteryDirection}=await import('../v5/mastery.mjs');
+ const s=fresh(0);s.stage=3;
+ s.board=s.board.map(x=>x?.type==='item'&&x.family==='rig'?null:x);
+ assert.equal(masteryDirection(s).kind,'produce');
+ s.charges.rig=0;assert.equal(masteryDirection(s).kind,'refill');
+ s.energy=0;assert.equal(masteryDirection(s).kind,'energy');
+ s.board=s.board.map(x=>x??{type:'glyph'});
+ assert.equal(['make-space','full'].includes(masteryDirection(s).kind),true);
+});
