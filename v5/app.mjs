@@ -1,5 +1,6 @@
 import {campGoal} from './camp-goals.mjs';
 import {chapterEndView} from './chapter-end.mjs';
+import {coastalObjective,orderPurpose} from './coastal-journey.mjs';
 import {masteryPending,MASTERY_NAMES,masteryDirection} from './mastery.mjs';
 import {firstSessionCue} from './first-session.mjs';
 import {orderDirection} from './order-direction.mjs';
@@ -29,7 +30,7 @@ const scene=premium?prototypeScene:vectorScene;
 const $=s=>document.querySelector(s);
 let state,replayActive=false;try{({state,active:replayActive}=loadSlot(localStorage));}catch{state=fresh();}
 let selected=null,focus='goal',drag=null,suppressUntil=0,sideView=null,requestId=null,kitFocus='field',showVaultGoal=false,postChapterOrdersOpen=false;
-function visibleGoal(){return state.stage===4&&showVaultGoal?expeditionGoal(state):goal(state);}
+function visibleGoal(){return state.stage===4&&showVaultGoal?expeditionGoal(state):coastalObjective(state,expeditionGoal(state));}
 const board=$('#board'),message=$('#message');
 function persist(){try{const raw=JSON.stringify(state);localStorage.setItem(slotKey(replayActive),raw);if(!replayActive)platform.save(raw);}catch{message.textContent='Storage unavailable. This session is playable, but progress cannot be saved.';}}
 function needed(){if(focus==='goal'&&state.stage===3&&masteryPending(state).length)return [{family:masteryPending(state)[0],tier:4,count:1}];if(focus==='goal'&&state.stage===3&&!state.journey.kit)return KITS[kitFocus].needs;if(focus==='bench')return BENCH_NEEDS;if(focus==='request')return state.requests.orders.find(o=>o?.id===requestId)?.needs??[];const x=state.board[selected];if(x?.type==='rock'&&FINDS[x.find])return [{family:'rig',tier:2,count:1},...(canRestore(state,x)?[{family:'flux',tier:2,count:1}]:[])];if(focus==='goal'&&x?.type==='site')return x.phase==='idle'?[equipment(x.kind)]:[];if(focus==='goal'&&x?.type==='route')return [{family:ROUTES[x.id].family,tier:2,count:1}];return focus==='contract'?normalContract(state).needs:focus==='opportunity'?state.opportunity?.needs??[]:focus==='discovery'?[{family:'chart',tier:2,count:1}]:visibleGoal()?.needs??[];}
@@ -46,7 +47,7 @@ function currentOrderDirection(){
   const id=firstSessionCue(state)?.requestId;
   order=state.requests.orders.find(o=>o?.id===id);
  }
- if(!order&&state.stage===4&&visibleGoal()?.kind==='camp'&&visibleGoal().action==='orders'){
+ if(!order&&visibleGoal()?.kind==='camp'&&visibleGoal().action==='orders'){
   order=state.requests.orders.find(o=>o?.id===visibleGoal().orderId);
  }
  return orderDirection(state,order);
@@ -68,15 +69,15 @@ function directionText(direction){
 function hint(){
  // An already-prepared crossing is the player's next real action; never
  // override it with an optional first-fragment suggestion.
- if(state.stage===0&&state.landingStep===1&&ready(state,visibleGoal()?.needs??[]))return 'CROSSING READY · View routes above';
+ if(state.stage===0&&state.landingStep===1&&visibleGoal()?.kind!=='camp'&&ready(state,visibleGoal()?.needs??[]))return 'CROSSING READY · View routes above';
  const finished=chapterEndView(state);
  if(finished&&focus!=='request')return finished.hint;
  const opening=firstSessionCue(state);
  if(opening?.pairs.length===2&&focus!=='request')return opening.hint;
  const route=currentOrderDirection();
- if(route&&(state.stage===3&&masteryPending(state).length||focus==='request'||state.stage===4&&visibleGoal()?.action==='orders'))return directionText(route);
+ if(route&&(state.stage===3&&masteryPending(state).length||focus==='request'||visibleGoal()?.action==='orders'))return directionText(route);
  if(opening?.requestId&&focus!=='request')return opening.hint;
- if(state.stage===4&&visibleGoal()?.kind==='camp'&&focus!=='request'){
+ if(visibleGoal()?.kind==='camp'&&focus!=='request'){
   const g=visibleGoal();
   if(g.action==='orders'){const o=state.requests.orders.find(x=>x?.id===g.orderId);if(o){const p=requestProgress(state,o),missing=p.progress.find(r=>r.current<r.count);return p.ready?'ORDER READY · collect '+o.supplies+' supplies above':missing?'NEXT ORDER · make '+nameOf(item(missing.family,missing.tier,missing.line)):'Complete the highlighted order';}return 'Deliver camp orders to earn supplies';}
   if(g.action==='treasure')return 'Survey Kite · recover and merge Tide Treasures';
@@ -172,7 +173,7 @@ function renderRequests(){
  $('#requests').classList.toggle('postChapterOrders',!!ending);
  $('#sideTray').hidden=state.stage===0&&!state.landingStep;
  const q=state.requests;
- const suggestedRequest=firstSessionCue(state)?.requestId??null;
+ const suggestedRequest=visibleGoal()?.orderId??firstSessionCue(state)?.requestId??null;
  const focused=q.orders.find(o=>o?.id===requestId);
  const missing=focused&&requestProgress(state,focused).progress.find(r=>r.current<r.count);
  const family=missing?.family&&sourceUnlocked(state,missing.family)?missing.family:focused?.needs.find(r=>sourceUnlocked(state,r.family))?.family??'rig';
@@ -181,7 +182,7 @@ function renderRequests(){
   :`<button class="campAction ${q.supplies>=PIER_COST?'affordable':''}" data-camp-action="buildPier" aria-label="Build Supply Pier for ${PIER_COST} camp supplies">Build Pier · ${PIER_COST}◆</button>`):'';
  const primary=campGoal(state);
  const purpose=(state.camp.earlyFragments??0)<2?'Next order: Tide Dial Fragment':primary?.cost?primary.name+' · '+Math.min(primary.supplies,primary.cost)+'/'+primary.cost+' ◆'+(primary.supplies>=primary.cost?' · READY':''):primary?.action==='treasure'?'Recover & merge the next treasure':primary?.action==='orders'?'Orders fund Supply Pier cases':(state.camp.earlyFragments??0)<2?'Next order: Tide Dial Fragment':!state.workshop.repaired?'Workshop 8◆':!state.camp.pier?'Unlock useful supply cases':!state.camp.loft?'Charting Loft 20◆':state.camp.deepSurvey?(state.discovered.includes('chart:tide:4')?'Fulfill treasure orders':'Discover the Ocean Crown'):pearlDiscovered(state)?'Deep Survey 18◆':'Discover a Pearl Astrolabe';
- $('#requests').innerHTML=`${ending?`<button id="ordersToggle" type="button" aria-expanded="${postChapterOrdersOpen}" class="ordersToggle">${postChapterOrdersOpen?'Hide optional camp orders':'Optional camp orders'} · ◆${q.supplies} <span aria-hidden="true">${postChapterOrdersOpen?'▴':'▾'}</span></button>`:''}<div class="requestHeading"><span>${ending?'OPTIONAL ORDERS':'ORDERS'} <small>${purpose}</small></span><b title="Earn camp supplies by delivering orders">◆ <span id="supplies">${q.supplies}</span></b>${action}</div><div class="requestShelf">${q.orders.filter(Boolean).map(o=>{
+ $('#requests').innerHTML=`${ending?`<button id="ordersToggle" type="button" aria-expanded="${postChapterOrdersOpen}" class="ordersToggle">${postChapterOrdersOpen?'Hide optional camp orders':'Optional camp orders'} · ◆${q.supplies} <span aria-hidden="true">${postChapterOrdersOpen?'▴':'▾'}</span></button>`:''}<div class="requestHeading"><span>${ending?'OPTIONAL ORDERS':'CREW DELIVERIES'} <small>${orderPurpose(state)}</small></span><b title="Earn camp supplies by delivering orders">◆ <span id="supplies">${q.supplies}</span></b>${action}</div><div class="requestShelf" aria-label="Crew orders; swipe for alternatives">${q.orders.filter(Boolean).sort((a,b)=>Number(b.id===suggestedRequest)-Number(a.id===suggestedRequest)).map(o=>{
  const p=requestProgress(state,o),active=requestId===o.id&&focus==='request',energy=Math.min(o.energy,120-state.energy);
  return `<button class="requestCard ${p.ready?'ready':''} ${active?'active':''} ${o.id===suggestedRequest?'storySuggested':''}" data-request="${o.id}" aria-pressed="${active}" aria-label="${o.id===suggestedRequest?'Suggested next: ':''}${o.lane} request: ${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier,r.line))).join(', ')}. ${p.ready?active?'Deliver':'Ready. Tap once to collect':'In progress'}. Reward ${o.supplies} camp supplies${energy?` and ${energy} energy`:`, energy full`}"><b class="requestLane">${o.lane==='long'?'Expedition kit':o.lane==='quick'?'Quick':'Standard'}</b><span class="requestItems">${p.progress.map(r=>`<span>${art(item(r.family,r.tier,r.line))}<b>${r.current}/${r.count}</b>${r.protected?'<i title="One copy kept for expedition">◆</i>':''}</span>`).join('')}</span><span class="requestReward">+${o.supplies} ◆${energy?` · +${energy} ϟ`:``}</span><strong>${p.ready?'✓ COLLECT':active&&p.progress.some(r=>r.protected)?'MAKE SPARE':'MAKE'}</strong></button>`;
  }).join('')}</div>`;
@@ -216,7 +217,7 @@ function render(){
  const baseGoal=visibleGoal(),g=ending?{name:ending.title,phase:ending.phase,next:ending.detail,verb:ending.action,kind:'chapterEnd',needs:[],action:'viewFleet'}:state.stage===3&&!state.journey.kit&&!masteryPending(state).length?{...baseGoal,needs:KITS[kitFocus].needs}:baseGoal;$('#goalTitle').textContent=g?.name??'Keep exploring the coast';$('#step').textContent=g?.phase??(state.stage<4?`${state.stage+1} / 4`:'DISCOVERED');
  $('#goalNeeds').innerHTML=ending?`<span class="chapterEndDetail">${ending.detail}</span>`:missionSlots();$('#goalButton').textContent=ending?.status==='complete'?(replayActive?'RESTART REPLAY':'PLAY FROM START'):g?.verb??'Journal';
  const goalReady=ending?true:g?.kind==='camp'?!!g.ready:!!g&&g.action!=='inspect'&&ready(state,g.needs)&&(g.action!=='power'||state.board.includes(null));$('#goalButton').hidden=ending?false:g?.kind==='camp'?false:!goalReady||state.stage===2||state.stage===3&&!state.journey.kit;$('#goalButton').disabled=false;
- $('.objective').classList.toggle('ready',goalReady);$('.objective').classList.toggle('chapterEndObjective',!!ending);$('.objective').classList.remove('almost');$('#nextUnlock').textContent=g?.next??'';
+ $('.objective').classList.toggle('ready',goalReady);$('.objective').classList.toggle('crewObjective',g?.kind==='camp');$('.objective').classList.toggle('chapterEndObjective',!!ending);$('.objective').classList.remove('almost');$('#nextUnlock').textContent=g?.next??'';
  if(goalReady)$('#step').textContent=ending?'FINISHED':state.stage===2&&g?.action==='power'?'TAP BELOW':'READY';
  let seals=$('#sealStates');if(!seals){seals=document.createElement('div');seals.id='sealStates';$('.objective').append(seals);}
  seals.hidden=state.stage!==3||!state.journey.kit;seals.innerHTML=['navigation','stabilization','resonance'].map((k,n)=>`<span class="sealState ${state.seals[k]?'secured':''}" aria-label="${k} seal ${state.seals[k]?'secured':'unresolved'}"><i aria-hidden="true">${state.seals[k]?'✓':['◇','⌂','ϟ'][n]}</i>${['Navigate','Stabilize','Resonate'][n]}</span>`).join('');
@@ -504,4 +505,3 @@ $('#helpButton').onclick=()=>{$('#journalContent').innerHTML='<h2>The Tideglass 
 for(const dialog of document.querySelectorAll('dialog')){dialog.querySelector('.close').onclick=()=>dialog.close();dialog.querySelector('.continue')?.addEventListener('click',()=>dialog.close());dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close();});}
 setInterval(()=>{const op=opportunity(state),clock=$('#opClock');if(op&&clock){clock.textContent=op.remaining?(ready(state,op.needs)?'✓ READY · ':'MAKE · ')+Math.ceil(op.remaining/1000)+'s':'PASSED · DISMISS';if(!op.remaining){const card=clock.closest('.contract');card.classList.remove('ready');card.removeAttribute('aria-label');}}},1000);
 render();persist();platform.init();
-
