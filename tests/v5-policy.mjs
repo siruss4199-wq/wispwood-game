@@ -11,7 +11,7 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
  // Scripted policy must actually craft all three instruments. No milestone seeding.
  if(s.stage===3&&masteryPending(s).length){
   const family=masteryPending(s)[0],free=s.board.filter(x=>x===null).length;
-  for(const tier of [2,1,0]){
+  for(const tier of [3,2,1,0]){
    const pair=s.board.flatMap((x,i)=>x?.type==='item'&&!x.line&&x.family===family&&x.tier===tier?[i]:[]);
    if(pair.length>=2)return {type:'merge',from:pair[0],to:pair[1]};
   }

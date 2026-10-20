@@ -48,8 +48,8 @@ export function fresh(now=Date.now()){
 export function goal(s){return s.stage===4?(campGoal(s)??expeditionGoal(s)):expeditionGoal(s);}
 export function expeditionGoal(s){
  if(s.stage===3&&masteryPending(s).length){
-  const missing=masteryPending(s),labels={rig:'Pocket winch',chart:'Survey scope',flux:'Resonator'};
-  return {name:'Calibrate three expedition instruments',verb:'Merge instruments',scene:'Rings powered · prepare the expedition',needs:missing.map(f=>req(f,3)),action:'inspect',next:'Merge your own '+missing.map(f=>labels[f]).join(' · ')+'. Crate rewards do not count.',text:'Each of the three producer families must contribute one handmade instrument.',phase:'CREW PREPARATION'};
+  const missing=masteryPending(s),labels={rig:'Crawler jack',chart:'Bearing dial',flux:'Phase lantern'};
+  return {name:'Calibrate three expedition instruments',verb:'Merge instruments',scene:'Rings powered · prepare the expedition',needs:missing.map(f=>req(f,4)),action:'inspect',next:'Merge your own '+missing.map(f=>labels[f]).join(' · ')+'. Crate rewards do not count.',text:'Each of the three producer families must contribute one handmade instrument.',phase:'CREW PREPARATION'};
  }
  if(s.stage===0&&s.landingStep===1)return {name:'Chart the safe crossing',verb:'View routes',scene:'Survey camp established',needs:[req('chart',2),req('rig',2)],energy:8,next:'Choose a route with prepared equipment',text:'Make a Sight Lens and Split Spanner. Choose which one to use on the crossing.',phase:'LANDING 2 / 2'};
  if(s.stage===1)return {name:'Choose your crossing',verb:'Clear',scene:'Survey worksite',needs:[req('rig',2),req('chart',2)],action:'inspect',next:'Either route unlocks Echo Crucible',text:'Use the spanner for working space, or the lens for relic supplies. Keep the other tool.',phase:'CHOOSE ONE'};
@@ -294,7 +294,7 @@ export function act(s,a,now=Date.now()){
   s.board[from]=null;s.seals.optics={...optics(s),primed:true};trace(s,'engine-charged');return done('Lift charged · activate your prepared receiver.','deployment',lift);
  }
  if(a.type==='goal'){
-  if(s.stage===3&&masteryPending(s).length)return fail('Craft a Pocket winch, Survey scope and Resonator yourself before opening the Vault.');
+  if(s.stage===3&&masteryPending(s).length)return fail('Merge a Crawler jack, Bearing dial and Phase lantern yourself before opening the Vault.');
   if(s.stage===3&&!allSeals(s))return fail('Resolve all three vault seals first.');
   if(s.stage===3&&a.kit&&!KITS[a.kit])return fail('Choose a salvage or survey kit.');
   const kit=s.stage===3&&!s.journey?.kit?(KITS[a.kit]?a.kit:Object.keys(KITS).find(k=>ready(s,KITS[k].needs))):null;

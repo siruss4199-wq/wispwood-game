@@ -103,7 +103,7 @@ function missionSlots(){
  const g=visibleGoal();if(g?.kind==='camp')return g.cost?`<span class="need campNeed"><img class="art" src="assets/premium/${g.image}.webp" alt=""><b>${Math.min(g.supplies,g.cost)}/${g.cost} ◆</b></span>`:needsHTML(g.needs);
  if(state.stage===3&&masteryPending(state).length)return ['rig','chart','flux'].map(f=>{
   const done=state.craftMastery[f]===true;
-  return `<span class="need ${done?'done':''}" aria-label="${MASTERY_NAMES[f]} ${done?'crafted':'still needs a real merge'}">${art(item(f,3))}<b>${done?'✓':'MAKE'}</b></span>`;
+  return `<span class="need ${done?'done':''}" aria-label="${MASTERY_NAMES[f]} ${done?'crafted':'still needs a real merge'}">${art(item(f,4))}<b>${done?'✓':'MAKE'}</b></span>`;
  }).join('');
  if(state.stage===3&&!state.journey.kit)return Object.entries(KITS).map(([id,k])=>`<button class="missionSlot engineChoice ${ready(state,k.needs)?'available':''}" data-kit="${id}" aria-label="${k.name}: ${k.needs.map(r=>nameOf(item(r.family,r.tier,r.line))).join(', ')}. ${k.reward}"><b>Open · ${k.name}</b><span class="kitItems">${needsHTML(k.needs)}</span><small>${k.reward}</small></button>`).join('');
  if(state.stage===4&&state.journey.engine&&!state.journey.infusions)return Object.entries(SOURCES).map(([id,p])=>`<button class="missionSlot engineChoice ${count(state,{family:'flux',tier:1})?'available':''}" data-infuse="${id}" aria-label="Enrich ${p.name}: one Loop Cell, three improved pulls">${art({type:'source',id})}<b>${p.name}</b><small>1 Loop Cell → 3 rich pulls</small></button>`).join('');
