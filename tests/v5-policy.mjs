@@ -1,5 +1,6 @@
 // Intent-based player styles. All actions use the public reducer / real UI.
 import {KITS} from '../v5/journey.mjs';
+import {masteryPending} from '../v5/mastery.mjs';
 import {sameKind} from '../v5/treasures.mjs';
 import {expeditionGoal as goal,ready,count,normalContract,SOURCES,sourceUnlocked} from '../v5/core.mjs';
 import {ANCHORS,ROUTES,equipment,anchors} from '../v5/expedition.mjs';
@@ -7,6 +8,25 @@ import {circuit,linkPhase,optics} from '../v5/seals.mjs';
 const req=(family,tier,count=1)=>({family,tier,count});
 export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,session=null,style='expedition',findStrategy=null,decode=true,route=null,mergeSight=false,receiver=null,vaultKit='field'}={}){
  if(!goal(s))return null;
+ // Scripted policy must actually craft all three instruments. No milestone seeding.
+ if(s.stage===3&&masteryPending(s).length){
+  const family=masteryPending(s)[0],free=s.board.filter(x=>x===null).length;
+  for(const tier of [2,1,0]){
+   const pair=s.board.flatMap((x,i)=>x?.type==='item'&&!x.line&&x.family===family&&x.tier===tier?[i]:[]);
+   if(pair.length>=2)return {type:'merge',from:pair[0],to:pair[1]};
+  }
+  if(!free){
+   for(const f of ['rig','chart','flux'])for(let tier=0;tier<=5;tier++){
+    const pair=s.board.flatMap((x,i)=>x?.type==='item'&&!x.line&&x.family===f&&x.tier===tier?[i]:[]);
+    if(pair.length>=2)return {type:'merge',from:pair[0],to:pair[1]};
+   }
+   const index=s.board.findIndex(x=>x?.type==='item'&&!x.line&&x.family!==family&&x.tier<=1);
+   if(index>=0)return {type:'recycle',index};
+   throw Error('Full board, no legal moves during craft mastery');
+  }
+  if(s.energy<=3)return {type:'ration'};
+  return {type:s.charges[family]?'produce':'service',id:family};
+ }
  const spaces=s.board.filter(x=>x===null).length;
  // An impulsive merger compacts ALL families, even when a pair could be installed
  // or traded separately. Do not fake this style by targeting one extra story tier.

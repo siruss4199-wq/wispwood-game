@@ -1,4 +1,5 @@
 import {campGoal} from './camp-goals.mjs';
+import {freshMastery,masteryPending,recordCraftMastery} from './mastery.mjs';
 import {fleetEarned} from './fleet.mjs';
 import {TIDE_NAMES,isTide,maxTier,sameKind,discoveryKey,tideItem,buildLoft,upgradeLoft,recoverTide} from './treasures.mjs';
 import {journeyState,KITS,ENGINE_NEEDS} from './journey.mjs';
@@ -42,10 +43,14 @@ export function fresh(now=Date.now()){
  for(const i of [19,32])board[i]={type:'rock'};
  ['winch','scope','relay'].forEach((kind,n)=>board[[20,23,31][n]]={type:'site',kind,phase:'idle',progress:0});
  board[24]={type:'route',id:'ridge'};board[27]={type:'route',id:'conduit'};board[34]=container('salvage');
- const state={version:5,board,stage:0,landingStep:0,routePrepared:false,seals:freshSeals(),producerStreak:0,energy:32,marks:0,moves:0,merges:0,contracts:0,serial:0,charges:{rig:7,chart:7,flux:7},taps:{rig:0,chart:0,flux:0},normal:0,opportunity:null,discovery:false,discoveryDone:false,boost:false,post:0,discovered:[],expedition:expeditionState(),startedAt:now,lastAt:now,rations:0,history:[]};syncRequests(state);workshopState(state);journeyState(state);campState(state);return state;
+ const state={version:5,board,stage:0,landingStep:0,routePrepared:false,seals:freshSeals(),producerStreak:0,energy:32,marks:0,moves:0,merges:0,contracts:0,serial:0,charges:{rig:7,chart:7,flux:7},taps:{rig:0,chart:0,flux:0},normal:0,opportunity:null,discovery:false,discoveryDone:false,boost:false,post:0,discovered:[],craftMastery:freshMastery(),expedition:expeditionState(),startedAt:now,lastAt:now,rations:0,history:[]};syncRequests(state);workshopState(state);journeyState(state);campState(state);return state;
 }
 export function goal(s){return s.stage===4?(campGoal(s)??expeditionGoal(s)):expeditionGoal(s);}
 export function expeditionGoal(s){
+ if(s.stage===3&&masteryPending(s).length){
+  const missing=masteryPending(s),labels={rig:'Pocket winch',chart:'Survey scope',flux:'Resonator'};
+  return {name:'Calibrate three expedition instruments',verb:'Merge instruments',scene:'Rings powered · prepare the expedition',needs:missing.map(f=>req(f,3)),action:'inspect',next:'Merge your own '+missing.map(f=>labels[f]).join(' · ')+'. Crate rewards do not count.',text:'Each of the three producer families must contribute one handmade instrument.',phase:'CREW PREPARATION'};
+ }
  if(s.stage===0&&s.landingStep===1)return {name:'Chart the safe crossing',verb:'View routes',scene:'Survey camp established',needs:[req('chart',2),req('rig',2)],energy:8,next:'Choose a route with prepared equipment',text:'Make a Sight Lens and Split Spanner. Choose which one to use on the crossing.',phase:'LANDING 2 / 2'};
  if(s.stage===1)return {name:'Choose your crossing',verb:'Clear',scene:'Survey worksite',needs:[req('rig',2),req('chart',2)],action:'inspect',next:'Either route unlocks Echo Crucible',text:'Use the spanner for working space, or the lens for relic supplies. Keep the other tool.',phase:'CHOOSE ONE'};
  if(s.stage===2){
@@ -206,6 +211,7 @@ export function act(s,a,now=Date.now()){
   if(!isTide(x)&&x.tier===3&&anchors(s).some(site=>site.phase==='idle'&&ANCHORS[site.kind].equipment===x.family))trace(s,'kept-for-merge',{family:x.family});
   s.board[a.to]=item(x.family,x.tier+1,x.line);s.board[a.from]=null;s.merges++;const bonus=s.merges%3===0?1:0;s.energy=Math.min(120,s.energy+bonus);
   const crafted=s.board[a.to];
+  const craftedMilestone=recordCraftMastery(s,crafted);
   const firstCraft=crafted.tier>=2&&!s.discovered.includes(discoveryKey(crafted));
   if(isTide(crafted)){const tideDiscovery=!s.discovered.includes(discoveryKey(crafted));return {...done(nameOf(crafted)+' · fulfill tide orders or keep your collection.','merge',a.to),tideDiscovery};}
   const resupply=firstCraft&&s.stage<4?supplies(s,3):[];
@@ -219,7 +225,7 @@ export function act(s,a,now=Date.now()){
   const chainFind=false;
   const breakthrough=firstCraft&&crafted.tier>=3;
   if(breakthrough){s.charges[crafted.family]=Math.min(7,s.charges[crafted.family]+2);if(crafted.tier>=5)s.energy=Math.min(120,s.energy+4);}
-  return {...done(`${nameOf(crafted)}${breakthrough?' · source recharged':''}${resupply.length?' · expedition supplies':''}${bonus?' · +1 energy':''}`,'merge',a.to),breakthrough,newDiscovery:firstCraft,discoveryReward};
+  return {...done(`${nameOf(crafted)}${craftedMilestone?' · crew instrument calibrated':''}${breakthrough?' · source recharged':''}${resupply.length?' · expedition supplies':''}${bonus?' · +1 energy':''}`,'merge',a.to),breakthrough,newDiscovery:firstCraft,discoveryReward,craftedMilestone};
  }
  if(a.type==='produce'){
   const p=SOURCES[a.id];if(!p||!sourceUnlocked(s,a.id))return fail(`Unlock after ${a.id==='chart'?'stabilizing the landing':'opening a breach'}.`);
@@ -288,6 +294,7 @@ export function act(s,a,now=Date.now()){
   s.board[from]=null;s.seals.optics={...optics(s),primed:true};trace(s,'engine-charged');return done('Lift charged · activate your prepared receiver.','deployment',lift);
  }
  if(a.type==='goal'){
+  if(s.stage===3&&masteryPending(s).length)return fail('Craft a Pocket winch, Survey scope and Resonator yourself before opening the Vault.');
   if(s.stage===3&&!allSeals(s))return fail('Resolve all three vault seals first.');
   if(s.stage===3&&a.kit&&!KITS[a.kit])return fail('Choose a salvage or survey kit.');
   const kit=s.stage===3&&!s.journey?.kit?(KITS[a.kit]?a.kit:Object.keys(KITS).find(k=>ready(s,KITS[k].needs))):null;

@@ -1,5 +1,6 @@
 import {campGoal} from './camp-goals.mjs';
 import {chapterEndView} from './chapter-end.mjs';
+import {masteryPending,MASTERY_NAMES} from './mastery.mjs';
 import {firstSessionCue} from './first-session.mjs';
 import {orderDirection} from './order-direction.mjs';
 import {loadSlot,beginReplay,returnOriginal,slotKey} from './replay.mjs';
@@ -97,9 +98,13 @@ function hint(){
   if(missing.family==='chart'&&!state.taps.chart)return 'NEW MACHINE · Tap Survey Kite for map parts';
   return 'NEXT · Merge parts into a '+nameOf(item(missing.family,missing.tier,missing.line));
  }
- if(state.stage===1)return 'Choose a crossing above · keep the other tool';if(state.stage===2){const g=visibleGoal();return g.action==='prime'&&ready(state,g.needs)?'LOOP CELL READY · Tap Charge Stone Lift':g.text;}if(state.stage===3)return state.journey.kit?'RINGS AWAKE · Open the Tideglass Vault':'Choose tool finds or survey finds · pack one kit';if(state.stage===4&&!state.journey.engine)return 'Inside: a dormant engine · restore it for enriched production';if(state.stage===4&&!state.journey.infusions)return 'Use a Loop Cell on the producer you want to enrich';if(state.journey.boost)return SOURCES[state.journey.boost.family].name+' · '+state.journey.boost.left+' enriched pulls ready';return 'Merge twins · choose where to use them';}
+ if(state.stage===1)return 'Choose a crossing above · keep the other tool';if(state.stage===2){const g=visibleGoal();return g.action==='prime'&&ready(state,g.needs)?'LOOP CELL READY · Tap Charge Stone Lift':g.text;}if(state.stage===3&&masteryPending(state).length)return 'CREW PREPARATION · merge '+MASTERY_NAMES[masteryPending(state)[0]]+' yourself';if(state.stage===3)return state.journey.kit?'RINGS AWAKE · Open the Tideglass Vault':'Choose tool finds or survey finds · pack one kit';if(state.stage===4&&!state.journey.engine)return 'Inside: a dormant engine · restore it for enriched production';if(state.stage===4&&!state.journey.infusions)return 'Use a Loop Cell on the producer you want to enrich';if(state.journey.boost)return SOURCES[state.journey.boost.family].name+' · '+state.journey.boost.left+' enriched pulls ready';return 'Merge twins · choose where to use them';}
 function missionSlots(){
  const g=visibleGoal();if(g?.kind==='camp')return g.cost?`<span class="need campNeed"><img class="art" src="assets/premium/${g.image}.webp" alt=""><b>${Math.min(g.supplies,g.cost)}/${g.cost} ◆</b></span>`:needsHTML(g.needs);
+ if(state.stage===3&&masteryPending(state).length)return ['rig','chart','flux'].map(f=>{
+  const done=state.craftMastery[f]===true;
+  return `<span class="need ${done?'done':''}" aria-label="${MASTERY_NAMES[f]} ${done?'crafted':'still needs a real merge'}">${art(item(f,3))}<b>${done?'✓':'MAKE'}</b></span>`;
+ }).join('');
  if(state.stage===3&&!state.journey.kit)return Object.entries(KITS).map(([id,k])=>`<button class="missionSlot engineChoice ${ready(state,k.needs)?'available':''}" data-kit="${id}" aria-label="${k.name}: ${k.needs.map(r=>nameOf(item(r.family,r.tier,r.line))).join(', ')}. ${k.reward}"><b>Open · ${k.name}</b><span class="kitItems">${needsHTML(k.needs)}</span><small>${k.reward}</small></button>`).join('');
  if(state.stage===4&&state.journey.engine&&!state.journey.infusions)return Object.entries(SOURCES).map(([id,p])=>`<button class="missionSlot engineChoice ${count(state,{family:'flux',tier:1})?'available':''}" data-infuse="${id}" aria-label="Enrich ${p.name}: one Loop Cell, three improved pulls">${art({type:'source',id})}<b>${p.name}</b><small>1 Loop Cell → 3 rich pulls</small></button>`).join('');
  if(state.stage===1)return Object.entries(ROUTES).map(([id,r])=>{
@@ -207,7 +212,7 @@ function render(){
  $('.world').classList.toggle('pierBuilt',state.camp.pier);
  $('#chapterLabel').textContent=ending?'CHAPTER 1 · COMPLETE':state.stage===4?'DISCOVERY · THE SKY WITHIN':'THE SALTGLASS REACH';
  $('.objective').dataset.stage=state.stage;$('.objective').dataset.journey=state.stage===4&&!state.journey.infusions?'active':'';
- const baseGoal=visibleGoal(),g=ending?{name:ending.title,phase:ending.phase,next:ending.detail,verb:ending.action,kind:'chapterEnd',needs:[],action:'viewFleet'}:state.stage===3&&!state.journey.kit?{...baseGoal,needs:KITS[kitFocus].needs}:baseGoal;$('#goalTitle').textContent=g?.name??'Keep exploring the coast';$('#step').textContent=g?.phase??(state.stage<4?`${state.stage+1} / 4`:'DISCOVERED');
+ const baseGoal=visibleGoal(),g=ending?{name:ending.title,phase:ending.phase,next:ending.detail,verb:ending.action,kind:'chapterEnd',needs:[],action:'viewFleet'}:state.stage===3&&!state.journey.kit&&!masteryPending(state).length?{...baseGoal,needs:KITS[kitFocus].needs}:baseGoal;$('#goalTitle').textContent=g?.name??'Keep exploring the coast';$('#step').textContent=g?.phase??(state.stage<4?`${state.stage+1} / 4`:'DISCOVERED');
  $('#goalNeeds').innerHTML=ending?`<span class="chapterEndDetail">${ending.detail}</span>`:missionSlots();$('#goalButton').textContent=ending?.status==='complete'?(replayActive?'RESTART REPLAY':'PLAY FROM START'):g?.verb??'Journal';
  const goalReady=ending?true:g?.kind==='camp'?!!g.ready:!!g&&g.action!=='inspect'&&ready(state,g.needs)&&(g.action!=='power'||state.board.includes(null));$('#goalButton').hidden=ending?false:g?.kind==='camp'?false:!goalReady||state.stage===2||state.stage===3&&!state.journey.kit;$('#goalButton').disabled=false;
  $('.objective').classList.toggle('ready',goalReady);$('.objective').classList.toggle('chapterEndObjective',!!ending);$('.objective').classList.remove('almost');$('#nextUnlock').textContent=g?.next??'';
@@ -370,6 +375,11 @@ function run(a){
  if(a.type==='upgradeLoft'){selected=null;focus='pier';render();moment('Deep Survey installed','Guaranteed compasses · two new treasures to merge',tideItem(3));sound.play('milestone');$('.world').classList.add('changed');}
  if(a.type==='buildLoft'){selected=null;focus='pier';render();moment('Charting Loft built','Survey Kite now recovers Tide Treasures · Neri can trace the missing coast',tideItem(1));sound.play('milestone');$('.world').classList.add('changed');}
  if(a.type==='recoverTide'){if(!knownBefore.has(discoveryKey(state.board[result.index]))){moment(nameOf(state.board[result.index]),'Wayfinding treasure · merge twins or deliver an order',state.board[result.index]);sound.play('rare');}board.querySelector(`[data-index="${result.index}"]`)?.classList.add('merge-pop');}
+ if(result.craftedMilestone&&state.stage===3){
+  const pending=masteryPending(state);
+  moment(nameOf(state.board[result.index])+' calibrated',pending.length?'Next: '+pending.map(f=>MASTERY_NAMES[f]).join(', '):'Three crew instruments ready · choose your Vault kit',state.board[result.index]);
+  sound.play('milestone');
+ }
  if(result.tideFragment&&state.camp.earlyFragments===1){moment('First Tide Dial fragment','Neri: This fragment points toward a coast erased from the charts.',tideItem(0));}
  if(result.tideDiscovery&&state.board[result.index]?.tier===1&&!knownBefore.has('chart:tide:1')){
   moment('The first Reef Compass','Neri: Its needle points toward the missing coast. Now prepare a Lens and Spanner to follow it.',state.board[result.index]);
