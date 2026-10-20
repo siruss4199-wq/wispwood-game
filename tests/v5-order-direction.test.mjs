@@ -8,7 +8,7 @@ test('ready order gives collection direction without changing real items or deli
  const d=orderDirection(s,o);assert.equal(d.kind,'collect');assert.deepEqual(d.indices,[]);
  assert.equal(JSON.stringify(s),before);
  assert.ok(act(s,{type:'request',id:o.id}).ok);
- assert.equal(orderDirection(s,o).kind,'collect'); // caller uses the current order only
+ assert.notEqual(orderDirection(s,o)?.kind,'collect','delivered orders must not appear ready after their ingredients are consumed');
  assert.notEqual(s.requests.orders[0].id,o.id);
 });
 test('recommends a legal merge, not a different treasure line at the same tier',()=>{
