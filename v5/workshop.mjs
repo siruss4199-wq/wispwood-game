@@ -31,7 +31,9 @@ export function fitSpanner(s){
  const indices=benchInputs(s);
  if(indices.some(i=>i<0))return {ok:false,message:'Keep expedition tools. Bring a spare Grip tool and Ink scrap.'};
  // Reuse the input space: the bench works even on a full board.
- s.board[indices[0]]={type:'item',family:'rig',tier:2};s.board[indices[1]]=null;
+ // Marked as a spare: it's made to be delivered, never mistaken for the one
+ // expedition-reserved rig/chart tier-2 tool (see reservedItems).
+ s.board[indices[0]]={type:'item',family:'rig',tier:2,spare:true};s.board[indices[1]]=null;
  s.energy--;s.charges.rig--;s.workshop.fittings=(s.workshop.fittings??0)+1;
  return {ok:true,index:indices[0],message:'Split spanner fitted · 1 energy · one Rover charge'};
 }

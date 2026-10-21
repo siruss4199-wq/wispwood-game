@@ -86,10 +86,7 @@ export function syncRequests(s){
 export function reservedItems(s){
  const needs=[];
  if(s.stage===0&&!s.landingStep)needs.push(req('rig',1,2));
- // Both crossing tools are only load-bearing once stage 1 actually holds the
- // choice open; reserving them earlier trapped a freshly fitted spanner (or
- // any other early tier-2 spare) that had no crossing to protect yet.
- if(s.stage===1)needs.push(req('rig',2),req('chart',2));
+ if(s.stage<=1)needs.push(req('rig',2),req('chart',2));
  if(s.stage===2){
   if(!s.seals?.optics?.primed)needs.push(req('flux',1));
   for(const x of s.board)if(x?.type==='site'&&x.phase==='idle')needs.push(req({winch:'rig',scope:'chart',relay:'flux'}[x.kind],3));
@@ -99,8 +96,10 @@ export function reservedItems(s){
  if(s.stage===3&&!s.journey?.kit)needs.push(req('rig',2),req('chart',1));
  if(s.stage===4&&!s.journey?.engine)needs.push(...ENGINE_NEEDS);
  const kept=new Set();
+ // A manufactured spare (e.g. a fitted Split spanner) is made to be delivered,
+ // never the one expedition copy being protected here; never reserve one.
  for(const r of needs)for(let n=[...kept].filter(i=>matches(s.board[i],r)).length;n<r.count;n++){
-  const i=s.board.findIndex((x,i)=>!kept.has(i)&&matches(x,r));if(i>=0)kept.add(i);
+  const i=s.board.findIndex((x,i)=>!kept.has(i)&&matches(x,r)&&!x.spare);if(i>=0)kept.add(i);
  }
  return kept;
 }
