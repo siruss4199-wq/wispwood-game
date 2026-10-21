@@ -10,7 +10,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs');const {chromium
   assert.equal(await page.locator('#workshop').getAttribute('data-state'),'damaged');await shot('01-damaged');
   await page.locator('#board [data-index="7"]').tap();await page.locator('#board [data-index="8"]').tap();await page.locator('#goalButton').tap();await page.waitForTimeout(1900);
   const goals=(await read()).requests.orders.filter(Boolean).map(o=>o.needs[0].family+':'+o.needs[0].tier);
-  assert.equal(new Set(goals).size,3,'three request cards offer different main items');
+  assert.equal(await page.locator('.requestCard').count(),1,'first restoration starts with one visible commission');
   const shelf=await page.locator('#requests').boundingBox();assert.ok(shelf.height<=135,'request shelf stays compact at 390px');
   for(const c of await page.locator('.requestCard').all())assert.ok((await c.boundingBox()).height>=44,'request is a large tap target');
   await shot('01b-compact-variety');
@@ -33,7 +33,13 @@ const assert=require('node:assert/strict'),fs=require('node:fs');const {chromium
    }
    throw Error('Request failed to finish');
   }
-  for(const lane of [0,1,0,1])await fulfill(lane);
+  await fulfill(0);
+   assert.equal(await page.locator('#firstPier').getAttribute('data-level'),'1','one real delivery restores a pier section');
+   assert.equal(await page.locator('.requestCard').count(),2);
+   await fulfill(1);
+   assert.equal(await page.locator('#firstPier').getAttribute('data-level'),'2','two deliveries visibly complete the walkway');
+   assert.equal(await page.locator('.requestCard').count(),3);
+   for(const lane of [0,1])await fulfill(lane);
   let s=await read();const workshopCost=await page.evaluate(async()=>{const {WORKSHOP_COST}=await import('/v5/workshop.mjs');return WORKSHOP_COST;});assert.ok(s.requests.supplies>=workshopCost,'earned supplies cover the repair cost');assert.equal(s.requests.completed,4);assert.ok(Object.values(s.taps).reduce((a,b)=>a+b,0)>0);await shot('02-earned-repair');
   const before=structuredClone(s);await page.locator('#workshop').tap();trace.push({type:'restoreWorkshop'});s=await read();assert.equal(s.requests.supplies,before.requests.supplies-workshopCost,'repair preserves supplies not spent');assert.equal(s.workshop.repaired,true);assert.deepEqual(s.board,before.board);assert.equal(s.stage,before.stage);
   await page.locator('#workshop img').evaluate(img=>img.decode());await page.waitForTimeout(1900);assert.match(await page.locator('#workshop img').getAttribute('src'),/operational/);
