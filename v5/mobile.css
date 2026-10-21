@@ -458,3 +458,7 @@ body .world .objective.crewObjective{grid-template-columns:1fr;gap:7px}
 .boardHeading:has(#quickRefill:not([hidden])){min-height:48px;gap:6px}
 .boardHeading:has(#quickRefill:not([hidden])) #hint{flex:1;font-size:11px;line-height:1.2}
 @media(max-width:375px){.boardHeading #quickRefill{font-size:10px;padding:5px 7px;max-width:47%}}
+
+/* Replay stays reachable after the signal without competing with the next objective. */
+.objective .replayChapter{display:inline-block;margin:6px 0 0;min-height:44px;padding:0 12px;background:none;border:1px dashed #9cc7c0;border-radius:10px;color:#1f6b66;font-family:inherit;font-weight:600;font-size:12px;line-height:1.2;cursor:pointer}
+.objective .replayChapter[hidden]{display:none}

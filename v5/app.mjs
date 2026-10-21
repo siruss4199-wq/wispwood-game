@@ -41,8 +41,11 @@ function sideOptions(){return ['contract',...(state.discovery&&!state.discoveryD
 function sideChoice(){const options=sideOptions();return options.includes(sideView)?sideView:state.opportunity?'opportunity':options.includes('discovery')?'discovery':'contract';}
 const GUIDE_PRODUCERS={rig:'Rivet Rover',chart:'Survey Kite',flux:'Echo Crucible'};
 const GUIDE_NAMES={quick:'Quick',standard:'Standard',long:'Expedition kit'};
+// The fleet reveal is a pending story beat; once seen, play continues at the camp.
+const signalPending=()=>{const e=chapterEndView(state);return e?.status==='pending'?e:null;};
+const signalHeard=()=>chapterEndView(state)?.status==='complete';
 function currentOrderDirection(){
- if(chapterEndView(state))return null;
+ if(signalPending())return null;
  if(state.stage===3&&masteryPending(state).length)return masteryDirection(state,instrumentFocus);
  let order=focus==='request'?state.requests.orders.find(o=>o?.id===requestId):null;
  if(!order&&state.stage===0&&state.landingStep===1&&!ready(state,visibleGoal()?.needs??[])){
@@ -73,7 +76,7 @@ function hint(){
  // An already-prepared crossing is the player's next real action; never
  // override it with an optional first-fragment suggestion.
  if(state.stage===0&&state.landingStep===1&&visibleGoal()?.kind!=='camp'&&ready(state,visibleGoal()?.needs??[]))return 'CROSSING READY · View routes above';
- const finished=chapterEndView(state);
+ const finished=signalPending();
  if(finished&&focus!=='request')return finished.hint;
  const opening=firstSessionCue(state);
  if(opening?.pairs.length===2&&focus!=='request')return opening.hint;
@@ -189,7 +192,7 @@ function renderFirstPier(){
 }
 function renderRequests(){
  const openingPier=firstPier(state);
- const ending=chapterEndView(state);
+ const ending=signalPending();
  $('#requests').hidden=state.stage===0&&!state.landingStep;
  $('#requests').classList.toggle('postChapterCollapsed',!!ending&&!postChapterOrdersOpen);
  $('#requests').classList.toggle('postChapterOrders',!!ending);
@@ -221,26 +224,28 @@ function renderSide(){
  $('#contracts').innerHTML=`<button class="contract ${rare?'discovery':choice.includes('pportunity')?'opportunity':''} ${can?'ready':''}" data-contract="${choice}" data-requirements="${needs.length}" aria-label="Optional: ${title} ${can?'ready to use':''}"><span class="contractHead">${portrait(rare?'neri':'ivo')}<span><small>OPTIONAL</small><b>${title}</b></span></span><span class="needs">${rare?art({type:'glyph'}):''}${needsHTML(needs)}</span><span class="reward">${reward}<small ${choice==='opportunity'?'id="opClock"':''}>${can?'✓ READY':choice==='startOpportunity'?'OPEN · 3 MIN':choice==='opportunity'?Math.ceil(op.remaining/1000)+'s':'COLLECT'}</small></span></button><button class="sideMore" data-side-next aria-label="Other optional tasks" ${sideOptions().length<2?'hidden':''}>•••</button>`;
 }
 function render(){
- const ending=chapterEndView(state);
+ const ending=signalPending(),heard=signalHeard();
  $('#replayNotice').hidden=!replayActive;
  $('.world').classList.toggle('opened',state.stage===4);
- $('.world').classList.toggle('chapterEnded',ending?.status==='complete');
+ $('.world').classList.toggle('chapterEnded',false);
  $('.world').classList.toggle('signalPending',ending?.status==='pending');
  $('.world').classList.toggle('campExpanded',postChapterOrdersOpen);
  $('.world').classList.toggle('compassFound',state.stage===0&&state.landingStep===1&&state.discovered.includes('chart:tide:1'));
  $('.destination').textContent=state.stage===4?'VAULT DISCOVERED':'OPEN THE TIDEGLASS VAULT';
  $('#energy').textContent=state.energy;$('#marks').textContent=state.marks;
  const viewStage=state.stage===0&&state.landingStep===1?1:state.stage;
- const sceneKey=viewStage+':'+state.post;if($('#scene').dataset.key!==sceneKey){$('#scene').innerHTML=scene(viewStage,state.post);$('#scene').dataset.key=sceneKey;}$('#sceneLabel').textContent=ending?'The fleet signal is found':visibleGoal()?.scene??STAGES[state.stage]?.scene??'The vault is open';
+ const sceneKey=viewStage+':'+state.post;if($('#scene').dataset.key!==sceneKey){$('#scene').innerHTML=scene(viewStage,state.post);$('#scene').dataset.key=sceneKey;}$('#sceneLabel').textContent=ending?'The fleet signal is found':heard?'Someone answered the fleet signal':visibleGoal()?.scene??STAGES[state.stage]?.scene??'The vault is open';
  renderWorkshop();
  $('.world').classList.toggle('pierBuilt',state.camp.pier);
- $('#chapterLabel').textContent=ending?'CHAPTER 1 · COMPLETE':state.stage===4?'DISCOVERY · THE SKY WITHIN':'THE SALTGLASS REACH';
+ $('#chapterLabel').textContent=ending?'CHAPTER 1 · THE SIGNAL':heard?'THE SIGNAL ANSWERS':state.stage===4?'DISCOVERY · THE SKY WITHIN':'THE SALTGLASS REACH';
  $('.objective').dataset.stage=state.stage;$('.objective').dataset.journey=state.stage===4&&!state.journey.infusions?'active':'';
- const baseGoal=visibleGoal(),g=ending?{name:ending.title,phase:ending.phase,next:ending.detail,verb:ending.action,kind:'chapterEnd',needs:[],action:'viewFleet'}:state.stage===3&&!state.journey.kit&&!masteryPending(state).length?{...baseGoal,needs:KITS[kitFocus].needs}:baseGoal;$('#goalTitle').textContent=g?.name??'Keep exploring the coast';$('#step').textContent=g?.phase??(state.stage<4?`${state.stage+1} / 4`:'DISCOVERED');
+ const baseGoal=visibleGoal(),g=ending?{name:ending.title,phase:ending.phase,next:ending.detail,verb:ending.action,kind:'chapterEnd',needs:[],action:'viewFleet'}:state.stage===3&&!state.journey.kit&&!masteryPending(state).length&&baseGoal?.kind!=='camp'?{...baseGoal,needs:KITS[kitFocus].needs}:baseGoal;$('#goalTitle').textContent=g?.name??'Keep exploring the coast';$('#step').textContent=g?.phase??(state.stage<4?`${state.stage+1} / 4`:'DISCOVERED');
  $('#goalNeeds').innerHTML=ending?`<span class="chapterEndDetail">${ending.detail}</span>`:missionSlots();$('#goalButton').textContent=ending?.status==='complete'?(replayActive?'RESTART REPLAY':'PLAY FROM START'):g?.verb??'Journal';
  const goalReady=ending?true:g?.kind==='camp'?!!g.ready:!!g&&g.action!=='inspect'&&ready(state,g.needs)&&(g.action!=='power'||state.board.includes(null))&&!(state.stage===0&&state.landingStep===0&&state.merges===0);$('#goalButton').hidden=ending?false:g?.kind==='camp'?false:!goalReady||state.stage===2||state.stage===3&&!state.journey.kit;$('#goalButton').disabled=false;
  $('.objective').classList.toggle('ready',goalReady);$('.objective').classList.toggle('crewObjective',g?.kind==='camp');$('.objective').classList.toggle('chapterEndObjective',!!ending);$('.objective').classList.remove('almost');$('#nextUnlock').textContent=g?.next??'';
  if(goalReady)$('#step').textContent=ending?'FINISHED':state.stage===2&&g?.action==='power'?'TAP BELOW':'READY';
+ let replay=$('#replayChapter');if(!replay){replay=document.createElement('button');replay.id='replayChapter';replay.type='button';replay.className='replayChapter';replay.onclick=()=>$('#replayConfirm').showModal();$('.objective').append(replay);}
+ replay.hidden=!heard;replay.textContent=replayActive?'Restart this replay':'Replay Chapter 1 from the first merge';
  let seals=$('#sealStates');if(!seals){seals=document.createElement('div');seals.id='sealStates';$('.objective').append(seals);}
  seals.hidden=state.stage!==3||!state.journey.kit;seals.innerHTML=['navigation','stabilization','resonance'].map((k,n)=>`<span class="sealState ${state.seals[k]?'secured':''}" aria-label="${k} seal ${state.seals[k]?'secured':'unresolved'}"><i aria-hidden="true">${state.seals[k]?'✓':['◇','⌂','ϟ'][n]}</i>${['Navigate','Stabilize','Resonate'][n]}</span>`).join('');
  renderRequests();renderSide();const order=focus==='request'?state.requests.orders.find(o=>o?.id===requestId):null,orderProgress=order?requestProgress(state,order):null,c=order??normalContract(state),sideVisible=!!order||!$('#contracts').hidden&&$('#sideTray').open,cr=order?orderProgress.ready:sideVisible&&sideChoice()==='contract'&&ready(state,c.needs);
@@ -301,7 +306,7 @@ function renderQuickRefill(){
  }
 }
 function renderSelection(){
- const x=state.board[selected],ending=chapterEndView(state);let title=ending?'Chapter 1 complete':state.stage<4?'Open the Tideglass Vault':'The star ocean awaits',desc=ending?'Your fleet discovery is complete. Camp orders and crafting are optional; choose what you enjoy.':state.stage<4?'Merge identical objects. Choose expedition progress or supplies.':state.journey.engine?'Use Loop Cells on producers for enriched runs.':'Restore the engine inside with a spanner, lens and coil.',buttons='';
+ const x=state.board[selected],ending=signalHeard();let title=ending?'The signal answers':state.stage<4?'Open the Tideglass Vault':'The star ocean awaits',desc=ending?'Neri and Ivo traced the missing fleet, and something answered. Keep the camp working; replay Chapter 1 from the objective card any time.':state.stage<4?'Merge identical objects. Choose expedition progress or supplies.':state.journey.engine?'Use Loop Cells on producers for enriched runs.':'Restore the engine inside with a spanner, lens and coil.',buttons='';
  if(!x&&focus==='goal'&&visibleGoal()?.kind==='camp'){title=visibleGoal().name;desc=visibleGoal().next;}
  if(!x&&focus==='request'){
   const order=state.requests.orders.find(o=>o?.id===requestId);
@@ -472,7 +477,7 @@ board.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)return;
 board.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;const d=drag;drag=null;board.querySelectorAll('.dragging,.target,.picked').forEach(x=>x.classList.remove('dragging','target','picked'));if(!d.moved)return;suppressUntil=performance.now()+300;const tile=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-index]');if(tile){selected=d.from;const index=+tile.dataset.index,x=state.board[index];const use=useAction(state,d.from,index);if(use)run(use);else if(!x||movable(x))run({type:'merge',from:d.from,to:index});else render();}});
 board.addEventListener('pointercancel',()=>{drag=null;board.querySelectorAll('.dragging,.target,.picked').forEach(x=>x.classList.remove('dragging','target','picked'));});
 $('#selection').addEventListener('click',e=>{const button=e.target.closest('[data-action]'),type=button?.dataset.action;if(!type)return;const x=state.board[selected];run({type:type==='serviceTool'?'service':type,index:button.dataset.target!==undefined?+button.dataset.target:selected,from:button.dataset.target!==undefined?selected:undefined,id:button.dataset.source??x?.id,useTool:type==='serviceTool'});});
-$('#goalButton').onclick=()=>{const ending=chapterEndView(state);if(ending?.status==='complete'){$('#replayConfirm').showModal();return;}if(ending){showFleet();return;}const g=visibleGoal();if(g?.kind==='camp'){
+$('#goalButton').onclick=()=>{const ending=signalPending();if(ending){showFleet();return;}const g=visibleGoal();if(g?.kind==='camp'){
  if(g.action==='orders'){
    const o=state.requests.orders.find(o=>o?.id===g.orderId)??state.requests.orders.find(o=>o&&requestProgress(state,o).ready)??state.requests.orders.find(Boolean);
    if(o&&requestProgress(state,o).ready){requestId=null;focus='goal';run({type:'request',id:o.id});return;}

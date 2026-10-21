@@ -240,36 +240,28 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
     await page.reload();assert.deepEqual(await read(),viewed);
     assert.equal(await page.locator('#fleetReveal').evaluate(x=>x.open),false);
     assert.ok(await page.locator('#fleetCrown').isVisible());
-    if(viewed.stage===4){
-     for(const sel of ['#workshop','#workshopBench','#campPierWorld'])assert.equal(await page.locator(sel).isVisible(),false,'camp controls fold after completed chapter: '+sel);
-     assert.match(await page.locator('#goalTitle').textContent(),/fleet left a signal/i,'Chapter 1 has a truthful endpoint');
-     assert.match(await page.locator('#step').textContent(),/FINISHED/);
-     assert.equal(await page.locator('#requests .requestShelf').isVisible(),false);
-     const savedEnding=await read();
-     await page.locator('#ordersToggle').tap();
-     assert.equal(await page.locator('#requests .requestShelf').isVisible(),true,'camp orders can be reopened voluntarily');
-     for(const sel of ['#workshop','#workshopBench','#campPierWorld'])assert.equal(await page.locator(sel).isVisible(),true,'camp machines return with optional activities: '+sel);
-     assert.deepEqual(await read(),savedEnding,'display toggle never affects saved gameplay');
-     await page.locator('#ordersToggle').tap();
-     assert.equal(await page.locator('#requests .requestShelf').isVisible(),false);
-    }else{
+    // After the reveal the signal is an open question, not a finale: the camp
+    // keeps working, the objective is real, and replay stays reachable.
+    const afterSignal=async label=>{
+     for(const sel of ['#workshop','#workshopBench','#campPierWorld'])assert.equal(await page.locator(sel).isVisible(),true,label+' camp keeps working: '+sel);
+     assert.doesNotMatch(await page.locator('#goalTitle').textContent(),/fleet left a signal/i,label+' no false finale');
+     assert.doesNotMatch(await page.locator('#step').textContent(),/FINISHED|COMPLETE/,label);
+     assert.match(await page.locator('#sceneLabel').textContent(),/answered/i,label+' the scene keeps the open question');
+     assert.equal(await page.locator('#requests .requestShelf').isVisible(),true,label+' crew orders stay available');
+     assert.equal(await page.locator('#replayChapter').isVisible(),true,label+' replay remains reachable');
+    };
+    if(viewed.stage===4)await afterSignal('earned');
+    else{
      assert.equal(await page.locator('.world.chapterEnded').count(),0,'Crown signal alone must not falsely complete the Vault');
      assert.equal(await page.locator('#requests .requestShelf').isVisible(),true,'unfinished expedition retains accessible orders');
     }
     // In this early earned-treasure walkthrough, the Vault may still be
-    // unopened. A separate UI-only projection verifies the complete layout;
+    // unopened. A separate UI-only projection verifies the opened layout;
     // this is never presented as earned gameplay or saved over the walkthrough.
     if(width===390&&viewed.stage!==4){
      const uiFixture={...structuredClone(viewed),stage:4};
      await page.evaluate(s=>localStorage.setItem('vaultwake-v5',JSON.stringify(s)),uiFixture);
-     await page.reload();
-     assert.match(await page.locator('#step').textContent(),/FINISHED/);
-     assert.match(await page.locator('#goalTitle').textContent(),/fleet left a signal/i);
-     assert.equal(await page.locator('#requests .requestShelf').isVisible(),false);
-     for(const sel of ['#workshop','#workshopBench','#campPierWorld'])assert.equal(await page.locator(sel).isVisible(),false);
-     await page.locator('#ordersToggle').tap();
-     assert.equal(await page.locator('#requests .requestShelf').isVisible(),true);
-     for(const sel of ['#workshop','#workshopBench','#campPierWorld'])assert.equal(await page.locator(sel).isVisible(),true);
+     await page.reload();await afterSignal('projected');
      await page.evaluate(s=>localStorage.setItem('vaultwake-v5',JSON.stringify(s)),viewed);
      await page.reload();assert.deepEqual(await read(),viewed);
     }

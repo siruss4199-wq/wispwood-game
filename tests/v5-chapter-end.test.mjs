@@ -10,7 +10,7 @@ test('Chapter 1 end screen is only displayed after a genuinely viewed earned fle
  assert.match(chapterEndView(s).action,/REVEAL SIGNAL/);
  s.camp.fleetViewed=true;
  const before=JSON.stringify(s),end=chapterEndView(s);
- assert.equal(end.phase,'CHAPTER 1 COMPLETE');
+ assert.equal(end.phase,'THE SIGNAL ANSWERS','the reveal opens a question, not a false finale');
  assert.equal(end.status,'complete');
  assert.match(end.detail,/fleet discovery|fleet|signal/i);
  assert.doesNotMatch(end.hint,/MAKE|NEXT ORDER|BUILD/i);
