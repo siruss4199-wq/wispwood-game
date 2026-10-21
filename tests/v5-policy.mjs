@@ -6,6 +6,8 @@ import {expeditionGoal as goal,ready,count,normalContract,SOURCES,sourceUnlocked
 import {ANCHORS,ROUTES,equipment,anchors} from '../v5/expedition.mjs';
 import {circuit,linkPhase,optics} from '../v5/seals.mjs';
 import {recommendedOrder} from '../v5/camp-goals.mjs';
+import {firstPier} from '../v5/first-pier.mjs';
+import {coastalAction} from './v5-coastal-policy.mjs';
 import {requestAction} from './v5-workshop-policy.mjs';
 const req=(family,tier,count=1)=>({family,tier,count});
 export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,session=null,style='expedition',findStrategy=null,decode=true,route=null,mergeSight=false,receiver=null,vaultKit='field'}={}){
@@ -34,6 +36,8 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
  // Main-path camp gates (Workshop before the crossing survey, Supply Pier
  // before the vault) are funded by real crew orders, never by seeding.
  const gate=s.stage===0&&s.landingStep===1&&!s.workshop?.repaired?'restoreWorkshop':s.stage===3&&!masteryPending(s).length&&!s.camp?.pier?(s.workshop?.repaired?'buildPier':'restoreWorkshop'):null;
+ // Before the crossing, the UI walks everyone through pier → compass → Workshop.
+ if(gate&&s.stage===0)return coastalAction(s);
  if(gate)return fundCamp(s,gate);
  const spaces=s.board.filter(x=>x===null).length;
  // Use the earned specialty before charging an engine infusion. A remaining
@@ -123,12 +127,14 @@ function fundCamp(s,gate){
  }
  // Follow the game's recommended order (the visible CTA); before tapping a
  // producer for it, make any merge another order is waiting on.
- const lane=s.requests.orders.indexOf(recommendedOrder(s)),next=requestAction(s,lane);
+ // Only orders the UI actually shows (the first-pier onboarding reveals lanes gradually).
+ const visible=firstPier(s)?.visibleLanes??[0,1,2],shown={...s,requests:{...s.requests,orders:s.requests.orders.map((o,i)=>visible.includes(i)?o:null)}};
+ const lane=s.requests.orders.indexOf(recommendedOrder(shown)),next=requestAction(s,lane);
  const occupied=s.board.filter(Boolean).length;
  // A thin board gets refilled from the order's producer before spending more stock.
  const order=s.requests.orders[lane],spend=order.needs.reduce((n,r)=>n+r.count,0);
  if(occupied-(next.type==='request'?spend:0)<19&&s.board.includes(null)){const id=(next.type==='produce'||next.type==='service')?next.id:order.needs[0].family;if(s.charges[id])return {type:'produce',id};}
  if(next.type==='request'||next.type==='merge')return next;
- const merge=s.requests.orders.flatMap((o,i)=>o?[requestAction(s,i)]:[]).find(a=>a.type==='merge');
+ const merge=s.requests.orders.flatMap((o,i)=>o&&visible.includes(i)?[requestAction(s,i)]:[]).find(a=>a.type==='merge');
  return merge??next;
 }

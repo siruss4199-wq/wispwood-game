@@ -104,6 +104,10 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
     if(!await page.locator(`#board [data-index="${cmd.index}"]`).getAttribute('aria-pressed').then(x=>x==='true'))await page.locator(`#board [data-index="${cmd.index}"]`).tap();
     if((await read()).moves===before.moves)await page.locator(`[data-action="${cmd.type}"]`).tap();
    }else if(cmd.type==='ration')await page.locator('#rationButton').tap();
+   // Crew orders fund the camp steps on the main path (Workshop, Supply Pier).
+   else if(cmd.type==='request')await page.locator(`[data-request="${cmd.id}"]`).tap();
+   else if(cmd.type==='restoreWorkshop')await page.locator('#workshop').tap();
+   else if(cmd.type==='buildPier')await page.locator('#goalButton').tap();
    else if(cmd.type==='prepareInstrument')await page.locator(`[data-instrument="${cmd.family}"]`).tap();
    else if(cmd.type==='goal')await page.locator(before.stage===3&&!before.journey?.kit?`[data-kit=${cmd.kit??'field'}]`:'#goalButton').tap();
    else if(cmd.type==='power'){

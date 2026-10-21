@@ -19,6 +19,9 @@ const {chromium,webkit}=require('playwright');const assert=require('node:assert/
  else if(a.type==='produce'||a.type==='service'){const i=before.board.findIndex(x=>x?.type==='source'&&x.id===a.id);await page.locator(`[data-index="${i}"]`).tap();if(a.type==='service')await page.locator('[data-action="service"]').tap();}
  else if(a.type==='crate')await page.locator(`[data-index="${a.index}"]`).tap();
  else if(a.type==='ration')await page.locator('#rationButton').tap();
+ else if(a.type==='request')await page.locator(`[data-request="${a.id}"]`).tap();
+ else if(a.type==='restoreWorkshop')await page.locator('#workshop').tap();
+ else if(a.type==='buildPier')await page.locator('#goalButton').tap();
  else throw Error('Unexpected fresh action '+JSON.stringify(a));
  await page.waitForFunction(n=>JSON.parse(localStorage.getItem('vaultwake-v5')).moves>n,before.moves);await page.waitForTimeout(330);trace.push(a);
  };
