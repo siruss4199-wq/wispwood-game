@@ -11,7 +11,7 @@ const {chromium}=require('playwright');
    const errors=[];page.on('pageerror',e=>errors.push(e.message));
    await page.goto('http://127.0.0.1:8080/v4/');await page.waitForFunction(()=>document.querySelectorAll('#board .tile').length===64);
    await page.evaluate(()=>Promise.all([...document.images].map(i=>i.decode().catch(()=>{}))));
-   assert.equal(await page.locator('#requestShelf .shelfRequest:visible').count(),3);
+   assert.equal(await page.locator('#requestShelf .shelfRequest:visible').count(),0);assert.equal(await page.locator('.gameShell').getAttribute('data-onboarding'),'merge');assert.equal(await page.locator('.tile.onboardingTarget').count(),2);
    assert.equal(await page.locator('#questRibbon').isVisible(),false);
    assert.ok(await page.locator('#requestShelf .requestMiniReward').first().evaluate(e=>parseFloat(getComputedStyle(e).fontSize)>=10),'legible reward size');
    assert.equal(await page.locator('.goalNav').isVisible(),false);
@@ -27,17 +27,21 @@ const {chromium}=require('playwright');
    const a=await page.locator('[data-index="19"]').boundingBox(),b=await page.locator('[data-index="29"]').boundingBox();
    await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:8});await page.mouse.up();await page.waitForTimeout(350);
    assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('wispwood-v4')).mergeCount),2);
-   await page.locator('[data-index="27"]').tap();
-   assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('wispwood-v4')).producerTapCounts.ancientTree),1);
+   assert.equal(await page.locator('.gameShell').getAttribute('data-onboarding'),'order');
+   assert.equal(await page.locator('#requestShelf .shelfRequest:visible').count(),1);
    await page.screenshot({path:`test-artifacts/mobile-${width}.png`,fullPage:true});
-   await page.locator('[data-open-panel="sources"]').tap();assert.equal(await page.locator('#sources .source').count(),1);
-   await page.locator('#sourcesPanel .panelHandle').tap();await page.locator('.gameDock [data-open-panel="orders"]').tap();assert.equal(await page.locator('#orders .order').count(),4);
+   assert.equal(await page.locator('#onboardingGuide').isVisible(),true);
    await page.reload();assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('wispwood-v4')).mergeCount),2);
    // Onboarding keeps the first delivery explicit rather than silently consuming items.
    await page.locator('#requestShelf .shelfRequest.ready').first().tap();
    assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('wispwood-v4')).ordersCompleted),0);
    await page.locator('#deliveryCoach #completeOrder').tap();
    assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('wispwood-v4')).ordersCompleted),1);
+   assert.equal(await page.locator('.gameShell').getAttribute('data-onboarding'),'producer');
+   await page.locator('[data-index="27"]').tap();
+   assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('wispwood-v4')).producerTapCounts.ancientTree),1);
+   assert.equal(await page.locator('.gameShell').getAttribute('data-onboarding'),'done');
+   await page.locator('.gameDock [data-open-panel="orders"]').tap();assert.equal(await page.locator('#orders .order').count(),4);
    // A deterministic mature-save fixture checks all families, producers and request types.
    await page.evaluate(async()=>{
     const {createInitialState}=await import('/v4/core/state.mjs');
@@ -47,7 +51,7 @@ const {chromium}=require('playwright');
      s.cells[index++].content={type:'item',chain:id,tier};s.discovered[id+':'+tier]=true;
     }
     ['ancientTree','moonSpring','wispNest'].forEach((id,i)=>{s.cells[60+i].content={type:'producer',producerId:id};s.producerLevels[id]=1+i*2;});
-    s.milestoneIndex=8;s.ordersCompleted=12;s.moves=20;s.energy=100;s.coins=2000;s.forestLight=200;
+    s.milestoneIndex=8;s.ordersCompleted=12;s.moves=20;s.energy=100;s.coins=2000;s.forestLight=200;s.onboarding={step:'done',skipped:false};
     const req=(id,slot,chain,tier,count,kind='normal')=>({id,slot,npc:slot,kind,title:'Fixture '+id,narrative:'Forest care.',label:'Request',requirements:[{chain,tier,count}],rewardCoins:30,rewardLight:2,rewardEnergy:4,bonusUntil:kind==='timed'?Date.now()+900000:null,bonusCoins:kind==='timed'?15:0});
     s.activeOrders=[req('build',0,'water',9,2),req('ready',1,'wood',0,1),req('timed',2,'magic',2,2,'timed'),req('special',3,'relic',9,1,'special')];
     s.nextOrderSerial=50;localStorage.setItem('wispwood-v4',JSON.stringify(s));
