@@ -5,10 +5,13 @@ import {reservedItems} from '../v5/requests.mjs';
 import {choose} from './v5-policy.mjs';
 import {requestAction} from './v5-workshop-policy.mjs';
 import {masteryPending,instrumentReady} from '../v5/mastery.mjs';
+import {openingPair} from '../v5/interactions.mjs';
 
 // Follow the visible main objective. No gifts, clock jumps, or save injection.
 export function coastalAction(s,{specialty='rig',route='ridge',receiver='scope'}={}){
  const g=coastalObjective(s,expeditionGoal(s));
+ // The UI reveals "Clear path" only after the glowing first merge; do what it says.
+ const pair=openingPair(s);if(pair.length===2)return {type:'merge',from:pair[0],to:pair[1]};
  if(s.energy<=3)return {type:'ration'};
  const free=s.board.includes(null);
  if(!free){
