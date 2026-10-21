@@ -305,8 +305,6 @@ export function act(s,a,now=Date.now()){
   s.board[from]=null;s.seals.optics={...optics(s),primed:true};trace(s,'engine-charged');return done('Lift charged · activate your prepared receiver.','deployment',lift);
  }
  if(a.type==='goal'){
-  // An existing prepared tool cannot skip the first interactive merge.
-  if(s.stage===0&&s.landingStep===0&&s.merges===0)return fail('Merge the glowing Copper Offcuts first, then clear the landing.');
   if(s.stage===3&&masteryPending(s).length)return fail('Craft and equip one expedition instrument before opening the Vault.');
   if(s.stage===3&&!allSeals(s))return fail('Resolve all three vault seals first.');
   if(s.stage===3&&a.kit&&!KITS[a.kit])return fail('Choose a salvage or survey kit.');
