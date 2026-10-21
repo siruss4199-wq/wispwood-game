@@ -1,8 +1,20 @@
 import {createRequest,requestBonus} from './requests.mjs';
 import {CELL_COUNT,CHAINS,MAX_TIER,MILESTONES,PRODUCERS,PRODUCER_MAX_LEVEL,SIZE,STORAGE_UPGRADES,itemDef,producerForChain,producerDrop} from './catalog.mjs';
 import {cloneState} from './state.mjs';
+import {nextOnboarding,validOnboarding} from './onboarding.mjs';
 
-const result=(state,events=[],ok=true,reason=null)=>({state,events,ok,reason});
+const result=(state,events=[],ok=true,reason=null)=>{
+ if(ok&&events.length&&validOnboarding(state.onboarding)){
+  const next=nextOnboarding(state.onboarding,events);
+  if(next!==state.onboarding){state.onboarding=next;events=[...events,{type:'onboarding_step',step:next.step}];}
+ }
+ return {state,events,ok,reason};
+};
+export function skipOnboarding(s){
+ if(!validOnboarding(s.onboarding)||s.onboarding.step==='done')return result(s,[],false,'Tutorial already finished.');
+ const n=cloneState(s);n.onboarding={step:'done',skipped:true};
+ return result(n,[{type:'onboarding_step',step:'done',skipped:true}]);
+}
 export const isOpen=(s,i)=>Number.isInteger(i)&&i>=0&&i<CELL_COUNT&&s.cells[i].terrain==='open';
 export const openEmptyIndices=s=>s.cells.flatMap((c,i)=>c.terrain==='open'&&!c.content?[i]:[]);
 export const producerIndices=s=>s.cells.flatMap((c,i)=>c.terrain==='open'&&c.content?.type==='producer'?[i]:[]);
@@ -269,6 +281,7 @@ export function validateState(s){
  if(s.coins<0||s.forestLight<0)errors.push('currency');
  if(s.activeOrders.length!==4)errors.push('orders');
  if(s.milestoneIndex<0||s.milestoneIndex>MILESTONES.length)errors.push('milestone');
+ if(s.schema===4&&!validOnboarding(s.onboarding))errors.push('onboarding');
  for(let i=0;i<s.cells.length;i++){
   const c=s.cells[i];if(!['open','locked','cobweb'].includes(c.terrain))errors.push('terrain:'+i);
   if(c.content?.type==='item'&&!CHAINS[c.content.chain]?.items[c.content.tier])errors.push('item:'+i);
