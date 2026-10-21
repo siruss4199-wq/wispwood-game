@@ -50,9 +50,9 @@ export function deliverFeedback({kind,delivery,rewards,taskRect,taskSnapshot,tas
  const board=document.querySelector('#board');
  task?.classList.remove('taskCollected');if(task){void task.offsetWidth;task.classList.add('taskCollected');setTimeout(()=>task.classList.remove('taskCollected'),620);}
  board.classList.remove('sitePayoff','echoPayoff');void board.offsetWidth;if(main||rare)board.classList.add(main?'sitePayoff':'echoPayoff');
- const title=main?['Landing secured','Route equipment ready','Door uncovered','Ring engine online','Tideglass Vault opened'][stage]:kind==='prime'?'Lift beam lit':kind==='restore'?'Machinery restored':kind==='clear'?'Salvage uncovered':kind==='deploy'?'Device ready':rare?'The echo answers':signal?'Signal received':'Supplies secured';
+ const title=kind==='fitSpanner'?'Spanner fitted':main?['Landing secured','Route equipment ready','Door uncovered','Ring engine online','Tideglass Vault opened'][stage]:kind==='prime'?'Lift charged':kind==='restore'?'Machinery restored':kind==='clear'?'Salvage uncovered':kind==='deploy'?'Device ready':rare?'The echo answers':signal?'Signal received':'Supplies secured';
  moment(title,next);
- sound.play(main?'milestone':rare||signal?'rare':'contract');
+ sound.play(kind==='fitSpanner'?'merge':main?'milestone':rare||signal?'rare':'contract');
  if(reduced()){
   // No motion: leave a brief receipt of precisely what was consumed at the task.
   if(taskRect){const receipt=document.createElement('div');receipt.className='deliveryReceipt';receipt.dataset.kind=kind;receipt.style.cssText=`left:${taskRect.x}px;top:${taskRect.y+taskRect.height-27}px;width:${taskRect.width}px`;receipt.innerHTML=delivery.map(v=>art(v.x)).join('')+'<b>✓ Delivered</b>';transient(receipt,700);}
@@ -81,22 +81,23 @@ export function deliverFeedback({kind,delivery,rewards,taskRect,taskSnapshot,tas
  burst(taskRect,rare?'flux':signal?'chart':'gold',main||rare||signal);
  if(main||rare)burst(board.getBoundingClientRect(),rare?'flux':'gold',true);
 }
-export function feedback({event,tile,x,from,energyDelta,stage,firstContract=false,containerKind,reveal=[],bonus,improved,breakthrough,breakthroughUse,surgeStarted}){
+export function feedback({event,tile,x,from,energyDelta,stage,firstContract=false,containerKind,reveal=[],bonus,improved,breakthrough,newDiscovery,discoveryReward,breakthroughUse,surgeStarted}){
  const rect=tile?.getBoundingClientRect();
  if(event==='merge'){
   tile?.classList.add('merge-pop');burst(rect,x?.family,x?.tier>=4);sound.play('merge',x?.tier??0);
   if(x?.tier>=4&&!reduced()){const b=document.querySelector('#board');b.classList.remove('impact');void b.offsetWidth;b.classList.add('impact');}
-  if(breakthrough)moment(x.tier>=5?'Masterwork':'New equipment',breakthroughUse??`Source recharged${x.tier>=5?' · +4 energy':''}`,x);
+  if(breakthrough)moment(x.tier>=5?'Masterwork':'New equipment',discoveryReward?(discoveryReward.loose?'Cross-family gear found':containerInfo({kind:discoveryReward.kind}).name+' found · open when ready'):breakthroughUse??`Source recharged${x.tier>=5?' · +4 energy':''}`,x);
+  else if(newDiscovery)moment('New equipment',{rig:'Split spanner · recover gear or prepare a crossing',chart:'Sight lens · choose a crossing or decode a find',flux:'Pulse coil · restore buried machinery'}[x.family],x);
  }else if(event==='produce'&&x?.type==='glyph'){burst(rect,'flux',true);sound.play('rare');moment('Echo fragment found','Decode it, or reclaim its energy');}
  else if(event==='clear'||event==='container'){const info=containerInfo({kind:containerKind});burst(rect,info.family,true);sound.play('rare');moment(event==='clear'?'Saltbound Locker uncovered':info.name,`${reveal.length} finds revealed${containerKind==='salvage'?' · Rover charge support':''}`,{type:'crate',kind:containerKind});}
  else if(event==='contract'){rewardFlight(from,document.querySelector('.resource').getBoundingClientRect(),`+${energyDelta} ϟ`);sound.play('contract');if(firstContract)moment('Supplies secured','Your first contract delivered');}
  else if(event==='milestone'){
   document.querySelector('.moment')?.remove();
   const world=document.querySelector('.world');burst(world.getBoundingClientRect(),'gold',true);sound.play('milestone');
-  if(stage<4)moment(['Survey Kite unlocked','Route equipment ready','Echo Crucible unlocked','The rings are awake'][stage],stage===1?'Both tools kept · choose your route':stage===2?'Excavation cache revealed':'Expedition advanced');
+  if(stage<4&&stage!==1)moment(['Survey Kite unlocked','Route equipment ready','Echo Crucible unlocked','The rings are awake'][stage],stage===1?'Both tools kept · choose your route':stage===2?'Excavation cache revealed':'Expedition advanced');
  }else if(event==='discovery'){sound.play('rare');burst(document.querySelector('.world').getBoundingClientRect(),'flux',true);}
  else if(event==='produce'&&bonus){burst(rect,bonus,true);sound.play('rare');moment({rig:'Rover spare found',chart:'Survey bundle found',flux:'Charged fragment found'}[bonus],'A useful bonus from this source');}
  else if(event==='produce'&&improved){burst(rect,x?.family);sound.play('merge',x?.tier??1);tile?.classList.add('merge-pop');}
  else if(event==='produce')sound.play('produce');
- if(surgeStarted){const existing=document.querySelector('.moment small');if(existing)existing.textContent+=' · Supply Surge: 3 shared pulls';else moment('Supply Surge · 3 pulls','Choose a producer: improved parts, shared allowance');}
+ if(surgeStarted&&stage!==1){const existing=document.querySelector('.moment small');if(existing)existing.textContent+=' · Supply Surge: 3 shared pulls';else moment('Supply Surge · 3 pulls','Choose a producer: improved parts, shared allowance');}
 }

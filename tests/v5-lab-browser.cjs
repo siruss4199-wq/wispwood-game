@@ -1,0 +1,22 @@
+const assert=require('node:assert/strict'),{chromium,webkit}=require('playwright');
+(async()=>{const engine=process.env.LAB_ENGINE||'chromium',browser=await ({chromium,webkit}[engine]).launch();
+try{for(const width of [360,390,430]){
+const page=await browser.newPage({viewport:{width,height:844},isMobile:true,hasTouch:true,reducedMotion:'reduce'}),errors=[];
+page.on('pageerror',e=>errors.push(e.message));
+await page.goto('http://127.0.0.1:8080/v5/lab/');await page.locator('#board .cell').first().waitFor();
+assert.equal(await page.locator('#board .cell').count(),36);assert.equal(await page.locator('#board .cell.target').count(),2);
+assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+const rects=await page.locator('#board .cell').evaluateAll(xs=>xs.map(n=>{const b=n.getBoundingClientRect();return {w:b.width,h:b.height}}));
+rects.forEach(x=>assert.ok(x.w>=44&&x.h>=44,JSON.stringify(x)));
+await page.locator('#board [data-index="14"]').tap();await page.locator('#board [data-index="15"]').tap();
+assert.equal(await page.locator('#reveal').evaluate(x=>x.open),true);await page.locator('#revealNext').tap();
+assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('vaultwake-coastal-lab-v1')).phase),1);
+assert.equal(await page.evaluate(()=>localStorage.getItem('vaultwake-v5')),null);
+await page.locator('#board [data-index="0"]').tap();assert.ok((await page.evaluate(()=>JSON.parse(localStorage.getItem('vaultwake-coastal-lab-v1')).productions))>0);
+await page.reload();assert.match(await page.locator('#mission h1').textContent(),/broken pier/i);
+await page.locator('#journalButton').tap();assert.match(await page.locator('#journalEntries').textContent(),/foothold/i);await page.locator('#journalClose').tap();
+await page.evaluate(()=>{const k='vaultwake-coastal-lab-v1',s=JSON.parse(localStorage.getItem(k));s.phase=4;localStorage.setItem(k,JSON.stringify(s));});
+await page.reload();assert.equal(await page.locator('[data-route]').count(),2);
+await page.locator('[data-route="cavern"]').tap();assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('vaultwake-coastal-lab-v1')).route),'cavern');
+assert.deepEqual(errors,[]);console.log('LAB_MOBILE_OK',engine,width);await page.close();
+}}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});

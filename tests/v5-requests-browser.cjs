@@ -6,7 +6,27 @@ const assert=require('node:assert/strict'),fs=require('node:fs');const {chromium
  const shot=async name=>{await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:`test-artifacts/v5/requests/${name}-${width}.png`,fullPage:true});};
  await shot('fresh');
  await page.locator('#board [data-index="7"]').tap();await page.locator('#board [data-index="8"]').tap();await page.locator('#goalButton').tap();await page.waitForTimeout(1800);
- assert.equal((await read()).landingStep,1);assert.equal(await page.locator('#requests [data-request]').count(),3);await shot('before');
+ assert.equal((await read()).landingStep,1);assert.equal(await page.locator('#requests [data-request]').count(),1,'early onboarding displays only one order');await shot('before');
+ // Focus one real unfinished order; the existing board, not a helper panel,
+ // must identify an actionable source or matching merge pair.
+ const unfinished=page.locator('#requests .requestCard:not(.ready)').first();
+ assert.ok(await unfinished.count(),'there must be a working order');
+ await unfinished.tap();
+ const advisory=await page.evaluate(async()=>{
+  const s=JSON.parse(localStorage.getItem('vaultwake-v5'));
+  const {orderDirection}=await import('/v5/order-direction.mjs');
+  const id=document.querySelector('#requests .requestCard.active')?.dataset.request;
+  return orderDirection(s,s.requests.orders.find(o=>o?.id===id));
+ });
+ assert.ok(advisory,'a focused order has a usable direction');
+ const highlights=await page.locator('#board .tile.nextAction').evaluateAll(xs=>xs.map(x=>+x.dataset.index));
+ assert.deepEqual(highlights,advisory.indices,'only real advised objects are highlighted');
+ for(const i of highlights){
+  const box=await page.locator(`#board [data-index="${i}"]`).boundingBox();
+  assert.ok(box.width>=44&&box.height>=44,'existing board touch geometry unchanged');
+ }
+ assert.equal(await page.locator('#guideButton,#guidePanel').count(),0,'no second guide dashboard');
+ await shot('focused-next-action');
  const timeline=[];
  for(const lane of [0,1,0,2,1,0]){
   let delivered=false;
@@ -15,17 +35,17 @@ const assert=require('node:assert/strict'),fs=require('node:fs');const {chromium
     const s=JSON.parse(localStorage.getItem('vaultwake-v5'));const {requestProgress,reservedItems}=await import('/v5/requests.mjs');const o=s.requests.orders[lane],p=requestProgress(s,o);
     if(p.ready)return {type:'deliver',id:o.id,supplies:o.supplies,energy:Math.min(o.energy,120-s.energy)};
     const need=p.progress.find(r=>r.current<r.count),kept=reservedItems(s);
-    for(let t=need.tier-1;t>=0;t--){const pair=s.board.flatMap((x,i)=>x?.type==='item'&&x.family===need.family&&x.tier===t&&!kept.has(i)?[i]:[]);if(pair.length>=2)return {type:'merge',from:pair[0],to:pair[1]};}
+    for(let t=need.tier-1;t>=0;t--){const pair=s.board.flatMap((x,i)=>x?.type==='item'&&(x.line??'')===(need.line??'')&&x.family===need.family&&x.tier===t&&!kept.has(i)?[i]:[]);if(pair.length>=2)return {type:'merge',from:pair[0],to:pair[1]};}
     const index=s.board.findIndex(x=>x?.type==='source'&&x.id===need.family);return {type:s.charges[need.family]?'produce':'service',index};
    },lane);
    timeline.push(decision);
    if(decision.type==='deliver'){
-    const before=await read(),card=page.locator(`#requests [data-request="${decision.id}"]`);if(await card.getAttribute('aria-pressed')!=='true'){await card.tap();assert.equal((await read()).requests.completed,before.requests.completed,'select does not deliver');}await shot('ready');await card.tap();
+    const before=await read(),card=page.locator(`#requests [data-request="${decision.id}"]`);await shot('ready');await card.tap();
     if(width===390)await page.waitForTimeout(130);await shot('delivery');await page.waitForTimeout(900);
     const after=await read();assert.equal(after.requests.supplies,before.requests.supplies+decision.supplies);assert.equal(after.energy,before.energy+decision.energy);assert.notEqual(after.requests.orders[lane].id,decision.id);await shot('replacement');await page.reload();assert.deepEqual((await read()).requests,after.requests);delivered=true;break;
    }
    // Clear selection through the request, then exercise real board taps.
-   await page.locator('#requests [data-request]').nth(lane).tap();
+   await page.locator(`#requests [data-request="${(await read()).requests.orders[lane].id}"]`).tap();
    if(decision.type==='merge'){await page.locator(`#board [data-index="${decision.from}"]`).tap();await page.locator(`#board [data-index="${decision.to}"]`).tap();}
    else {await page.locator(`#board [data-index="${decision.index}"]`).tap();if(decision.type==='service')await page.locator('[data-action="service"]').tap();}
    await page.waitForTimeout(80);

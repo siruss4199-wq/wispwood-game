@@ -5,8 +5,8 @@ export const ANCHORS={
  relay:{name:'Power bridge',equipment:'flux',drive:'rig',effect:'Refill sources · 3 rich pulls · field gear',short:'Power sources'}
 };
 export const ROUTES={
- ridge:{name:'Ridge breach',family:'rig',start:24,benefit:'Upper crossing · working space'},
- conduit:{name:'Conduit breach',family:'chart',start:27,benefit:'Lower crossing · relic supplies'}
+ ridge:{name:'Ridge crossing',family:'rig',start:24,benefit:'Working space + Grip tool',reward:'Room + tool',kept:'Keep your lens'},
+ conduit:{name:'Relic conduit',family:'chart',start:27,benefit:'Pulse coil + Relic capsule · 3 rich pulls',reward:'Coil + capsule',kept:'Keep your spanner'}
 };
 export const equipment=kind=>({family:ANCHORS[kind].equipment,tier:3,count:1});
 // The two existing stones conceal useful machinery, revealed by the crossing survey.

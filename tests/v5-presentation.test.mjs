@@ -14,7 +14,7 @@ test('discovery and expiring signals only collect when their actual reducer comm
  assert.equal(deliveryItems(s,{type:'opportunity'},180100).length,1);assert.deepEqual(deliveryItems(s,{type:'opportunity'},180101),[]);
 });
 test('counted expedition ingredients collect separately and continuation follows actual progress',()=>{
- const s=fresh();s.board[7]=item('rig',1);assert.equal(deliveryItems(s,{type:'goal'}).length,2);
+ const s=fresh();s.board[7]=item('rig',1);assert.equal(deliveryItems(s,{type:'goal'}).length,1,'the simplified landing consumes one Grip Tool');
  assert.ok(act(s,{type:'goal'}).ok);assert.match(continuation(s,{type:'goal'}),/Survey Kite/);
  s.stage=2;assert.match(continuation(s,{type:'goal'}),/Echo Crucible/);s.stage=3;assert.match(continuation(s,{type:'goal'}),/vault instruments/);
  assert.match(continuation(s,{type:'discovery'}),/third pull/);s.surge=2;assert.match(continuation(s,{type:'contract'}),/2 refined pulls/);

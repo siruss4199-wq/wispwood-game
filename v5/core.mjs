@@ -1,7 +1,14 @@
+import {campGoal} from './camp-goals.mjs';
+import {freshMastery,masteryPending,instrumentReady,recordCraftMastery} from './mastery.mjs';
+import {fleetEarned} from './fleet.mjs';
+import {TIDE_NAMES,isTide,maxTier,sameKind,discoveryKey,tideItem,buildLoft,upgradeLoft,recoverTide} from './treasures.mjs';
+import {journeyState,KITS,ENGINE_NEEDS} from './journey.mjs';
+import {campState,buildPier,packPier} from './camp.mjs';
 import {syncRequests,deliverRequest} from './requests.mjs';
+import {workshopState,restoreWorkshop,upgradeWorkshop,fitSpanner} from './workshop.mjs';
 import {container,containerInfo,contents,CONTAINERS} from './containers.mjs';
-import {sight} from './navigation.mjs';
-import {freshSeals,allSeals,circuit,migrateSeals,linkPhase,loopCell,movable,optics,unfold,reflector} from './seals.mjs';
+import {routePrepared} from './navigation.mjs';
+import {freshSeals,allSeals,circuit,migrateSeals,linkPhase,loopCell,movable,optics,unfold,receivers} from './seals.mjs';
 import {ANCHORS,ROUTES,FINDS,surveyFinds,findSite,canRestore,equipment,anchors,activeAnchors,completedAnchors,trace,expeditionState,installSites} from './expedition.mjs';
 // Vaultwake: deterministic rules, independent of rendering and wall-clock timers.
 export const SAVE_KEY='vaultwake-v5';
@@ -14,7 +21,7 @@ export const SOURCES={rig:{name:'Rivet Rover',cost:1,family:'rig',unlock:0},char
 export const sourceUnlocked=(s,id)=>!!SOURCES[id]&&(s.stage>=SOURCES[id].unlock||(id==='chart'&&s.stage===0&&s.landingStep>=1));
 const req=(family,tier,count=1)=>({family,tier,count});
 export const STAGES=[
- {name:'Clear the landing',verb:'Clear path',scene:'Blocked approach',needs:[req('rig',1,2)],energy:4,next:'Survey Kite + coast survey',text:'Stabilize the landing. Then combine Fieldworks and Wayfinding to chart a breach.',phase:'LANDING 1 / 2'},
+ {name:'Clear the landing',verb:'Clear path',scene:'Blocked approach',needs:[req('rig',1)],energy:4,next:'Survey Kite + coast survey',text:'Stabilize the landing. Then combine Fieldworks and Wayfinding to chart a breach.',phase:'LANDING 1 / 2'},
  {name:'Find the buried door',verb:'Excavate',scene:'Excavation camp',needs:[req('rig',4),req('chart',3)],energy:6,next:'Echo Crucible + excavation cache',text:'A crawler jack and survey scope will uncover the entrance.'},
  {name:'Wake the ring engine',verb:'Power rings',scene:'Entrance uncovered',needs:[req('flux',4),req('rig',4)],energy:6,next:'Powered vault + enriched sources',text:'Raise the rings with a lantern and crawler jack.'},
  {name:'Open the Tideglass Vault',verb:'Open vault',scene:'Rings awakened',needs:[req('chart',5),req('flux',5),req('rig',3)],energy:20,next:'The chamber + relic cache',text:'Align a star chart and orbit engine to open the vault.'}
@@ -23,8 +30,8 @@ export const POST_GOALS=[
  {name:'Chart the next crossing',verb:'Chart crossing',scene:'Vault opened',needs:[req('chart',6),req('rig',5)],energy:35,next:'Archive expedition badge'},
  {name:'Build an aurora beacon',verb:'Light beacon',scene:'Vault opened',needs:[req('flux',7)],energy:50,next:'Aurora collector badge'}
 ];
-export const nameOf=x=>!x?'Empty space':x.type==='prism'?'Ring reflector':x.type==='site'?ANCHORS[x.kind].name:x.type==='route'?ROUTES[x.id].name:x.type==='item'?FAMILIES[x.family].names[x.tier]:x.type==='source'?SOURCES[x.id].name:x.type==='rock'?'Saltstone blocker':x.type==='marker'?'Buried survey marker':x.type==='lock'?'Dormant relic lock':x.type==='crate'?containerInfo(x).name:x.type==='brace'?'Trail brace':x.type==='glyph'?'Echo fragment':'Buried ground';
-export const item=(family,tier)=>({type:'item',family,tier});
+export const nameOf=x=>!x?'Empty space':x.type==='prism'?'Ring reflector':x.type==='site'?ANCHORS[x.kind].name:x.type==='route'?ROUTES[x.id].name:x.type==='item'?(isTide(x)?TIDE_NAMES[x.tier]:FAMILIES[x.family].names[x.tier]):x.type==='source'?SOURCES[x.id].name:x.type==='rock'?'Saltstone blocker':x.type==='marker'?'Buried survey marker':x.type==='lock'?'Dormant relic lock':x.type==='crate'?containerInfo(x).name:x.type==='brace'?'Trail brace':x.type==='glyph'?'Echo fragment':'Buried ground';
+export const item=(family,tier,line)=>({type:'item',family,tier,...(line?{line}:{})});
 const source=id=>({type:'source',id});
 export function fresh(now=Date.now()){
  const board=Array(36).fill(null);
@@ -36,21 +43,32 @@ export function fresh(now=Date.now()){
  for(const i of [19,32])board[i]={type:'rock'};
  ['winch','scope','relay'].forEach((kind,n)=>board[[20,23,31][n]]={type:'site',kind,phase:'idle',progress:0});
  board[24]={type:'route',id:'ridge'};board[27]={type:'route',id:'conduit'};board[34]=container('salvage');
- const state={version:5,board,stage:0,landingStep:0,routePrepared:false,seals:freshSeals(),producerStreak:0,energy:32,marks:0,moves:0,merges:0,contracts:0,serial:0,charges:{rig:7,chart:7,flux:7},taps:{rig:0,chart:0,flux:0},normal:0,opportunity:null,discovery:false,discoveryDone:false,boost:false,post:0,discovered:[],expedition:expeditionState(),startedAt:now,lastAt:now,rations:0,history:[]};syncRequests(state);return state;
+ const state={version:5,board,stage:0,landingStep:0,routePrepared:false,seals:freshSeals(),producerStreak:0,energy:32,marks:0,moves:0,merges:0,contracts:0,serial:0,charges:{rig:7,chart:7,flux:7},taps:{rig:0,chart:0,flux:0},normal:0,opportunity:null,discovery:false,discoveryDone:false,boost:false,post:0,discovered:[],craftMastery:freshMastery(),expedition:expeditionState(),startedAt:now,lastAt:now,rations:0,history:[]};syncRequests(state);workshopState(state);journeyState(state);campState(state);return state;
 }
-export function goal(s){
- if(s.stage===0&&s.landingStep===1)return {name:'Chart the safe crossing',verb:'Mark route',scene:'Survey camp established',needs:[req('chart',2),req('rig',2)],energy:8,next:'Choose a route with prepared equipment',text:'Build a Sight Lens and Split Spanner to survey the crossing. Both stay with you for the route choice.',phase:'LANDING 2 / 2'};
- if(s.stage===1)return {name:'Choose your breach',verb:'Clear',scene:'Survey worksite',needs:[req('rig',2),req('chart',2)],action:'inspect',next:'Either route unlocks Echo Crucible',text:'Place the lens on a survey mark. Clear its sightline, then use the route tool.',phase:'CHOOSE ONE'};
+export function goal(s){return s.stage===4?(campGoal(s)??expeditionGoal(s)):expeditionGoal(s);}
+export function expeditionGoal(s){
+ if(s.stage===3&&masteryPending(s).length){
+  return {name:'Choose your expedition specialty',verb:'Equip one instrument',scene:'The rings reveal a sealed passage',needs:[req('rig',4)],action:'inspect',next:'Build and equip ONE instrument. Its producer gains three enriched pulls for your next restoration.',text:'Jack for repair parts, Dial for navigation, or Lantern for power. Choose the chain you want to develop.',phase:'CHOOSE ONE · CRAFT & EQUIP'};
+ }
+ if(s.stage===0&&s.landingStep===1)return {name:'Chart the safe crossing',verb:'View routes',scene:'Survey camp established',needs:[req('chart',2),req('rig',2)],energy:8,next:'Choose a route with prepared equipment',text:'Make a Sight Lens and Split Spanner. Choose which one to use on the crossing.',phase:'LANDING 2 / 2'};
+ if(s.stage===1)return {name:'Choose your crossing',verb:'Clear',scene:'Survey worksite',needs:[req('rig',2),req('chart',2)],action:'inspect',next:'Either route unlocks Echo Crucible',text:'Use the spanner for working space, or the lens for relic supplies. Keep the other tool.',phase:'CHOOSE ONE'};
  if(s.stage===2){
   const receivers=anchors(s).filter(x=>x.kind!=='winch'),stable=s.seals?.stabilization,receiver=receivers.some(x=>x.phase==='done');
-  return {name:!stable?'Restore the stone lift':!receiver?'Choose a ring receiver':!optics(s).primed?'Light the ring engine':'Guide light to a receiver',verb:'Power rings',scene:'Entrance uncovered',needs:!stable?[equipment('winch')]:!receiver?receivers.filter(x=>x.phase==='idle').map(x=>equipment(x.kind)):[req('chart',2),...(!optics(s).primed?[req('flux',1)]:[])],action:circuit(s)?'power':'inspect',next:!stable?'Lift clears buried ground':!receiver?'Relic finder or Power bridge':'Reflect light around the stone rib',text:!stable?'Recover a winch, or restore the buried lift with a pulse coil.':!receiver?'Choose relic supplies or recharged sources.':!optics(s).primed?'Use one Loop Cell on the lift.':'Move and turn the reflector and Sight Lens. Objects block light.',phase:!stable?'STABILIZATION':'RESONANCE'};
+  if(!stable)return {name:'Repair the Stone Lift',verb:'Use equipment',scene:'Entrance uncovered',needs:ready(s,[equipment('winch')])||!s.board.some(x=>x?.type==='rock'&&x.find==='winch')?[equipment('winch')]:[req('rig',2),req('flux',2)],action:'inspect',next:'Open buried ground · recover survey parts',text:'Recover the winch with a spanner, or repair it with a Pulse Coil.',phase:'REPAIR'};
+  if(!receiver)return {name:'Choose your ring receiver',verb:'Choose receiver',scene:'Lift repaired',needs:receivers.filter(x=>x.phase==='idle').map(x=>equipment(x.kind)),action:'inspect',next:'Relic supplies or production boost',text:'Use a Survey Scope for relic supplies, or a Resonator for production.',phase:'CHOOSE ONE'};
+  if(!optics(s).primed)return {name:'Charge the Stone Lift',verb:'Use Loop Cell',scene:'Receiver prepared',needs:[req('flux',1)],action:'prime',next:'Wake your receiver · power the vault rings',text:'Merge Violet Shards from Echo Crucible into a Loop Cell. Use it on the Lift.',phase:'CHARGE'};
+  return {name:'Wake the ring engine',verb:'Activate receiver',scene:'Lift charged',needs:[],action:circuit(s)?'power':'inspect',next:'The rings awaken · vault entrance ready',text:'Activate your prepared receiver to claim its reward and raise the rings.',phase:'ACTIVATE'};
  }
+ if(s.stage===3&&!s.journey?.kit)return {name:'Pack for the vault',verb:'Open vault',scene:'Rings awakened',needs:KITS.field.needs,energy:20,action:allSeals(s)?'goal':'inspect',next:'Choose the finds you bring back',text:'Use tools for salvage, or navigation gear for survey finds.',phase:'CHOOSE YOUR FINDS'};
+ if(s.stage===4&&!s.journey?.engine)return {name:'Restore the star-ocean engine',verb:'Restore engine',scene:'A living star ocean',needs:ENGINE_NEEDS,action:'restoreEngine',next:'Loop Cells boost a producer of your choice',text:'Tools, a lens and a coil awaken the engine inside the vault.',phase:'VAULT DISCOVERY'};
+ if(s.stage===4&&s.journey?.engine&&!s.journey.infusions&&s.journey.boost)return {name:'Use your prepared '+SOURCES[s.journey.boost.family].name,verb:'Use enriched pull',scene:'Star-ocean engine restored',needs:[],action:'useEnriched',next:'Finish these enriched pulls, then charge a producer of your choice with a Loop Cell.',text:'Your expedition instrument still has '+s.journey.boost.left+' enriched pulls.',phase:'YOUR SPECIALTY'};
+ if(s.stage===4&&s.journey?.engine&&!s.journey.infusions)return {name:'Choose your first enriched run',verb:'Choose producer',scene:'Star-ocean engine restored',needs:[req('flux',1)],action:'inspect',next:'One Loop Cell · three rich producer pulls',text:'Use a Loop Cell on any producer. Its next three pulls yield richer parts.',phase:'NEW CAPABILITY'};
  if(s.stage===3)return {name:'Open the Tideglass Vault',verb:'Open vault',scene:'Rings awakened',needs:[],energy:20,next:'The chamber + relic cache',text:'All three seals are secured.',action:allSeals(s)?'goal':'inspect'};
  return STAGES[s.stage]??POST_GOALS[s.post]??null;
 }
-export function count(s,r){return s.board.filter(x=>x?.type==='item'&&x.family===r.family&&x.tier===r.tier).length;}
+export function count(s,r){return s.board.filter(x=>matches(x,r)).length;}
 export function ready(s,needs){return needs.every(r=>count(s,r)>=r.count);}
-export function matches(x,r){return x?.type==='item'&&x.family===r.family&&x.tier===r.tier;}
+export function matches(x,r){return x?.type==='item'&&x.family===r.family&&x.tier===r.tier&&(x.line??'')===(r.line??'');}
 function consume(s,needs){for(const r of needs)for(let n=0;n<r.count;n++)s.board[s.board.findIndex(x=>matches(x,r))]=null;}
 export function normalContract(s){
  // Keep two cells for wiring, or buy receiver equipment and improved pulls.
@@ -75,12 +93,12 @@ export function nextOutput(s,id){
  if(n%9===0)return {type:'glyph'};
  // Late-game anti-grind: reward consecutive dry pulls with one actual pair.
  // This never overrides the scheduled ninth-pull glyph.
- if(s.stage>=3&&(s.producerStreak??0)>=2){
+ if(s.stage>=3&&(s.producerStreak??0)>=2&&s.journey?.boost?.family!==id){
   const tier=[3,2,1,0].find(t=>count(s,req(id,t))===1);
   if(tier!==undefined)return item(id,tier);
  }
  const base=s.boost&&n%3===0?2:n%4===0?1:0;
- return item(id,base+(s.surge>0?1:0));
+ return item(id,base+(s.surge>0||s.journey?.boost?.family===id&&s.journey.boost.left>0?1:0));
 }
 // Action-limited, shared across sources: spend the improved pulls where they matter.
 // Never stack or expire while the player thinks. Old saves simply have no active surge.
@@ -88,7 +106,7 @@ function surge(s){s.surge=3;}
 export function near(s,needs){
  const missing=needs.flatMap(r=>Array(Math.max(0,r.count-count(s,r))).fill(r));
  if(!missing.length)return 'READY';
- if(missing.length===1){const r=missing[0];return r.tier>0&&count(s,{family:r.family,tier:r.tier-1})>=2?'1 MERGE AWAY':'1 ITEM LEFT';}
+ if(missing.length===1){const r=missing[0];return r.tier>0&&count(s,{family:r.family,tier:r.tier-1,line:r.line})>=2?'1 MERGE AWAY':'1 ITEM LEFT';}
  return '';
 }
 function put(s,x){const i=s.board.indexOf(null);if(i<0)return -1;s.board[i]=x;return i;}
@@ -131,9 +149,65 @@ function activate(s,site){
 // Mutating reducer is intentionally atomic: failed commands leave all state untouched.
 export function act(s,a,now=Date.now()){
  const fail=message=>({ok:false,message});
- const done=(message,event='action',index=null)=>{s.moves++;s.lastAt=now;syncRequests(s);if(event!=='produce')s.producerStreak=0;installSites(s);unfold(s);if(event==='milestone')remember(s,event,now);for(const x of s.board)if(x?.type==='item'){const key=x.family+':'+x.tier;if(!s.discovered.includes(key))s.discovered.push(key);}return {ok:true,message,event,index};};
+ if(a.type==='useEnriched'){
+  const id=s.journey?.boost?.family;if(!id)return fail('No enriched pulls remain.');
+  return act(s,{type:s.charges[id]?'produce':'service',id},now);
+ }
+ // Acknowledging a story changes only its receipt, never gameplay resources.
+ if(a.type==='viewFleet'){
+  if(!fleetEarned(s))return fail('Merge two Celestial Sextants to discover the Ocean Crown.');
+  s.camp.fleetViewed=true;
+  return {ok:true,message:'Chapter 1 mystery milestone reached · camp orders and optional discoveries continue.',event:'story',index:null};
+ }
+ const done=(message,event='action',index=null)=>{s.moves++;s.lastAt=now;syncRequests(s);if(event!=='produce')s.producerStreak=0;installSites(s);unfold(s);if(event==='milestone')remember(s,event,now);for(const x of s.board)if(x?.type==='item'){const key=discoveryKey(x);if(!s.discovered.includes(key))s.discovered.push(key);}return {ok:true,message,event,index};};
  const valid=i=>Number.isInteger(i)&&i>=0&&i<36;
- if(a.type==='request'){const result=deliverRequest(s,a.id);if(!result.ok)return result;s.contracts++;return {...done(result.message,'contract'),reward:result.reward};}
+ if(a.type==='prepareInstrument'){
+  if(s.stage!==3||!masteryPending(s).length)return fail('Your expedition is already prepared.');
+  if(!instrumentReady(s,a.family))return fail('Merge this instrument yourself, then equip it from the objective.');
+  consume(s,[req(a.family,4)]);s.journey.instrument=a.family;s.journey.boost={family:a.family,left:3};
+  trace(s,'instrument-equipped',{family:a.family});
+  return done('Expedition equipped · '+SOURCES[a.family].name+' gains three enriched pulls. Choose your Vault kit.','milestone');
+ }
+ if(a.type==='restoreEngine'){
+  if(s.stage!==4||s.journey?.engine||!ready(s,ENGINE_NEEDS))return fail('Bring a Split Spanner, Sight Lens and Pulse Coil to the vault engine.');
+  consume(s,ENGINE_NEEDS);s.journey.engine=true;put(s,item('flux',1));trace(s,'engine-restored');
+  return done('Star-ocean engine restored · use the returned Loop Cell on a producer.','milestone');
+ }
+ if(a.type==='infuse'){
+  const from=a.from??s.board.findIndex(loopCell);
+  if(!s.journey?.engine||!SOURCES[a.id]||!sourceUnlocked(s,a.id)||!valid(from)||!loopCell(s.board[from]))return fail('Use a Loop Cell on a producer after restoring the vault engine.');
+  if(s.journey.boost?.left)return fail('Use your remaining enriched pulls before charging another run.');
+  s.board[from]=null;s.journey.boost={family:a.id,left:3};s.journey.infusions++;trace(s,'infusion',{family:a.id});
+  return done(SOURCES[a.id].name+' · three enriched pulls ready. Normal energy and charges apply.','discovery',s.board.findIndex(x=>x?.type==='source'&&x.id===a.id));
+ }
+ if(a.type==='upgradeLoft'){const r=upgradeLoft(s);return r.ok?done(r.message,'loft'):r;}
+ if(a.type==='buildLoft'){const r=buildLoft(s);return r.ok?done(r.message,'loft'):r;}
+ if(a.type==='recoverTide'){const r=recoverTide(s);return r.ok?done(r.message,'tide',r.index):r;}
+ if(a.type==='buildPier'){const result=buildPier(s,container);return result.ok?{...done(result.message,'campBuild',result.index),reveal:[result.index]}:result;}
+ if(a.type==='packPier'){const result=packPier(s,a.family,container,sourceUnlocked);return result.ok?{...done(result.message,'campPack',result.index),reveal:[result.index]}:result;}
+ if(a.type==='restoreWorkshop'){const result=restoreWorkshop(s);return result.ok?done(result.message,'restoration'):result;}
+ if(a.type==='upgradeWorkshop'){const result=upgradeWorkshop(s);return result.ok?done(result.message,'restoration'):result;}
+ if(a.type==='fitSpanner'){const result=fitSpanner(s);return result.ok?done(result.message,'manufacture',result.index):result;}
+ if(a.type==='press'){
+  if(!s.workshop?.repaired)return fail('Restore the Coastal Workshop to unlock the tool press.');
+  if(!s.board.some(x=>x?.type==='source'&&x.id==='rig'))return fail('Rivet Rover missing.');
+  if(!s.charges.rig)return fail('Service Rivet Rover first.');
+  if(s.energy<2)return fail('Tool press needs 2 energy.');
+  if(!s.board.includes(null))return fail('Make space: merge or deliver an item first.');
+  const i=put(s,item('rig',1));s.energy-=2;s.charges.rig--;s.workshop.presses++;
+  return done('Grip tool pressed · 2 energy · one Rover charge','produce',i);
+ }
+ if(a.type==='request'){
+  const result=deliverRequest(s,a.id);if(!result.ok)return result;s.contracts++;
+  // Each delivery frees a consumed item cell. The first two deliveries after
+  // landing earn real fragments, without replacing supplies or requiring a Loft.
+  let fragment=-1;
+  if(sourceUnlocked(s,'chart')&&(s.camp.earlyFragments??0)<2){
+   fragment=put(s,tideItem(0));
+   if(fragment>=0)s.camp.earlyFragments=(s.camp.earlyFragments??0)+1;
+  }
+  return {...done(result.message+(fragment>=0?' · Tide Dial Fragment earned! Merge two into a Reef Compass.':''),'contract',fragment>=0?fragment:null),reward:result.reward,...(fragment>=0?{reveal:[fragment],tideFragment:true}:{})};
+ }
  if(a.type==='merge'||a.type==='move'){
   if(!valid(a.from)||!valid(a.to)||a.from===a.to)return fail('Choose another space.');
   const x=s.board[a.from],y=s.board[a.to];
@@ -144,19 +218,25 @@ export function act(s,a,now=Date.now()){
    s.board[a.to]=x;s.board[a.from]=y;trace(s,'reflector-move',{from:a.from,to:a.to,swapped:true});return done('Reflector repositioned.','move',a.to);
   }
   if(!y){s.board[a.to]=x;s.board[a.from]=null;return done('Moved.','move',a.to);}
-  if(x.type!=='item'||y.type!=='item'||x.family!==y.family||x.tier!==y.tier||x.tier>=7)return fail('Merge two identical objects.');
-  if(x.tier===3&&anchors(s).some(site=>site.phase==='idle'&&ANCHORS[site.kind].equipment===x.family))trace(s,'kept-for-merge',{family:x.family});
-  s.board[a.to]=item(x.family,x.tier+1);s.board[a.from]=null;s.merges++;const bonus=s.merges%3===0?1:0;s.energy=Math.min(120,s.energy+bonus);
+  if(!sameKind(x,y)||x.tier>=maxTier(x,s))return fail('Merge two identical objects.');
+  if(!isTide(x)&&x.tier===3&&anchors(s).some(site=>site.phase==='idle'&&ANCHORS[site.kind].equipment===x.family))trace(s,'kept-for-merge',{family:x.family});
+  s.board[a.to]=item(x.family,x.tier+1,x.line);s.board[a.from]=null;s.merges++;const bonus=s.merges%3===0?1:0;s.energy=Math.min(120,s.energy+bonus);
   const crafted=s.board[a.to];
-  const firstCraft=crafted.tier>=2&&!s.discovered.includes(crafted.family+':'+crafted.tier);
+  const craftedMilestone=recordCraftMastery(s,crafted);
+  const firstCraft=crafted.tier>=2&&!s.discovered.includes(discoveryKey(crafted));
+  if(isTide(crafted)){const tideDiscovery=!s.discovered.includes(discoveryKey(crafted));return {...done(nameOf(crafted)+' · fulfill tide orders or keep your collection.','merge',a.to),tideDiscovery};}
   const resupply=firstCraft&&s.stage<4?supplies(s,3):[];
+  // A newly crafted device brings a named, useful cross-family find. Use the
+  // merge-freed cell when crowded; never hide rewards in a counter.
+  let discoveryReward=null;
+  if(firstCraft&&crafted.tier===3){const kind={rig:'survey',chart:'relic',flux:'salvage'}[crafted.family],family={rig:'chart',chart:'flux',flux:'rig'}[crafted.family];const loose=s.board.filter(x=>x?.type==='crate').length>=2;const i=put(s,loose?item(family,1):container(kind));if(i>=0)discoveryReward={index:i,kind,loose};}
   // Large assemblies return reusable offcuts, keeping expensive merges from hollowing the tray.
   const offcuts=!firstCraft&&crafted.tier>=3&&s.board.filter(Boolean).length<23;
   if(offcuts)put(s,item(crafted.family,0));
   const chainFind=false;
   const breakthrough=firstCraft&&crafted.tier>=3;
   if(breakthrough){s.charges[crafted.family]=Math.min(7,s.charges[crafted.family]+2);if(crafted.tier>=5)s.energy=Math.min(120,s.energy+4);}
-  return {...done(`${nameOf(crafted)}${breakthrough?' · source recharged':''}${resupply.length?' · expedition supplies':''}${bonus?' · +1 energy':''}`,'merge',a.to),breakthrough};
+  return {...done(`${nameOf(crafted)}${craftedMilestone?' · crew instrument calibrated':''}${breakthrough?' · source recharged':''}${resupply.length?' · expedition supplies':''}${bonus?' · +1 energy':''}`,'merge',a.to),breakthrough,newDiscovery:firstCraft,discoveryReward,craftedMilestone};
  }
  if(a.type==='produce'){
   const p=SOURCES[a.id];if(!p||!sourceUnlocked(s,a.id))return fail(`Unlock after ${a.id==='chart'?'stabilizing the landing':'opening a breach'}.`);
@@ -164,8 +244,8 @@ export function act(s,a,now=Date.now()){
   if(!s.charges[a.id])return fail('Service this source: a grip tool or 3 energy.');
   if(s.energy<p.cost)return fail('Deliver a contract, recycle an item, or use a field ration.');
   if(!s.board.includes(null))return fail('Board full. Merge, deliver, recycle, or clear a blocker.');
-  const surged=s.surge>0,burst=burstOutput(s,a.id),x=nextOutput(s,a.id),i=put(s,x);const windfall=burst&&(s.taps[a.id]+1)%7===0;const bonusIndex=burst?put(s,item(a.id,windfall?1:0)):-1;s.energy-=p.cost;s.charges[a.id]--;s.taps[a.id]++;s.producerStreak=(s.producerStreak??0)+1;
-  if(surged&&x.type!=='glyph')s.surge--;
+  const enriched=s.journey?.boost?.family===a.id&&s.journey.boost.left>0,surged=s.surge>0||enriched,burst=burstOutput(s,a.id),x=nextOutput(s,a.id),i=put(s,x);const windfall=burst&&(s.taps[a.id]+1)%7===0;const bonusIndex=burst?put(s,item(a.id,windfall?1:0)):-1;s.energy-=p.cost;s.charges[a.id]--;s.taps[a.id]++;s.producerStreak=(s.producerStreak??0)+1;
+  if(x.type!=='glyph'){if(enriched){s.journey.boost.left--;if(!s.journey.boost.left)s.journey.boost=null;}else if(s.surge>0)s.surge--;}
   if(x.type==='glyph')s.discovery=true;
   return {...done(x.type==='glyph'?'Echo fragment found! A discovery awaits.':`${nameOf(x)}${windfall?' + bonus tool!':burst?' + raw part':''} · ${s.charges[a.id]} charges left`,'produce',i),bonus:windfall?a.id:null,improved:surged&&x.type==='item',reveal:windfall?[i,bonusIndex]:[]};
  }
@@ -181,16 +261,15 @@ export function act(s,a,now=Date.now()){
  if(a.type==='breach'){
   const x=s.board[a.index],r=ROUTES[x?.id];
   if(s.stage!==1||!s.routePrepared||x?.type!=='route'||!r)return fail('Survey the crossing, then choose one breach.');
-  const view=sight(s,x.id);if(!view.ready)return fail(view.blocked.length?'Clear the sightline to this breach.':'Place the Sight Lens on this route’s survey mark.');
   const need=req(r.family,2),from=a.from??s.board.findIndex(x=>matches(x,need));if(!valid(from)||!matches(s.board[from],need))return fail(`Bring a ${FAMILIES[r.family].names[2]}.`);
   s.board[from]=null;s.expedition.route=x.id;s.stage=2;s.discovery=true;
-  s.seals.navigation=true;trace(s,'seal',{seal:'navigation',method:'sightline-and-breach',route:x.id,path:view.path});
+  s.seals.navigation=true;trace(s,'seal',{seal:'navigation',method:'prepared-route',route:x.id});
   for(let i=r.start;i<r.start+3;i++)s.board[i]=null;
   s.board[r.start]={type:'glyph'};
   if(x.id==='ridge')s.board[r.start+1]=item('rig',1);
   else {s.board[r.start+1]=item('flux',2);s.board[r.start+2]=container('relic');surge(s);}
   s.energy=Math.min(120,s.energy+6);trace(s,'breach',{route:x.id});
-  return done(`${r.name} opened · Navigation seal secured · Echo Crucible unlocked.`,'milestone',a.index);
+  return {...done(`${r.name} opened · ${r.benefit} · Echo Crucible unlocked.`,'milestone',a.index),opened:[r.start,r.start+1,r.start+2]};
  }
  if(a.type==='deploy'){
   const site=s.board[a.index];if(s.stage<2||site?.type!=='site'||site.phase!=='idle')return fail('Choose an unused device.');
@@ -211,36 +290,33 @@ export function act(s,a,now=Date.now()){
   return {...done(ANCHORS[site.kind].effect,s.stage>before?'milestone':'deployment',siteIndex),reveal:change.revealed,opened:[a.index,...change.opened],restored:siteIndex};
  }
  if(a.type==='power'){
-  const path=circuit(s);if(!path)return fail('Guide light through the reflector and a Sight Lens into a receiver.');
-  if(a.index!==undefined&&a.index!==path[0]&&a.index!==path.at(-1))return fail('Use a connected device.');
-  const receiver=s.board[path.at(-1)].kind,folded=[];
-  for(const [i,x]of s.board.entries())if(x?.type==='prism'){s.board[i]=null;folded.push(i);}
+  const path=circuit(s,a.index);if(!path)return fail('Charge the repaired Lift, then choose a prepared receiver.');
+  if(!s.board.includes(null))return fail('Merge or deliver one item to make room for the receiver reward.');
+  const receiver=s.board[path.at(-1)].kind;let reward;
   s.seals.resonance=true;s.seals.link=path;s.stage=3;s.energy=Math.min(120,s.energy+6);
-  if(receiver==='relay'){for(const id of Object.keys(SOURCES))s.charges[id]=7;surge(s);put(s,item('rig',3));}
-  else put(s,container('relic',5));
-  trace(s,'seal',{seal:'resonance',method:'reflected-beam',path,receiver});trace(s,'powered');
-  return {...done(receiver==='relay'?'Rings online · pocket winch recovered · three rich pulls':'Rings online · a sealed relic ampoule recovered','milestone',path.at(-1)),opened:folded};
+  if(receiver==='relay'){for(const id of Object.keys(SOURCES))s.charges[id]=7;surge(s);reward=put(s,item('rig',3));}
+  else reward=put(s,container('relic',5));
+  trace(s,'seal',{seal:'resonance',method:'charged-receiver',path,receiver});trace(s,'powered');
+  return {...done(receiver==='relay'?'Rings online · pocket winch recovered · three rich pulls':'Rings online · a sealed relic ampoule recovered','milestone',path.at(-1)),reveal:[reward],opened:[]};
  }
  if(a.type==='prime'){
   const from=a.from??s.board.findIndex(loopCell),lift=s.board.findIndex(x=>x?.type==='site'&&x.kind==='winch'&&x.phase==='done');
   if(!linkPhase(s)||optics(s).primed||lift<0||!valid(from)||!loopCell(s.board[from])||a.index!==undefined&&a.index!==lift)return fail('Use one Loop Cell on the repaired lift.');
-  s.board[from]=null;s.seals.optics={...optics(s),primed:true};trace(s,'beam-primed');return done('Light online · objects cast shadows.','deployment',lift);
- }
- if(a.type==='turn'){
-  const x=s.board[a.index];if(!linkPhase(s)||!valid(a.index))return fail('Turn expedition optics while connecting the rings.');
-  if(reflector(x)){x.turn=1-(x.turn??0);trace(s,'reflector-turn',{index:a.index,turn:x.turn});}
-  else if(x?.type==='site'&&x.kind==='winch'&&x.phase==='done'){s.seals.optics={...optics(s),direction:optics(s).direction===0?2:0};trace(s,'emitter-turn',{direction:s.seals.optics.direction});}
-  else return fail('Choose a reflector or the repaired lift.');
-  return done('Light redirected.','turn',a.index);
+  s.board[from]=null;s.seals.optics={...optics(s),primed:true};trace(s,'engine-charged');return done('Lift charged · activate your prepared receiver.','deployment',lift);
  }
  if(a.type==='goal'){
+  if(s.stage===3&&masteryPending(s).length)return fail('Craft and equip one expedition instrument before opening the Vault.');
   if(s.stage===3&&!allSeals(s))return fail('Resolve all three vault seals first.');
-  const g=goal(s);if(!g||g.action&&g.action!=='goal'||!ready(s,g.needs))return fail('Make the highlighted expedition items.');
+  if(s.stage===3&&a.kit&&!KITS[a.kit])return fail('Choose a salvage or survey kit.');
+  const kit=s.stage===3&&!s.journey?.kit?(KITS[a.kit]?a.kit:Object.keys(KITS).find(k=>ready(s,KITS[k].needs))):null;
+  const g=kit?{...expeditionGoal(s),needs:KITS[kit].needs}:expeditionGoal(s);if(s.stage===3&&!s.journey?.kit&&!kit)return fail('Prepare a salvage or survey kit.');if(!g||g.action&&g.action!=='goal'||!ready(s,g.needs))return fail('Make the highlighted expedition items.');
+  if(kit&&s.board.filter(x=>!x||['sealed','route'].includes(x.type)).length+2<3)return fail('Make one free space for your vault finds.');
   // Crossing survey is a preparation milestone, not a delivery.
   // Consuming both route tools here made the player craft them twice.
   const routeSurvey=s.stage===0&&s.landingStep===1;
   if(routeSurvey){s.routePrepared=true;surveyFinds(s);}
   else consume(s,g.needs);
+  if(kit){s.journey.kit=kit;trace(s,'vault-kit',{kit});}
   s.energy=Math.min(120,s.energy+g.energy);
   // The first reward opens a new producer and changes the camp, but not the main stage.
   if(s.stage===0&&s.landingStep===0){
@@ -250,7 +326,7 @@ export function act(s,a,now=Date.now()){
    return done('Landing secured · Survey Kite online · field parts received. Chart the crossing next.','milestone');
   }
   if(s.stage<4){if(s.stage===0)s.landingStep=2;s.stage++;
-   if(s.stage===4){for(let i=0;i<36;i++)if(['sealed','route'].includes(s.board[i]?.type))s.board[i]=null;const packed=s.board.find(x=>x?.type==='crate'&&x.kind==='relic');if(packed)packed.left=5;else put(s,container('relic',5));s.marks+=15;trace(s,'vault',{discovered:[...s.discovered]});}
+   if(s.stage===4){for(let i=0;i<36;i++)if(['sealed','route'].includes(s.board[i]?.type))s.board[i]=null;const packed=s.board.find(x=>x?.type==='crate'&&x.kind==='relic');if(kit){const family=kit==='field'?'rig':'chart';for(const tier of [2,1,1])put(s,item(family,tier));}else if(packed)packed.left=5;else put(s,container('relic',5));s.marks+=15;trace(s,'vault',{discovered:[...s.discovered]});}
   }else{s.post++;s.marks+=10;}
   supplies(s,6,false,s.stage===1?'survey':s.stage===2?'relic':null);
   if(s.stage===1||s.stage===2)surge(s);
@@ -327,7 +403,7 @@ export function load(raw,now=Date.now()){
   if(!integer(s.landingStep,0,2)||s.stage===0&&s.landingStep===2)return fresh(now);
   if(s.stage>0)s.landingStep=2;
   for(const x of s.board){if(x===null)continue;if(!x||typeof x!=='object')return fresh(now);
-   if(x.type==='item'){if(!FAMILIES[x.family]||!integer(x.tier,0,7))return fresh(now);}
+   if(x.type==='item'){if(!FAMILIES[x.family]||!integer(x.tier,0,maxTier(x))||x.line!==undefined&&(!isTide(x)||x.family!=='chart'))return fresh(now);}
    else if(x.type==='source'){if(!SOURCES[x.id])return fresh(now);}
    else if(x.type==='crate'){if(!integer(x.left,1,5)||x.kind!==undefined&&!CONTAINERS[x.kind])return fresh(now);x.kind??='locker';}
    else if(x.type==='site'){if(!ANCHORS[x.kind]||!['idle','active','done'].includes(x.phase)||!integer(x.progress,0,2)||x.phase==='idle'&&x.progress!==0||x.phase==='done'&&x.progress!==2||x.phase==='active'&&x.progress>1||x.reclaimed!==undefined&&typeof x.reclaimed!=='boolean')return fresh(now);}
@@ -338,7 +414,7 @@ export function load(raw,now=Date.now()){
   }
   for(const id of Object.keys(SOURCES))if(!integer(s.charges?.[id],0,7)||!integer(s.taps?.[id],0,1000000)||s.board.filter(x=>x?.type==='source'&&x.id===id).length!==1)return fresh(now);
   for(const k of ['normal','moves','merges','marks','contracts','rations'])if(!integer(s[k],0,1000000))return fresh(now);
-  if(!Array.isArray(s.discovered)||!s.discovered.every(x=>typeof x==='string'&&/^(rig|chart|flux):[0-7]$/.test(x)))return fresh(now);
+  if(!Array.isArray(s.discovered)||!s.discovered.every(x=>typeof x==='string'&&/^((rig|chart|flux):[0-7]|chart:tide:[0-4])$/.test(x)))return fresh(now);
   if(s.opportunity&&(!Number.isFinite(s.opportunity.ends)||!Array.isArray(s.opportunity.needs)||s.opportunity.needs.length!==1||!['chart','flux'].includes(s.opportunity.needs[0]?.family)||s.opportunity.needs[0].tier!==3||s.opportunity.needs[0].count!==1))s.opportunity=null;
   if(s.opportunity)s.opportunity.energy=s.opportunity.energy===28?28:12;
   s.history=Array.isArray(s.history)?s.history.filter(x=>x?.event==='milestone'&&Number.isFinite(x.at)).slice(-40):[];
@@ -349,7 +425,7 @@ export function load(raw,now=Date.now()){
   }else if(![1,2].includes(s.expedition.version)||!integer(s.expedition.trades,0,3)||s.expedition.route!==null&&!ROUTES[s.expedition.route])return fresh(now);
   if(s.expedition.vaultTrade!==undefined&&typeof s.expedition.vaultTrade!=='boolean')delete s.expedition.vaultTrade;
   s.expedition.log=Array.isArray(s.expedition.log)?s.expedition.log.filter(x=>x&&typeof x.type==='string'&&integer(x.move,0,1000000)).slice(-200):[];
-  installSites(s);migrateSeals(s);if(s.expedition.version===1){for(const site of anchors(s))if(site.phase==='active')activate(s,site);s.expedition.version=2;}delete s.mission;
+  installSites(s);migrateSeals(s);campState(s);if(s.expedition.version===1){for(const site of anchors(s))if(site.phase==='active')activate(s,site);s.expedition.version=2;}delete s.mission;
   if(!integer(s.producerStreak,0,1000000))s.producerStreak=0;
   // Idempotent migration from older V5 builds whose survey already
   // consumed both route ingredients. Keep all existing board progress.
@@ -359,6 +435,6 @@ export function load(raw,now=Date.now()){
     s.routePrepared=true;
    }else s.routePrepared=s.stage>=2;
   }
-  syncRequests(s);return s;
+  journeyState(s);syncRequests(s);workshopState(s);return s;
  }catch{return fresh(now);}
 }

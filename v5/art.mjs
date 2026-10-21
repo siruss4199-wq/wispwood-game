@@ -25,7 +25,8 @@ export function art(x,cls=''){
   return `<svg class="art ${cls}" viewBox="0 0 100 100" aria-hidden="true" data-art="${x.type}-${x.kind??x.id}">${MATERIALS}<ellipse cx="50" cy="87" rx="42" ry="8" fill="#263957" opacity=".22"/><path d="M9 71L22 30 70 24 91 71 79 90H20Z" fill="url(#vw-stone)"/><path d="M17 74H84" stroke="${color}" stroke-width="6"/><g transform="translate(10 0) scale(.8)" opacity="${x.type==='site'&&x.phase==='idle'?'.58':'1'}">${x.reclaimed?'<g transform="translate(14 8) scale(1.1)">'+extras.glyph+'</g>':SPRITE_OVERRIDES[family+'-'+tier]?'<image href="'+SPRITE_OVERRIDES[family+'-'+tier]+'" width="100" height="100"/>':OBJECTS[family][tier]}</g>${x.type==='site'?[0,1].map(n=>`<circle cx="${40+n*20}" cy="85" r="5" fill="${x.progress>n?'#d4fff3':'#3c475e'}" stroke="${color}" stroke-width="2"/>`).join(''):''}</svg>`;
  }
  const f=x.type==='item'?x.family:null;
- const key=f?f+'-'+x.tier:x.type==='source'?'source-'+x.id:x.type==='crate'?'crate-'+(x.kind??'locker'):x.type;
+ const key=x.line==='tide'?'tide-'+x.tier:f?f+'-'+x.tier:x.type==='source'?'source-'+x.id:x.type==='crate'?'crate-'+(x.kind??'locker'):x.type;
+ if(x.line==='tide')return `<img class="art ${cls}" src="assets/premium/tide-${x.tier}.webp" alt="" aria-hidden="true" data-art="${key}">`;
  if(SPRITE_OVERRIDES[key])return `<img class="art ${cls}" src="${SPRITE_OVERRIDES[key]}" alt="" aria-hidden="true" data-art="${key}">`;
  const shapes=f?OBJECTS[f]?.[x.tier]:x.type==='source'?OBJECTS.sources[x.id]:x.type==='crate'?CONTAINER_ART[x.kind??'locker']:extras[x.type];
  if(!shapes)return '';
