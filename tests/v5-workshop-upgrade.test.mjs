@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fresh,load,act,item} from '../v5/core.mjs';
-import {syncRequests,requestProgress} from '../v5/requests.mjs';
+import {syncRequests,requestProgress,reservedItems} from '../v5/requests.mjs';
 import {benchInputs} from '../v5/workshop.mjs';
 import {requestAction} from './v5-workshop-policy.mjs';
 const go=(s,a)=>{const r=act(s,a);assert.ok(r.ok,r.message);return r;};
@@ -41,6 +41,25 @@ test('fresh and legacy restored saves earn the upgrade and use fittings in actua
   for(let n=0;n<8&&s.workshop.fittings===0;n++)fulfill(s,n%3);
   assert.ok(s.workshop.fittings>0);assert.ok(s.requests.completed>count);assert.deepEqual(load(JSON.stringify(s)).workshop,s.workshop);
  }
+});
+test('a fitted spanner made before the crossing survey is not trapped by the landing reservation',()=>{
+ // Regression: reservedItems used to reserve one rig/chart tier-2 item for the
+ // upcoming crossing choice from the moment stage<=1, even at stage 0 before
+ // the crossing survey (landingStep 1) has crafted anything toward it. That
+ // treated a freshly fitted spanner as the reserved tool with nothing else to
+ // protect, trapping it: it could never be delivered to a real request.
+ const s=fresh();s.landingStep=1;s.workshop.repaired=true;s.workshop.precision=true;s.board=s.board.map(x=>x??item('rig',0));
+ go(s,{type:'fitSpanner'});
+ const spannerIndex=s.board.findIndex(x=>x?.type==='item'&&x.family==='rig'&&x.tier===2);
+ assert.ok(spannerIndex>=0);
+ assert.equal(s.stage,0);
+ assert.equal(reservedItems(s).has(spannerIndex),false,'a lone early spanner must stay deliverable, not reserved for a crossing that has not begun');
+ syncRequests(s);
+ const lane=s.requests.orders.findIndex(o=>o.needs.some(r=>r.family==='rig'&&r.tier===2));
+ assert.ok(lane>=0,'the bench-favoured order should be able to target the fitted spanner');
+ assert.equal(requestProgress(s,s.requests.orders[lane]).indices.includes(spannerIndex),true);
+ go(s,{type:'request',id:s.requests.orders[lane].id});
+ assert.equal(s.board[spannerIndex],null);
 });
 test('new Standard orders favour spanners without duplicating existing main goals or altering live orders',()=>{
  const s=fresh();s.landingStep=1;s.workshop.repaired=true;s.workshop.precision=true;syncRequests(s);

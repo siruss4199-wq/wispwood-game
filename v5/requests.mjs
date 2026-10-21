@@ -86,7 +86,10 @@ export function syncRequests(s){
 export function reservedItems(s){
  const needs=[];
  if(s.stage===0&&!s.landingStep)needs.push(req('rig',1,2));
- if(s.stage<=1)needs.push(req('rig',2),req('chart',2));
+ // Both crossing tools are only load-bearing once stage 1 actually holds the
+ // choice open; reserving them earlier trapped a freshly fitted spanner (or
+ // any other early tier-2 spare) that had no crossing to protect yet.
+ if(s.stage===1)needs.push(req('rig',2),req('chart',2));
  if(s.stage===2){
   if(!s.seals?.optics?.primed)needs.push(req('flux',1));
   for(const x of s.board)if(x?.type==='site'&&x.phase==='idle')needs.push(req({winch:'rig',scope:'chart',relay:'flux'}[x.kind],3));
