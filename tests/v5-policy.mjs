@@ -8,10 +8,13 @@ import {circuit,linkPhase,optics} from '../v5/seals.mjs';
 import {recommendedOrder} from '../v5/camp-goals.mjs';
 import {firstPier} from '../v5/first-pier.mjs';
 import {coastalAction} from './v5-coastal-policy.mjs';
+import {openingPair} from '../v5/interactions.mjs';
 import {requestAction} from './v5-workshop-policy.mjs';
 const req=(family,tier,count=1)=>({family,tier,count});
 export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,session=null,style='expedition',findStrategy=null,decode=true,route=null,mergeSight=false,receiver=null,vaultKit='field'}={}){
  if(!goal(s))return null;
+ // The UI reveals "Clear path" only after the glowing first merge.
+ const opening=openingPair(s);if(opening.length===2)return {type:'merge',from:opening[0],to:opening[1]};
  // Scripted policy must actually craft all three instruments. No milestone seeding.
  if(s.stage===3&&masteryPending(s).length){
   const equipped=masteryPending(s).find(f=>instrumentReady(s,f));

@@ -25,6 +25,8 @@ const {chromium,webkit}=require('playwright');const assert=require('node:assert/
  else if(a.type==='infuse'){const from=before.board.findIndex(x=>x?.family==='flux'&&x.tier===1),to=before.board.findIndex(x=>x?.type==='source'&&x.id===a.id);if(route==='ridge'){const prior=page.locator('#board .selected.item');if(await prior.count())await prior.tap();await page.locator(`[data-index="${from}"]`).tap();assert.ok(await page.locator('.source.useTarget').count());await page.locator(`[data-index="${to}"]`).tap();}else await page.locator(`[data-infuse="${a.id}"]`).tap();}
  else if(a.type==='request'){const card=page.locator(`[data-request="${a.id}"]`);await card.tap();}
  else if(a.type==='ration')await page.locator('#rationButton').tap();
+ else if(a.type==='restoreWorkshop')await page.locator('#workshop').tap();
+ else if(a.type==='buildPier')await page.locator('#goalButton').tap();
  else if(a.type==='prepareInstrument')await page.locator(`[data-instrument="${a.family}"]`).tap();
  else if(a.type==='crate')await page.locator(`[data-index="${a.index}"]`).tap();
  else{
@@ -77,7 +79,10 @@ const {chromium,webkit}=require('playwright');const assert=require('node:assert/
   if(phase==='primed'&&engine==='chromium'){
    const base=await context.newPage();await base.goto('http://127.0.0.1:8082/v5/');await base.evaluate(s=>localStorage.setItem('vaultwake-v5',JSON.stringify(s)),old);await base.reload();await base.waitForSelector('#board .tile');await base.evaluate(async()=>Promise.all([...document.images].map(x=>x.decode().catch(()=>{}))));await base.screenshot({path:`${dir}/${route}-before-optics-390.png`,fullPage:true});await base.close();await shot('legacy-charge-retained');
   }
-  if(phase!=='completed'){const target=migrated.board.findIndex(x=>x?.type==='site'&&x.kind!=='winch'&&x.phase==='done');await perform({type:'power',index:target});await perform({type:'goal'});assert.equal((await read()).stage,4);}
+  if(phase!=='completed'){const target=migrated.board.findIndex(x=>x?.type==='site'&&x.kind!=='winch'&&x.phase==='done');await perform({type:'power',index:target});
+   // Legacy pre-vault saves keep everything and fund the Supply Pier through real UI actions.
+   for(let n=0;n<150&&(await read()).stage<4;n++){const a=await page.evaluate(async options=>{const {choose}=await import('/tests/v5-policy.mjs');return choose(JSON.parse(localStorage.getItem('vaultwake-v5')),options);},options);await perform(a);}
+   assert.equal((await read()).stage,4);}
   const again=await read();await page.reload();assert.deepEqual(await read(),again);
  }
  }
