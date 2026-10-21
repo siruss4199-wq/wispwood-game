@@ -63,7 +63,7 @@ function directionText(direction){
  const source=GUIDE_PRODUCERS[direction.family]??'producer';
  if(direction.kind==='install')return 'INSTRUMENT READY · tap EQUIP above';
  if(direction.kind==='collect')return (GUIDE_NAMES[state.requests.orders.find(o=>o?.id===direction.orderId)?.lane]??'Order').toUpperCase()+' READY · tap its card to collect';
- if(direction.kind==='merge')return 'MERGE THE HIGHLIGHTED PAIR → '+name;
+ if(direction.kind==='merge'){const made=Number.isInteger(direction.tier)&&direction.family?nameOf(item(direction.family,direction.tier+1,direction.need?.line)):name;return 'MERGE THE HIGHLIGHTED PAIR → '+made+(name&&made!==name?' · toward '+name:'');}
  if(direction.kind==='make-space')return 'BOARD FULL · merge the highlighted pair';
  if(direction.kind==='full')return 'BOARD FULL · deliver an order or recycle a spare';
  if(direction.kind==='energy')return 'NEED ENERGY · deliver a ready order or use a field ration';
@@ -347,7 +347,7 @@ function renderSelection(){
    const site=anchors(state).find(v=>v.phase==='idle'&&matches(x,equipment(v.kind)));if(site&&state.stage>=2)desc=`Keep to merge · or use on ${nameOf(site)}${cn?' · also exchangeable':''}`;
    if(isTide(x))desc=(x.tier===0&&!state.camp.loft?'Early order reward → merge two for a Reef Compass · ':'Charting Loft → Survey Kite recovery · ')+(x.tier<maxTier(x,state)?'merge twins or deliver a tide order':!state.camp.deepSurvey?'Deep Survey unlocks two more treasures':'top treasure · deliver a tide order');
    if(loopCell(x)&&linkPhase(state)&&!optics(state).primed)desc='Use on the Stone Lift · power your receiver';
-   buttons=`${site&&state.stage>=2?`<button class="accent" data-action="deploy" data-target="${state.board.indexOf(site)}">Use · ${ANCHORS[site.kind].short}</button>`:''}<button data-action="recycle">Recycle +${2**x.tier} ϟ</button>`;
+   buttons=`${site&&state.stage>=2?`<button class="accent" data-action="deploy" data-target="${state.board.indexOf(site)}">Use · ${ANCHORS[site.kind].short}</button>`:''}${isTide(x)?'':`<button data-action="recycle">Recycle +${2**x.tier} ϟ</button>`}`;
    if(loopCell(x)&&linkPhase(state)&&!optics(state).primed)buttons='<button class="accent" data-action="prime" data-target="'+state.board.findIndex(v=>v?.type==='site'&&v.kind==='winch')+'">Use · Stone Lift</button>'+buttons;
   }else if(x.type==='source'){
    if(!sourceUnlocked(state,x.id))desc=`Unlock: ${x.id==='chart'?'secure the landing':'open a crossing'}.`;

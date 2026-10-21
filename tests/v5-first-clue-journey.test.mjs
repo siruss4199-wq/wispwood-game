@@ -1,7 +1,8 @@
 // A real reducer-only first-clue walkthrough. Action counts are not human minutes.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {fresh,act,load} from '../v5/core.mjs';
+import {fresh,act,load,item} from '../v5/core.mjs';
+import {tideItem} from '../v5/treasures.mjs';
 import {requestAction} from './v5-workshop-policy.mjs';
 import {firstSessionCue} from '../v5/first-session.mjs';
 
@@ -42,4 +43,9 @@ test('new player earns and merges the first Reef Compass via two real deliveries
  assert.deepEqual(reloaded.requests,s.requests);
  assert.ok(reloaded.discovered.includes('chart:tide:1'));
  assert.deepEqual(opening.board.slice(0,2),fresh(0).board.slice(0,2),'initial layout remains stable');
+});
+test('Neri’s tide clues cannot be recycled away; ordinary parts still can',()=>{
+ const s=fresh(1);s.landingStep=1;s.board[1]=tideItem(1);s.board[3]=item('rig',0);
+ const raw=JSON.stringify(s);assert.equal(act(s,{type:'recycle',index:1},1).ok,false);assert.equal(JSON.stringify(s),raw);
+ assert.ok(act(s,{type:'recycle',index:3},1).ok,'board-full rescue keeps a free cleanup path');
 });

@@ -389,6 +389,7 @@ export function act(s,a,now=Date.now()){
  if(a.type==='recycle'){
   if(!valid(a.index))return fail('Choose an item.');const x=s.board[a.index];
   if(!x||!['item','glyph','brace'].includes(x.type))return fail('Only loose items can be recycled.');
+  if(isTide(x))return fail('Tide treasures are Neri’s clues. Merge twins or deliver a tide order.');
   const gain=x.type==='item'?Math.max(1,2**x.tier):x.type==='glyph'?5:3;s.board[a.index]=null;s.energy=Math.min(120,s.energy+gain);return done(`Recycled · +${gain} energy`,'recycle');
  }
  if(a.type==='ration'){
