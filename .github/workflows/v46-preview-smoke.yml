@@ -1,0 +1,33 @@
+name: Verify temporary V4.6 playable preview
+on:
+  push:
+    branches:
+      - codex/wispwood-v46-onboarding-task1
+    paths:
+      - .github/workflows/v46-preview-smoke.yml
+      - v4/**
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify externally playable HTML and module delivery
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://raw.githack.com/siruss4199-wq/wispwood-game/codex/wispwood-v46-onboarding-task1/v4"
+          for FILE in index.html app.mjs onboarding.css core/state.mjs core/onboarding.mjs; do
+            CODE=$(curl -LsS --retry 2 --max-time 25 -w '%{http_code}' -o /tmp/v46-preview-body "$BASE/$FILE")
+            echo "$FILE -> HTTP $CODE; $(wc -c </tmp/v46-preview-body) bytes"
+            test "$CODE" = "200"
+            test -s /tmp/v46-preview-body
+            case "$FILE" in
+              index.html) grep -q 'id="onboardingGuide"' /tmp/v46-preview-body ;;
+              app.mjs) grep -q 'onboardingGuide' /tmp/v46-preview-body ;;
+              onboarding.css) grep -q 'onboardingTarget' /tmp/v46-preview-body ;;
+              core/onboarding.mjs) grep -q 'nextOnboarding' /tmp/v46-preview-body ;;
+            esac
+          done
+          echo "PREVIEW_FILES_OK $BASE/index.html"
