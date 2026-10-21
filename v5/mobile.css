@@ -442,3 +442,13 @@ body .world .objective.crewObjective{grid-template-columns:1fr;gap:7px}
 
 /* Constrain the middle Bench without shrinking the scene's interactive Workshop and Pier. */
 @media(max-width:375px){#workshopBench{font-size:10px;padding:4px 5px}#workshopBench img,#workshopBench svg{width:31px;height:31px}}
+
+/* Real crew deliveries visibly restore the first pier; purely derived from earned state. */
+#firstPier{position:absolute;right:7px;bottom:5px;width:114px;height:83px;pointer-events:none;z-index:1;filter:drop-shadow(0 2px 3px #294d5359)}
+#firstPier svg{display:block;width:114px;height:61px}
+#firstPier span{display:block;margin:-3px auto 0;width:max-content;max-width:112px;padding:2px 5px;border-radius:8px;background:#fff2c7e8;color:#22545c;font-size:9px;font-weight:900}
+#firstPier .pierPlank{opacity:.1;transform:translateY(7px);transition:opacity .3s,transform .3s}
+#firstPier[data-level="1"] .plank1,#firstPier[data-level="2"] .pierPlank{opacity:1;transform:translateY(0)}
+#firstPier[data-level="2"] span{background:#ddf9d9;color:#176952}
+@media(max-width:375px){#firstPier{right:4px;width:105px}#firstPier svg{width:105px}}
+@media(prefers-reduced-motion:reduce){#firstPier .pierPlank{transition:none}}

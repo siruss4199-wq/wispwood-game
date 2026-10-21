@@ -1,6 +1,7 @@
 import {campGoal} from './camp-goals.mjs';
 import {chapterEndView} from './chapter-end.mjs';
 import {coastalObjective,orderPurpose} from './coastal-journey.mjs';
+import {firstPier} from './first-pier.mjs';
 import {masteryPending,MASTERY_NAMES,masteryDirection,instrumentReady} from './mastery.mjs';
 import {firstSessionCue} from './first-session.mjs';
 import {orderDirection} from './order-direction.mjs';
@@ -168,8 +169,26 @@ function renderWorkshop(){
  bench.innerHTML=state.workshop.precision?art(item('rig',2))+'<span>Precision<br>Bench</span>':'<span>Precision Bench<br><b>'+Math.min(state.requests.supplies,BENCH_COST)+'/'+BENCH_COST+' ◆</b></span>';
  bench.setAttribute('aria-label',state.workshop.precision?'View Precision Bench recipe and fitting action':'View Precision Bench upgrade: '+BENCH_COST+' supplies. Grip tool and Ink scrap become a Split spanner.');
  button.setAttribute('aria-label',restored?'Coastal Workshop operational. Tap here to press a Grip tool for 2 energy and one Rover charge, or select Rivet Rover.':`Coastal Workshop damaged. Repair for 8 supplies. You have ${state.requests.supplies}.`);
+ renderFirstPier();
+}
+function renderFirstPier(){
+ const pier=firstPier(state);let el=$('#firstPier');
+ if(!pier){el?.remove();return;}
+ if(!el){
+  $('#scene').insertAdjacentHTML('beforeend',`<div id="firstPier" role="img" aria-label="Storm pier restoration"><svg viewBox="0 0 130 70" aria-hidden="true">
+   <path d="M7 50 58 18 121 47 68 69Z" fill="#164e55" opacity=".4"/>
+   <path d="M8 37 61 9 121 39 68 60Z" fill="#a97047" stroke="#795136" stroke-width="3"/>
+   <path class="pierPlank plank1" d="M21 33 61 12 78 20 38 42Z" fill="#f8d78a" stroke="#ba8345" stroke-width="2"/>
+   <path class="pierPlank plank2" d="M54 48 93 27 109 35 69 56Z" fill="#f8d78a" stroke="#ba8345" stroke-width="2"/>
+   <path d="M19 45V63M112 43V61" stroke="#795136" stroke-width="5" stroke-linecap="round"/>
+  </svg><span></span></div>`);
+  el=$('#firstPier');
+ }
+ el.dataset.level=pier.level;el.setAttribute('aria-label',pier.label+', '+pier.progress+' supports restored');
+ el.querySelector('span').textContent=pier.level===2?'PIER READY':pier.level===1?'PIER 1/2':'REPAIR PIER';
 }
 function renderRequests(){
+ const openingPier=firstPier(state);
  const ending=chapterEndView(state);
  $('#requests').hidden=state.stage===0&&!state.landingStep;
  $('#requests').classList.toggle('postChapterCollapsed',!!ending&&!postChapterOrdersOpen);
@@ -185,7 +204,7 @@ function renderRequests(){
   :`<button class="campAction ${q.supplies>=PIER_COST?'affordable':''}" data-camp-action="buildPier" aria-label="Build Supply Pier for ${PIER_COST} camp supplies">Build Pier · ${PIER_COST}◆</button>`):'';
  const primary=campGoal(state);
  const purpose=(state.camp.earlyFragments??0)<2?'Next order: Tide Dial Fragment':primary?.cost?primary.name+' · '+Math.min(primary.supplies,primary.cost)+'/'+primary.cost+' ◆'+(primary.supplies>=primary.cost?' · READY':''):primary?.action==='treasure'?'Recover & merge the next treasure':primary?.action==='orders'?'Orders fund Supply Pier cases':(state.camp.earlyFragments??0)<2?'Next order: Tide Dial Fragment':!state.workshop.repaired?'Workshop 8◆':!state.camp.pier?'Unlock useful supply cases':!state.camp.loft?'Charting Loft 20◆':state.camp.deepSurvey?(state.discovered.includes('chart:tide:4')?'Fulfill treasure orders':'Discover the Ocean Crown'):pearlDiscovered(state)?'Deep Survey 18◆':'Discover a Pearl Astrolabe';
- $('#requests').innerHTML=`${ending?`<button id="ordersToggle" type="button" aria-expanded="${postChapterOrdersOpen}" class="ordersToggle">${postChapterOrdersOpen?'Hide optional camp orders':'Optional camp orders'} · ◆${q.supplies} <span aria-hidden="true">${postChapterOrdersOpen?'▴':'▾'}</span></button>`:''}<div class="requestHeading"><span>${ending?'OPTIONAL ORDERS':'CREW DELIVERIES'} <small>${orderPurpose(state)}</small></span><b title="Earn camp supplies by delivering orders">◆ <span id="supplies">${q.supplies}</span></b>${action}</div><div class="requestShelf" aria-label="Crew orders; swipe for alternatives">${q.orders.filter(Boolean).sort((a,b)=>Number(b.id===suggestedRequest)-Number(a.id===suggestedRequest)).map(o=>{
+ $('#requests').innerHTML=`${ending?`<button id="ordersToggle" type="button" aria-expanded="${postChapterOrdersOpen}" class="ordersToggle">${postChapterOrdersOpen?'Hide optional camp orders':'Optional camp orders'} · ◆${q.supplies} <span aria-hidden="true">${postChapterOrdersOpen?'▴':'▾'}</span></button>`:''}<div class="requestHeading"><span>${ending?'OPTIONAL ORDERS':'CREW DELIVERIES'} <small>${orderPurpose(state)}</small></span><b title="Earn camp supplies by delivering orders">◆ <span id="supplies">${q.supplies}</span></b>${action}</div><div class="requestShelf" aria-label="Crew orders; swipe for alternatives">${q.orders.filter((o,i)=>o&&(!openingPier||openingPier.visibleLanes.includes(i))).sort((a,b)=>Number(b.id===suggestedRequest)-Number(a.id===suggestedRequest)).map(o=>{
  const p=requestProgress(state,o),active=requestId===o.id&&focus==='request',energy=Math.min(o.energy,120-state.energy);
  return `<button class="requestCard ${p.ready?'ready':''} ${active?'active':''} ${o.id===suggestedRequest?'storySuggested':''}" data-request="${o.id}" aria-pressed="${active}" aria-label="${o.id===suggestedRequest?'Suggested next: ':''}${o.lane} request: ${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier,r.line))).join(', ')}. ${p.ready?active?'Deliver':'Ready. Tap once to collect':'In progress'}. Reward ${o.supplies} camp supplies${energy?` and ${energy} energy`:`, energy full`}"><b class="requestLane">${o.lane==='long'?'Expedition kit':o.lane==='quick'?'Quick':'Standard'}</b><span class="requestItems">${p.progress.map(r=>`<span>${art(item(r.family,r.tier,r.line))}<b>${r.current}/${r.count}</b>${r.protected?'<i title="One copy kept for expedition">◆</i>':''}</span>`).join('')}</span><span class="requestReward">+${o.supplies} ◆${energy?` · +${energy} ϟ`:``}</span><strong>${p.ready?'✓ COLLECT':active&&p.progress.some(r=>r.protected)?'MAKE SPARE':'MAKE'}</strong></button>`;
  }).join('')}</div>`;
@@ -385,7 +404,12 @@ function run(a){
   moment(nameOf(state.board[result.index])+' crafted',pending.length?'Equip this instrument above to prepare the expedition.':'Expedition prepared · choose your Vault kit',state.board[result.index]);
   sound.play('milestone');
  }
- if(result.tideFragment&&state.camp.earlyFragments===1){moment('First Tide Dial fragment','Neri: This fragment points toward a coast erased from the charts.',tideItem(0));}
+ if(a.type==='request'&&before===0&&landingBefore===1&&result.tideFragment){
+  const pier=firstPier(state);
+  if(pier?.level===1)moment('First support restored','Ivo: The first pier beam is secure. One more delivery will finish the walkway.',tideItem(0));
+  if(pier?.level===2)moment('The walkway is restored','Ivo: We can cross. Neri has a second compass fragment — merge the two to trace the fleet.',tideItem(0));
+  $('.world').classList.add('changed');
+ }
  if(result.tideDiscovery&&state.board[result.index]?.tier===1&&!knownBefore.has('chart:tide:1')){
   moment('The first Reef Compass','Neri: Its needle points toward the missing coast. Now prepare a Lens and Spanner to follow it.',state.board[result.index]);
   sound.play('rare');$('.world').classList.add('changed');
