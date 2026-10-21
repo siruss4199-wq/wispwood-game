@@ -7,3 +7,5 @@
 .gameShell .shelfRequest.onboardingTarget,.gameShell #completeOrder.onboardingTarget{outline:3px solid #df9b2b!important;outline-offset:0!important;box-shadow:0 0 0 3px #fff0bf!important}
 @media(max-width:360px){.onboardingGuide{padding:6px 7px;gap:6px}.onboardingGuide strong{font-size:12px}.onboardingGuide div span{font-size:10px}}
 @media(prefers-reduced-motion:reduce){.gameShell .tile.onboardingTarget{animation:none!important}}
+/* Existing shelf CSS declares display:flex; honor native hidden attributes during tutorial. */
+.gameShell .shelfRequest[hidden]{display:none!important}
