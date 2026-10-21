@@ -14,7 +14,9 @@ const assert=require('node:assert/strict');const {chromium,webkit}=require('play
  await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:8});await page.mouse.up();await page.waitForTimeout(310);assert.equal((await read()).merges,1,'drag works in '+engine);
  assert.equal(await page.locator('#requests').isVisible(),false,'first merge stays focused on the main goal');
  assert.match(await page.locator('#hint').textContent(),/CLEAR PATH/);
- // One fresh tool already exists; this real merge supplies the second landing tool.
+ assert.equal(await page.locator('#goalNeeds .need.done').count(),1,'one genuinely crafted opening Grip Tool is sufficient');
+ assert.equal(await page.locator('#goalButton').isVisible(),true,'first merge unlocks the clear-path action');
+ // Starter merges make the first earned tool; no repetitive extra tutorial merge is required.
  await page.locator('#goalButton').tap();assert.equal((await read()).stage,0);assert.equal((await read()).landingStep,1);await page.waitForTimeout(750);
  assert.equal(await page.locator('#requests').isVisible(),true,'camp requests now appear');
  assert.equal(await page.locator('#workshop').isVisible(),true,'workshop is introduced with supplies');

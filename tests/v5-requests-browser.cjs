@@ -6,7 +6,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs');const {chromium
  const shot=async name=>{await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:`test-artifacts/v5/requests/${name}-${width}.png`,fullPage:true});};
  await shot('fresh');
  await page.locator('#board [data-index="7"]').tap();await page.locator('#board [data-index="8"]').tap();await page.locator('#goalButton').tap();await page.waitForTimeout(1800);
- assert.equal((await read()).landingStep,1);assert.equal(await page.locator('#requests [data-request]').count(),3);await shot('before');
+ assert.equal((await read()).landingStep,1);assert.equal(await page.locator('#requests [data-request]').count(),1,'early onboarding displays only one order');await shot('before');
  // Focus one real unfinished order; the existing board, not a helper panel,
  // must identify an actionable source or matching merge pair.
  const unfinished=page.locator('#requests .requestCard:not(.ready)').first();
@@ -45,7 +45,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs');const {chromium
     const after=await read();assert.equal(after.requests.supplies,before.requests.supplies+decision.supplies);assert.equal(after.energy,before.energy+decision.energy);assert.notEqual(after.requests.orders[lane].id,decision.id);await shot('replacement');await page.reload();assert.deepEqual((await read()).requests,after.requests);delivered=true;break;
    }
    // Clear selection through the request, then exercise real board taps.
-   await page.locator('#requests [data-request]').nth(lane).tap();
+   await page.locator(`#requests [data-request="${(await read()).requests.orders[lane].id}"]`).tap();
    if(decision.type==='merge'){await page.locator(`#board [data-index="${decision.from}"]`).tap();await page.locator(`#board [data-index="${decision.to}"]`).tap();}
    else {await page.locator(`#board [data-index="${decision.index}"]`).tap();if(decision.type==='service')await page.locator('[data-action="service"]').tap();}
    await page.waitForTimeout(80);

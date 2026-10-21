@@ -21,7 +21,7 @@ export const SOURCES={rig:{name:'Rivet Rover',cost:1,family:'rig',unlock:0},char
 export const sourceUnlocked=(s,id)=>!!SOURCES[id]&&(s.stage>=SOURCES[id].unlock||(id==='chart'&&s.stage===0&&s.landingStep>=1));
 const req=(family,tier,count=1)=>({family,tier,count});
 export const STAGES=[
- {name:'Clear the landing',verb:'Clear path',scene:'Blocked approach',needs:[req('rig',1,2)],energy:4,next:'Survey Kite + coast survey',text:'Stabilize the landing. Then combine Fieldworks and Wayfinding to chart a breach.',phase:'LANDING 1 / 2'},
+ {name:'Clear the landing',verb:'Clear path',scene:'Blocked approach',needs:[req('rig',1)],energy:4,next:'Survey Kite + coast survey',text:'Stabilize the landing. Then combine Fieldworks and Wayfinding to chart a breach.',phase:'LANDING 1 / 2'},
  {name:'Find the buried door',verb:'Excavate',scene:'Excavation camp',needs:[req('rig',4),req('chart',3)],energy:6,next:'Echo Crucible + excavation cache',text:'A crawler jack and survey scope will uncover the entrance.'},
  {name:'Wake the ring engine',verb:'Power rings',scene:'Entrance uncovered',needs:[req('flux',4),req('rig',4)],energy:6,next:'Powered vault + enriched sources',text:'Raise the rings with a lantern and crawler jack.'},
  {name:'Open the Tideglass Vault',verb:'Open vault',scene:'Rings awakened',needs:[req('chart',5),req('flux',5),req('rig',3)],energy:20,next:'The chamber + relic cache',text:'Align a star chart and orbit engine to open the vault.'}
@@ -305,6 +305,8 @@ export function act(s,a,now=Date.now()){
   s.board[from]=null;s.seals.optics={...optics(s),primed:true};trace(s,'engine-charged');return done('Lift charged · activate your prepared receiver.','deployment',lift);
  }
  if(a.type==='goal'){
+  // An existing prepared tool cannot skip the first interactive merge.
+  if(s.stage===0&&s.landingStep===0&&s.merges===0)return fail('Merge the glowing Copper Offcuts first, then clear the landing.');
   if(s.stage===3&&masteryPending(s).length)return fail('Craft and equip one expedition instrument before opening the Vault.');
   if(s.stage===3&&!allSeals(s))return fail('Resolve all three vault seals first.');
   if(s.stage===3&&a.kit&&!KITS[a.kit])return fail('Choose a salvage or survey kit.');
