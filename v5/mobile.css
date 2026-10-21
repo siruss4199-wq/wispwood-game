@@ -452,3 +452,9 @@ body .world .objective.crewObjective{grid-template-columns:1fr;gap:7px}
 #firstPier[data-level="2"] span{background:#ddf9d9;color:#176952}
 @media(max-width:375px){#firstPier{right:4px;width:105px}#firstPier svg{width:105px}}
 @media(prefers-reduced-motion:reduce){#firstPier .pierPlank{transition:none}}
+
+/* On-board refill shortcut only when the selected source is exhausted. */
+.boardHeading #quickRefill{flex:none;max-width:48%;min-height:44px;padding:5px 9px;border-radius:11px;background:#147e78;color:#fff;font-size:11px;line-height:1.2;font-weight:900;box-shadow:0 2px #0c625d;white-space:normal;text-align:center}
+.boardHeading:has(#quickRefill:not([hidden])){min-height:48px;gap:6px}
+.boardHeading:has(#quickRefill:not([hidden])) #hint{flex:1;font-size:11px;line-height:1.2}
+@media(max-width:375px){.boardHeading #quickRefill{font-size:10px;padding:5px 7px;max-width:47%}}
