@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+ <meta name="theme-color" content="#e9f9ef">
+ <title>Vaultwake · Coastal Lab</title>
+ <link rel="stylesheet" href="./styles.css">
+ <script type="module" src="./app.mjs"></script>
+</head>
+<body>
+ <main class="game">
+  <header class="masthead">
+   <div class="brand"><span>VAULTWAKE</span><strong>COASTAL LAB</strong></div>
+   <span class="experiment">PLAYABLE EXPERIMENT</span>
+  </header>
+  <section class="world" aria-label="Coastal expedition">
+   <img id="worldArt" alt="Changing expedition coastline" src="../assets/premium/landing-vibrant.webp">
+   <div class="worldShade"></div>
+   <div class="worldTitle"><span id="worldTag">THE EXPEDITION BEGINS</span><strong id="worldName">The abandoned landing</strong></div>
+   <div id="worldProgress" class="progressDots"></div>
+  </section>
+  <section id="mission" class="mission" aria-live="polite"></section>
+  <div class="boardHeading"><b>YOUR WORKBENCH</b><span id="free">0 FREE CELLS</span></div>
+  <div id="guidance" role="status" class="guidance">Merge the highlighted copper pieces</div>
+  <section id="board" class="board" aria-label="Six by six merge board"></section>
+  <div id="selection" class="selection" aria-live="polite"></div>
+  <div id="message" class="message" role="status">Tap a producer to create materials. Tap two matching objects to merge.</div>
+  <footer class="footer"><button id="journalButton" type="button">EXPEDITION JOURNAL</button><span>ONE OBJECTIVE · ONE COAST</span><button id="restart" type="button">NEW LAB RUN</button></footer>
+ </main>
+ <dialog id="reveal" aria-labelledby="revealTitle" class="reveal"><div class="spark">✦</div><span class="eyebrow">NEW DISCOVERY</span><h2 id="revealTitle"></h2><p id="revealText"></p><button id="revealNext" type="button" class="primary active">CONTINUE EXPEDITION</button></dialog>
+ <dialog id="journal" aria-labelledby="journalTitle"><button class="close" id="journalClose" aria-label="Close journal">×</button><span class="eyebrow">EXPEDITION NOTES</span><h2 id="journalTitle">What you discovered</h2><div id="journalEntries"></div></dialog>
+</body>
+</html>

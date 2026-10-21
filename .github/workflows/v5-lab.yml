@@ -1,0 +1,31 @@
+name: Coastal Lab playable prototype
+on:
+  pull_request:
+    paths: ['v5/lab/**','tests/v5-lab*','.github/workflows/v5-lab.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node --check v5/lab/engine.mjs && node --check v5/lab/app.mjs && node --test tests/v5-lab.test.mjs
+  mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix: {engine: [chromium, webkit]}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm install --no-save playwright@1.62.1 && npx playwright install --with-deps ${{ matrix.engine }}
+      - name: Verify touch interactions and save isolation
+        env: {LAB_ENGINE: "${{ matrix.engine }}"}
+        run: |
+          python3 -m http.server 8080 >/tmp/lab-http.log 2>&1 &
+          node tests/v5-lab-browser.cjs
