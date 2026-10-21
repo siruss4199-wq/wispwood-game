@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="./style.css">
 <link rel="stylesheet" href="./craft.css">
 <link rel="stylesheet" href="./board46.css">
+<link rel="stylesheet" href="./onboarding.css">
 <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
 </head>
 <body>
@@ -88,6 +89,12 @@
       <span><b id="goalPosition">—</b><small>REQUEST</small></span>
       <button id="goalNext" type="button" aria-label="Next order">›</button>
     </div>
+  </section>
+
+  <section id="onboardingGuide" class="onboardingGuide" aria-label="Interactive tutorial" aria-live="polite" hidden>
+    <span id="onboardingPosition">1 / 3</span>
+    <div><strong id="onboardingTitle">Merge the glowing pair</strong><span id="onboardingText">Tap two matching pieces.</span></div>
+    <button id="onboardingSkip" type="button">Skip</button>
   </section>
 
   <section id="requestShelf" class="requestShelf" aria-label="Three active forest requests">

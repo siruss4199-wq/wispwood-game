@@ -31,7 +31,7 @@ jobs:
       - name: Check V3 UI module syntax
         run: node --check v3/app.mjs
       - name: Run V4 core tests
-        run: node --test tests/v4-core.test.mjs tests/v45-core.test.mjs tests/v46-core.test.mjs
+        run: node --test tests/v4-core.test.mjs tests/v45-core.test.mjs tests/v46-core.test.mjs tests/v4-onboarding-core.test.mjs
       - name: Run V4 simulation
         run: node --test tests/v4-simulation.test.mjs
       - name: Check V4 UI module syntax

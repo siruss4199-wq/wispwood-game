@@ -5,11 +5,11 @@ import {CHAINS,MAX_TIER,COLLECTION_TOTAL,producerForm,producerStage,MILESTONES,P
 import {createInitialState,restore,serialize} from './core/state.mjs';
 import {platform} from './platform.mjs';
 import {audio} from './audio.mjs';
-import {chapterProgress,completeMilestone as finishMilestone,completeOrder as finishOrder,currentMilestone,fillOrdersInPlace,frontierName as getFrontierName,initializePlayableState,merge,milestoneReady,move,nextFrontierIndices,orderReady,producerPreview,producerUpgradeCost,requirementProgress,retrieveItem,reviveSparseBoard,storeItem,tapProducer,upgradeProducer} from './core/engine.mjs';
+import {chapterProgress,completeMilestone as finishMilestone,completeOrder as finishOrder,currentMilestone,fillOrdersInPlace,frontierName as getFrontierName,initializePlayableState,merge,milestoneReady,move,nextFrontierIndices,orderReady,producerPreview,producerUpgradeCost,requirementProgress,retrieveItem,reviveSparseBoard,storeItem,tapProducer,upgradeProducer,skipOnboarding,mergeablePair,producerIndices} from './core/engine.mjs';
 
 const KEY='wispwood-v4';
 const $=s=>document.querySelector(s);
-const requestShelf=$('#requestShelf');
+const requestShelf=$('#requestShelf'),onboard=$('#onboardingGuide');
 const board=$('#board'),ordersEl=$('#orders'),sourcesEl=$('#sources'),storageEl=$('#storage'),collectionEl=$('#collectionGrid'),restorationMap=$('#restorationMap');
 const energy=$('#energy'),coins=$('#coins'),light=$('#light'),discovered=$('#discovered'),playerLevel=$('#playerLevel');
 const milestoneTitle=$('#milestoneTitle'),milestoneReq=$('#milestoneReq'),milestoneStep=$('#milestoneStep'),progressBar=$('#progressBar i');
@@ -154,6 +154,7 @@ function apply(r){
  state=r.state;
  selected=null;
  const events=r.events;
+ if(events.some(x=>x.type==='onboarding_step'))closePanels();
  if(events.some(x=>x.type==='order_completed'))selectedOrder=(state.activeOrders.find(o=>orderReady(state,o))??state.activeOrders[0])?.id??null;
  else if(previousOrder&&state.activeOrders.some(o=>o.id===previousOrder))selectedOrder=previousOrder;
  const big=events.some(x=>x.type==='milestone_completed'||x.type==='order_completed'||x.type==='producer_unlocked');
@@ -267,6 +268,7 @@ function closePanels(){
  panelButtons.forEach(b=>b.classList.remove('active'));
 }
 function togglePanel(name){
+ if(state.onboarding?.step!=='done')return;
  const panel=gamePanels.find(p=>p.dataset.panel===name),button=panelButtons.find(b=>b.dataset.openPanel===name);
  const opening=!panel?.classList.contains('open');
  closePanels();
@@ -334,6 +336,13 @@ function tileAria(cell,i){
 }
 function render(){
  fillOrdersInPlace(state);
+ const step=state.onboarding?.step??'done';
+ $('.gameShell').dataset.onboarding=step;
+ onboard.hidden=step==='done';
+ const guides={merge:['1 / 3','Merge the glowing pair','Tap or drag the two highlighted pieces.'],order:['2 / 3','Make your first delivery','Tap the highlighted ready request, then Deliver.'],producer:['3 / 3','Tap Rootfold Nursery','Tap the highlighted tree on the board for a new item.']};
+ if(step!=='done'){const g=guides[step];$('#onboardingPosition').textContent=g[0];$('#onboardingTitle').textContent=g[1];$('#onboardingText').textContent=g[2];}
+ const pair=step==='merge'?mergeablePair(state):null,source=step==='producer'?producerIndices(state)[0]:null;
+ if(step==='order')selectedOrder=(state.activeOrders.find(o=>orderReady(state,o))??state.activeOrders[0])?.id??null;
  if(state.moves>0&&(!selectedOrder||!state.activeOrders.some(o=>o.id===selectedOrder))){
   selectedOrder=(state.activeOrders.find(o=>orderReady(state,o))??state.activeOrders[0])?.id??null;
  }
@@ -353,6 +362,7 @@ function render(){
   b.type='button';
   b.className='tile '+cell.terrain;
   b.dataset.index=i;
+  if(pair?.includes(i)||source===i)b.classList.add('onboardingTarget');
   b.setAttribute('role','gridcell');
   b.setAttribute('aria-label',tileAria(cell,i));
 
@@ -469,11 +479,12 @@ function render(){
  activityMilestoneIcon.textContent=m?.icon??'🌳';
  activityMilestoneTitle.textContent=m?.title??'Forest Restored';
  activityMilestoneStep.textContent=`${state.milestoneIndex}/${MILESTONES.length}`;
- const visibleRequests=shelfOrders(state,selectedOrder);
+ const visibleRequests=step==='order'?[state.activeOrders.find(o=>o.id===selectedOrder)??state.activeOrders[0]]:shelfOrders(state,selectedOrder);
  requestMiniCards.forEach((card,slot)=>{
   const o=visibleRequests[slot];
   card.hidden=!o;if(!o)return;
   const npc=requestNPC(o),prog=requirementProgress(state,o.requirements),ready=orderReady(state,o),bonus=requestBonus(o);
+  card.classList.toggle('onboardingTarget',step==='order'&&slot===0);
   card.dataset.orderId=o.id;card.dataset.kind=o.kind??'normal';card.classList.toggle('ready',ready);card.classList.toggle('active',selectedOrder===o.id);
   card.setAttribute('aria-pressed',String(selectedOrder===o.id));
   card.setAttribute('aria-label',`${npc.name}: ${o.title}. ${prog.map(r=>itemText(r.chain,r.tier,r.count)+', '+Math.min(r.current,r.count)+' of '+r.count).join('; ')}. ${ready?(state.ordersCompleted?'Ready, tap to deliver':'Ready, select to confirm first delivery'):'Tap to focus'}. ${o.rewardCoins+bonus} coins, ${o.rewardLight} light, ${o.rewardEnergy} energy.`);
@@ -531,6 +542,7 @@ function render(){
  completeOrderBtn.textContent=focusedReady?'Deliver →':'Need items';
  questRibbon.classList.toggle('ready-to-deliver',focusedReady);
  deliveryCoach.hidden=!firstDelivery;
+ completeOrderBtn.classList.toggle('onboardingTarget',step==='order'&&firstDelivery);
  document.body.classList.toggle('deliveryTutorial',firstDelivery);
  completeMilestoneBtn.disabled=!milestoneReady(state,m);
  storeBtn.disabled=!(Number.isInteger(selected)&&state.cells[selected]?.content?.type==='item');
@@ -554,7 +566,8 @@ function render(){
   storageEl.appendChild(b);
  });
 
- if(state.moves===0&&empties===0)hint.textContent='Start here: merge any glowing matching pair to create your first free space.';
+ if(step!=='done')hint.textContent=$('#onboardingText').textContent;
+ else if(state.moves===0&&empties===0)hint.textContent='Start here: merge any glowing matching pair to create your first free space.';
  else if(selectedOrder)hint.textContent='Order selected — useful items are outlined. Build the missing tiers and deliver when READY appears.';
  else if(state.ordersCompleted===0)hint.textContent='Your first order is pinned above — merge the outlined pieces and keep the Wisp Rush meter moving.';
  else if(state.milestoneIndex===0)hint.textContent='Orders fund restoration. Keep one eye on the Current Restoration requirements above.';
@@ -564,6 +577,7 @@ function render(){
  save();
 }
 
+$('#onboardingSkip').addEventListener('click',()=>apply(skipOnboarding(state)));
 completeOrderBtn.addEventListener('click',()=>{audio.unlock();if(selectedOrder){lastRewardOrigin=requestShelf;apply(finishOrder(state,selectedOrder));}});
 completeMilestoneBtn.addEventListener('click',()=>{audio.unlock();apply(finishMilestone(state));});
 storeBtn.addEventListener('click',()=>{audio.unlock();Number.isInteger(selected)&&apply(storeItem(state,selected));});
