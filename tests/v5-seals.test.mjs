@@ -40,7 +40,7 @@ test('receivers require a charged repaired lift and grant different, single-use 
   if(receiver==='relay'){assert.equal(s.surge,3);assert.deepEqual(s.charges,{rig:7,chart:7,flux:7});assert.equal(s.board.filter(x=>x?.family==='rig'&&x.tier===3).length,before.filter(x=>x?.family==='rig'&&x.tier===3).length+1,'tangible reward even when charges were already full');}
   else{assert.equal(s.surge,0);assert.deepEqual(s.charges,{rig:0,chart:0,flux:0});assert.ok(s.board.some(x=>x?.type==='crate'&&x.kind==='relic'&&x.left===5));}
   // Isolate seal/reward mechanics; the craft-calibration gate has its own tests.
-  s.craftMastery={rig:true,chart:true,flux:true};
+  s.craftMastery={rig:true,chart:true,flux:true};s.workshop.repaired=true;s.camp.pier=true;
   reject(s,{type:'power'});ok(s,{type:'goal'});assert.equal(s.stage,4);
  }
 });
@@ -50,7 +50,8 @@ test('legacy saves retain board, energy and earned progress; migration is idempo
   if(stage>=3)for(const i of [20,23]){old.board[i].phase='done';old.board[i].progress=2;}
   const saved=load(JSON.stringify(old));assert.equal(saved.stage,stage);assert.deepEqual(saved.board,old.board);assert.equal(saved.energy,old.energy);
   assert.equal(saved.seals.navigation,stage>=2);assert.equal(saved.seals.resonance,stage>=3);assert.deepEqual(load(JSON.stringify(saved)),saved);
-  if(stage===3){ok(saved,{type:'goal'});assert.equal(saved.stage,4);}
+  // Legacy pre-vault saves keep everything and fund the Pier through real camp actions.
+  if(stage===3){reject(saved,{type:'goal'});saved.requests.supplies=20;ok(saved,{type:'restoreWorkshop'});ok(saved,{type:'buildPier'});ok(saved,{type:'goal'});assert.equal(saved.stage,4);}
  }
 });
 test('full inventory and depleted sources remain recoverable without deleting a device',()=>{

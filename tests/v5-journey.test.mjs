@@ -7,7 +7,7 @@ function opened(){const s=fresh(0);while(s.stage<4&&s.moves<250)ok(s,choose(s,{s
 function engine(){const s=opened();for(let n=0;n<150&&!s.journey.engine;n++)ok(s,choose(s,{sideFirst:false,openCaches:true}));assert.ok(s.journey.engine);return s;}
 test('both kits spend different real stock and return the promised three useful objects',()=>{
  for(const kit of Object.keys(KITS)){
- const s=fresh();s.craftMastery={rig:true,chart:true,flux:true};s.stage=3;s.landingStep=2;s.routePrepared=true;s.seals.navigation=s.seals.stabilization=s.seals.resonance=true;s.board=s.board.map(x=>x?.type==='source'?x:null);
+ const s=fresh();s.craftMastery={rig:true,chart:true,flux:true};s.stage=3;s.landingStep=2;s.routePrepared=true;s.workshop.repaired=true;s.camp.pier=true;s.seals.navigation=s.seals.stabilization=s.seals.resonance=true;s.board=s.board.map(x=>x?.type==='source'?x:null);
  for(const [i,r]of KITS[kit].needs.entries())s.board[7+i]=item(r.family,r.tier);
  assert.equal(deliveryItems(s,{type:'goal',kit}).length,2);ok(s,{type:'goal',kit});assert.equal(s.journey.kit,kit);assert.equal(s.stage,4);
  const family=kit==='field'?'rig':'chart';for(const tier of [2,1])assert.ok(s.board.filter(x=>x?.family===family&&x.tier===tier).length>=(tier===1?2:1));
@@ -15,7 +15,7 @@ test('both kits spend different real stock and return the promised three useful 
  }
 });
 test('kit cannot silently lose promised finds on a full board or use an invalid choice',()=>{
- const s=fresh();s.craftMastery={rig:true,chart:true,flux:true};s.stage=3;s.landingStep=2;s.routePrepared=true;s.seals.navigation=s.seals.stabilization=s.seals.resonance=true;s.board=Array.from({length:36},()=>item('flux',0));s.board[7]=item('rig',2);s.board[8]=item('chart',1);
+ const s=fresh();s.craftMastery={rig:true,chart:true,flux:true};s.stage=3;s.landingStep=2;s.routePrepared=true;s.workshop.repaired=true;s.camp.pier=true;s.seals.navigation=s.seals.stabilization=s.seals.resonance=true;s.board=Array.from({length:36},()=>item('flux',0));s.board[7]=item('rig',2);s.board[8]=item('chart',1);
  reject(s,{type:'goal',kit:'field'});reject(s,{type:'goal',kit:'missing'});
  s.board[9]=null;ok(s,{type:'goal',kit:'field'});
 });

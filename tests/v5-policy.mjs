@@ -5,6 +5,8 @@ import {sameKind} from '../v5/treasures.mjs';
 import {expeditionGoal as goal,ready,count,normalContract,SOURCES,sourceUnlocked} from '../v5/core.mjs';
 import {ANCHORS,ROUTES,equipment,anchors} from '../v5/expedition.mjs';
 import {circuit,linkPhase,optics} from '../v5/seals.mjs';
+import {recommendedOrder} from '../v5/camp-goals.mjs';
+import {requestAction} from './v5-workshop-policy.mjs';
 const req=(family,tier,count=1)=>({family,tier,count});
 export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,session=null,style='expedition',findStrategy=null,decode=true,route=null,mergeSight=false,receiver=null,vaultKit='field'}={}){
  if(!goal(s))return null;
@@ -29,11 +31,18 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
   if(s.energy<=3)return {type:'ration'};
   return {type:s.charges[family]?'produce':'service',id:family};
  }
+ // Main-path camp gates (Workshop before the crossing survey, Supply Pier
+ // before the vault) are funded by real crew orders, never by seeding.
+ const gate=s.stage===0&&s.landingStep===1&&!s.workshop?.repaired?'restoreWorkshop':s.stage===3&&!masteryPending(s).length&&!s.camp?.pier?(s.workshop?.repaired?'buildPier':'restoreWorkshop'):null;
+ if(gate)return fundCamp(s,gate);
  const spaces=s.board.filter(x=>x===null).length;
  // Use the earned specialty before charging an engine infusion. A remaining
  // reward must not make the scripted player repeat an impossible infusion.
  if(s.journey?.instrument&&s.journey.boost&&spaces){
   if(s.energy<=3)return {type:'ration'};
+  // Merge enriched output between pulls rather than spamming the producer.
+  const boosted=s.journey.boost.family,pairs=[1,2,3].map(t=>s.board.flatMap((x,i)=>x?.type==='item'&&!x.line&&x.family===boosted&&x.tier===t?[i]:[])).find(p=>p.length>=2);
+  if(pairs)return {type:'merge',from:pairs[0],to:pairs[1]};
   const id=s.journey.boost.family;return {type:s.charges[id]?'produce':'service',id};
  }
  // An impulsive merger compacts ALL families, even when a pair could be installed
@@ -98,4 +107,28 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
  if(s.energy<=3)return {type:'ration'};
  if(!sourceUnlocked(s,r.family))throw Error('Policy targets locked source');
  return s.charges[r.family]?{type:'produce',id:r.family}:{type:'service',id:r.family};
+}
+
+function fundCamp(s,gate){
+ const crates=s.board.flatMap((x,i)=>x?.type==='crate'?[i]:[]);
+ if(s.requests.supplies>=(gate==='restoreWorkshop'?8:12)){
+  if(gate==='buildPier'&&crates.length>=3)return {type:'crate',index:crates[0]};
+  if(s.board.includes(null))return {type:gate};
+ }
+ if(s.energy<=3)return {type:'ration'};
+ if(!s.board.includes(null)){
+  for(let i=0;i<36;i++)for(let j=i+1;j<36;j++)if(sameKind(s.board[i],s.board[j])&&s.board[i].tier<6)return {type:'merge',from:i,to:j};
+  if(crates.length)return {type:'crate',index:crates[0]};
+  const i=s.board.findIndex(x=>x?.type==='item'&&!x.line&&x.tier<2);if(i>=0)return {type:'recycle',index:i};
+ }
+ // Follow the game's recommended order (the visible CTA); before tapping a
+ // producer for it, make any merge another order is waiting on.
+ const lane=s.requests.orders.indexOf(recommendedOrder(s)),next=requestAction(s,lane);
+ const occupied=s.board.filter(Boolean).length;
+ // A thin board gets refilled from the order's producer before spending more stock.
+ const order=s.requests.orders[lane],spend=order.needs.reduce((n,r)=>n+r.count,0);
+ if(occupied-(next.type==='request'?spend:0)<19&&s.board.includes(null)){const id=(next.type==='produce'||next.type==='service')?next.id:order.needs[0].family;if(s.charges[id])return {type:'produce',id};}
+ if(next.type==='request'||next.type==='merge')return next;
+ const merge=s.requests.orders.flatMap((o,i)=>o?[requestAction(s,i)]:[]).find(a=>a.type==='merge');
+ return merge??next;
 }

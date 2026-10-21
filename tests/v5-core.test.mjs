@@ -22,6 +22,7 @@ test('landing survey makes a two-family decision before any route can open',()=>
  success(saved,{type:'produce',id:'chart'});
  failUnchanged(saved,{type:'breach',index:24});
  saved.board[7]=item('chart',2);saved.board[8]=item('rig',2);
+ failUnchanged(saved,{type:'goal'});saved.workshop.repaired=true;
  success(saved,{type:'goal'});
  assert.equal(saved.stage,1);assert.equal(saved.landingStep,2);
  assert.equal(goal(saved).name,'Choose your crossing');

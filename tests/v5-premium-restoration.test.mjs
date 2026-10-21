@@ -13,7 +13,7 @@ test('Survey progression preserves both crafted route tools and spends only chos
  perform(s,{type:'merge',from:7,to:8});
  perform(s,{type:'goal'});
  assert.equal(s.landingStep,1);
- s.board[7]=item('rig',2);s.board[8]=item('chart',2);
+ s.board[7]=item('rig',2);s.board[8]=item('chart',2);s.workshop.repaired=true;
  assert.equal(ready(s,goal(s).needs),true);
  perform(s,{type:'goal'});
  assert.equal(s.stage,1);

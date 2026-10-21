@@ -30,7 +30,7 @@ test('an invalid supplied clear tool never silently consumes another tool',()=>{
 });
 test('survey retains both tools without consumption feedback; chosen route spends only one',()=>{
  for(const [route,family,kept] of [[24,'rig','chart'],[27,'chart','rig']]){
-  const s=fresh(0);s.landingStep=1;s.board[1]=item('rig',2);s.board[3]=item('chart',2);
+  const s=fresh(0);s.landingStep=1;s.workshop.repaired=true;s.board[1]=item('rig',2);s.board[3]=item('chart',2);
   assert.deepEqual(deliveryItems(s,{type:'goal'}),[]);assert.ok(act(s,{type:'goal'},0).ok);
   prepareRoute(s,route===24?'ridge':'conduit');
   const from=s.board.findIndex(x=>x?.family===family&&x.tier===2);

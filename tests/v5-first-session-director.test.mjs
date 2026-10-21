@@ -20,7 +20,8 @@ test('earned fragments invite an attainable pair merge then return to expedition
  assert.deepEqual(cue.pairs,[3,4]);assert.equal(cue.requestId,undefined,'a real merge pair takes priority over any new order');assert.equal(JSON.stringify(s),before);
  assert.ok(act(s,{type:'merge',from:3,to:4}).ok);
  assert.ok(s.discovered.includes('chart:tide:1'));
- assert.match(firstSessionCue(s).hint,/SIGHT LENS/);
+ assert.match(firstSessionCue(s).hint,/RESTORE THE WORKSHOP/);assert.ok(s.requests.orders.some(o=>o?.id===firstSessionCue(s).requestId),'the workshop cue points at a real order');
+ s.workshop.repaired=true;assert.match(firstSessionCue(s).hint,/SIGHT LENS/);
 });
 test('crossing cue does not change saves or impose a new stage gate',()=>{
  const s=fresh(0);s.stage=1;const before=JSON.stringify(s);

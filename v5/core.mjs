@@ -307,6 +307,10 @@ export function act(s,a,now=Date.now()){
  if(a.type==='goal'){
   if(s.stage===3&&masteryPending(s).length)return fail('Craft and equip one expedition instrument before opening the Vault.');
   if(s.stage===3&&!allSeals(s))return fail('Resolve all three vault seals first.');
+  // Order-funded camp restorations sit on the main path: the crossing gear is
+  // fitted in Ivo's Workshop, and the vault expedition sails from the Pier.
+  if(s.stage===0&&s.landingStep===1&&!s.workshop?.repaired)return fail('Restore the Coastal Workshop first. Ivo fits the crossing gear there.');
+  if(s.stage===3&&!s.camp?.pier)return fail('Build the Supply Pier first. The vault expedition sails from it.');
   if(s.stage===3&&a.kit&&!KITS[a.kit])return fail('Choose a salvage or survey kit.');
   const kit=s.stage===3&&!s.journey?.kit?(KITS[a.kit]?a.kit:Object.keys(KITS).find(k=>ready(s,KITS[k].needs))):null;
   const g=kit?{...expeditionGoal(s),needs:KITS[kit].needs}:expeditionGoal(s);if(s.stage===3&&!s.journey?.kit&&!kit)return fail('Prepare a salvage or survey kit.');if(!g||g.action&&g.action!=='goal'||!ready(s,g.needs))return fail('Make the highlighted expedition items.');

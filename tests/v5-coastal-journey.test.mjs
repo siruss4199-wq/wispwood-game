@@ -15,6 +15,9 @@ test('one opening objective connects deliveries, the compass and working camp',(
 });
 test('a ready breakthrough is never hidden behind optional deliveries',()=>{
  const s=fresh(1);s.landingStep=1;s.board[1]=item('rig',2);s.board[3]=item('chart',2);
+ // The crossing is fitted in the restored Workshop, so it is not yet a ready breakthrough.
+ assert.notEqual(objective(s).name,'Chart the safe crossing');
+ s.workshop.repaired=true;
  assert.equal(objective(s).name,'Chart the safe crossing');
 });
 test('the Pearl connects the Vault engine to deep exploration without mutating saves',()=>{

@@ -34,7 +34,8 @@ test('new player earns and merges the first Reef Compass via two real deliveries
  const merge=act(s,{type:'merge',from:pairs[0],to:pairs[1]},actions*1000);
  assert.ok(merge.ok,merge.message);
  assert.ok(s.discovered.includes('chart:tide:1'));
- assert.match(firstSessionCue(s).hint,/SIGHT LENS/);
+ assert.match(firstSessionCue(s).hint,/RESTORE THE WORKSHOP/);assert.ok(s.requests.orders.some(o=>o?.id===firstSessionCue(s).requestId),'the workshop cue points at a real order');
+ s.workshop.repaired=true;assert.match(firstSessionCue(s).hint,/SIGHT LENS/);
  assert.equal(s.stage,0,'story cue never skips expedition restoration');
  const reloaded=load(JSON.stringify(s));
  assert.deepEqual(reloaded.board,s.board);

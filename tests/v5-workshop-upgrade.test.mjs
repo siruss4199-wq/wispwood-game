@@ -90,6 +90,8 @@ test('an earned, non-spare crossing tool stays protected from optional requests'
   assert.equal(p.indices.includes(13),false,'a real request must never consume the rig crossing tool');
   assert.equal(p.indices.includes(14),false,'a real request must never consume the chart crossing tool');
  }
+ assert.equal(act(s,{type:'goal'}).ok,false,'the crossing gear is fitted in the restored Workshop');
+ s.workshop.repaired=true;
  go(s,{type:'goal'});// the crossing survey itself still reads the board directly
  assert.equal(s.stage,1);assert.equal(s.routePrepared,true);
  assert.deepEqual(s.board[13],item('rig',2));assert.deepEqual(s.board[14],item('chart',2));

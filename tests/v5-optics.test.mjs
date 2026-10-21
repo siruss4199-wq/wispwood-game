@@ -28,7 +28,7 @@ test('real mid-optics saves preserve paid charge, inventory and camp progress, w
   assert.equal(saved.seals.optics.primed,old.seals.optics.primed);assert.deepEqual(load(JSON.stringify(saved)),saved);
   reject(saved,{type:'prime'});
   if(phase==='completed'){reject(saved,{type:'power'});assert.ok(saved.seals.resonance);}
-  else {ok(saved,{type:'power',index:receivers(saved)[0]});reject(saved,{type:'power'});ok(saved,{type:'goal'});assert.equal(saved.stage,4);}
+  else {ok(saved,{type:'power',index:receivers(saved)[0]});reject(saved,{type:'power'});reject(saved,{type:'goal'});while(saved.board.filter(x=>x?.type==='crate').length>=3)ok(saved,{type:'crate',index:saved.board.findIndex(x=>x?.type==='crate')});ok(saved,{type:'buildPier'});ok(saved,{type:'goal'});assert.equal(saved.stage,4);}
  }
 });
 test('uncharged legacy state still spends exactly one real Loop Cell; no free migration reward',()=>{

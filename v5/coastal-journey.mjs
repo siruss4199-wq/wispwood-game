@@ -1,13 +1,14 @@
 import {campGoal,recommendedOrder} from './camp-goals.mjs';
 import {requestProgress} from './requests.mjs';
 import {firstPier} from './first-pier.mjs';
+import {masteryPending} from './mastery.mjs';
 
 // A presentation of the existing journey, not another quest/save system.
 // Ready expedition actions always win; optional orders never hide a breakthrough.
 export function coastalObjective(s,expedition){
  if(s.stage===0&&s.landingStep===1){
   const ready=expedition.needs.every(r=>s.board.filter(x=>x?.type==='item'&&!x.line&&x.family===r.family&&x.tier===r.tier).length>=r.count);
-  if(ready)return expedition;
+  if(ready&&s.workshop.repaired)return expedition;
   if(!s.discovered.includes('chart:tide:1')){
    const fragments=s.board.filter(x=>x?.line==='tide'&&x.tier===0).length;
    const pier=firstPier(s),lane=pier?.level===0?0:pier?.level===1?1:null;
@@ -18,6 +19,8 @@ export function coastalObjective(s,expedition){
   }
   if(!s.workshop.repaired)return {...campGoal(s),phase:'MAKE A WORKING CAMP',next:'Ivo’s tool press makes repair parts. Restore it, then follow the compass across the coast.'};
  }
+ // The vault expedition sails from the Supply Pier: crew orders fund it.
+ if(s.stage===3&&!masteryPending(s).length&&!s.camp.pier){const camp=campGoal(s);return {...camp,phase:'STAGE THE VAULT EXPEDITION',next:'The vault expedition sails from the Supply Pier. '+camp.next};}
  if(s.stage===4&&s.camp.loft&&!s.camp.deepSurvey&&s.discovered.includes('chart:tide:2')&&!s.journey.engine)return expedition;
  return s.stage===4?campGoal(s):expedition;
 }
