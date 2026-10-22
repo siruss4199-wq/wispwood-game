@@ -44,6 +44,7 @@ function showStory(before){
  let el=$('#storyLine');
  if(!el){el=document.createElement('div');el.id='storyLine';el.setAttribute('role','status');el.setAttribute('aria-live','polite');$('.world').append(el);}
  el.innerHTML=`<span class="storyFace">${portrait(b.voice.startsWith('Neri')?'neri':'ivo')}</span><span class="storyText"><b>${b.voice}</b><span>${b.line}</span><i>${b.question}</i></span>`;
+ el.onclick=()=>{el.hidden=true;};
  el.hidden=false;clearTimeout(storyTimer);storyTimer=setTimeout(()=>{el.hidden=true;},8000);
 }
 function visibleGoal(){return state.stage===4&&showVaultGoal?expeditionGoal(state):coastalObjective(state,expeditionGoal(state));}
@@ -429,7 +430,7 @@ function run(a){
  if(!result.ok)return result;
  // A camp place restored anywhere gets its story beat; other progress keeps the scene line.
  const restored=doneIds(state).find(id=>CAMP_PLACES.includes(id)&&!placesBefore.includes(id));
- if(restored)setTimeout(()=>showBeat(restored),$('#coastMap').open?0:700);
+ if(restored)setTimeout(()=>$('#coastMap').open?showBeat(restored):sceneBeat(restored),$('#coastMap').open?0:700);
  else if(storyKey()!==storyBefore)setTimeout(()=>showStory(storyBefore),900);
  platform.startGameplay();if(result.event==='restoration'){focus='goal';selected=state.board.findIndex(x=>x?.type==='source'&&x.id==='rig');}else if(['milestone','deployment','contract','discovery','clear','turn'].includes(result.event)){focus='goal';selected=null;}if(a.type==='merge'){selected=state.stage===0&&!state.landingStep&&ready(state,STAGES[0].needs)?null:state.board[result.index]?.type==='prism'?null:result.index;if(selected===null)focus='goal';}render();persist();
  if(a.type==='goal'&&before===0&&landingBefore===1){for(const tile of board.querySelectorAll('.tile.item')){const x=state.board[+tile.dataset.index];if(x.tier===2&&['rig','chart'].includes(x.family))tile.classList.add('unlocked');}board.querySelectorAll('.rock.surveyed').forEach(tile=>tile.classList.add('unlocked'));}
@@ -584,6 +585,20 @@ function showBeat(id){
   $('[data-beat-next]').onclick=()=>{if(last)showMap();else{step++;draw();}};
  };
  draw();if(!dialog.open)dialog.showModal();sound.play('milestone');
+}
+// During play the crew speaks over the coast picture, one line per tap, without
+// stopping the board; the map keeps every beat for a full replay.
+function sceneBeat(id){
+ const p=placeById(id);let step=0;
+ let el=$('#storyLine');
+ if(!el){el=document.createElement('div');el.id='storyLine';el.setAttribute('role','status');el.setAttribute('aria-live','polite');$('.world').append(el);}
+ const draw=()=>{
+  const line=p.lines[step],last=step===p.lines.length-1;
+  el.innerHTML=`<span class="storyFace">${portrait(line.who==='Neri'?'neri':'ivo')}</span><span class="storyText"><b>${line.who} · ${p.name} restored</b><span>${line.text}</span><i>${last?'Tap MAP to see the whole coast.':'Tap for more · '+(step+1)+'/'+p.lines.length}</i></span>`;
+  el.hidden=false;clearTimeout(storyTimer);storyTimer=setTimeout(()=>{if(last)el.hidden=true;else{step++;draw();}},last?7000:5000);
+ };
+ el.onclick=()=>{if(step<p.lines.length-1){step++;draw();}else{el.hidden=true;clearTimeout(storyTimer);}};
+ draw();sound.play('milestone');
 }
 $('#mapButton').onclick=showMap;
 $('#coastMap .close').onclick=()=>$('#coastMap').close();
