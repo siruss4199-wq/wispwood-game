@@ -83,3 +83,8 @@ header .merit{display:none}
 .goalProgress s{border-radius:6px}
 .goalProgress b{inset:0;right:auto;bottom:auto;width:100%;display:grid;place-items:center;background:none;padding:0;font-size:8.5px;line-height:11px;color:#0d4e44;text-shadow:0 0 3px #fff}
 .progressUp{bottom:14px;right:0}
+/* Dig-out board: sand cells around the camp. Buried finds peek out of the sand,
+   faded and half-sunk; a merge next to the sand digs them out. */
+#board .tile.sand{background:radial-gradient(circle at 30% 28%,#fff5dc 0 3px,transparent 4px),radial-gradient(circle at 72% 70%,#e6cf9e 0 2px,transparent 3px),linear-gradient(160deg,#f7e8c6,#ecd4a3);box-shadow:inset 0 -3px 0 #d9bd86,inset 0 0 0 1px #edd8ab;border-radius:10px}
+#board .tile.sand .art.buried{opacity:.62;transform:translateY(18%) scale(.82);filter:sepia(.35) saturate(.8);-webkit-mask-image:linear-gradient(#000 55%,transparent 88%);mask-image:linear-gradient(#000 55%,transparent 88%)}
+#board .tile.sand.match{outline:3px dashed #229a92;outline-offset:-2px}

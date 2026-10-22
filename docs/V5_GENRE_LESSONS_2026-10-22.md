@@ -129,6 +129,27 @@ real time in which spent energy refills, as a reason to come back".
 - Also fixed: an earlier comment in the density simulation (step 4a) had swallowed two
   assertions (minimum occupancy, no long empty stretch); they run again.
 
+## Dig-out start (user, 2026-10-22: two beach-game screenshots, "the first is the start, the second after many sessions")
+The user rejected the covered board ("everything is just ordinary items hidden away")
+and asked for meaningful boxes and an unpacking process. The reference start is a small
+open pocket in sand, with buried items peeking out, and numbered level cells around it.
+- New cell `{type:'sand',find?}` (`v5/core.mjs`: `sand`, `dig`). A merge digs the sand
+  directly above, below, left and right of the merged part: plain sand becomes space; a
+  buried part comes out as a free part; a buried jar pays its energy; a buried chest
+  becomes a Saltbound Locker (a parts case to open).
+- Fresh board: an open camp around Rivet Rover (cells 0–2, 6–8, 12–13, 18) and 17 sand
+  cells: 11 buried parts, energy jars +8 and +5, one chest, three plain. Fixtures
+  (producers, sites, routes, rocks, the salvage case) are unchanged; the 13 numbered
+  gates stay on the new column and row. The first tutorial merge (7→8) digs two parts out.
+- Buried finds are drawn faded and half-sunk in the sand; the selection panel names
+  them and says how to dig.
+- Route breaches, devices and the Vault opening dig sand as well (the Vault clears all of it).
+- Salt-crusted parts no longer appear in new games; saves that have them keep them.
+- Saves: older saves gain no sand; sand round-trips; a malformed find (bad family, tier
+  above 3, a line, jar energy outside 1–50) starts fresh. Keys unchanged.
+- Scripted players (`tests/v5-crust-policy.mjs`) merge a spare pair beside the sand
+  before tapping a producer again, as a person digging out would.
+
 ## Sources and limits
 No first-party data was found. Travel Town figures (100 energy, 72-cell board) come
 from fan guides; the "top-grossing" claim for Gossip Harbor is unverified. Level

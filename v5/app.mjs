@@ -260,7 +260,9 @@ let lastGoal=null,lastProgress=null;
 function renderProgress(g){
  let el=$('#goalProgress');
  if(!el){el=document.createElement('div');el.id='goalProgress';el.className='goalProgress';el.setAttribute('role','progressbar');el.setAttribute('aria-valuemin','0');el.setAttribute('aria-valuemax','100');el.innerHTML='<i><s></s></i><b></b>';$('.objective').append(el);}
- const pct=g?goalProgress(state,g):null;
+ // Before the first merge the landing goal is not ready yet (the spare Grip tool on
+ // the board does not count), so the bar starts empty.
+ const pct=!g?null:state.stage===0&&!state.landingStep&&!state.merges?0:goalProgress(state,g);
  el.hidden=pct===null;
  if(pct===null){lastGoal=null;lastProgress=null;return;}
  el.querySelector('s').style.width=pct+'%';el.querySelector('b').textContent=pct+'%';
@@ -420,6 +422,7 @@ function renderSelection(){
 
   }
   else if(x.type==='sealed')desc='Unchosen excavation ground. Opens when the vault is secured.';
+  else if(x.type==='sand')desc=x.find?`Something is buried here: ${nameOf(x.find)}. Merge any two parts right next to it to dig it out.`:'Sand. Merge any two parts right next to it to dig it away and make room for your camp.';
   else if(x.type==='gate')desc=`Sand. This space opens at expedition level ${x.level} (you are level ${state.level.level}). Merges, crew orders and restorations all earn XP.`;
   else if(x.type==='jar')desc=`Salt-sealed energy. Merge any two parts in a space right next to it to crack it: +${x.energy} energy at once.`;
   else if(x.type==='cache')desc='A sealed chest of expedition parts. Merge any two parts right next to it to crack it open.';
