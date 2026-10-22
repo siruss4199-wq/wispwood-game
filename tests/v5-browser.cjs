@@ -41,7 +41,9 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
   assert.equal(await page.evaluate(()=>[...document.images].every(x=>x.complete&&x.naturalWidth>0)),true);
   for(const tile of await page.locator('#board .tile').all()){const b=await tile.boundingBox();assert.ok(b.width>=44&&b.height>=44,'touch targets stay at least 44px');}
   assert.equal(await page.locator('.tile.site').count(),3);assert.equal(await page.locator('.tile.route').count(),2);
-  for(const family of ['rig','chart','flux']){const css=await page.locator(`.tile.item[data-family="${family}"]`).first().evaluate(el=>({background:getComputedStyle(el).backgroundColor,image:getComputedStyle(el).backgroundImage,shadow:getComputedStyle(el).boxShadow}));assert.deepEqual(css,{background:'rgba(0, 0, 0, 0)',image:'none',shadow:'none'});}
+  // On the dig-out start only Rivet Rover parts lie loose; Kite and Crucible parts are still in the sand.
+  assert.equal(await page.locator('.tile.item[data-family="chart"],.tile.item[data-family="flux"]').count(),0);
+  for(const family of ['rig']){const css=await page.locator(`.tile.item[data-family="${family}"]`).first().evaluate(el=>({background:getComputedStyle(el).backgroundColor,image:getComputedStyle(el).backgroundImage,shadow:getComputedStyle(el).boxShadow}));assert.deepEqual(css,{background:'rgba(0, 0, 0, 0)',image:'none',shadow:'none'});}
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   const bounds=await page.locator('#board').boundingBox();assert.ok(bounds.width>=Math.min(width-24,370));assert.ok(bounds.y<500,'request shelf leaves the board visible without shrinking its targets');
   if(width<500){
