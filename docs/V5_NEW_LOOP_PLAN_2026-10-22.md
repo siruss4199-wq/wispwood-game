@@ -1,6 +1,6 @@
 # Vaultwake V5 — New core loop plan (2026-10-22)
 
-**Status:** plan for the user's approval. No code yet.
+**Status:** approved 2026-10-22 ("Zuvshuurlu, 1-r alhmaas ehle"). Step 1 built.
 **Why:** the user, after the dig-out board and generator boxes: "no sense of progress";
 "it is built on the old gameplay and stuck there". Every recent change was layered on
 the old five-step expedition chain (landing → crossing → Stone Lift → rings → Vault),
@@ -72,3 +72,23 @@ First merge < 10 s · first order < 1 min · first restoration ≈ 3 min · a le
    with area 1 tasks and story lines.
 2. Areas 2–4: Crucible, tide treasures, Vault ending; pacing tuned with scripted players.
 3. After approval: the new mode becomes the default entry; Classic is reached from the menu.
+
+## Step 1 — built (2026-10-22)
+- Page `v5/play.html`; modules `v5/next/game.mjs` (reducer, orders, saves),
+  `v5/next/areas.mjs` (Landing Beach, seven tasks with story lines), `v5/next/app.mjs`
+  (UI), `v5/next/next.css`. Classic `v5/index.html` is unchanged.
+- Landing Beach tasks (★): path 4, tent 6 (+10 energy), signal mast 9 (Survey Kite),
+  Workshop 12 (Rivet Rover +1 level), supply pier 16 (Medium map satchel), beacon 20
+  (fourth order card), cliff path 26 (area restored; Survey Worksite next update).
+- Orders: the first three teach the loop; then one or two needs from the open
+  generators, tiers growing with the level, never repeating a live need. Stars per
+  item by tier 1·1·2·4·7·12; XP = the order's stars; every third order adds a small box.
+- XP: merge 1, restoration 5, feeding a generator 5. Level chest: +5 energy and a small
+  box of an open family; levels open the numbered cells. No merge energy bonus.
+- Restored places appear on the coast picture, which warms as the area fills; each
+  restoration plays its lines. Map dialog lists the four areas; only Landing Beach has
+  tasks yet.
+- Scripted player (`tests/v5-next-policy.mjs`, 5–6 s per action): first restoration
+  0.6–0.7 min, Landing Beach in 16–19 min, five level-ups, energy ~11 at the end.
+- Tests: `tests/v5-next.test.mjs`, `tests/v5-next-browser.cjs` (360/390/430 px, added
+  to CI). Save key `vaultwake-v5-coast`; Classic keys are never written.

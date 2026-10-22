@@ -70,7 +70,7 @@ jobs:
           node tests/v5-resonance-metrics.mjs > test-artifacts/v5/resonance-policy-metrics.json
           node tests/v5-journey-metrics.mjs > test-artifacts/v5/journey-policy-metrics.json
       - name: Check V5 modules
-        run: node --check v5/app.mjs && node --check v5/core.mjs && node --check v5/art.mjs
+        run: node --check v5/app.mjs && node --check v5/core.mjs && node --check v5/art.mjs && node --check v5/next/app.mjs && node --check v5/next/game.mjs
       - name: Install browser smoke dependencies
         run: npm install --no-save playwright@1.62.1 && npx playwright install --with-deps chromium webkit
       - name: Verify mobile render, persistence and board interactions
@@ -99,6 +99,7 @@ jobs:
           node tests/v5-route-clarity-browser.cjs
           node tests/v45-browser.cjs
           node tests/v5-browser.cjs
+          node tests/v5-next-browser.cjs
       # Preserve compact debugging evidence only. Playwright videos can be >100 MB
       # per run; keep them local to CI instead of uploading on every PR update.
       - name: Save compact V5 screenshots and traces

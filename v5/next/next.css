@@ -1,0 +1,42 @@
+/* Coast Camp (new loop): additions on top of the Classic V5 styles. */
+.starPill{display:flex;align-items:center;gap:4px;background:#fff1c9;border:1px solid #e8cc7c;border-radius:14px;padding:6px 9px;font-size:15px;box-shadow:inset 0 1px 1px #fff8e4}
+.starPill i{font-style:normal;color:#e09a12;font-size:18px;line-height:18px}
+.starPill.bump{animation:starBump .6s ease-out}
+@keyframes starBump{30%{transform:scale(1.25);box-shadow:0 0 0 5px #f6c55a66}}
+/* Five header items must fit a 360px phone: the brand shrinks, then hides. */
+@media(max-width:430px){.nextMode header{gap:6px}.nextMode header .brand b{font-size:15px;letter-spacing:.5px}.nextMode header .brand span{display:none}.starPill{padding:5px 7px;font-size:14px}}
+@media(max-width:430px){.nextMode header .brand{display:none}}
+/* Restored places stand on the coast picture; the picture warms as the area fills. */
+.nextMode #scene{cursor:pointer;position:relative}
+.nextMode #scenePic img{filter:saturate(calc(.55 + .45*var(--restored,0))) brightness(calc(.9 + .1*var(--restored,0)))}
+.restored{position:absolute;inset:0;pointer-events:none}
+.restoredIcon{position:absolute;width:42px;height:42px;transform:translate(-50%,-50%);filter:drop-shadow(0 2px 2px #0005)}
+.restoredIcon .art,.restoredIcon img{width:100%;height:100%;object-fit:contain}
+.restoredIcon.pop{animation:restoredPop .9s cubic-bezier(.2,1.6,.4,1)}
+@keyframes restoredPop{from{transform:translate(-50%,-50%) scale(0)}60%{transform:translate(-50%,-50%) scale(1.5)}to{transform:translate(-50%,-50%) scale(1)}}
+/* Next restoration card. */
+.nextTask .taskIcon{display:block;width:40px;height:40px}
+.nextTask .taskIcon .art,.nextTask .taskIcon img{width:100%;height:100%;object-fit:contain}
+.nextTask #taskCost{font-weight:900;color:#a5650c;white-space:nowrap}
+.nextTask h1{font-size:clamp(16px,4.8vw,20px);line-height:1.15}
+.nextTask #taskButton.ready{background:#0f6f6a;color:#fff;box-shadow:0 2px 0 #0a4d49}
+.nextTask.ready{box-shadow:0 0 0 3px #f6c55a}
+/* Map: one block per area; only the current one lists its tasks. */
+#coastMap .mapTitle{margin:14px 16px 6px;font-size:18px;color:#1d3a40}
+.mapArea{margin:8px 10px 12px;border-radius:22px;overflow:hidden;background:#fff}
+.mapArea .mapHead{border-radius:0}
+.mapArea.coming img{filter:grayscale(.85) brightness(.9)}
+.mapArea.coming{opacity:.75}
+.place .placeIcon{width:56px;height:56px;display:grid;place-items:center;background:#f2ead8;border-radius:12px}
+.place .placeIcon .art,.place .placeIcon img{width:46px;height:46px;object-fit:contain}
+.place button[disabled]{background:#eef0f2;color:#7a8794}
+/* Menu and help. */
+#menu,#help{width:min(92vw,400px);padding:18px}
+#menu h2,#help h2{margin:0 0 8px;font-size:20px;color:#1d3a40}
+.menuNote{margin:0 0 14px;color:#5f7380;font-size:14px;line-height:1.4}
+.menuButton{display:block;width:100%;min-height:48px;margin:8px 0;border-radius:14px;background:#0f6f6a;color:#fff;font-weight:800;text-align:center;line-height:48px;text-decoration:none}
+.menuButton.danger{background:#f3e3df;color:#9a3b2a}
+#classicNote{display:block;color:#5f7380;font-size:12px}
+.helpList{padding-left:20px;margin:0;display:flex;flex-direction:column;gap:8px;font-size:14px;line-height:1.4;color:#1d3a40}
+/* Crew role under the name on order cards. */
+.nextMode .requestCrew .requestLane{font-size:10px;color:#5f7380}
