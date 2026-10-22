@@ -144,6 +144,10 @@ open pocket in sand, with buried items peeking out, and numbered level cells aro
 - Buried finds are drawn faded and half-sunk in the sand; the selection panel names
   them and says how to dig.
 - Route breaches, devices and the Vault opening dig sand as well (the Vault clears all of it).
+  A breach counts sand it would turn into space (plain, or hiding a jar) as room.
+- The chest is buried at cell 3, beside the open camp, so it is dug early. Buried
+  further out (cell 21) it came up late, and a player who never opens cases reached
+  four waiting cases; with it at 3 the limit of three holds again.
 - Salt-crusted parts no longer appear in new games; saves that have them keep them.
 - Saves: older saves gain no sand; sand round-trips; a malformed find (bad family, tier
   above 3, a line, jar energy outside 1–50) starts fresh. Keys unchanged.

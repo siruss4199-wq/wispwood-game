@@ -20,7 +20,7 @@ test('a fresh board starts in sand: no crusts, and buried parts count for nothin
  assert.deepEqual(s.board.flatMap((x,i)=>x?.type==='item'?[i]:[]),[2,7,8,13,18],'only Rivet Rover\'s starter parts lie in the open camp');
  for(const i of sandAt(s)){const x=s.board[i];assert.match(nameOf(x),x.find?/^Buried /:/^Sand$/);if(x.find?.type==='item')assert.equal(matches(x,x.find),false);}
  assert.equal(count(s,{family:'flux',tier:0}),0,'the three buried Violet shards are not counted');
- assert.match(nameOf(s.board[3]),/^Buried energy jar · \+8/);assert.match(nameOf(s.board[21]),/^Buried mystery chest/);
+ assert.match(nameOf(s.board[21]),/^Buried energy jar · \+8/);assert.match(nameOf(s.board[3]),/^Buried mystery chest/);
  const old=crusted();for(const i of crustAt(old)){const x=old.board[i];assert.equal(matches(x,{family:x.family,tier:x.tier}),false);assert.match(nameOf(x),/^Salt-crusted /);}
 });
 
@@ -42,9 +42,9 @@ test('a merge digs the orthogonal sand beside it: plain sand opens, buried parts
  assert.deepEqual(s.board[14],item('chart',1));assert.deepEqual(s.board[9],item('chart',0));
  for(const i of [3,15])assert.equal(s.board[i].type,'sand','diagonal sand stays');
  assert.equal(s.board.filter(x=>x===null).length,free+1);
- s.board[1]=item('chart',0);const r2=act(s,{type:'merge',from:1,to:9},2);// 9 borders the buried +8 jar at 3, a buried Violet shard at 15 and plain sand at 10
- assert.deepEqual(r2.cracked,[{index:3,type:'jar',energy:8,dug:true},{index:15,type:'sand',find:item('flux',0)},{index:10,type:'sand'}]);
- assert.equal(s.board[10],null,'plain sand becomes working space');assert.equal(s.board[3],null);assert.deepEqual(s.board[15],item('flux',0));
+ s.board[1]=item('chart',0);const r2=act(s,{type:'merge',from:1,to:9},2);// 9 borders the buried chest at 3, a buried Violet shard at 15 and plain sand at 10
+ assert.deepEqual(r2.cracked,[{index:3,type:'cache',dug:true},{index:15,type:'sand',find:item('flux',0)},{index:10,type:'sand'}]);
+ assert.equal(s.board[10],null,'plain sand becomes working space');assert.deepEqual(s.board[3],{type:'crate',kind:'locker',left:3});assert.deepEqual(s.board[15],item('flux',0));
 });
 
 test('crusted parts cannot be moved, merged together, recycled or used as the moving part',()=>{
@@ -124,6 +124,10 @@ test('a full board asks for space before the conduit breach instead of losing it
  for(let i=0;i<36;i++)if(s.board[i]===null)s.board[i]=item('flux',0);
  const before=JSON.stringify(s),r=act(s,{type:'breach',index:27,from:1},1);
  assert.equal(r.ok,false);assert.match(r.message,/free space/);assert.equal(JSON.stringify(s),before);
+ // Sand the breach digs into space (plain, or hiding a jar) counts as room.
+ s.board[28]=sand();s.board[29]=sand(sealedJar(4));const energy=s.energy;
+ const r2=act(s,{type:'breach',index:27,from:1},2);
+ assert.equal(r2.ok,true,r2.message);assert.deepEqual(s.board[28],item('flux',2));assert.equal(s.board[29]?.kind,'relic');assert.ok(s.energy>=energy+4);
 });
 
 test('a merge beside a sealed jar cracks it: its energy is paid at once and the space comes free',()=>{
@@ -133,17 +137,17 @@ test('a merge beside a sealed jar cracks it: its energy is paid at once and the 
  assert.equal(s.board[22],null);assert.equal(s.energy,energy+5+(s.merges%3===0?1:0));
  const r2=act(s,{type:'merge',from:18,to:2},2);// starter offcuts merge next to the +8 jar at 3
  assert.deepEqual(r2.cracked,[{index:3,type:'jar',energy:8}]);assert.equal(s.board[3],null);
- const t=fresh(0),e=t.energy,r3=act(t,{type:'merge',from:18,to:2},1);// on a new board the +8 jar is buried in sand beside 2
- assert.deepEqual(r3.cracked,[{index:3,type:'jar',energy:8,dug:true}]);assert.equal(t.board[3],null,'the dug-up jar leaves working space');assert.equal(t.energy,e+8+(t.merges%3===0?1:0));
+ const t=fresh(0);t.board[15]=item('rig',0);t.board[16]=item('rig',0);const e=t.energy,r3=act(t,{type:'merge',from:16,to:15},1);// on a new board the +8 jar is buried in sand at 21, below 15
+ assert.deepEqual(r3.cracked.find(x=>x.index===21),{index:21,type:'jar',energy:8,dug:true});assert.equal(t.board[21],null,'the dug-up jar leaves working space');assert.equal(t.energy,e+8+(t.merges%3===0?1:0));
 });
 
 test('the mystery chest cracks into a mixed parts case, loose or buried; diagonal merges crack nothing',()=>{
  const s=bare();s.board[12]=sealedCache();s.board[6]=item('rig',1);
  const r=act(s,{type:'merge',from:6,to:13},1);// Grip tools merge beside the loose chest at 12 (an older save)
  assert.deepEqual(r.cracked,[{index:12,type:'cache'}]);assert.deepEqual(s.board[12],{type:'crate',kind:'locker',left:3});
- const u=fresh(0);u.board[15]=item('rig',1);u.board[6]=item('rig',1);
- const r2=act(u,{type:'merge',from:6,to:15},1);// 15 borders the chest buried at 21
- assert.deepEqual(r2.cracked.find(x=>x.index===21),{index:21,type:'cache',dug:true});assert.deepEqual(u.board[21],{type:'crate',kind:'locker',left:3});
+ const u=fresh(0);
+ const r2=act(u,{type:'merge',from:18,to:2},1);// on a new board the chest is buried at 3, right beside the open camp
+ assert.deepEqual(r2.cracked,[{index:3,type:'cache',dug:true}]);assert.deepEqual(u.board[3],{type:'crate',kind:'locker',left:3});
  const t=bare();t.board[22]=sealedJar(5);t.board[1]=item('flux',0);t.board[15]=item('flux',0);
  const r3=act(t,{type:'merge',from:1,to:15},2);// 15 is diagonal to the jar at 22
  assert.equal(r3.ok,true);assert.deepEqual(r3.cracked,[]);assert.deepEqual(t.board[22],sealedJar(5));

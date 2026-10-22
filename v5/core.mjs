@@ -93,7 +93,7 @@ export function fresh(now=Date.now()){
  for(const i of [4,14,35])board[i]=sand(item('chart',1));
  for(const i of [15,16,29])board[i]=sand(item('flux',0));
  for(const i of [17,25])board[i]=sand(item('rig',0));
- board[28]=sand(item('rig',1));board[3]=sand(sealedJar(8));board[22]=sand(sealedJar(5));board[21]=sand(sealedCache());
+ board[28]=sand(item('rig',1));board[3]=sand(sealedCache());board[22]=sand(sealedJar(5));board[21]=sand(sealedJar(8));
  for(let k=0;k<GATE_LEVELS.length;k++)board[CORE_SIZE+k]=gate(GATE_LEVELS[k]);
  for(const i of [19,32])board[i]={type:'rock'};
  ['winch','scope','relay'].forEach((kind,n)=>board[[20,23,31][n]]={type:'site',kind,phase:'idle',progress:0});
@@ -329,7 +329,7 @@ function step(s,a,now){
   // The breach opens the two cells beside the route: buried ground becomes space,
   // salt-crusted parts come free, and parts the player already keeps there stay.
   const strip=[r.start+1,r.start+2],rewards=x.id==='ridge'?[item('rig',1)]:[item('flux',2),container('relic')];
-  const room=1+s.board.filter(y=>y===null).length+strip.filter(i=>s.board[i]?.type==='sealed').length;
+  const room=1+s.board.filter(y=>y===null).length+strip.filter(i=>s.board[i]?.type==='sealed'||s.board[i]?.type==='sand'&&(!s.board[i].find||s.board[i].find.type==='jar')).length;
   if(room<rewards.length)return fail(`Make ${rewards.length-room} free space${rewards.length-room>1?'s':''} for the breach finds.`);
   s.board[from]=null;s.expedition.route=x.id;s.stage=2;s.discovery=true;
   s.seals.navigation=true;trace(s,'seal',{seal:'navigation',method:'prepared-route',route:x.id});

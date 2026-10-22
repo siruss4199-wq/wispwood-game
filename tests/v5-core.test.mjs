@@ -83,7 +83,7 @@ test('dig-out board starts 33 of 36 core cells occupied: a small open camp, rewa
  const s=fresh();assert.deepEqual(s.board.flatMap((x,i)=>x===null?[i]:[]),[1,6,12]);
  // Sand covers most of the core; most of it hides parts, two energy jars and a mystery chest.
  const find=x=>!x?'':x.type==='item'?x.family+x.tier:x.type+(x.energy??'');
- assert.deepEqual(s.board.flatMap((x,i)=>x?.type==='sand'?[i+':'+find(x.find)]:[]),['3:jar8','4:chart1','9:chart0','10:','11:chart0','14:chart1','15:flux0','16:flux0','17:rig0','21:cache','22:jar5','25:rig0','26:chart0','28:rig1','29:flux0','33:chart0','35:chart1']);
+ assert.deepEqual(s.board.flatMap((x,i)=>x?.type==='sand'?[i+':'+find(x.find)]:[]),['3:cache','4:chart1','9:chart0','10:','11:chart0','14:chart1','15:flux0','16:flux0','17:rig0','21:jar8','22:jar5','25:rig0','26:chart0','28:rig1','29:flux0','33:chart0','35:chart1']);
  assert.equal(s.board.some(x=>['sealed','crust','jar','cache'].includes(x?.type)),false,'nothing salt-sealed lies loose on a new board');
  // The open camp: Rivet Rover's starter parts only.
  assert.deepEqual(s.board.flatMap((x,i)=>x?.type==='item'?[i+':'+x.family+x.tier]:[]),['2:rig0','7:rig0','8:rig0','13:rig1','18:rig0']);
@@ -127,7 +127,7 @@ test('first-session density stays active across goal-first, contract-first, cach
   const s=fresh(0),samples=[],checkpoints={fresh:inPlay(s)};let actions=0,lowRun=0,maxLowRun=0;
   while(s.stage<4&&actions<400){
    const cmd=choose(s,{sideFirst,openCaches,clearSalvage});if(s.stage===3&&cmd.type==='goal')checkpoints.preVault=inPlay(s);
-   success(s,cmd,++actions*4500);const occupied=inPlay(s);samples.push(occupied);assert.ok(s.board.filter(x=>x?.type==='crate').length<=4,'reward containers stay a small purposeful set');// a player who never opens cases holds the starter case, the dug-up chest, a level chest and the relic case
+   success(s,cmd,++actions*4500);const occupied=inPlay(s);samples.push(occupied);assert.ok(s.board.filter(x=>x?.type==='crate').length<=3,'reward containers stay a small purposeful set');
    lowRun=occupied<18?lowRun+1:0;maxLowRun=Math.max(maxLowRun,lowRun);
    if([27,67,134].includes(actions))checkpoints[actions]=occupied;
   }
