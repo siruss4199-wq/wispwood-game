@@ -49,6 +49,20 @@ step is reverted. Lesson from the rollback: never change loop and look together.
   held by producers, devices, routes and blockers; more crusts would need a larger
   board or fewer fixtures, which is a separate decision.
 
+## Step 3 — coast map and story beats (approved 2026-10-22, "3-r alhamaas urgeljluul")
+- `v5/coast-map.mjs`: eleven places in story order (landing path, Workshop, Supply
+  Pier, Charting Loft, crossing, Stone Lift, ring engine, Vault, Precision Bench, Deep
+  Survey, fleet signal), each with 2–3 lines from Ivo or Neri.
+- Status per place: restored · ready (the real restoration action succeeds now) ·
+  saving (only ◆ missing) · the board's current goal · locked (names what comes first).
+- Opened with the header MAP button (orange dot when something can be built) or a tap
+  on the open part of the scene. Camp places are built from the map; expedition places
+  send the player to the board.
+- Restoring a camp place anywhere (map, scene Workshop, goal card) plays its beat one
+  line at a time; restored places can replay their lines.
+- Uses the existing ◆ supplies: step 1's stars do not exist yet. No save fields.
+  Tests: `tests/v5-coast-map.test.mjs`, `tests/v5-coast-map-browser.cjs`.
+
 ## Sources and limits
 No first-party data was found. Travel Town figures (100 energy, 72-cell board) come
 from fan guides; the "top-grossing" claim for Gossip Harbor is unverified. Level
