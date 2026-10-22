@@ -4,12 +4,14 @@ import {container,contents,CONTAINERS} from '../v5/containers.mjs';
 import {art,scene} from '../v5/art.mjs';import {choose} from './v5-policy.mjs';
 // Occupied cells in play: the closed sand gates of the 7×7 board are not counted.
 const inPlay=s=>s.board.filter(x=>x&&x.type!=='gate').length;
+// A roomy board: clear loose parts and the covered start (crusts, sealed jars and chests).
+const uncover=s=>{for(let i=0;i<s.board.length;i++)if(['item','crust','jar','cache'].includes(s.board[i]?.type))s.board[i]=null;};
 function success(s,a,t=1000){const r=act(s,a,t);assert.equal(r.ok,true,r.message);return r;}
 function failUnchanged(s,a,t=1000){const before=JSON.stringify(s);assert.equal(act(s,a,t).ok,false);assert.equal(JSON.stringify(s),before);}
 test('first action teaches a merge; starter has a real contract versus expedition decision',()=>{
- const s=fresh(0);assert.equal(s.board.length,49);assert.equal(s.board.filter(x=>x?.type==='gate').length,13,'new column and row start as closed sand gates');assert.equal(new Set(s.board.filter(x=>x?.family).map(x=>x.family)).size,3);
+ const s=fresh(0);assert.equal(s.board.length,49);assert.equal(s.board.filter(x=>x?.type==='gate').length,0,'a fresh 7×7 board starts covered, not gated');assert.equal(new Set(s.board.filter(x=>x?.family).map(x=>x.family)).size,3);
  assert.ok(ready(s,normalContract(s).needs));success(s,{type:'contract'});assert.equal(ready(s,goal(s).needs),false);
- success(s,{type:'merge',from:7,to:8});success(s,{type:'merge',from:2,to:18});assert.ok(ready(s,goal(s).needs));success(s,{type:'goal'});assert.equal(s.stage,0);assert.equal(s.landingStep,1);success(s,{type:'produce',id:'chart'});
+ success(s,{type:'merge',from:7,to:8});success(s,{type:'merge',from:18,to:2});assert.ok(ready(s,goal(s).needs));success(s,{type:'goal'});assert.equal(s.stage,0);assert.equal(s.landingStep,1);success(s,{type:'produce',id:'chart'});
 });
 test('landing survey makes a two-family decision before any route can open',()=>{
  const s=fresh(0);assert.equal(s.landingStep,0);
@@ -77,14 +79,15 @@ test('fresh-player simulation opens vault and continues through two optional dis
   console.log(JSON.stringify({sideFirst,actions,rations:s.rations,milestones}));
  }
 });
-test('staged board starts 89% occupied with rewarding salvage and leaves reachable space around sources',()=>{
- const s=fresh();assert.equal(s.board.filter(x=>x===null).length,4);
- // Salt-sealed rewards beside starter pairs: two energy jars and a mystery chest.
- assert.deepEqual(s.board.flatMap((x,i)=>['jar','cache'].includes(x?.type)?[i+':'+x.type+(x.energy??'')]:[]),['3:jar8','12:cache','22:jar5']);
- // Six salt-crusted parts replace the buried excavation strip and two spare corners.
- assert.deepEqual(s.board.flatMap((x,i)=>x?.type==='crust'?[i+':'+x.family+x.tier]:[]),['17:rig0','25:rig0','26:chart0','28:rig1','29:flux0','35:chart1']);
+test('staged covered board starts 46 of 49 cells occupied, mostly salt-locked, with rewarding salvage and reachable space around sources',()=>{
+ const s=fresh();assert.deepEqual(s.board.flatMap((x,i)=>x===null?[i]:[]),[1,6,21]);
+ // Salt-sealed rewards among the crusts: four energy jars and two mystery chests.
+ assert.deepEqual(s.board.flatMap((x,i)=>['jar','cache'].includes(x?.type)?[i+':'+x.type+(x.energy??'')]:[]),['3:jar8','12:cache','22:jar5','38:jar10','42:cache','45:jar5']);
+ // Most parts start salt-crusted, including the whole new column and row.
+ assert.deepEqual(s.board.flatMap((x,i)=>x?.type==='crust'?[i+':'+x.family+x.tier]:[]),['2:rig0','4:chart1','10:chart0','11:chart0','14:chart1','16:flux0','17:rig0','25:rig0','26:chart0','28:rig1','29:flux0','33:chart0','35:chart1','36:chart0','37:chart1','39:flux0','40:flux1','41:rig1','43:rig0','44:flux0','46:chart0','47:rig2','48:chart1']);
  assert.equal(s.board.some(x=>x?.type==='sealed'),false);
- for(const [f,n] of [['rig',5],['chart',5],['flux',2]])assert.equal(s.board.filter(x=>x?.type==='item'&&x.family===f).length,n);
+ for(const [f,n] of [['rig',4],['chart',1],['flux',1]])assert.equal(s.board.filter(x=>x?.type==='item'&&x.family===f).length,n);
+ const parts=s.board.filter(x=>['item','crust','jar','cache'].includes(x?.type)).length;assert.ok(s.board.filter(x=>x?.type==='item').length/parts<0.25,'about four in five parts and rewards start locked');
  assert.equal(s.board[2].family,'rig');assert.equal(s.board[11].family,'chart');assert.equal(s.board[33].family,'chart');
  for(const i of [0,5,30])assert.ok([i-6,i+6,i-1,i+1].some(j=>j>=0&&j<36&&s.board[j]?.type!=='sealed'));
 });
@@ -106,12 +109,12 @@ test('producer bursts preserve deterministic rare cadence, energy-only cost and 
 });
 test('deliveries and discoveries return finite supplies without overwriting kept items',()=>{
  const s=fresh();const sources=s.board.filter(x=>x?.type==='source');success(s,{type:'contract'});assert.equal(s.board.filter(x=>x?.type==='crate').length,1,'duplicate cases arrive as useful loose parts');assert.deepEqual(s.board.filter(x=>x?.type==='source'),sources);
- for(let i=0;i<36;i++)if(s.board[i]?.type==='item')s.board[i]=null;
+ uncover(s);
  s.board[7]={type:'glyph'};s.board[8]=item('chart',2);const before=s.board.filter(Boolean).length;success(s,{type:'discovery'});assert.equal(s.board.filter(Boolean).length,before+2);
  const full=fresh();full.board=full.board.map(x=>x??item('flux',7));const kept=full.board[1];success(full,{type:'contract'});assert.deepEqual(full.board[1],kept);assert.ok(full.board.includes(null),'crowded delivery still frees a working space');
 });
 test('equipment discoveries unpack loose supplies once without producing more boxes',()=>{
- const s=fresh();for(let i=0;i<36;i++)if(s.board[i]?.type==='item')s.board[i]=null;
+ const s=fresh();uncover(s);
  s.board[7]=item('rig',1);s.board[8]=item('rig',1);const before=s.board.filter(Boolean).length;success(s,{type:'merge',from:7,to:8});assert.equal(s.board.filter(Boolean).length,before+2);assert.equal(s.board.filter(x=>x?.type==='crate').length,1);
  const saved=load(JSON.stringify(s));saved.board[7]=item('rig',1);saved.board[8]=item('rig',1);saved.merges=3;const n=saved.board.filter(Boolean).length;success(saved,{type:'merge',from:7,to:8});assert.equal(saved.board.filter(Boolean).length,n-1);
 });
@@ -122,15 +125,15 @@ test('finite caches, refused legacy service and deliberate recycling remain usab
 });
 test('first-session density stays active across goal-first, contract-first, cache and salvage policies',()=>{
  for(const sideFirst of [true,false])for(const openCaches of [true,false])for(const clearSalvage of [true,false]){
-  const s=fresh(0),samples=[],checkpoints={fresh:27};let actions=0,lowRun=0,maxLowRun=0;
+  const s=fresh(0),samples=[],checkpoints={fresh:inPlay(s)};let actions=0,lowRun=0,maxLowRun=0;
   while(s.stage<4&&actions<400){
    const cmd=choose(s,{sideFirst,openCaches,clearSalvage});if(s.stage===3&&cmd.type==='goal')checkpoints.preVault=inPlay(s);
-   success(s,cmd,++actions*4500);const occupied=inPlay(s);samples.push(occupied);assert.ok(s.board.filter(x=>x?.type==='crate').length<=3,'reward containers stay a small purposeful set');
+   success(s,cmd,++actions*4500);const occupied=inPlay(s);samples.push(occupied);assert.ok(s.board.filter(x=>x?.type==='crate').length<=4,'reward containers stay a small purposeful set');// the covered start seeds a case and two sealed chests; at most one more joins them
    lowRun=occupied<18?lowRun+1:0;maxLowRun=Math.max(maxLowRun,lowRun);
    if([27,67,134].includes(actions))checkpoints[actions]=occupied;
   }
   assert.equal(s.stage,4,'no blocker deadlock');assert.ok(actions<240);
-  const mean=samples.reduce((a,b)=>a+b,0)/samples.length;assert.ok(mean>=20&&mean<=30,`mean ${mean}`);// level chests (step 4a) keep the board fuller
+  const mean=samples.reduce((a,b)=>a+b,0)/samples.length;assert.ok(mean>=20&&mean<=41,`mean ${mean}`);// the covered 49-cell start is meant to be fuller: at most ~83% occupied on average, as 30/36 was
   assert.ok(Math.min(...samples)>=17);assert.ok(maxLowRun<=2,'no prolonged >18-empty state');
   for(const [point,n]of Object.entries(checkpoints))assert.ok(n>=20,`${point}: only ${n} occupied`);
   console.log(JSON.stringify({density:true,sideFirst,openCaches,clearSalvage,actions,mean:+mean.toFixed(1),min:Math.min(...samples),maxLowRun,checkpoints}));
@@ -155,12 +158,12 @@ test('parts case opens once without a charge bonus and old cache saves keep all 
  const bad={...fresh()};bad.board[34]={type:'crate',kind:'invalid',left:3};assert.equal(load(JSON.stringify(bad)).board[34].kind,'salvage');
 });
 test('seventh-pull producer bonus is useful, finite, ignores charges and preserves ninth-pull rare output',()=>{
- const s=fresh();s.taps.rig=6;s.charges.rig=1;for(let i=0;i<36;i++)if(s.board[i]?.type==='item')s.board[i]=null;
+ const s=fresh();s.taps.rig=6;s.charges.rig=1;uncover(s);
  const r=success(s,{type:'produce',id:'rig'});assert.equal(r.bonus,'rig');assert.equal(r.reveal.length,2);assert.equal(s.board[r.reveal[1]].tier,1);assert.equal(s.charges.rig,1);assert.equal(success(s,{type:'produce',id:'rig'}).bonus,null);failUnchanged(s,{type:'service',id:'rig'});s.taps.rig=8;assert.equal(nextOutput(s,'rig').type,'glyph');
 });
 
 test('shared surge is finite, survives reload, protects rare pulls and failed commands',()=>{
- const s=fresh();s.stage=2;s.surge=3;
+ const s=fresh();uncover(s);s.stage=2;s.surge=3;
  assert.equal(nextOutput(s,'chart').tier,1);success(s,{type:'produce',id:'chart'});assert.equal(s.surge,2);
  const saved=load(JSON.stringify(s));assert.equal(saved.surge,2);success(saved,{type:'produce',id:'flux'});assert.equal(saved.surge,1);
  const energy=saved.energy;saved.energy=0;failUnchanged(saved,{type:'produce',id:'rig'});assert.equal(saved.surge,1);

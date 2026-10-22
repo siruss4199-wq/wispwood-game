@@ -1,5 +1,6 @@
 // Intent-based player styles. All actions use the public reducer / real UI.
 import {KITS} from '../v5/journey.mjs';
+import {preferCrust} from './v5-crust-policy.mjs';
 import {masteryPending,instrumentReady} from '../v5/mastery.mjs';
 import {sameKind} from '../v5/treasures.mjs';
 import {expeditionGoal as goal,ready,count,normalContract,SOURCES,sourceUnlocked} from '../v5/core.mjs';
@@ -11,7 +12,7 @@ import {coastalAction} from './v5-coastal-policy.mjs';
 import {openingPair} from '../v5/interactions.mjs';
 import {requestAction} from './v5-workshop-policy.mjs';
 const req=(family,tier,count=1)=>({family,tier,count});
-export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,session=null,style='expedition',findStrategy=null,decode=true,route=null,mergeSight=false,receiver=null,vaultKit='field'}={}){
+function chooseBase(s,{sideFirst=true,openCaches=false,clearSalvage=false,session=null,style='expedition',findStrategy=null,decode=true,route=null,mergeSight=false,receiver=null,vaultKit='field'}={}){
  if(!goal(s))return null;
  // The UI reveals "Clear path" only after the glowing first merge.
  const opening=openingPair(s);if(opening.length===2)return {type:'merge',from:opening[0],to:opening[1]};
@@ -142,3 +143,6 @@ function fundCamp(s,gate){
  const merge=s.requests.orders.flatMap((o,i)=>o&&visible.includes(i)?[requestAction(s,i)]:[]).find(a=>a.type==='merge');
  return merge??next;
 }
+
+// Every scripted choice may free a salt-crusted twin first (covered starting board).
+export function choose(s,...rest){return preferCrust(s,chooseBase(s,...rest));}

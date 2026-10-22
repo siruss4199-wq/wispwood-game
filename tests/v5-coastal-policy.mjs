@@ -1,4 +1,5 @@
 import {coastalObjective} from '../v5/coastal-journey.mjs';
+import {preferCrust} from './v5-crust-policy.mjs';
 import {expeditionGoal} from '../v5/core.mjs';
 import {sameKind,maxTier} from '../v5/treasures.mjs';
 import {reservedItems} from '../v5/requests.mjs';
@@ -8,7 +9,7 @@ import {masteryPending,instrumentReady} from '../v5/mastery.mjs';
 import {openingPair} from '../v5/interactions.mjs';
 
 // Follow the visible main objective. No gifts, clock jumps, or save injection.
-export function coastalAction(s,{specialty='rig',route='ridge',receiver='scope'}={}){
+function coastalBase(s,{specialty='rig',route='ridge',receiver='scope'}={}){
  const g=coastalObjective(s,expeditionGoal(s));
  // The UI reveals "Clear path" only after the glowing first merge; do what it says.
  const pair=openingPair(s);if(pair.length===2)return {type:'merge',from:pair[0],to:pair[1]};
@@ -35,3 +36,6 @@ export function coastalAction(s,{specialty='rig',route='ridge',receiver='scope'}
  if(g.action==='buildPier'&&s.board.filter(x=>x?.type==='crate').length>=3)return {type:'crate',index:s.board.findIndex(x=>x?.type==='crate')};
  return {type:g.action};
 }
+
+// Every scripted choice may free a salt-crusted twin first (covered starting board).
+export function coastalAction(s,...rest){return preferCrust(s,coastalBase(s,...rest));}

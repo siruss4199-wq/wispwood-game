@@ -23,6 +23,8 @@ test('Survey progression preserves both crafted route tools and spends only chos
  assert.equal(load(JSON.stringify(s)).stage,1);
  const conduitIndex=s.board.findIndex(x=>x?.type==='route'&&x.id==='conduit');
  prepareRoute(s,'conduit');
+ // The covered board is full after the landing rewards; the conduit's relic case needs a space.
+ assert.equal(act(s,{type:'breach',index:conduitIndex}).ok,false);perform(s,{type:'merge',from:18,to:2});// free the crusted offcut, cracking the jar beside it
  perform(s,{type:'breach',index:conduitIndex});
  assert.equal(s.stage,2);
  assert.equal(s.expedition.route,'conduit');

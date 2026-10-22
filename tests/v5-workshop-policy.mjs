@@ -1,7 +1,8 @@
 import {isTide,sameKind,maxTier} from '../v5/treasures.mjs';
+import {preferCrust} from './v5-crust-policy.mjs';
 import {requestProgress,reservedItems} from '../v5/requests.mjs';
 import {benchInputs} from '../v5/workshop.mjs';
-export function requestAction(s,lane){
+function requestBase(s,lane){
  const o=s.requests.orders[lane],p=requestProgress(s,o);
  if(p.ready)return {type:'request',id:o.id};
  const need=p.progress.find(r=>r.current<r.count),kept=reservedItems(s);
@@ -27,3 +28,6 @@ export function requestAction(s,lane){
  }
  return {type:s.charges[family]?'produce':'service',id:family};
 }
+
+// Every scripted choice may free a salt-crusted twin first (covered starting board).
+export function requestAction(s,...rest){return preferCrust(s,requestBase(s,...rest));}

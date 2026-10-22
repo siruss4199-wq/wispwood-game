@@ -25,7 +25,9 @@ test('new requests never appear before unlock; existing orders stay until delive
  s.requests.orders=pending;s.requests.sequences=[0,0,0];ok(s,{type:'buildLoft'});assert.deepEqual(s.requests.orders,pending);
  const old=s.requests.orders[1];for(const r of old.needs)for(let n=0;n<r.count;n++)s.board[s.board.indexOf(null)]=item(r.family,r.tier);
  ok(s,{type:'request',id:old.id});const o=s.requests.orders[1];assert.equal(o.needs[0].line,'tide');assert.equal(o.needs[0].tier,1);
- s.board[7]=item('chart',1);assert.equal(requestProgress(s,o).ready,false);s.board[8]=tideItem(1);assert.equal(requestProgress(s,o).ready,true);const supplies=s.requests.supplies;ok(s,{type:'request',id:o.id});assert.equal(s.board[8],null);assert.deepEqual(s.board[7],item('chart',1));assert.equal(s.requests.supplies,supplies+o.supplies);reject(s,{type:'request',id:o.id});assert.deepEqual(load(JSON.stringify(s)),s);
+ s.board[7]=item('chart',1);assert.equal(requestProgress(s,o).ready,false);s.board[8]=tideItem(1);assert.equal(requestProgress(s,o).ready,true);const supplies=s.requests.supplies,r=ok(s,{type:'request',id:o.id});
+ // The treasure is consumed; on the covered board its freed cell is the first space, so a level chest may land there.
+ assert.equal(count(s,{family:'chart',line:'tide',tier:1}),0);assert.ok(s.board[8]===null||r.levelUp?.some(l=>l.index===8&&s.board[8].type==='crate'),JSON.stringify(s.board[8]));assert.deepEqual(s.board[7],item('chart',1));assert.equal(s.requests.supplies,supplies+o.supplies);reject(s,{type:'request',id:o.id});assert.deepEqual(load(JSON.stringify(s)),s);
 });
 test('legacy Pier saves with 20–40 supplies preserve progression and can invest without restarting',()=>{
  for(const stage of [0,2,4])for(const supplies of [20,36,40]){const old=camp();old.stage=stage;old.landingStep=stage?2:1;old.routePrepared=stage>0;old.requests.supplies=supplies;old.workshop.precision=true;old.camp={version:1,pier:true,packs:2};const s=load(JSON.stringify(old));assert.equal(s.requests.supplies,supplies);assert.equal(s.stage,stage);assert.deepEqual(s.board,old.board);assert.equal(s.workshop.precision,true);assert.equal(s.camp.loft,false);ok(s,{type:'buildLoft'});assert.equal(s.requests.supplies,supplies-20);assert.deepEqual(load(JSON.stringify(s)),s);}
@@ -34,7 +36,12 @@ test('legacy Pier saves with 20–40 supplies preserve progression and can inves
 test('fresh earned orders fund Workshop, Pier and Loft; the next treasure order is produced, merged and delivered',()=>{
  const s=fresh();ok(s,{type:'merge',from:7,to:8});ok(s,{type:'goal'});let actions=0,deliveries=0;
  const step=lane=>{const a=requestAction(s,lane);ok(s,a);actions++;if(a.type==='request')deliveries++;assert.ok(actions<150);};
- for(const [cost,type] of [[8,'restoreWorkshop'],[12,'buildPier'],[LOFT_COST,'buildLoft']]){while(s.requests.supplies<cost)step(deliveries%3);ok(s,{type});}
+ for(const [cost,type] of [[8,'restoreWorkshop'],[12,'buildPier'],[LOFT_COST,'buildLoft']]){
+  while(s.requests.supplies<cost)step(deliveries%3);
+  // The covered start cracks two sealed chests into cases; open one when the Pier asks for it, as players do.
+  while(type==='buildPier'&&s.board.filter(x=>x?.type==='crate').length>=3)ok(s,{type:'crate',index:s.board.findIndex(x=>x?.type==='crate')});
+  ok(s,{type});
+ }
  assert.ok(s.board.filter(Boolean).length>=18);assert.ok(s.taps.rig+s.taps.chart>0);
  for(let n=0;n<2;n++){const id=s.requests.orders[1].id;if(n===1)assert.equal(s.requests.orders[1].needs[0].line,'tide');while(s.requests.orders[1].id===id)step(1);}
  assert.equal(s.camp.dives,0);assert.equal(s.camp.earlyFragments,2);assert.ok(s.discovered.includes('chart:tide:1'));assert.deepEqual(load(JSON.stringify(s)),s);

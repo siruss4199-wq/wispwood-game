@@ -7,11 +7,12 @@ import {fresh,act,load,item,crust,count,matches,nameOf,freesCrust,sealedJar,seal
 const crustAt=s=>s.board.flatMap((x,i)=>x?.type==='crust'?[i]:[]);
 function refused(s,a){const before=JSON.stringify(s),r=act(s,a,1);assert.equal(r.ok,false,JSON.stringify(a));assert.equal(JSON.stringify(s),before,'refusal leaves state untouched');return r;}
 
-test('a fresh board shows six crusted parts that count for nothing yet',()=>{
+test('a fresh board is covered: 23 crusted parts that count for nothing yet beside six free ones',()=>{
  const s=fresh(0),cells=crustAt(s);
- assert.equal(cells.length,6);
+ assert.deepEqual(cells,[2,4,10,11,14,16,17,25,26,28,29,33,35,36,37,39,40,41,43,44,46,47,48]);
+ assert.deepEqual(s.board.flatMap((x,i)=>x?.type==='item'?[i]:[]),[7,8,9,13,15,18],'only the tutorial pair and four singles start free');
  for(const i of cells){const x=s.board[i];assert.equal(matches(x,{family:x.family,tier:x.tier}),false);assert.match(nameOf(x),/^Salt-crusted /);}
- assert.equal(count(s,{family:'flux',tier:0}),2,'the crusted Violet shard is not counted');
+ assert.equal(count(s,{family:'flux',tier:0}),1,'the four crusted Violet shards are not counted');
 });
 
 test('crusted parts cannot be moved, merged together, recycled or used as the moving part',()=>{
@@ -30,7 +31,8 @@ test('merging a free twin onto a crusted part frees it one tier up and opens the
  const r=act(s,{type:'merge',from:7,to:17},1);
  assert.equal(r.ok,true,r.message);assert.equal(r.freedCrust,true);assert.match(r.message,/^Freed from the salt · Grip tool/);
  assert.deepEqual(s.board[17],item('rig',1));assert.equal(s.board[7],null);
- assert.equal(s.board.filter(x=>x===null).length,free+1);assert.equal(s.merges,merges+1);
+ assert.deepEqual(r.cracked,[{index:38,type:'jar',energy:10}],'17 also borders the +10 jar in the new column');
+ assert.equal(s.board.filter(x=>x===null).length,free+2,'source cell and cracked jar');assert.equal(s.merges,merges+1);
  assert.equal(freesCrust(item('rig',1),crust('rig',1)),true);
  assert.equal(act(s,{type:'merge',from:13,to:28},2).ok,true,'a Grip tool frees the crusted Grip tool');
  assert.deepEqual(s.board[28],item('rig',2));
@@ -85,19 +87,19 @@ test('a full board asks for space before the conduit breach instead of losing it
 
 test('a merge beside a sealed jar cracks it: its energy is paid at once and the space comes free',()=>{
  const s=fresh(0),energy=s.energy;
- const r=act(s,{type:'merge',from:15,to:16},1);// Violet shards merge next to the +5 jar at 22
+ const r=act(s,{type:'merge',from:15,to:16},1);// a Violet shard frees its crusted twin next to the +5 jar at 22
  assert.equal(r.ok,true);assert.deepEqual(r.cracked,[{index:22,type:'jar',energy:5}]);
  assert.equal(s.board[22],null);assert.equal(s.energy,energy+5+(s.merges%3===0?1:0));
- const r2=act(s,{type:'merge',from:10,to:9},2);// Ink scraps merge next to the +8 jar at 3
- assert.deepEqual(r2.cracked,[{index:3,type:'jar',energy:8}]);
+ const r2=act(s,{type:'merge',from:18,to:2},2);// freeing the crusted offcut at 2 cracks the +8 jar beside it at 3
+ assert.equal(r2.freedCrust,true);assert.deepEqual(r2.cracked,[{index:3,type:'jar',energy:8}]);assert.equal(s.board[3],null);
 });
 
 test('the mystery chest cracks into a mixed parts case; diagonal merges crack nothing',()=>{
  const s=fresh(0);s.board[6]=item('rig',1);
  const r=act(s,{type:'merge',from:6,to:13},1);// Grip tools merge beside the chest at 12
  assert.deepEqual(r.cracked,[{index:12,type:'cache'}]);assert.deepEqual(s.board[12],{type:'crate',kind:'locker',left:3});
- const t=fresh(0);
- const r3=act(t,{type:'merge',from:16,to:15},2);// 15 is diagonal to the jar at 22
+ const t=fresh(0);t.board[1]=item('flux',0);
+ const r3=act(t,{type:'merge',from:1,to:15},2);// 15 is diagonal to the jar at 22
  assert.equal(r3.ok,true);assert.deepEqual(r3.cracked,[]);assert.deepEqual(t.board[22],sealedJar(5));
 });
 
@@ -109,4 +111,12 @@ test('sealed rewards never move, recycle or merge; saves keep them; malformed on
  assert.match(nameOf(sealedJar(5)),/energy jar · \+5/);assert.match(nameOf(sealedCache()),/mystery chest/);
  assert.deepEqual(load(JSON.stringify(s),2).board,s.board);
  for(const bad of [{type:'jar',energy:0},{type:'jar',energy:99},{type:'jar'}]){const t=fresh(0);t.board[22]=bad;t.moves=4;assert.equal(load(JSON.stringify(t),3).moves,0);}
+});
+
+test('opening the Vault frees salt across the whole 7×7 board, new column and row included',async()=>{
+ const {choose}=await import('./v5-policy.mjs');
+ const s=fresh(0);let n=0;
+ while(s.stage<4&&n<400){const r=act(s,choose(s,{sideFirst:false,openCaches:true,clearSalvage:true}),++n*4500);assert.equal(r.ok,true,r.message);}
+ assert.equal(s.stage,4);
+ assert.deepEqual(s.board.flatMap((x,i)=>['crust','jar','cache'].includes(x?.type)?[i]:[]),[]);
 });

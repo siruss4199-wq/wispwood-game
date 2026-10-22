@@ -39,7 +39,8 @@ const source=id=>({type:'source',id});
 export const crust=(family,tier)=>({type:'crust',family,tier});
 // Board: 7×7. Cells 0–35 keep the original 6×6 positions (saves and fixed sites
 // stay valid); 36–42 are the new right column (rows 0–6), 43–48 the new bottom row
-// (columns 0–5). The new cells are sand gates that open with the expedition level.
+// (columns 0–5). New games start them salt-crusted; migrated 6×6 saves get sand
+// gates there that open with the expedition level.
 export const BOARD_SIZE=49,CORE_SIZE=36;
 export const cellPos=i=>i<36?[Math.floor(i/6),i%6]:i<43?[i-36,6]:[6,i-43];
 const cellAt=(r,c)=>r<0||c<0||r>6||c>6?-1:c===6?36+r:r===6?43+c:r*6+c;
@@ -69,7 +70,7 @@ export function fresh(now=Date.now()){
  const board=Array(BOARD_SIZE).fill(null);
  board[0]=source('rig');board[5]=source('chart');board[30]=source('flux');
  [[7,'rig',0],[8,'rig',0],[9,'chart',0],[10,'chart',0],[13,'rig',1],[14,'chart',1],[15,'flux',0],[16,'flux',0],[19,'rig',0],[20,'rig',0],[21,'chart',0],[22,'chart',0]].forEach(([i,f,t])=>board[i]=item(f,t));
- // Starter pockets leave nine working spaces; extra saltstone is recoverable salvage.
+ // Starter parts first; most are then covered by the salt-crusted layout below.
  for(const [from,to] of [[19,2],[20,18],[21,11],[22,33]]){board[to]=board[from];board[from]=null;}
  // The old excavation strip and two spare corners hold salt-crusted parts to free.
  // A covered start (like the genre's cobweb boards): most parts begin salt-crusted.
@@ -383,7 +384,7 @@ function step(s,a,now){
    return done('Landing secured · Survey Kite online · field parts received. Chart the crossing next.','milestone');
   }
   if(s.stage<4){if(s.stage===0)s.landingStep=2;s.stage++;
-   if(s.stage===4){for(let i=0;i<36;i++){const y=s.board[i];if(['sealed','route'].includes(y?.type))s.board[i]=null;else if(y?.type==='crust')s.board[i]=item(y.family,y.tier);else if(y?.type==='jar'){s.energy=Math.min(120,s.energy+y.energy);s.board[i]=null;}else if(y?.type==='cache')s.board[i]=container('locker');}const packed=s.board.find(x=>x?.type==='crate'&&x.kind==='relic');if(kit){const family=kit==='field'?'rig':'chart';for(const tier of [2,1,1])put(s,item(family,tier));}else if(packed)packed.left=5;else put(s,container('relic',5));s.marks+=15;trace(s,'vault',{discovered:[...s.discovered]});}
+   if(s.stage===4){for(let i=0;i<s.board.length;i++){const y=s.board[i];if(['sealed','route'].includes(y?.type))s.board[i]=null;else if(y?.type==='crust')s.board[i]=item(y.family,y.tier);else if(y?.type==='jar'){s.energy=Math.min(120,s.energy+y.energy);s.board[i]=null;}else if(y?.type==='cache')s.board[i]=container('locker');}const packed=s.board.find(x=>x?.type==='crate'&&x.kind==='relic');if(kit){const family=kit==='field'?'rig':'chart';for(const tier of [2,1,1])put(s,item(family,tier));}else if(packed)packed.left=5;else put(s,container('relic',5));s.marks+=15;trace(s,'vault',{discovered:[...s.discovered]});}
   }else{s.post++;s.marks+=10;}
   // Before the Vault rewards are raw parts and rich pulls, never finished tier-2+ parts.
   supplies(s,6,false,s.stage===2?'relic':null);

@@ -31,7 +31,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
   };
   assert.equal(await page.locator('.contract').count(),0);assert.equal(await page.locator('.openingPair').count(),2);assert.equal(await page.locator('.source').count(),3);assert.equal(await page.locator('.source.locked').count(),2);
   assert.equal(await page.locator('#goalButton').isVisible(),false);assert.match(await page.locator('#goalTitle').textContent(),/landing/);
-  await shot('fresh');assert.equal((await read()).board.filter(x=>x&&x.type!=='gate').length,32,'27 starting objects, two salt-crusted corners and three salt-sealed rewards (sand gates not counted)');
+  await shot('fresh');assert.equal((await read()).board.filter(x=>x&&x.type!=='gate').length,46,'covered start: 46 of 49 cells hold something, three are free');
   assert.equal(await page.locator('body').getAttribute('data-art'),'premium');
   assert.ok(await page.locator('#board img[data-art="rig-0"]').count()>0);
   assert.equal(await page.locator('.premiumScene').count(),1);

@@ -32,7 +32,8 @@ test('legacy completed saves keep board and progression; malformed requests repa
  migrated.requests.orders[0].needs=[{family:'alien',tier:999,count:1}];assert.equal(load(JSON.stringify(migrated)).stage,4);
 });
 test('replacement variety stays within unlocked producers across 90 deliveries',()=>{
- const s=fresh();s.stage=2;syncRequests(s);let last=null;
+ // Clear the covered start (crusts, sealed jars and chests): level chests pile up while stock is injected, with no gates opening.
+ const s=fresh();s.board=s.board.map(x=>['item','crust','jar','cache'].includes(x?.type)?null:x);s.stage=2;syncRequests(s);let last=null;
  for(let n=0;n<90;n++){
   const o=s.requests.orders[n%3];for(const r of o.needs){assert.ok(sourceUnlocked(s,r.family));assert.ok(r.tier<=3);}
   // Supply only spare requested inventory; reserved equipment stays intact.
