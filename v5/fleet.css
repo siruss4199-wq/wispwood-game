@@ -1,0 +1,28 @@
+/* Earned discovery, anchored beside the existing Loft; no board layout changes. */
+/* Give the completed camp two scenic depths: signal above, workbenches below.
+   The header keeps its own clear strip, including the longer viewed-state label. */
+body[data-art] #scene.fleetAwake,body[data-art] #scene.fleetAwake>.premiumScene,#scene.fleetAwake,#scene.fleetAwake>svg{height:180px}
+#scene.fleetAwake #workshop{top:auto;bottom:0}
+#scene.fleetAwake #workshopBench{left:124px;right:114px;max-width:128px;min-height:44px;justify-content:center;padding:4px}
+.world:has(.fleetAwake) .worldLabel{max-width:calc(100% - 20px);line-height:14px}
+.world:has(.fleetAwake) .worldLabel b{max-width:none}
+#fleetCrown{position:absolute;left:calc(50% - 38px);top:44px;width:76px;height:76px;z-index:3;border:1px solid #f4ce74;border-radius:50% 50% 12px 12px;background:radial-gradient(ellipse,#fff4bd 0%,#53d9d599 48%,#167d8a77 72%);box-shadow:0 0 18px #5fe5d9;display:grid;place-items:center;padding:2px;touch-action:manipulation}
+#fleetCrown img{width:56px;height:56px;object-fit:contain;filter:drop-shadow(0 2px 3px #155666)}
+#fleetCrown span{font-size:8px;font-weight:900;color:#123f4d;background:#fff0c4;border-radius:4px;padding:3px;white-space:nowrap}
+#fleetCrown.pending{animation:fleetGlow 2s ease-in-out 3}
+.fleetAwake #campPierWorld{filter:drop-shadow(0 0 7px #6ae9d1)}
+#fleetReveal{box-sizing:border-box;width:calc(100% - 32px);max-width:390px;max-height:90dvh;overflow:auto;padding:26px 22px 20px;border:2px solid #e5bc63;border-radius:24px;background:linear-gradient(160deg,#fff6dd,#daf6ef);color:#174b57;text-align:center;box-shadow:0 20px 80px #042d48aa}
+#fleetReveal::backdrop{background:#082a41bb;backdrop-filter:blur(4px)}
+#fleetReveal .close{min-width:44px;min-height:44px;z-index:2}
+#fleetReveal small{font-size:10px;letter-spacing:2px;font-weight:800}
+#fleetReveal h2{font-size:24px;margin:8px 0}
+.fleetRelic{height:150px;position:relative;display:grid;place-items:center;background:repeating-conic-gradient(from 15deg,#38c5bb00 0deg 20deg,#48d6c51f 20deg 30deg);border-radius:50%;margin:8px auto;width:210px}
+.fleetRelic:after{content:'';position:absolute;inset:20px;border:1px solid #e4b652;border-radius:50%;box-shadow:0 0 30px #4cdbc4}
+.fleetRelic img{width:140px;height:140px;object-fit:contain;filter:drop-shadow(0 7px 6px #1e726655);z-index:1}
+#fleetReveal[data-beat="2"] .fleetRelic{background:radial-gradient(ellipse,#fff9c5,#42d1c688,transparent 72%)}
+#fleetDialogue{min-height:110px;font-size:16px;line-height:1.45}
+#fleetDialogue b{color:#a74536}#fleetDialogue p{margin:6px 0 12px}
+#fleetMilestone{font-size:13px;line-height:1.4;margin:10px 0;padding:10px;border-top:1px solid #c5cda6}
+#fleetMilestone b{display:block}#fleetNext{min-height:48px;min-width:160px}#fleetProgress{display:block;font-size:11px;margin:8px}
+@keyframes fleetGlow{50%{box-shadow:0 0 26px #fff0a5}}
+@media(prefers-reduced-motion:reduce){#fleetCrown.pending{animation:none}}

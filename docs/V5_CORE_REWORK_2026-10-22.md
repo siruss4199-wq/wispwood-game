@@ -1,8 +1,24 @@
 # Vaultwake V5 — Core rework (2026-10-22)
 
-**Status:** approved by the user (2026-10-22, "Цөмийг бүрэн шинэчлэх").
-**Branch:** `claude/v5-autonomous-rebuild`. The original V5 stays intact on
-`codex/v5-coastal-workshop`, `main` and in git history; PR #75 is untouched.
+**Status:** built, then **rolled back after the phone playtest** (2026-10-22).
+The code lives on branch `claude/v5-core-rework` (commits `a251809`, `faf4c79`);
+`claude/v5-autonomous-rebuild` is back on the `f18333f` build.
+
+## Playtest verdict (user, iPhone)
+1. "Feels old-fashioned, like 2048."
+2. "Felt empty."
+3. Story lines: not reached.
+4. "The design got much worse than before."
+
+Side-by-side at 390px showed why: boxed beige cells and 6 parts on a 36-cell
+board, against the previous light sand board with free-floating parts of three
+families filling it. The lesson for any future rework: keep the board full and
+the established visual language; change the loop first, the look last, and test
+the look separately.
+
+## Original approval
+Approved by the user (2026-10-22, "Цөмийг бүрэн шинэчлэх"). The original V5 stays
+intact on `codex/v5-coastal-workshop`, `main` and in git history; PR #75 is untouched.
 
 ## Why
 Phone playtest of the incremental build: "no real improvement felt". Measured causes:

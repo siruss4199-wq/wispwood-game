@@ -1,111 +1,44 @@
-// V5 browser smoke: 360/390/430px phones, tap and drag merges, delivery,
-// reload persistence, a full chapter played through the UI by following the
-// on-screen suggestion, replay slots, and a migrated version-5 save.
-// Needs `python3 -m http.server 8080` at the repo root. V5_ENGINE=webkit for Safari's engine.
-const assert=require('node:assert/strict');
-const fs=require('node:fs');
-const path=require('node:path');
-const pw=require('playwright');
-const engine=pw[process.env.V5_ENGINE||process.env.COASTAL_ENGINE||'chromium'];
-const ROOT=process.env.V5_URL||'http://127.0.0.1:8080/v5/';
-const OUT=path.join(__dirname,'..','test-artifacts','v5');
-fs.mkdirSync(OUT,{recursive:true});
-
-async function open(browser,width,height,seed=null){
- const ctx=await browser.newContext({viewport:{width,height},isMobile:engine!==pw.firefox,hasTouch:true});
- if(seed)await ctx.addInitScript(raw=>{if(!sessionStorage.getItem('seeded')){localStorage.setItem('vaultwake-v5',raw);sessionStorage.setItem('seeded','1');}},seed);
- const page=await ctx.newPage(),errors=[];
- page.on('pageerror',e=>errors.push(e.message));
- page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
- await page.goto(ROOT);await page.waitForSelector('#board .cell');
- return {ctx,page,errors};
-}
-const save=page=>page.evaluate(()=>JSON.parse(localStorage.getItem(localStorage.getItem('vaultwake-v5-active-slot')==='replay'?'vaultwake-v5-replay':'vaultwake-v5')));
-const cell=(page,i)=>page.locator(`#board [data-i="${i}"]`).tap();
-async function layout(page){
- return page.evaluate(()=>({
-  overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,
-  small:[...document.querySelectorAll('button')].filter(b=>{const r=b.getBoundingClientRect();return r.width>0&&r.height>0&&(r.width<44||r.height<44);}).map(b=>(b.className||b.id)+' '+Math.round(b.getBoundingClientRect().width)+'×'+Math.round(b.getBoundingClientRect().height)),
-  boardBottom:document.querySelector('#board').getBoundingClientRect().bottom
- }));
-}
-async function drag(page,a,b){
- const ra=await page.locator(`#board [data-i="${a}"]`).boundingBox(),rb=await page.locator(`#board [data-i="${b}"]`).boundingBox();
- await page.mouse.move(ra.x+ra.width/2,ra.y+ra.height/2);await page.mouse.down();
- await page.mouse.move(ra.x+ra.width/2+12,ra.y+ra.height/2,{steps:3});
- await page.mouse.move(rb.x+rb.width/2,rb.y+rb.height/2,{steps:8});await page.mouse.up();
-}
-
-(async()=>{
- const {suggest}=await import('../v5/guide.mjs');
- const browser=await engine.launch();
- const name=process.env.V5_ENGINE||process.env.COASTAL_ENGINE||'chromium';
- for(const [width,height] of [[360,740],[390,844],[430,932]]){
-  const {ctx,page,errors}=await open(browser,width,height);
-  let l=await layout(page);
-  assert.equal(l.overflow,0,width+': no horizontal scroll');
-  assert.deepEqual(l.small,[],width+': touch targets at least 44px');
-  assert.ok(l.boardBottom<=height+1,width+': the whole board fits on screen at start');
-  await page.screenshot({path:path.join(OUT,`fresh-${name}-${width}.png`)});
-  // Tap merge, deliver, drag merge, reload.
-  await cell(page,14);await cell(page,15);
-  let s=await save(page);assert.deepEqual(s.board[15],{type:'item',family:'rig',tier:1});
-  await page.locator('#task [data-task]').tap();
-  s=await save(page);assert.equal(s.task,1,'landing path delivered');
-  assert.match(await page.locator('#task').innerText(),/LANDING PATH RESTORED/i);
-  await page.locator('[data-continue]').tap();
-  await drag(page,20,21);
-  s=await save(page);assert.deepEqual(s.board[21],{type:'item',family:'rig',tier:1},'drag merge');
-  await page.reload();await page.waitForSelector('#board .cell');
-  s=await save(page);assert.equal(s.task,1);assert.equal(s.merges,2,'progress survives reload');
-  assert.match(await page.locator('#task h2').innerText(),/Brace the storm pier/);
-  l=await layout(page);assert.equal(l.overflow,0);assert.deepEqual(l.small,[]);
-  assert.deepEqual(errors,[],width+': no page errors');
-  await ctx.close();
+const assert=require('node:assert/strict');const {chromium,webkit}=require('playwright');const fs=require('node:fs');
+(async()=>{fs.mkdirSync('test-artifacts/v5',{recursive:true});for(const [engine,type] of [['chromium',chromium],['webkit',webkit]]){const browser=await type.launch();try{for(const width of [360,390,430]){
+ const page=await browser.newPage({viewport:{width,height:664},isMobile:true,hasTouch:true,reducedMotion:'reduce'});const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('http://127.0.0.1:8080/v5/');await page.waitForSelector('#board .tile');await page.evaluate(async()=>Promise.all([...document.images].map(x=>x.decode())));
+ const read=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('vaultwake-v5')));
+ // The first meaningful view teaches the merge before introducing optional management.
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+ assert.equal(await page.locator('#requests').isVisible(),false,'camp orders are introduced after the landing');
+ assert.equal(await page.locator('#workshop').isVisible(),false,'workshop action waits until supplies matter');
+ assert.match(await page.locator('#hint').textContent(),/Tap the glowing pair/);
+ assert.equal(await page.locator('#board .openingPair').count(),2);
+ assert.ok(await page.evaluate(()=>!!(document.querySelector('#requests').compareDocumentPosition(document.querySelector('#board'))&Node.DOCUMENT_POSITION_FOLLOWING)),'compact orders are structurally above the board but remain hidden until landing');
+ await page.screenshot({path:`test-artifacts/v5/${engine}-fresh-board-first-${width}.png`,fullPage:true});
+ const initial=await read();const a=await page.locator('[data-index="7"]').boundingBox(),b=await page.locator('[data-index="8"]').boundingBox();
+ await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:8});await page.mouse.up();await page.waitForTimeout(310);assert.equal((await read()).merges,1,'drag works in '+engine);
+ assert.equal(await page.locator('#requests').isVisible(),false,'first merge stays focused on the main goal');
+ assert.match(await page.locator('#hint').textContent(),/CLEAR PATH/);
+ assert.equal(await page.locator('#goalNeeds .need.done').count(),1,'one genuinely crafted opening Grip Tool is sufficient');
+ assert.equal(await page.locator('#goalButton').isVisible(),true,'first merge unlocks the clear-path action');
+ // Starter merges make the first earned tool; no repetitive extra tutorial merge is required.
+ await page.locator('#goalButton').tap();assert.equal((await read()).stage,0);assert.equal((await read()).landingStep,1);await page.waitForTimeout(750);
+ assert.equal(await page.locator('#requests').isVisible(),true,'camp requests now appear');
+ assert.equal(await page.locator('#workshop').isVisible(),true,'workshop is introduced with supplies');
+ assert.match(await page.locator('.requestHeading').textContent(),/pier repair/);
+ assert.equal(await page.locator('#requests .requestCard').count(),1,'one crew commission initially');
+ assert.equal(await page.locator('#firstPier').getAttribute('data-level'),'0');
+ assert.match(await page.locator('#workshop').getAttribute('aria-label'),/Repair for 8 supplies/);
+ assert.match(await page.locator('#hint').textContent(),/MERGE|TAP|READY|HIGHLIGHTED/,'first Tide Fragment has a visible next action');
+ assert.equal(await page.locator('#requests .requestCard.storySuggested').count(),1,'one practical first order is recommended');
+ const boardBox=await page.locator('#board').boundingBox(),requestBox=await page.locator('#requests').boundingBox();
+ assert.ok(requestBox.y+requestBox.height<=boardBox.y,'camp orders are above the board');assert.ok(boardBox.y<500,'mobile order strip keeps the board near the opening view');
+ const firstTile=await page.locator('#board .tile').first().boundingBox();
+ assert.ok(firstTile.width>=44&&firstTile.height>=44,'merge touch targets unchanged');
+ await page.screenshot({path:`test-artifacts/v5/${engine}-orders-after-landing-${width}.png`,fullPage:true});
+ const saved=await read();await page.reload();assert.deepEqual((await read()).board,saved.board);assert.equal((await read()).stage,0);assert.equal((await read()).landingStep,1);
+ assert.equal(await page.locator('#board').evaluate(el=>getComputedStyle(el).touchAction),'pan-y');assert.equal(await page.locator('.tile.item').first().evaluate(el=>getComputedStyle(el).touchAction),'none');
+ await page.locator('[data-index="35"]').scrollIntoViewIfNeeded();let box=await page.locator('[data-index="35"]').boundingBox();assert.ok(box.y>=0&&box.y+box.height<=664,'bottom row reachable with browser controls visible');
+ if(engine==='chromium'){
+  await page.evaluate(()=>scrollTo(0,0));const fixed=page.locator('.tile.source').first();await fixed.scrollIntoViewIfNeeded();const startScroll=await page.evaluate(()=>scrollY),r=await fixed.boundingBox();const y=Math.min(r.y+r.height/2,620),x=r.x+r.width/2;const cdp=await page.context().newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});for(let n=1;n<=8;n++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y-n*22}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await page.waitForTimeout(350);assert.ok(await page.evaluate(()=>scrollY)>startScroll+30,'swiping fixed board objects scrolls the page');await cdp.detach();assert.equal((await read()).moves,saved.moves,'scroll does not produce or merge');
  }
-
- // A whole chapter through the UI at 390px, following only the suggestion.
- {
-  const {ctx,page,errors}=await open(browser,390,844);
-  let steps=0;
-  for(;steps<500;steps++){
-   if(await page.locator('[data-continue]').count()){await page.locator('[data-continue]').tap();continue;}
-   const s=await save(page),g=suggest(s);
-   if(g.kind==='done')break;
-   if(g.kind==='task')await page.locator(g.choice?`#task [data-choice="${g.choice}"]`:'#task [data-task]').tap();
-   else if(g.kind==='merge'){await cell(page,g.cells[0]);await cell(page,g.cells[1]);}
-   else if(g.kind==='order')await page.locator(`[data-order="${g.id}"]`).tap();
-   else if(g.kind==='open'||g.kind==='produce')await cell(page,g.cells[0]);
-   else if(g.kind==='meal')await page.locator('#mealButton').tap();
-   else if(g.kind==='recycle'){await cell(page,s.board.findIndex(x=>x?.type==='item'&&x.tier===0));await page.locator('[data-recycle]').tap();}
-   else throw new Error('No suggestion: '+g.text);
-   if(steps===60)await page.screenshot({path:path.join(OUT,`midgame-${name}-390.png`)});
-  }
-  const s=await save(page);
-  assert.equal(s.task,13,'chapter finished through the UI in '+steps+' steps');
-  await page.screenshot({path:path.join(OUT,`complete-${name}-390.png`)});
-  // Replay keeps the finished save.
-  await page.locator('#task [data-replay]').tap();await page.locator('#replayBegin').tap();
-  assert.equal((await save(page)).task,0);
-  assert.equal(await page.locator('#replayNotice').isVisible(),true);
-  await page.locator('#returnSave').tap();
-  assert.equal((await save(page)).task,13,'original save restored');
-  assert.deepEqual(errors,[]);
-  await ctx.close();
- }
-
- // A version-5 save from the original V5 opens migrated, without board fixtures.
- {
-  const raw=fs.readFileSync(path.join(__dirname,'fixtures','stage2','ridge-primed.json'),'utf8');
-  const {ctx,page,errors}=await open(browser,390,844,raw);
-  const s=await save(page);
-  assert.equal(s.version,6);assert.ok(s.task>=7);assert.equal(s.choice,'ridge');
-  assert.ok(s.board.every(x=>x===null||['item','source','crate'].includes(x.type)));
-  assert.equal(await page.locator('#board .cell.source').count(),3);
-  await page.screenshot({path:path.join(OUT,`migrated-${name}-390.png`)});
-  assert.deepEqual(errors,[]);
-  await ctx.close();
- }
- await browser.close();
- console.log('V5 mobile smoke passed ('+name+')');
-})().catch(e=>{console.error(e);process.exit(1);});
+ await page.locator('#soundButton').scrollIntoViewIfNeeded();const soundBefore=await page.locator('#soundButton').textContent();await page.locator('#soundButton').tap();assert.equal(await page.locator('#soundButton').textContent(),soundBefore==='Sound on'?'Sound off':'Sound on');
+ await page.setViewportSize({width,height:540});await page.locator('#helpButton').scrollIntoViewIfNeeded();await page.locator('#helpButton').tap();assert.ok(await page.locator('#journal').isVisible());assert.ok((await page.locator('#journal').boundingBox()).height<=540);await page.locator('#journal .close').tap();
+ await page.setViewportSize({width,height:664});await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:`test-artifacts/v5/${engine}-short-viewport-${width}.png`,fullPage:true});assert.deepEqual(errors,[]);assert.ok((await read()).moves>initial.moves);await page.close();console.log(engine,width,'short viewport / drag / objective / persistence passed');
+ }}finally{await browser.close();}}})().catch(e=>{console.error(e);process.exitCode=1;});

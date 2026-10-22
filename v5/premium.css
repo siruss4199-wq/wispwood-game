@@ -1,0 +1,35 @@
+/* Phase 1 only: material / light study, not a gameplay or layout rewrite. */
+body[data-art="premium"] .game{background:#f5f3ec;color:#264c56}
+body[data-art="premium"] .brand b{color:#244c57;letter-spacing:1.6px}
+body[data-art="premium"] .brand span{color:#7e979b}
+body[data-art="premium"] .world{box-shadow:0 4px 14px #254b5720;background:#244c56}
+body[data-art="premium"] .world:has(.premiumScene){background:#f0e6d3}
+body[data-art="premium"] #scene:has(.premiumScene){height:122px}
+.premiumScene{display:block;width:100%;height:122px;object-fit:cover;object-position:center}
+body[data-art="premium"] .world:has(.premiumScene) .worldLabel{top:12px;left:12px;color:#203f4c;text-shadow:0 1px 5px #fffcf3}
+body[data-art="premium"] .world:has(.premiumScene) .worldLabel span{display:none}
+body[data-art="premium"] .world:has(.premiumScene) .worldLabel b{font-size:13px}
+body[data-art="premium"] .world:has(.premiumScene) .objective{position:relative;margin-top:-5px;padding-top:10px;color:#244c56;background:linear-gradient(#f0e6d3cc,#f0e6d3 20%)}
+body[data-art="premium"] .world:has(.premiumScene) #step{color:#617b7e}
+body[data-art="premium"] .world:has(.premiumScene) .need{background:#e2d5bb;border-color:#9d937e}
+body[data-art="premium"] .world:has(.premiumScene) .need:not(.done) .art{opacity:1}
+body[data-art="premium"] .world:has(.premiumScene) .need.done{background:#d4e2c8;border-color:#6c9c80}
+body[data-art="premium"] .board{background:#eee4cf url('assets/premium/saltstone-tray.webp') center/100% 100%;border-color:#355963;border-width:2px;box-shadow:0 5px 0 #244750,0 9px 18px #183f4f25,inset 0 0 0 1px #f0d7a0;border-radius:17px}
+body[data-art="premium"] .siteSurface{opacity:.13;mix-blend-mode:multiply}
+body[data-art="premium"] #board[data-site="0"] .siteSurface{opacity:0}
+body[data-art="premium"] #board[data-site="3"] .siteSurface,body[data-art="premium"] #board[data-site="4"] .siteSurface{opacity:.32;mix-blend-mode:soft-light}
+body[data-art="premium"] #board .tile.empty:after{opacity:.4}
+body[data-art="premium"] #board .tile.item img.art{object-fit:contain;width:100%;height:100%;filter:drop-shadow(0 2px 1px #3d352b25)}
+body[data-art="premium"] #board .tile.item[data-tier="0"] img.art{width:89%;height:89%}
+body[data-art="premium"] #board .tile.item[data-tier="3"] img.art{width:108%;height:108%}
+body[data-art="premium"] .contracts .contract.ready{background:#deebdc}
+body[data-art="premium"] .selection,body[data-art="premium"] .message{color:#516d74}
+body[data-art="premium"] .boardHeading #hint{color:#526f77;font-size:10px}
+body[data-art="premium"] .resource{background:#f5d59c;border-color:#d6b378;box-shadow:inset 0 1px 1px #fff4d8}
+body[data-art="premium"] .round{background:#dfe8e5}
+
+/* Approved vibrant slice: keep the ivory work surface quiet and its geometry intact. */
+body[data-palette="vibrant"] .board{background-size:106% 106%;border-color:#24b9b3;border-top-color:#8ae6dc;border-bottom-color:#128b91;box-shadow:0 5px 0 #157f89,0 9px 18px #183f4f25,inset 0 0 0 2px #34b8b4,inset 0 0 0 3px #efd18a}
+body[data-palette="vibrant"] .world:has(.premiumScene) .objective{background:linear-gradient(#fff0d8cc,#fff0d8 20%)}
+body[data-palette="vibrant"] .world:has(.premiumScene) .need{background:#f3dfb7;border-color:#b99b69}
+body[data-palette="vibrant"] .world:has(.premiumScene) .need.done{background:#d4e2c8;border-color:#6c9c80}

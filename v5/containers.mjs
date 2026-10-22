@@ -1,10 +1,10 @@
-// Cases hold raw parts only: the merging is the player's. Remaining contents survive saves.
+// Small, deterministic reward identities; remaining contents survive partial openings and saves.
 const part=(family,tier)=>({type:'item',family,tier});
 export const CONTAINERS={
- salvage:{name:'Rover Parts Case',family:'rig',source:'Pier and crew deliveries',purpose:'Three raw Fieldworks parts',outputs:[part('rig',1),part('rig',0),part('rig',0)]},
- survey:{name:'Survey Satchel',family:'chart',source:'Survey Kite arrivals and crew deliveries',purpose:'Three raw Wayfinding parts',outputs:[part('chart',1),part('chart',0),part('chart',0)]},
- relic:{name:'Resonance Ampoule',family:'flux',source:'Echo Crucible arrivals and crew deliveries',purpose:'Three raw Resonance parts',outputs:[part('flux',1),part('flux',0),part('flux',0)]},
- locker:{name:'Saltbound Locker',family:'gold',source:'Older expedition saves',purpose:'Mixed raw expedition parts',outputs:[part('rig',0),part('chart',0),part('flux',0)]}
+ salvage:{name:'Rover Parts Case',family:'rig',source:'Rover & tool deliveries',purpose:'Repair parts · +2 Rover charges',outputs:[part('rig',1),part('rig',1),part('rig',0),part('rig',1),part('rig',0)]},
+ survey:{name:'Survey Satchel',family:'chart',source:'Landing camp & survey deliveries',purpose:'A guaranteed sight lens for contracts or decoding',outputs:[part('chart',2),part('chart',0),part('chart',0),part('chart',1),part('chart',0)]},
+ relic:{name:'Resonance Ampoule',family:'flux',source:'Excavation, decoding & the vault',purpose:'A pulse coil with matching resonance fragments',outputs:[part('flux',2),part('flux',0),part('flux',0),part('flux',1),part('flux',0)]},
+ locker:{name:'Saltbound Locker',family:'gold',source:'Under cleared saltstone',purpose:'Mixed expedition gear · opens on clearing',outputs:[part('chart',1),part('flux',1),part('rig',1),part('chart',1),part('flux',1)]}
 };
 export const container=(kind,left=3)=>({type:'crate',kind,left});
 export const containerInfo=x=>CONTAINERS[x?.kind]??CONTAINERS.locker;

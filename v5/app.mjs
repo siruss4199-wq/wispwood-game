@@ -1,289 +1,584 @@
-// Vaultwake V5 UI: coast scene with the current task, two crew orders, the 6×6
-// board and one suggestion. All rules live in core.mjs; this file only renders
-// state, turns taps and drags into actions and plays feedback.
-import {fresh,act,count,nameOf,FAMILIES,MAX_TIER,MAX_ENERGY,MEAL,currentTask} from './core.mjs';
-import {TASKS,PRODUCERS,SITES,sceneFor} from './chapter.mjs';
-import {orderProgress,ordersOpen,reservedItems,heldNeeds} from './orders.mjs';
-import {containerInfo} from './containers.mjs';
-import {suggest,focusNeeds} from './guide.mjs';
+import {campGoal} from './camp-goals.mjs';
+import {chapterEndView} from './chapter-end.mjs';
+import {coastalObjective,orderPurpose} from './coastal-journey.mjs';
+import {firstPier} from './first-pier.mjs';
+import {masteryPending,MASTERY_NAMES,masteryDirection,instrumentReady} from './mastery.mjs';
+import {firstSessionCue} from './first-session.mjs';
+import {orderDirection} from './order-direction.mjs';
 import {loadSlot,beginReplay,returnOriginal,slotKey} from './replay.mjs';
-import {art,portrait} from './art.mjs';
-import {sound,burst,moment,rewardFlight,reduced} from './feedback.mjs';
-import {enablePremium,prototypeScene} from './premium.mjs';
+import {fleetEarned,fleetPending,FLEET_LINES} from './fleet.mjs';
+import {storySnapshot,requestBrief} from './story.mjs';
+import {LOFT_COST,DEEP_SURVEY_COST,recoveryCost,pearlDiscovered,TIDE_NAMES,isTide,maxTier,sameKind,discoveryKey,tideItem,nextTide} from './treasures.mjs';
+import {KITS} from './journey.mjs';
+import {PIER_COST,PACK_COST} from './camp.mjs';
+import {requestProgress} from './requests.mjs';
+import {WORKSHOP_COST,BENCH_COST,BENCH_NEEDS,benchInputs} from './workshop.mjs';
+import {containerInfo,contents} from './containers.mjs';
+import {SAVE_KEY,FAMILIES,SOURCES,STAGES,fresh,load,act,goal,expeditionGoal,count,ready,matches,nameOf,normalContract,opportunity,nextOutput,burstOutput,item,near,sourceUnlocked} from './core.mjs';
+import {art,scene as vectorScene,portrait} from './art.mjs';
+import {feedback,sound,reduced,snapshotTask,moment} from './feedback.mjs';
 import {platform} from '../v4/platform.mjs';
-
-enablePremium(new URLSearchParams(location.search).get('art'));
-const $=q=>document.querySelector(q);
-const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const face=who=>portrait(who==='Neri'?'neri':'ivo');
-const itemOf=(family,tier)=>({type:'item',family,tier});
-const SITE_ORDER=Object.keys(SITES);
-
-let state,replayActive=false;
-try{const slot=loadSlot(localStorage);state=slot.state;replayActive=slot.active;}catch{state=fresh();}
-let selected=null,shownScene=null,storyTimer=null,hintCells=[],beat=null,warning=null,warnTimer=null;
-
-function persist(){
- try{const raw=JSON.stringify(state);localStorage.setItem(slotKey(replayActive),raw);if(!replayActive)platform.save(raw);}
- catch{say('Storage unavailable: this session plays, but progress will not be saved.');}
+import {siteSurface,SITE_NAMES,deliveryItems,continuation} from './presentation.mjs';
+import {deliverFeedback} from './feedback.mjs';
+import {ANCHORS,ROUTES,FINDS,findSite,canRestore,equipment,anchors,activeAnchors} from './expedition.mjs';
+import {enablePremium,prototypeScene} from './premium.mjs';
+import {useAction,openingPair} from './interactions.mjs';
+import {circuit,linkPhase,loopCell,optics,movable,receivers} from './seals.mjs';
+import {routePrepared} from './navigation.mjs';
+const premium=new URLSearchParams(location.search).get('art')!=='classic';
+if(premium){enablePremium(new URLSearchParams(location.search).get('art'));document.body.dataset.art='premium';document.body.dataset.palette=['r2','phase1'].includes(new URLSearchParams(location.search).get('art'))?'muted':'vibrant';}
+const scene=premium?prototypeScene:vectorScene;
+const $=s=>document.querySelector(s);
+let state,replayActive=false;try{({state,active:replayActive}=loadSlot(localStorage));}catch{state=fresh();}
+let selected=null,focus='goal',drag=null,suppressUntil=0,sideView=null,requestId=null,kitFocus='field',showVaultGoal=false,postChapterOrdersOpen=false;
+let instrumentFocus='rig';
+// Story beats are earned progress: show the new line in play, briefly, never blocking.
+let storyTimer=0;
+const storyKey=()=>{const st=storySnapshot(state);return st.expedition.title+'|'+st.camp.title;};
+function showStory(before){
+ const st=storySnapshot(state),[expedition]=before.split('|');
+ const b=st.expedition.title!==expedition?st.expedition:st.camp;
+ let el=$('#storyLine');
+ if(!el){el=document.createElement('div');el.id='storyLine';el.setAttribute('role','status');el.setAttribute('aria-live','polite');$('.world').append(el);}
+ el.innerHTML=`<span class="storyFace">${portrait(b.voice.startsWith('Neri')?'neri':'ivo')}</span><span class="storyText"><b>${b.voice}</b><span>${b.line}</span><i>${b.question}</i></span>`;
+ el.hidden=false;clearTimeout(storyTimer);storyTimer=setTimeout(()=>{el.hidden=true;},8000);
 }
-function say(text){$('#message').textContent=text;}
-// A refused action explains itself in the hint bar for a moment.
-function warn(text){warning=text;say(text);renderBar();clearTimeout(warnTimer);warnTimer=setTimeout(()=>{warning=null;renderBar();},2600);}
-
-// ---------- Rendering ----------
-function renderHeader(){
- const e=$('#energy');
- e.classList.toggle('empty',state.energy<1);
- $('#energyValue').textContent=state.energy;
- e.setAttribute('aria-label',state.energy<1?'Out of energy: take a free field meal':'Energy '+state.energy+' of '+MAX_ENERGY);
- $('#mealButton').hidden=state.energy>=1;
- const done=new Set(TASKS.slice(0,state.task).map(t=>t.site));
- const current=currentTask(state)?.site;
- $('#track').innerHTML=SITE_ORDER.map(id=>`<i class="${done.has(id)&&id!==current?'done':id===current?'now':''}" title="${esc(SITES[id].name)}"></i>`).join('');
- $('#chapterStep').textContent=state.task<TASKS.length?`Task ${state.task+1} of ${TASKS.length}`:'Chapter complete';
- $('#replayNotice').hidden=!replayActive;
+function visibleGoal(){return state.stage===4&&showVaultGoal?expeditionGoal(state):coastalObjective(state,expeditionGoal(state));}
+const board=$('#board'),message=$('#message');
+function persist(){try{const raw=JSON.stringify(state);localStorage.setItem(slotKey(replayActive),raw);if(!replayActive)platform.save(raw);}catch{message.textContent='Storage unavailable. This session is playable, but progress cannot be saved.';}}
+function needed(){if(focus==='goal'&&state.stage===3&&masteryPending(state).length)return [{family:instrumentFocus,tier:4,count:1}];if(focus==='goal'&&state.stage===3&&!state.journey.kit)return KITS[kitFocus].needs;if(focus==='bench')return BENCH_NEEDS;if(focus==='request')return state.requests.orders.find(o=>o?.id===requestId)?.needs??[];const x=state.board[selected];if(x?.type==='rock'&&FINDS[x.find])return [{family:'rig',tier:2,count:1},...(canRestore(state,x)?[{family:'flux',tier:2,count:1}]:[])];if(focus==='goal'&&x?.type==='site')return x.phase==='idle'?[equipment(x.kind)]:[];if(focus==='goal'&&x?.type==='route')return [{family:ROUTES[x.id].family,tier:2,count:1}];return focus==='contract'?normalContract(state).needs:focus==='opportunity'?state.opportunity?.needs??[]:focus==='discovery'?[{family:'chart',tier:2,count:1}]:visibleGoal()?.needs??[];}
+function needsHTML(needs){return needs.map(r=>`<span class="need ${count(state,r)>=r.count?'done':near(state,[r])==='1 MERGE AWAY'?'almost':''}" title="${nameOf(item(r.family,r.tier,r.line))}">${art(item(r.family,r.tier,r.line))}<b>${count(state,r)>=r.count&&r.count===1?'✓':Math.min(count(state,r),r.count)+'/'+r.count}</b></span>`).join('');}
+function sideOptions(){return ['contract',...(state.discovery&&!state.discoveryDone&&state.board.some(x=>x?.type==='glyph')?['discovery']:[]),...(state.stage>=1?[state.opportunity?'opportunity':'startOpportunity']:[])];}
+function sideChoice(){const options=sideOptions();return options.includes(sideView)?sideView:state.opportunity?'opportunity':options.includes('discovery')?'discovery':'contract';}
+const GUIDE_PRODUCERS={rig:'Rivet Rover',chart:'Survey Kite',flux:'Echo Crucible'};
+const GUIDE_NAMES={quick:'Quick',standard:'Standard',long:'Expedition kit'};
+// The fleet reveal is a pending story beat; once seen, play continues at the camp.
+const signalPending=()=>{const e=chapterEndView(state);return e?.status==='pending'?e:null;};
+const signalHeard=()=>chapterEndView(state)?.status==='complete';
+// An unopened case of the needed family holds free parts: open it before tapping a producer.
+function currentOrderDirection(){
+ const d=orderDirectionNow();
+ if(!d||!['produce','refill','energy'].includes(d.kind))return d;
+ const crate=state.board.findIndex(x=>x?.type==='crate'&&containerInfo(x).family===d.family);
+ return crate<0?d:{...d,kind:'crate',indices:[crate],crateName:containerInfo(state.board[crate]).name};
 }
-
-function renderScene(){
- const stage=sceneFor(state.task);
- if(shownScene!==stage){
-  const wrap=$('#scene');wrap.innerHTML=prototypeScene(stage);
-  if(shownScene!==null&&!reduced())wrap.firstElementChild?.classList.add('arrive');
-  shownScene=stage;
+function orderDirectionNow(){
+ if(signalPending())return null;
+ if(state.stage===3&&masteryPending(state).length)return masteryDirection(state,instrumentFocus);
+ let order=focus==='request'?state.requests.orders.find(o=>o?.id===requestId):null;
+ if(!order&&state.stage===0&&state.landingStep===1&&!ready(state,visibleGoal()?.needs??[])){
+  const id=firstSessionCue(state)?.requestId;
+  order=state.requests.orders.find(o=>o?.id===id);
  }
- const t=currentTask(state);
- $('#siteTag').textContent=t?SITES[t.site].name:'Signal mast · raised';
-}
-
-function needSlot(r){
- const have=count(state,r),done=have>=r.count;
- return `<span class="need ${done?'done':''}" title="${esc(nameOf(itemOf(r.family,r.tier)))}">${art(itemOf(r.family,r.tier))}<b>${done?'✓':Math.min(have,r.count)+'/'+r.count}</b><em>${esc(nameOf(itemOf(r.family,r.tier)))}</em></span>`;
-}
-
-function renderTask(){
- const t=currentTask(state),el=$('#task');
- // A finished task stays on the card with its story line until Continue.
- if(beat){
-  el.innerHTML=`<div class="taskHead beat"><span class="face">${face(beat.who)}</span><div><small>✓ ${esc(beat.site.toUpperCase())} RESTORED</small><h2>${esc(beat.title)}</h2><p class="line">${esc(beat.line)}</p></div></div><div class="taskActions"><span class="upNext">${t?'Next: '+esc(t.title):'Chapter 1 complete'}</span><button class="primary" data-continue>Continue</button></div>`;
-  return;
+ if(!order&&visibleGoal()?.kind==='camp'&&visibleGoal().action==='orders'){
+  order=state.requests.orders.find(o=>o?.id===visibleGoal().orderId);
  }
- if(!t){
-  el.innerHTML=`<div class="taskHead"><span class="face">${face('Neri')}</span><div><small>CHAPTER 1 COMPLETE</small><h2>The fleet answered.</h2><p>Chapter 2 starts here soon. Thank you for playing this test build.</p></div></div><div class="taskActions"><button class="primary" data-replay>Play again</button></div>`;
-  return;
- }
- const head=`<div class="taskHead"><span class="face">${face(t.who)}</span><div><small>${esc(t.who.toUpperCase())} · ${esc(SITES[t.site].name.toUpperCase())}</small><h2>${esc(t.title)}</h2><p>${esc(t.why)}</p></div></div>`;
- if(t.choices){
-  el.innerHTML=head+`<div class="choices">${Object.entries(t.choices).map(([id,c])=>{const ok=c.needs.every(r=>count(state,r)>=r.count);return `<div class="choice"><div class="needs">${c.needs.map(needSlot).join('')}</div><button class="${ok?'primary':'ghost'}" data-choice="${id}" ${ok?'':'aria-disabled="true"'}>${esc(c.label)}</button><small class="perk">Upgrades ${esc(PRODUCERS[c.reward.upgrade].name)}</small></div>`;}).join('')}</div>`;
-  return;
- }
- const ok=t.needs.every(r=>count(state,r)>=r.count);
- el.innerHTML=head+`<div class="taskActions"><div class="needs">${t.needs.map(needSlot).join('')}</div><button class="${ok?'primary':'ghost'}" data-task ${ok?'':'aria-disabled="true"'}>${t.needs.length?'Deliver':'Listen'}</button></div>`;
+ return orderDirection(state,order);
 }
-
-function renderOrders(){
- const el=$('#orders');
- if(!ordersOpen(state)){el.hidden=true;el.innerHTML='';return;}
- el.hidden=false;
- el.innerHTML=state.orders.lanes.map(o=>{
-  if(!o)return '';
-  const p=orderProgress(state,o),r=o.needs[0];
-  const status=p.ready?'Ready':p.progress[0].held?'Make a spare':p.progress[0].current+'/'+r.count;
-  return `<button class="order ${p.ready?'ready':''}" data-order="${o.id}" aria-label="${esc(o.who)} wants ${r.count} ${esc(nameOf(itemOf(r.family,r.tier)))}: ${status}">
-   <span class="orderArt">${art(itemOf(r.family,r.tier))}${r.count>1?`<b>×${r.count}</b>`:''}</span>
-   <span class="orderText"><small>${esc(o.who)}</small><strong>${status}</strong></span>
-   <span class="orderPay">+${o.energy}<i>ϟ</i>${o.case?'<em title="Supply case">▣</em>':''}</span></button>`;
+function directionText(direction){
+ if(!direction)return '';
+ const name=direction.need?nameOf(item(direction.need.family,direction.need.tier,direction.need.line)):'';
+ const source=GUIDE_PRODUCERS[direction.family]??'producer';
+ if(direction.kind==='install')return 'INSTRUMENT READY · tap EQUIP above';
+ if(direction.kind==='collect')return (GUIDE_NAMES[state.requests.orders.find(o=>o?.id===direction.orderId)?.lane]??'Order').toUpperCase()+' READY · tap its card to collect';
+ if(direction.kind==='merge'){const made=Number.isInteger(direction.tier)&&direction.family?nameOf(item(direction.family,direction.tier+1,direction.need?.line)):name;return 'MERGE THE HIGHLIGHTED PAIR → '+made+(name&&made!==name?' · toward '+name:'');}
+ if(direction.kind==='make-space')return 'BOARD FULL · merge the highlighted pair';
+ if(direction.kind==='full')return 'BOARD FULL · deliver an order or recycle a spare';
+ if(direction.kind==='energy')return 'NEED ENERGY · deliver a ready order or use a field ration';
+ if(direction.kind==='crate')return 'OPEN THE '+direction.crateName.toUpperCase()+' · free parts for '+name;
+ if(direction.kind==='refill')return 'REFILL '+source.toUpperCase()+' · then make '+name;
+ if(direction.kind==='recover')return 'TAP '+source.toUpperCase()+' · recover Tide Treasures toward '+name;
+ if(direction.kind==='produce')return 'TAP '+source.toUpperCase()+' · make parts for '+name;
+ return 'Find the producer needed for '+name;
+}
+function hint(){
+ // An already-prepared crossing is the player's next real action; never
+ // override it with an optional first-fragment suggestion.
+ if(state.stage===0&&state.landingStep===1&&visibleGoal()?.kind!=='camp'&&ready(state,visibleGoal()?.needs??[]))return 'CROSSING READY · View routes above';
+ const finished=signalPending();
+ if(finished&&focus!=='request')return finished.hint;
+ const opening=firstSessionCue(state);
+ if(opening?.pairs.length===2&&focus!=='request')return opening.hint;
+ const route=currentOrderDirection();
+ if(route&&(state.stage===3&&masteryPending(state).length||focus==='request'||visibleGoal()?.action==='orders'))return directionText(route);
+ if(opening?.requestId&&focus!=='request')return opening.hint;
+ if(visibleGoal()?.kind==='camp'&&focus!=='request'){
+  const g=visibleGoal();
+  if(g.action==='orders'){const o=state.requests.orders.find(x=>x?.id===g.orderId);if(o){const p=requestProgress(state,o),missing=p.progress.find(r=>r.current<r.count);return p.ready?'ORDER READY · collect '+o.supplies+' supplies above':missing?'NEXT ORDER · make '+nameOf(item(missing.family,missing.tier,missing.line)):'Complete the highlighted order';}return 'Deliver camp orders to earn supplies';}
+  if(g.action==='treasure')return 'Survey Kite · recover and merge Tide Treasures';
+  return g.ready?g.name.toUpperCase()+' READY · tap '+g.verb.split(' ·')[0]+' above':'Deliver crew orders · '+g.name;
+ }
+ if(state.stage===2&&optics(state).primed&&receivers(state).some(i=>circuit(state,i)))return state.board.includes(null)?'RINGS READY · ACTIVATE ABOVE ↑':'RINGS READY · MERGE TO FREE ONE SPACE';
+ if(!state.merges&&state.stage===0&&!state.landingStep)return 'START · Tap the glowing pair';
+ if(state.stage===0&&!state.landingStep)return 'GRIP TOOL MADE · Tap CLEAR PATH ↑';
+ if(focus==='request'){
+  const order=state.requests.orders.find(o=>o?.id===requestId);
+  if(order){const progress=requestProgress(state,order);if(progress.ready)return 'ORDER READY · Collect above the board';
+   const missing=progress.progress.find(r=>r.current<r.count);
+   if(missing)return 'ORDER · Make '+nameOf(item(missing.family,missing.tier,missing.line))+' · use the board';
+  }
+ }
+ if(state.stage===0&&state.landingStep===1){
+  const g=visibleGoal();
+  if(g&&ready(state,g.needs))return 'CROSSING READY · View routes above';
+  const missing=g.needs.find(r=>count(state,r)<r.count);
+  if(missing.family==='chart'&&!state.taps.chart)return 'NEW MACHINE · Tap Survey Kite for map parts';
+  return 'NEXT · Merge parts into a '+nameOf(item(missing.family,missing.tier,missing.line));
+ }
+ if(state.stage===1)return 'Choose a crossing above · keep the other tool';if(state.stage===2){const g=visibleGoal();return g.action==='prime'&&ready(state,g.needs)?'LOOP CELL READY · Tap Charge Stone Lift':g.text;}if(state.stage===3&&masteryPending(state).length)return 'CREW PREPARATION · merge '+MASTERY_NAMES[masteryPending(state)[0]]+' yourself';if(state.stage===3)return state.journey.kit?'RINGS AWAKE · Open the Tideglass Vault':'Choose tool finds or survey finds · pack one kit';if(state.stage===4&&!state.journey.engine)return 'Inside: a dormant engine · restore it for enriched production';if(state.stage===4&&!state.journey.infusions)return 'Use a Loop Cell on the producer you want to enrich';if(state.journey.boost)return SOURCES[state.journey.boost.family].name+' · '+state.journey.boost.left+' enriched pulls ready';return 'Merge twins · choose where to use them';}
+function missionSlots(){
+ const g=visibleGoal();if(g?.kind==='camp')return g.cost?`<span class="need campNeed"><img class="art" src="assets/premium/${g.image}.webp" alt=""><b>${Math.min(g.supplies,g.cost)}/${g.cost} ◆</b></span>`:needsHTML(g.needs);
+ if(g?.action==='useEnriched')return `<span class="need">${art({type:'source',id:state.journey.boost.family})}<b>${state.journey.boost.left} pulls</b></span>`;
+ if(state.stage===3&&masteryPending(state).length)return ['rig','chart','flux'].map(f=>{
+  const done=instrumentReady(state,f);
+  return `<button class="instrumentChoice ${f===instrumentFocus?'chosen':''}" data-instrument="${f}" aria-pressed="${f===instrumentFocus}" aria-label="${done?'Equip':'Choose'} ${MASTERY_NAMES[f]}. Three enriched ${SOURCES[f].name} pulls.">${art(item(f,4))}<b>${MASTERY_NAMES[f]}</b><small>${{rig:'Repair parts',chart:'Navigation parts',flux:'Power parts'}[f]}</small><strong>${done?'EQUIP':f===instrumentFocus?'MAKE THIS':'CHOOSE'}</strong></button>`;
  }).join('');
-}
-
-function cellHTML(x,i,marks){
- if(!x)return `<button class="cell empty" data-i="${i}" aria-label="Empty space"></button>`;
- const cls=['cell',x.type];
- if(i===selected)cls.push('selected');
- if(marks.partner.has(i))cls.push('partner');
- if(marks.need.has(i))cls.push('need');
- if(hintCells.includes(i))cls.push('hint');
- let badge='',label=nameOf(x);
- if(x.type==='source'){const p=state.producers[x.id];badge=`<span class="badge">${p.rich?'★'+p.rich:'ϟ1'}</span>`;label+=': tap for parts';}
- if(x.type==='crate'){badge=`<span class="badge open">OPEN</span>`;label+=': tap to open';}
- if(x.type==='item'&&x.tier>0)badge=`<span class="tier">${x.tier+1}</span>`;
- return `<button class="${cls.join(' ')}" data-i="${i}" aria-label="${esc(label)}">${art(x)}${badge}</button>`;
-}
-
-function renderBoard(){
- const sel=state.board[selected];
- const partner=new Set(sel?.type==='item'?state.board.flatMap((y,j)=>j!==selected&&y?.type==='item'&&y.family===sel.family&&y.tier===sel.tier?[j]:[]):[]);
- const need=new Set();
- for(const r of heldNeeds(state))state.board.forEach((y,j)=>{if(y?.type==='item'&&y.family===r.family&&y.tier===r.tier)need.add(j);});
- $('#board').innerHTML=state.board.map((x,i)=>cellHTML(x,i,{partner,need})).join('');
-}
-
-function renderBar(){
- const x=state.board[selected],el=$('#selection');
- if(warning){el.innerHTML=`<p class="hintText warn">${esc(warning)}</p>`;return;}
- if(x?.type!=='item'){
-  const g=beat?{cells:[],text:'Tap Continue for the next task.'}:suggest(state);hintCells=g.cells;
-  el.innerHTML=`<p class="hintText">${esc(g.text)}</p>`;
-  return;
+ if(state.stage===3&&!state.journey.kit)return Object.entries(KITS).map(([id,k])=>`<button class="missionSlot engineChoice ${ready(state,k.needs)?'available':''}" data-kit="${id}" aria-label="${k.name}: ${k.needs.map(r=>nameOf(item(r.family,r.tier,r.line))).join(', ')}. ${k.reward}"><b>Open · ${k.name}</b><span class="kitItems">${needsHTML(k.needs)}</span><small>${k.reward}</small></button>`).join('');
+ if(state.stage===4&&state.journey.engine&&!state.journey.infusions)return Object.entries(SOURCES).map(([id,p])=>`<button class="missionSlot engineChoice ${count(state,{family:'flux',tier:1})?'available':''}" data-infuse="${id}" aria-label="Enrich ${p.name}: one Loop Cell, three improved pulls">${art({type:'source',id})}<b>${p.name}</b><small>1 Loop Cell → 3 rich pulls</small></button>`).join('');
+ if(state.stage===1)return Object.entries(ROUTES).map(([id,r])=>{
+  const index=state.board.findIndex(x=>x?.type==='route'&&x.id===id),need={family:r.family,tier:2,count:1},can=routePrepared(state,id)&&ready(state,[need]);
+  const reward=id==='ridge'?item('rig',1):item('flux',2);
+  return `<button class="missionSlot routeChoice ${can?'available':''}" data-site-index="${index}" data-route="${id}" aria-label="${r.name}. Use one ${nameOf(item(r.family,2))}. Receive ${r.benefit}. ${r.kept}. ${can?'Ready to open':'Merge required item'}"><b>${r.name}</b><span class="routeCost">${art(item(r.family,2))}<span>${can?'USE':'MAKE'}<strong>${nameOf(item(r.family,2))}</strong></span></span><span class="routeReward">${art(reward)}<span>${r.reward}</span></span></button>`;
+ }).join('');
+ if(state.stage===2){
+  const slot=(need,index,action,title,reward)=>{
+   const can=!need||ready(state,[need]);
+   return `<button class="missionSlot engineChoice ${can?'available':''}" data-site-index="${index}" data-engine-action="${action}" aria-label="${title}. ${need?'Use '+nameOf(item(need.family,need.tier))+'. ':''}${reward}. ${can?'Ready':'Merge required item'}"><b>${title}</b><span class="engineCost">${art(need?item(need.family,need.tier):state.board[index])}<span>${need?`${Math.min(count(state,need),need.count)}/${need.count} ${nameOf(item(need.family,need.tier))}`:'READY'}</span></span><small>${reward}</small></button>`;
+  };
+  const lift=state.board.findIndex(x=>x?.type==='site'&&x.kind==='winch');
+  if(!state.seals.stabilization){
+   const rock=state.board.findIndex(x=>x?.type==='rock'&&x.find==='winch');
+   if(ready(state,[equipment('winch')])||rock<0)return slot(equipment('winch'),lift,'deploy','Repair Stone Lift','Open ground + survey parts');
+   return slot({family:'rig',tier:2,count:1},rock,'clear','Recover winch','Keep equipment or repair the Lift')+slot({family:'flux',tier:2,count:1},rock,'restore','Restore Lift','Open ground + survey parts');
+  }
+  const targets=receivers(state);
+  if(!targets.length)return anchors(state).filter(x=>x.kind!=='winch').map(x=>slot(equipment(x.kind),state.board.indexOf(x),'deploy',nameOf(x),x.kind==='scope'?'Relic supplies':'Refill sources + rich pulls')).join('');
+  if(!optics(state).primed)return slot({family:'flux',tier:1,count:1},lift,'prime','Charge Stone Lift',ready(state,[{family:'flux',tier:1,count:1}])?'Use cell → wake the receiver':'Echo Crucible → merge two Violet Shards');
+  const room=state.board.includes(null);
+  return targets.map(i=>`<button class="missionSlot engineActivate ${room?'available':'blocked'}" data-site-index="${i}" data-engine-action="power" aria-label="${room?'Activate the rings':'Make one free space to activate the rings'} using ${nameOf(state.board[i])}. ${state.board[i].kind==='scope'?'Claim a relic case':'Receive a winch and three improved pulls'}"><span class="activateArt">${art(state.board[i])}</span><span class="activateCopy"><b>${room?'ACTIVATE RINGS →':'MAKE ONE SPACE'}</b><small>${nameOf(state.board[i])} · ${state.board[i].kind==='scope'?'Relic rewards':'Producer boost'}</small></span></button>`).join('');
  }
- hintCells=[];
- const next=x.tier<MAX_TIER?FAMILIES[x.family].names[x.tier+1]:null;
- const held=reservedItems(state).has(selected)&&count(state,x)<=heldNeeds(state).filter(r=>r.family===x.family&&r.tier===x.tier).reduce((n,r)=>n+r.count,0);
- el.innerHTML=`<span class="selArt">${art(x)}</span><span class="selText"><b>${esc(nameOf(x))}</b><small>${next?'Merge two → '+esc(next):'Fully merged'}${held?' · the task needs it':''}</small></span>${held?'':`<button class="ghost small" data-recycle>Recycle +${Math.max(1,x.tier)}ϟ</button>`}`;
+ return needsHTML(visibleGoal()?.needs??[]);
 }
-
+function renderWorkshop(){
+ let crown=$('#fleetCrown');
+ if(fleetEarned(state)){
+  if(!crown){$('#scene').insertAdjacentHTML('beforeend','<button id="fleetCrown" type="button"><img src="assets/premium/tide-4.webp" alt="Ocean Crown"><span></span></button>');crown=$('#fleetCrown');}
+  crown.classList.toggle('pending',fleetPending(state));crown.querySelector('span').textContent=fleetPending(state)?'REVEAL SIGNAL':'FLEET SIGNAL';
+  crown.setAttribute('aria-label',fleetPending(state)?'Ocean Crown discovered: reveal the missing fleet signal':'Ocean Crown: revisit the fleet signal');
+ }else crown?.remove();
+ $('#scene').classList.toggle('fleetAwake',fleetEarned(state));
+ let button=$('#workshop');
+ if(!button){$('#scene').insertAdjacentHTML('beforeend','<button id="workshop"><img width="256" height="256" alt=""><span></span></button>');button=$('#workshop');}
+ const restored=state.workshop.repaired,ready=state.requests.supplies>=WORKSHOP_COST;
+ let pier=$('#campPierWorld');
+ if(state.camp.pier&&!pier){$('#scene').insertAdjacentHTML('beforeend',`<button type="button" id="campPierWorld" aria-label="Supply Pier: view order rewards and supply cases">${art({type:'crate',kind:'salvage'})}<span>SUPPLY PIER</span></button>`);}
+ else if(!state.camp.pier&&pier)pier.remove();
+ pier=$('#campPierWorld');if(pier){pier.dataset.loft=state.camp.loft;pier.dataset.deep=state.camp.deepSurvey;{pier.innerHTML=state.camp.loft?'<img class="art" src="assets/premium/charting-loft.webp" alt="Charting Loft with treasure winch">'+(state.camp.deepSurvey?'<img class="deepInstrument" src="assets/premium/tide-3.webp" alt="Installed deep-survey instrument">':'')+'<span>'+(state.camp.deepSurvey?'DEEP SURVEY':'CHARTING LOFT')+'</span>':art({type:'crate',kind:'salvage'})+'<span>SUPPLY PIER</span>';pier.setAttribute('aria-label',state.camp.loft?(state.camp.deepSurvey?'Deep Survey Loft: recover Reef Compasses':'Charting Loft: recover treasures or upgrade Deep Survey'):'Supply Pier: develop Charting Loft for 20 camp supplies');}}
+ // Reveal camp management only after the first landing milestone, not before
+ // the player has learned the basic merge interaction.
+ button.hidden=state.stage===0&&!state.landingStep&&!restored;
+ const src='assets/premium/workshop-'+(restored?'operational':'damaged')+'.webp';
+ if(button.querySelector('img').getAttribute('src')!==src)button.querySelector('img').src=src;
+ button.dataset.state=state.workshop.precision?'precision':restored?'operational':'damaged';button.classList.toggle('repairReady',!restored&&ready);
+ button.classList.toggle('pressAvailable',restored&&state.charges.rig>0&&state.energy>=2&&state.board.includes(null));
+ // One primary action per screen: the scene names the Workshop only while it is the job.
+ const workshopJob=!restored&&state.stage===0&&state.landingStep===1&&state.discovered.includes('chart:tide:1');
+ button.querySelector('span').textContent=restored||!workshopJob?'':ready?'Repair · 8 ◆':`Workshop · ${state.requests.supplies}/8 ◆`;
+ button.classList.toggle('precision',state.workshop.precision);
+ if(state.workshop.precision&&!button.querySelector('.benchFitting'))button.insertAdjacentHTML('beforeend','<i class="benchFitting" aria-hidden="true">'+art(item('rig',2))+'</i>');
+ let bench=$('#workshopBench');
+ if(!bench){$('#scene').insertAdjacentHTML('beforeend','<button id="workshopBench"></button>');bench=$('#workshopBench');}
+ // Optional upgrade: shown once affordable or installed, never beside another camp build.
+ const goalNow=visibleGoal(),competing=goalNow?.kind==='camp'&&goalNow.cost&&goalNow.name!=='Install Precision Bench';
+ bench.hidden=!restored||!state.workshop.precision&&(state.requests.supplies<BENCH_COST||competing);
+ bench.classList.toggle('ready',state.workshop.precision?benchInputs(state).every(i=>i>=0)&&state.energy>=1&&state.charges.rig>0:state.requests.supplies>=BENCH_COST);
+ bench.innerHTML=state.workshop.precision?art(item('rig',2))+'<span>Precision<br>Bench</span>':'<span>Precision Bench<br><b>'+Math.min(state.requests.supplies,BENCH_COST)+'/'+BENCH_COST+' ◆</b></span>';
+ bench.setAttribute('aria-label',state.workshop.precision?'View Precision Bench recipe and fitting action':'View Precision Bench upgrade: '+BENCH_COST+' supplies. Grip tool and Ink scrap become a Split spanner.');
+ button.setAttribute('aria-label',restored?'Coastal Workshop operational. Tap here to press a Grip tool for 2 energy and one Rover charge, or select Rivet Rover.':`Coastal Workshop damaged. Repair for 8 supplies. You have ${state.requests.supplies}.`);
+ renderFirstPier();
+}
+function renderFirstPier(){
+ const pier=firstPier(state);let el=$('#firstPier');
+ if(!pier){el?.remove();return;}
+ if(!el){
+  $('#scene').insertAdjacentHTML('beforeend',`<div id="firstPier" role="img" aria-label="Storm pier restoration"><svg viewBox="0 0 130 70" aria-hidden="true">
+   <path d="M7 50 58 18 121 47 68 69Z" fill="#164e55" opacity=".4"/>
+   <path d="M8 37 61 9 121 39 68 60Z" fill="#a97047" stroke="#795136" stroke-width="3"/>
+   <path class="pierPlank plank1" d="M21 33 61 12 78 20 38 42Z" fill="#f8d78a" stroke="#ba8345" stroke-width="2"/>
+   <path class="pierPlank plank2" d="M54 48 93 27 109 35 69 56Z" fill="#f8d78a" stroke="#ba8345" stroke-width="2"/>
+   <path d="M19 45V63M112 43V61" stroke="#795136" stroke-width="5" stroke-linecap="round"/>
+  </svg><span></span></div>`);
+  el=$('#firstPier');
+ }
+ el.dataset.level=pier.level;el.setAttribute('aria-label',pier.label+', '+pier.progress+' supports restored');
+ el.querySelector('span').textContent=pier.level===2?'PIER READY':pier.level===1?'PIER 1/2':'REPAIR PIER';
+}
+function renderRequests(){
+ const openingPier=firstPier(state);
+ const ending=signalPending();
+ $('#requests').hidden=state.stage===0&&!state.landingStep;
+ $('#requests').classList.toggle('postChapterCollapsed',!!ending&&!postChapterOrdersOpen);
+ $('#requests').classList.toggle('postChapterOrders',!!ending);
+ $('#sideTray').hidden=state.stage===0&&!state.landingStep;
+ const q=state.requests;
+ const suggestedRequest=visibleGoal()?.orderId??firstSessionCue(state)?.requestId??null;
+ const focused=q.orders.find(o=>o?.id===requestId);
+ const missing=focused&&requestProgress(state,focused).progress.find(r=>r.current<r.count);
+ const family=missing?.family&&sourceUnlocked(state,missing.family)?missing.family:focused?.needs.find(r=>sourceUnlocked(state,r.family))?.family??'rig';
+ const action=state.workshop.repaired?(state.camp.pier
+  ?state.camp.loft&&missing?.line==='tide'?`<button class="campAction" data-camp-action="recoverTide">${state.camp.deepSurvey?'Deep Survey':'Recover treasure'} · ${recoveryCost(state)}ϟ</button>`:`<button class="campAction ${q.supplies>=PACK_COST?'affordable':''}" data-camp-action="packPier" data-family="${family}" aria-label="Order a ${FAMILIES[family].name} supply case for ${PACK_COST} camp supplies">+${FAMILIES[family].name} case · ${PACK_COST}◆</button>`
+  :`<button class="campAction ${q.supplies>=PIER_COST?'affordable':''}" data-camp-action="buildPier" aria-label="Build Supply Pier for ${PIER_COST} camp supplies">Build Pier · ${PIER_COST}◆</button>`):'';
+ const objective=visibleGoal(),campBuild=objective?.kind==='camp'&&objective.cost;
+ const primary=campGoal(state);
+ const purpose=(state.camp.earlyFragments??0)<2?'Next order: Tide Dial Fragment':primary?.cost?primary.name+' · '+Math.min(primary.supplies,primary.cost)+'/'+primary.cost+' ◆'+(primary.supplies>=primary.cost?' · READY':''):primary?.action==='treasure'?'Recover & merge the next treasure':primary?.action==='orders'?'Orders fund Supply Pier cases':(state.camp.earlyFragments??0)<2?'Next order: Tide Dial Fragment':!state.workshop.repaired?'Workshop 8◆':!state.camp.pier?'Unlock useful supply cases':!state.camp.loft?'Charting Loft 20◆':state.camp.deepSurvey?(state.discovered.includes('chart:tide:4')?'Fulfill treasure orders':'Discover the Ocean Crown'):pearlDiscovered(state)?'Deep Survey 18◆':'Discover a Pearl Astrolabe';
+ $('#requests').innerHTML=`${ending?`<button id="ordersToggle" type="button" aria-expanded="${postChapterOrdersOpen}" class="ordersToggle">${postChapterOrdersOpen?'Hide optional camp orders':'Optional camp orders'} · ◆${q.supplies} <span aria-hidden="true">${postChapterOrdersOpen?'▴':'▾'}</span></button>`:''}<div class="requestHeading"><span>${ending?'OPTIONAL ORDERS':'CREW DELIVERIES'} <small>${orderPurpose(state)}</small></span><b title="Earn camp supplies by delivering orders">◆ <span id="supplies">${q.supplies}</span></b>${campBuild?'':action}</div><div class="requestShelf" aria-label="Crew orders; swipe for alternatives">${q.orders.filter((o,i)=>o&&(!openingPier||openingPier.visibleLanes.includes(i))).sort((a,b)=>Number(b.id===suggestedRequest)-Number(a.id===suggestedRequest)).map(o=>{
+ const p=requestProgress(state,o),active=requestId===o.id&&focus==='request',energy=Math.min(o.energy,120-state.energy);
+ return `<button class="requestCard ${p.ready?'ready':''} ${active?'active':''} ${o.id===suggestedRequest?'storySuggested':''}" data-request="${o.id}" aria-pressed="${active}" aria-label="${o.id===suggestedRequest?'Suggested next: ':''}${o.lane} request: ${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier,r.line))).join(', ')}. ${p.ready?active?'Deliver':'Ready. Tap once to collect':'In progress'}. Reward ${o.supplies} camp supplies${energy?` and ${energy} energy`:`, energy full`}"><b class="requestLane">${o.lane==='long'?'Expedition kit':o.lane==='quick'?'Quick':'Standard'}</b><span class="requestItems">${p.progress.map(r=>`<span>${art(item(r.family,r.tier,r.line))}<b>${r.current}/${r.count}</b>${r.protected?'<i title="One copy kept for expedition">◆</i>':''}</span>`).join('')}</span><span class="requestReward">+${o.supplies} ◆${energy?` · +${energy} ϟ`:``}</span><strong>${p.ready?'✓ COLLECT':active&&p.progress.some(r=>r.protected)?'MAKE SPARE':'MAKE'}</strong></button>`;
+ }).join('')}</div>`;
+}
+function renderSide(){
+ let switcher=$('#vaultGoalSwitch');if(!switcher){$('#sideTray').insertAdjacentHTML('beforeend','<button id="vaultGoalSwitch" type="button"></button>');switcher=$('#vaultGoalSwitch');switcher.onclick=()=>{showVaultGoal=!showVaultGoal;render();$('.objective').scrollIntoView({block:'nearest'});};}switcher.hidden=state.stage!==4||!campGoal(state);switcher.textContent=showVaultGoal?'Return to camp development':'Explore the vault engine & collection goals';
+ if(state.stage===0&&!state.landingStep){$('#contracts').innerHTML='';$('#contracts').hidden=true;return;}
+ $('#contracts').hidden=false;
+ const choice=sideChoice(),c=normalContract(state),op=opportunity(state),rare=choice==='discovery';
+ const needs=choice==='contract'?c.needs:rare?[{family:'chart',tier:2,count:1}]:choice==='opportunity'?op.needs:[];
+ const can=choice!=='startOpportunity'&&ready(state,needs)&&(rare?state.board.some(x=>x?.type==='glyph'):choice==='opportunity'?op.remaining>0:true);
+ const title=choice==='contract'?c.vaultTrade?'Cell exchange':c.exchange?'Equipment swap':'Supply run':rare?'Relic find':'Passing signal';
+ const reward=choice==='contract'?(c.exchange?art(c.exchange)+(c.surge?'<span class="tradeSurge">+3 rich pulls</span>':''):'+'+c.energy+' ϟ'):rare?'Richer drops':'3 rich pulls';
+ $('#contracts').innerHTML=`<button class="contract ${rare?'discovery':choice.includes('pportunity')?'opportunity':''} ${can?'ready':''}" data-contract="${choice}" data-requirements="${needs.length}" aria-label="Optional: ${title} ${can?'ready to use':''}"><span class="contractHead">${portrait(rare?'neri':'ivo')}<span><small>OPTIONAL</small><b>${title}</b></span></span><span class="needs">${rare?art({type:'glyph'}):''}${needsHTML(needs)}</span><span class="reward">${reward}<small ${choice==='opportunity'?'id="opClock"':''}>${can?'✓ READY':choice==='startOpportunity'?'OPEN · 3 MIN':choice==='opportunity'?Math.ceil(op.remaining/1000)+'s':'COLLECT'}</small></span></button><button class="sideMore" data-side-next aria-label="Other optional tasks" ${sideOptions().length<2?'hidden':''}>•••</button>`;
+}
 function render(){
- if(selected!==null&&!['item','crate'].includes(state.board[selected]?.type))selected=null;
- renderHeader();renderScene();renderTask();renderOrders();renderBar();renderBoard();fitBoard();
+ const ending=signalPending(),heard=signalHeard();
+ $('#replayNotice').hidden=!replayActive;
+ $('.world').classList.toggle('opened',state.stage===4);
+ $('.world').classList.toggle('chapterEnded',false);
+ $('.world').classList.toggle('signalPending',ending?.status==='pending');
+ $('.world').classList.toggle('campExpanded',postChapterOrdersOpen);
+ $('.world').classList.toggle('compassFound',state.stage===0&&state.landingStep===1&&state.discovered.includes('chart:tide:1'));
+ $('.destination').textContent=state.stage===4?'VAULT DISCOVERED':'OPEN THE TIDEGLASS VAULT';
+ $('#energy').textContent=state.energy;$('#marks').textContent=state.marks;
+ const viewStage=state.stage===0&&state.landingStep===1?1:state.stage;
+ const sceneKey=viewStage+':'+state.post;if($('#scene').dataset.key!==sceneKey){$('#scene').innerHTML=scene(viewStage,state.post);$('#scene').dataset.key=sceneKey;}$('#sceneLabel').textContent=ending?'The fleet signal is found':heard?'Someone answered the fleet signal':visibleGoal()?.scene??STAGES[state.stage]?.scene??'The vault is open';
+ renderWorkshop();
+ $('.world').classList.toggle('pierBuilt',state.camp.pier);
+ $('#chapterLabel').textContent=ending?'CHAPTER 1 · THE SIGNAL':heard?'THE SIGNAL ANSWERS':state.stage===4?'DISCOVERY · THE SKY WITHIN':'THE SALTGLASS REACH';
+ $('.objective').dataset.stage=state.stage;$('.objective').dataset.journey=state.stage===4&&!state.journey.infusions?'active':'';
+ const baseGoal=visibleGoal(),g=ending?{name:ending.title,phase:ending.phase,next:ending.detail,verb:ending.action,kind:'chapterEnd',needs:[],action:'viewFleet'}:state.stage===3&&!state.journey.kit&&!masteryPending(state).length&&baseGoal?.kind!=='camp'?{...baseGoal,needs:KITS[kitFocus].needs}:baseGoal;$('#goalTitle').textContent=g?.name??'Keep exploring the coast';$('#step').textContent=g?.phase??(state.stage<4?`${state.stage+1} / 4`:'DISCOVERED');
+ $('#goalNeeds').innerHTML=ending?`<span class="chapterEndDetail">${ending.detail}</span>`:missionSlots();$('#goalButton').textContent=ending?.status==='complete'?(replayActive?'RESTART REPLAY':'PLAY FROM START'):g?.verb??'Journal';
+ const goalReady=ending?true:g?.kind==='camp'?!!g.ready:!!g&&g.action!=='inspect'&&ready(state,g.needs)&&(g.action!=='power'||state.board.includes(null))&&!(state.stage===0&&state.landingStep===0&&state.merges===0);$('#goalButton').hidden=ending?false:g?.kind==='camp'?false:!goalReady||state.stage===2||state.stage===3&&!state.journey.kit;$('#goalButton').disabled=false;
+ $('.objective').classList.toggle('ready',goalReady);$('.objective').classList.toggle('crewObjective',g?.kind==='camp');$('.objective').classList.toggle('chapterEndObjective',!!ending);$('.objective').classList.remove('almost');$('#nextUnlock').textContent=g?.next??'';
+ if(goalReady)$('#step').textContent=ending?'FINISHED':state.stage===2&&g?.action==='power'?'TAP BELOW':'READY';
+ let replay=$('#replayChapter');if(!replay){replay=document.createElement('button');replay.id='replayChapter';replay.type='button';replay.className='replayChapter';replay.onclick=()=>$('#replayConfirm').showModal();$('.objective').append(replay);}
+ replay.hidden=!heard;replay.textContent=replayActive?'Restart this replay':'Replay Chapter 1 from the first merge';
+ let seals=$('#sealStates');if(!seals){seals=document.createElement('div');seals.id='sealStates';$('.objective').append(seals);}
+ seals.hidden=state.stage!==3||!state.journey.kit;seals.innerHTML=['navigation','stabilization','resonance'].map((k,n)=>`<span class="sealState ${state.seals[k]?'secured':''}" aria-label="${k} seal ${state.seals[k]?'secured':'unresolved'}"><i aria-hidden="true">${state.seals[k]?'✓':['◇','⌂','ϟ'][n]}</i>${['Navigate','Stabilize','Resonate'][n]}</span>`).join('');
+ renderRequests();renderSide();const order=focus==='request'?state.requests.orders.find(o=>o?.id===requestId):null,orderProgress=order?requestProgress(state,order):null,c=order??normalContract(state),sideVisible=!!order||!$('#contracts').hidden&&$('#sideTray').open,cr=order?orderProgress.ready:sideVisible&&sideChoice()==='contract'&&ready(state,c.needs);
+ const readySignal=sideChoice()==='opportunity'&&state.opportunity&&opportunity(state).remaining>0&&ready(state,state.opportunity.needs);
+ const selectedItem=state.board[selected];
+ board.dataset.site=viewStage;board.classList.toggle('firstMerge',state.merges===0&&state.stage===0&&!state.landingStep);board.setAttribute('aria-label',SITE_NAMES[viewStage]+' · 6 by 6 merge board');
+ board.innerHTML=siteSurface(viewStage)+state.board.map((x,i)=>{
+  const isSource=x?.type==='source',locked=isSource&&!sourceUnlocked(state,x.id);
+  const useful=isSource&&!locked&&(orderProgress?orderProgress.progress.some(r=>r.family===x.id&&r.current<r.count):needed().some(r=>r.family===x.id&&count(state,r)<r.count));
+  const expedition=!!g?.needs.some(r=>matches(x,r)),contract=sideVisible&&(!!order||sideChoice()==='contract')&&c.needs.some(r=>matches(x,r));
+  const matching=selectedItem?.type==='item'&&x?.type==='item'&&i!==selected&&sameKind(x,selectedItem)&&x.tier<maxTier(x,state);
+  return `<button class="tile ${x?.type??'empty'} ${locked?'locked':''} ${useful?'useful':''} ${selected===i?'selected':''} ${matching?'match':''} ${needed().some(r=>matches(x,r))?'wanted':''}" data-index="${i}" ${x?.family||isSource||x?.type==='crate'?`data-family="${x.family??(isSource?x.id:containerInfo(x).family)}"`:''} data-variant="${i%3}" data-use="${expedition&&contract?'both':expedition?'expedition':contract?'contract':''}" aria-label="${nameOf(x)}${x?.type==='crate'?' · tap to reveal · '+contents(x).map(nameOf).join(', '):''}${expedition&&contract?' · needed for expedition and contract':expedition?' · needed for expedition':contract?' · useful for contract':''}${locked?' · locked':isSource?' · '+SOURCES[x.id].cost+' energy · '+state.charges[x.id]+' charges':''}. Space ${i+1}" aria-pressed="${selected===i}">${art((x?.type==='site'&&state.stage<2||x?.type==='route'&&state.stage!==1)?{type:'sealed'}:x)}${expedition||contract?`<span class="useBadge" aria-hidden="true">${expedition?'◆':''}${contract?'▰':''}</span>`:''}${isSource?(locked?`<span class="lockedLabel">${x.id==='chart'?'CLEAR PATH':'EXCAVATE'}</span>`:`<span class="energyCue">ϟ${SOURCES[x.id].cost}</span><span class="charge">${Array.from({length:7},(_,n)=>`<i class="${n>=state.charges[x.id]?'used':''}"></i>`).join('')}</span>`):x?.type==='crate'?`<span class="pulls">${x.left}</span>`:''}</button>`;
+ }).join('');
+ const direction=currentOrderDirection();
+ for(const index of direction?.indices??[]){
+  board.querySelector(`[data-index="${index}"]`)?.classList.add('nextAction');
+ }
+ const poweredTargets=linkPhase(state)&&optics(state).primed?receivers(state):[];
+ for(const tile of board.querySelectorAll('.tile.source'))tile.classList.toggle('engineCharged',state.journey.boost?.family===state.board[+tile.dataset.index].id);
+ for(const tile of board.querySelectorAll('.tile.rock')){
+  const x=state.board[+tile.dataset.index];if(!FINDS[x.find])continue;
+  tile.classList.add('surveyed');tile.setAttribute('aria-label',FINDS[x.find].name+' · recover with a spanner'+(canRestore(state,x)?' or restore with a pulse coil':''));
+  tile.insertAdjacentHTML('beforeend',`<span class="findPeek" aria-hidden="true">${art(item(FINDS[x.find].family,3))}</span>`);
+ }
+ const pair=openingPair(state);if(pair.length===2)for(const i of pair)board.querySelector(`[data-index="${i}"]`).classList.add('openingPair');
+ const opening=firstSessionCue(state);
+ for(const i of opening?.pairs??[])board.querySelector(`[data-index="${i}"]`)?.classList.add('storyPair');
+ if(opening?.pairs.length===2)board.setAttribute('aria-description',opening.why);
+ else board.removeAttribute('aria-description');
+ for(const tile of board.querySelectorAll('.tile')){const i=+tile.dataset.index;if(useAction(state,selected,i)||useAction(state,i,selected))tile.classList.add('useTarget','match');}
+ for(const tile of board.querySelectorAll('.tile.item')){const x=state.board[+tile.dataset.index];tile.dataset.tier=x.tier;tile.classList.toggle('deliveryReady',(goalReady&&g.needs.some(r=>matches(x,r)))||(cr&&(orderProgress?orderProgress.indices.includes(+tile.dataset.index):c.needs.some(r=>matches(x,r)))));}
+ for(const tile of board.querySelectorAll('.tile.site,.tile.route')){
+  const x=state.board[+tile.dataset.index],need=x.type==='route'?{family:ROUTES[x.id].family,tier:2,count:1}:equipment(x.kind);
+  const can=x.type==='route'?state.stage===1&&routePrepared(state,x.id)&&ready(state,[need]):state.stage===2&&x.phase==='idle'&&g.needs.some(r=>r.family===need.family&&r.tier===need.tier)&&ready(state,[need]);
+  tile.classList.toggle('deliveryReady',can);tile.classList.toggle('match',can&&matches(selectedItem,need));tile.classList.toggle('useTarget',can&&matches(selectedItem,need));tile.dataset.phase=x.phase??'buried';
+  const power=poweredTargets.includes(+tile.dataset.index);if(power)tile.classList.add('deliveryReady');
+  if(state.stage>=2&&x.type==='site'||state.stage===1&&x.type==='route')tile.insertAdjacentHTML('beforeend',`<span class="anchorCue">${power?'POWER':x.phase==='done'?'✓':can?'USE':''}</span>`);
+  tile.classList.toggle('engineCharged',x.type==='site'&&x.kind==='winch'&&optics(state).primed);tile.classList.toggle('enginePowered',state.seals.resonance&&state.seals.link.at(-1)===+tile.dataset.index);
+  tile.setAttribute('aria-label',state.stage<2&&x.type==='site'?'Buried device':nameOf(x));
+ }
+ for(const tile of board.querySelectorAll('.tile.item,.tile.glyph')){const x=state.board[+tile.dataset.index];if((readySignal&&state.opportunity.needs.some(r=>matches(x,r)))||($('.discovery.ready')&&(x.type==='glyph'||matches(x,{family:'chart',tier:2}))))tile.classList.add('deliveryReady');}
+ $('#free').textContent=state.board.filter(x=>x===null).length+' spaces';$('#hint').textContent=hint();$('#rationButton').hidden=state.energy>3;renderSelection();renderQuickRefill();
+ if(state.surge>0){$('#free').textContent=`ϟ SURGE · ${state.surge} pulls`;$('#free').title='Shared by all producers. Choose which family gets improved parts. No timer.';board.dataset.event='surge';}else{delete board.dataset.event;$('#free').removeAttribute('title');}
+ if(state.discovery&&!state.discoveryDone&&!state.opportunity&&state.board.some(x=>x?.type==='glyph')){const label=$('.discovery .reward small');if(label&&state.board.some(x=>x?.type==='glyph')&&!ready(state,[{family:'chart',tier:2,count:1}]))label.textContent='1 LENS LEFT';}
 }
-// The board takes the height left under the task; on short screens it keeps
-// thumb-sized cells and the page scrolls instead.
-function fitBoard(){
- const b=$('#board'),w=b.parentElement.clientWidth,top=b.getBoundingClientRect().top+scrollY;
- const room=innerHeight-top-Math.max(10,parseFloat(getComputedStyle($('.game')).paddingBottom));
- b.style.width=Math.floor(Math.max(Math.min(w,room),Math.min(w,300)))+'px';
+function renderQuickRefill(){
+ const x=state.board[selected],can=x?.type==='source'&&sourceUnlocked(state,x.id)&&!state.charges[x.id]&&state.energy>=3;
+ let button=$('#quickRefill');
+ if(!button){
+  $('.boardHeading').insertAdjacentHTML('beforeend','<button type="button" id="quickRefill" hidden></button>');
+  button=$('#quickRefill');
+ }
+ button.hidden=!can;$('#free').hidden=!!can;
+ if(can){
+  button.dataset.source=x.id;
+  button.textContent='REFILL '+SOURCES[x.id].name+' · 3 ϟ';
+  button.setAttribute('aria-label','Refill '+SOURCES[x.id].name+' for 3 energy; return to current order');
+ }
 }
-addEventListener('resize',fitBoard);
+function renderSelection(){
+ const x=state.board[selected],ending=signalHeard();let title=ending?'The signal answers':state.stage<4?'Open the Tideglass Vault':'The star ocean awaits',desc=ending?'Neri and Ivo traced the missing fleet, and something answered. Keep the camp working; replay Chapter 1 from the objective card any time.':state.stage<4?'Merge identical objects. Choose expedition progress or supplies.':state.journey.engine?'Use Loop Cells on producers for enriched runs.':'Restore the engine inside with a spanner, lens and coil.',buttons='';
+ if(!x&&focus==='goal'&&visibleGoal()?.kind==='camp'){title=visibleGoal().name;desc=visibleGoal().next;}
+ if(!x&&focus==='request'){
+  const order=state.requests.orders.find(o=>o?.id===requestId);
+  if(order){const p=requestProgress(state,order),missing=p.progress.find(r=>r.current<r.count);
+   const brief=requestBrief(order,state);
+   title=p.ready?brief.title+' · ready':brief.title;
+   desc=brief.reason+' '+(p.ready?'Tap the ready order to collect its reward.':missing?.line==='tide'?'Recover and merge Tide Treasures with Survey Kite.':'Make '+nameOf(item(missing.family,missing.tier,missing.line))+' using its producer.');
+  }
+ }
+ if(!x&&focus==='bench'){
+  title=state.workshop.precision?'Precision Bench':'Install Precision Bench';
+  desc=state.workshop.precision?'Spare Grip Tool + Ink Scrap makes a Split Spanner. Expedition equipment stays protected.':'Upgrade the Workshop to fit expedition tools from spare materials.';
+  const inputs=benchInputs(state);
+  buttons='<span class="benchRoute">'+BENCH_NEEDS.map((r,n)=>'<span class="benchInput '+(inputs[n]>=0?'present':'missing')+'">'+art(item(r.family,r.tier,r.line))+'<small>'+(inputs[n]>=0?'✓':'0/1')+'</small></span>').join('')+'<span>→</span>'+art(item('rig',2))+'</span>';
+  buttons+=state.workshop.precision?'<button class="benchAction '+(inputs.every(i=>i>=0)&&state.energy>=1&&state.charges.rig?'available':'')+'" data-action="fitSpanner">Fit Spanner · 1 ϟ + 1 charge</button>':'<button class="benchAction '+(state.requests.supplies>=BENCH_COST?'available':'')+'" data-action="upgradeWorkshop">Install bench · 12 ◆</button>';
+ }
+ if(!x&&!state.merges&&state.stage===0&&!state.landingStep){title='Start with the glowing pair';desc='Tap one Copper Offcut, then tap its twin. They become a Grip Tool.';}
+ else if(!x&&state.stage===0&&!state.landingStep){title='Landing ready';desc='You made a Grip Tool. Tap CLEAR PATH above to open the landing.';}
+ if(!x&&focus!=='bench'&&focus!=='pier'){
+  const cue=firstSessionCue(state);
+  if(cue?.pairs.length===2){title='The missing pieces fit';desc=cue.why;}
+ }
+ if(!x&&focus==='pier'){
+  title=state.camp.deepSurvey?'Deep Survey Loft':state.camp.loft?'Charting Loft':'Develop the Supply Pier';
+  desc=state.camp.deepSurvey?'Every recovery: Reef Compass · 3 energy + 1 Kite charge.':state.camp.loft?'Recovery: 2 energy + 1 Kite charge. Deep Survey unlocks two treasures and guaranteed compasses.':'Build a Charting Loft · permanently unlock Wayfinding treasures.';
+  buttons='<span class="benchRoute tidePreview">'+TIDE_NAMES.map((_,tier)=>'<span class="'+(tier>2&&!state.camp.deepSurvey?'futureTreasure':'')+'">'+art(tideItem(tier))+'</span>').join('<span>→</span>')+'</span>';
+  if(!state.camp.loft)buttons+=`<button class="accent" data-action="buildLoft">Build Loft · ${state.requests.supplies}/${LOFT_COST} ◆</button>`;
+  else{
+   buttons+=`<button class="accent" data-action="recoverTide">${state.camp.deepSurvey?'Deep Survey · Reef Compass':'Recover treasure'} · ${recoveryCost(state)} ϟ</button>`;
+   if(!state.camp.deepSurvey)buttons+=state.stage<4?'<span class="benchRoute">Deep Survey follows the Pearl’s passage through the Vault. Continue the expedition above.</span>':`<button class="benchAction ${pearlDiscovered(state)&&state.requests.supplies>=DEEP_SURVEY_COST?'available':''}" data-action="upgradeLoft">${pearlDiscovered(state)?'Deep Survey · '+state.requests.supplies+'/'+DEEP_SURVEY_COST+' ◆':'Deep Survey · discover a Pearl Astrolabe'}</button>`;
+   if(!state.charges.chart)buttons+='<button data-action="service" data-source="chart">Service Kite · 3 ϟ</button>';
+  }
+ }
+ if(x){title=nameOf(x);
+  if(x.type==='item'){
+   const used=visibleGoal()?.needs.some(r=>matches(x,r)),cn=normalContract(state).needs.some(r=>matches(x,r));
+   desc=(used&&cn?'◆ Expedition · ▰ Contract':used?'◆ Keep for expedition':cn?'▰ Deliver now, or merge further':'')+(x.tier===maxTier(x,state)?isTide(x)&&!state.camp.deepSurvey?' · Deep Survey unlocks two more treasures':' · Top discovery':` · ${nameOf(item(x.family,x.tier+1,x.line))}`);
+   const site=anchors(state).find(v=>v.phase==='idle'&&matches(x,equipment(v.kind)));if(site&&state.stage>=2)desc=`Keep to merge · or use on ${nameOf(site)}${cn?' · also exchangeable':''}`;
+   if(isTide(x))desc=(x.tier===0&&!state.camp.loft?'Early order reward → merge two for a Reef Compass · ':'Charting Loft → Survey Kite recovery · ')+(x.tier<maxTier(x,state)?'merge twins or deliver a tide order':!state.camp.deepSurvey?'Deep Survey unlocks two more treasures':'top treasure · deliver a tide order');
+   if(loopCell(x)&&linkPhase(state)&&!optics(state).primed)desc='Use on the Stone Lift · power your receiver';
+   buttons=`${site&&state.stage>=2?`<button class="accent" data-action="deploy" data-target="${state.board.indexOf(site)}">Use · ${ANCHORS[site.kind].short}</button>`:''}${isTide(x)?'':`<button data-action="recycle">Recycle +${2**x.tier} ϟ</button>`}`;
+   if(loopCell(x)&&linkPhase(state)&&!optics(state).primed)buttons='<button class="accent" data-action="prime" data-target="'+state.board.findIndex(v=>v?.type==='site'&&v.kind==='winch')+'">Use · Stone Lift</button>'+buttons;
+  }else if(x.type==='source'){
+   if(!sourceUnlocked(state,x.id))desc=`Unlock: ${x.id==='chart'?'secure the landing':'open a crossing'}.`;
+   else{
+    desc=`${state.charges[x.id]}/7 charges · Next: ${nameOf(nextOutput(state,x.id))}`;
+    if(state.charges[x.id])buttons=`<button class="accent" data-action="produce">Create · ${SOURCES[x.id].cost} ϟ</button>`;
+    else{
+     const canTool=state.board.some(y=>matches(y,{family:'rig',tier:1})),canEnergy=state.energy>=3;
+     desc='Out of charges. Refill this producer to continue your current order.';
+     buttons=`<button class="accent" data-action="service"${canEnergy?'':' disabled'}>Refill · 3 ϟ</button>`+
+      (canTool?'<button data-action="serviceTool">Refill with Grip Tool</button>':'');
+    }
+    if(x.id==='chart'&&state.camp.loft&&state.charges.chart>0)buttons+=`<button class="accent" data-action="recoverTide">${state.camp.deepSurvey?'Deep Survey':'Recover'} ${nameOf(nextTide(state))} · ${recoveryCost(state)} ϟ</button>`;
+    if(state.journey.engine&&!state.journey.boost&&state.board.some(loopCell))buttons+='<button class="accent" data-action="infuse">Enrich · 1 Loop Cell</button>';
+    if(x.id==='rig'&&state.workshop.repaired&&state.charges.rig)buttons+='<button class="accent toolPress" data-action="press">Press Grip Tool · 2 ϟ</button>';
+   }
+  }else if(x.type==='rock'){
+   const find=FINDS[x.find];
+   if(find){title=find.name;desc='Recover portable equipment · or restore its device now';
+    buttons=`<button class="findChoice ${ready(state,[{family:'rig',tier:2,count:1}])||state.board.some(v=>v?.type==='brace')?'available':''}" data-action="clear" aria-label="Recover ${FAMILIES[find.family].names[3]} using a split spanner">${art(item('rig',2))}<span>Recover</span>${art(item(find.family,3))}</button>${canRestore(state,x)?`<button class="findChoice ${ready(state,[{family:'flux',tier:2,count:1}])?'available':''}" data-action="restore" aria-label="Restore ${ANCHORS[x.find].name} using a pulse coil">${art(item('flux',2))}<span>Restore</span>${art(findSite(state,x))}</button>`:''}`;
+   }else {desc='Use a split spanner. Find buried supplies.';buttons='<button class="accent" data-action="clear">Clear</button>';}
+  }
+  else if(x.type==='route'){desc=state.stage===1?ROUTES[x.id].benefit+'. '+ROUTES[x.id].kept+'.':'Choose a breach after the landing; the other opens with the vault.';if(state.stage===1)buttons=`<button class="accent" data-action="breach">Use ${FAMILIES[ROUTES[x.id].family].names[2]}</button>`;}
+  else if(x.type==='site'){const a=ANCHORS[x.kind];title=state.stage<2?'Buried device':nameOf(x);desc=state.stage<2?'Clear a route to reach this equipment.':x.phase==='idle'?`${FAMILIES[a.equipment].names[3]} → ${a.effect}`:a.effect;if(state.stage>=2&&x.phase==='idle')buttons='<button class="accent" data-action="deploy">Use</button>';
+   if(linkPhase(state)&&x.kind==='winch'){desc=optics(state).primed?'Charged · activate your prepared receiver':'Merge two Violet Shards from Echo Crucible';buttons=!optics(state).primed?'<button class="accent" data-action="prime">Use Loop Cell</button>':'';}
+   if(linkPhase(state)&&x.kind!=='winch'&&x.phase==='done'){desc=x.kind==='scope'?'Activate → relic capsule + awakened rings':'Activate → pocket winch + 3 rich pulls';if(optics(state).primed)buttons='<button class="accent" data-action="power">Activate</button>';}
 
-// ---------- Story ----------
-function tell(who,line,ms=7000){
- const el=$('#story');
- el.innerHTML=`<span class="face">${face(who)}</span><p><b>${esc(who)}</b>${esc(line)}</p>`;
- el.hidden=false;el.classList.remove('show');void el.offsetWidth;el.classList.add('show');
- clearTimeout(storyTimer);storyTimer=setTimeout(()=>{el.hidden=true;},ms);
+  }
+  else if(x.type==='sealed')desc='Unchosen excavation ground. Opens when the vault is secured.';
+  else if(x.type==='crate'){desc=`${containerInfo(x).purpose} · Tap on board to reveal. Drag to keep.`;}
+  else if(x.type==='glyph'){desc='Use with a sight lens for richer source drops.';buttons='<button data-action="recycle">Recycle +5 ϟ</button>';}
+  else if(x.type==='brace'){desc='Tap a saltstone blocker to use this brace.';buttons='<button data-action="recycle">Recycle +3 ϟ</button>';}
+ }
+ const preview=x?.type==='crate'?`<span class="mergePreview" aria-label="Remaining rewards">${contents(x).slice(0,3).map(y=>art(y)).join('')}</span>`:x?.type==='item'&&x.tier<maxTier(x,state)?`<span class="mergePreview" title="Merge further: ${nameOf(item(x.family,x.tier+1,x.line))}"><span>→</span>${art(item(x.family,x.tier+1,x.line))}</span>`:x?.type==='rock'?`<span class="mergePreview" title="Blocker reward: mixed expedition gear"><span>→</span>${art({type:'crate',kind:'locker'})}</span>`:'';
+ const rare=x?.type==='source'&&sourceUnlocked(state,x.id)?`<span class="rareTrack" role="progressbar" aria-label="Guaranteed rare in ${9-state.taps[x.id]%9} pulls" aria-valuemin="0" aria-valuemax="9" aria-valuenow="${state.taps[x.id]%9}">${Array.from({length:9},(_,i)=>`<i class="${i<state.taps[x.id]%9?'filled':''}"></i>`).join('')}<b>✦ ${9-state.taps[x.id]%9}</b></span>`:'';
+ $('#selection').innerHTML=`${x?`<span class="preview">${art(x)}</span>`:''}<span class="copy"><b>${title}</b><small>${desc}</small>${rare}</span>${preview}<span class="actionGroup">${buttons}</span>`;
 }
-
-// ---------- Actions ----------
-const cellRect=i=>$(`#board [data-i="${i}"]`)?.getBoundingClientRect();
-function run(a,origin=null){
- const before={energy:state.energy,unlocked:Object.fromEntries(Object.entries(state.producers).map(([k,p])=>[k,p.unlocked]))};
- const r=act(state,a);
- if(!r.ok){warn(r.message);sound.play('tap');return r;}
- platform.startGameplay();
- say(r.message);warning=null;
- if(r.event==='task')beat={who:r.task.who,site:SITES[r.task.site].name,title:r.choice?r.task.choices[r.choice].label+' crossing taken':r.task.title,line:r.message};
- // Selection ends with every action so the next suggestion is always visible.
- selected=null;
- render();persist();
- // Feedback after render so effects land on the new cells.
- if(r.event==='merge'){
-  const rect=cellRect(r.index);burst(rect,r.made.family,r.made.tier>=3);sound.play('merge',r.made.tier);
-  $(`#board [data-i="${r.index}"]`)?.classList.add('pop');
-  if(r.first&&r.made.tier>=2)moment('New: '+nameOf(r.made),'First one on this coast · +2 energy',r.made);
+function run(a){
+ const storyBefore=storyKey();
+ const now=Date.now(),delivery=deliveryItems(state,a,now).map(v=>({...v,rect:board.querySelector(`[data-index="${v.index}"]`)?.getBoundingClientRect()}));
+ const beforeBoard=state.board.map(x=>x?JSON.stringify(x):null);
+ const objectiveAction=['goal','breach','power','restoreEngine'].includes(a.type);const taskSelector=a.type==='infuse'?`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===a.id)}"]`:a.type==='fitSpanner'?'#workshopBench':['deploy','clear','restore','prime'].includes(a.type)?`[data-index="${a.index??state.board.findIndex(x=>x?.type==='site'&&x.kind==='winch')}"]`:objectiveAction?'.objective':a.type==='request'?`[data-request="${a.id}"]`:`[data-contract="${a.type}"]`;
+ const taskRect=$(taskSelector)?.getBoundingClientRect();
+ const taskSnapshot=delivery.length?snapshotTask($(taskSelector)):null;
+ const projectBefore=a.type==='request'?campGoal(state):null;
+ const energyBefore=state.energy,firstContract=state.contracts===0,surgeBefore=state.surge??0;
+ const rewardOrigin=document.querySelector(a.type==='contract'||a.type==='opportunity'?'#contracts':'.objective')?.getBoundingClientRect();
+ const before=state.stage,landingBefore=state.landingStep,from=['produce','press'].includes(a.type)?board.querySelector(`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===a.id)}"]`)?.getBoundingClientRect():null;
+ const knownBefore=new Set(state.discovered);const result=act(state,a,now);message.textContent=result.message;
+ if(!result.ok)return result;
+ if(storyKey()!==storyBefore)setTimeout(()=>showStory(storyBefore),900);
+ platform.startGameplay();if(result.event==='restoration'){focus='goal';selected=state.board.findIndex(x=>x?.type==='source'&&x.id==='rig');}else if(['milestone','deployment','contract','discovery','clear','turn'].includes(result.event)){focus='goal';selected=null;}if(a.type==='merge'){selected=state.stage===0&&!state.landingStep&&ready(state,STAGES[0].needs)?null:state.board[result.index]?.type==='prism'?null:result.index;if(selected===null)focus='goal';}render();persist();
+ if(a.type==='goal'&&before===0&&landingBefore===1){for(const tile of board.querySelectorAll('.tile.item')){const x=state.board[+tile.dataset.index];if(x.tier===2&&['rig','chart'].includes(x.family))tile.classList.add('unlocked');}board.querySelectorAll('.rock.surveyed').forEach(tile=>tile.classList.add('unlocked'));}
+ if(result.event==='milestone'&&state.stage<4)message.textContent=result.message;
+ if(!delivery.length)feedback({event:result.event,tile:board.querySelector(`[data-index="${result.index}"]`),x:state.board[result.index],from:rewardOrigin,energyDelta:state.energy-energyBefore,stage:state.stage,firstContract,containerKind:result.containerKind,reveal:result.reveal,bonus:result.bonus,improved:result.improved,breakthrough:result.breakthrough,newDiscovery:result.newDiscovery,discoveryReward:result.discoveryReward,breakthroughUse:state.stage>=2&&!isTide(state.board[result.index])&&state.board[result.index]?.tier===3?anchors(state).filter(v=>v.phase==='idle'&&ANCHORS[v.kind].equipment===state.board[result.index].family).map(v=>'Use: '+ANCHORS[v.kind].short+' · or merge higher')[0]:null,surgeStarted:state.surge>surgeBefore});
+ if(delivery.length){
+  const rewards=state.board.flatMap((x,index)=>x&&['item','crate'].includes(x.type)&&JSON.stringify(x)!==beforeBoard[index]?[{index,x,rect:board.querySelector(`[data-index="${index}"]`)?.getBoundingClientRect()}]:[]);
+  const next=['request','fitSpanner','restoreEngine','infuse'].includes(a.type)?result.message:['deploy','feed','clear','restore','prime'].includes(a.type)?result.message:continuation(state,a,rewards);message.textContent=next;
+  deliverFeedback({kind:a.type,delivery,rewards,taskRect,taskSnapshot,task:$(taskSelector),energy:state.energy-energyBefore,next,stage:state.stage});
  }
- if(r.event==='produce'||r.event==='container'){
-  for(const i of r.reveal??[])$(`#board [data-i="${i}"]`)?.classList.add('drop');
-  sound.play(r.event==='container'?'rare':'tap');
-  if(r.event==='container')burst(cellRect(r.index),'gold',true);
- }
- if(r.event==='order'){
-  sound.play('contract');rewardFlight(origin,$('#energy').getBoundingClientRect(),'+'+r.order.energy+'ϟ');
-  for(const i of r.reveal)$(`#board [data-i="${i}"]`)?.classList.add('drop');
- }
- if(r.event==='recycle'||r.event==='meal')rewardFlight(origin??cellRect(a.index),$('#energy').getBoundingClientRect(),'+'+(state.energy-before.energy)+'ϟ');
- if(r.event==='task'){
+ for(const i of result.reveal??[])board.querySelector(`[data-index="${i}"]`)?.classList.add('merge-pop');
+ for(const i of result.opened??[])board.querySelector(`[data-index="${i}"]`)?.classList.add('clearedGround');
+ if(result.restored!==undefined)board.querySelector(`[data-index="${result.restored}"]`)?.classList.add('unlocked');
+ for(const i of result.operated??[])board.querySelector(`[data-index="${i}"]`)?.classList.add('unlocked');
+ if(result.event==='milestone'&&(state.stage>before||state.landingStep>landingBefore)){const id=state.landingStep>landingBefore&&state.stage===0?'chart':state.stage===2?'flux':null;if(id)board.querySelector(`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===id)}"]`)?.classList.add('unlocked');}
+ if(result.index!==null&&result.event!=='merge')board.querySelector(`[data-index="${result.index}"]`)?.classList.add('pop');
+ if(result.discoveryReward){board.querySelector(`[data-index="${result.discoveryReward.index}"]`)?.classList.add('rewardLanded');}
+ if(a.type==='restoreEngine'){moment('Star-ocean engine restored','Use a Loop Cell on a producer · three enriched pulls',item('flux',5));}
+ if(a.type==='infuse'){moment(SOURCES[a.id].name+' enriched','Next three pulls · richer parts',item(a.id,1));}
+ if(a.type==='upgradeLoft'){selected=null;focus='pier';render();moment('Deep Survey installed','Guaranteed compasses · two new treasures to merge',tideItem(3));sound.play('milestone');$('.world').classList.add('changed');}
+ if(a.type==='buildLoft'){selected=null;focus='pier';render();moment('Charting Loft built','Survey Kite now recovers Tide Treasures · Neri can trace the missing coast',tideItem(1));sound.play('milestone');$('.world').classList.add('changed');}
+ if(a.type==='recoverTide'){if(!knownBefore.has(discoveryKey(state.board[result.index]))){moment(nameOf(state.board[result.index]),'Wayfinding treasure · merge twins or deliver an order',state.board[result.index]);sound.play('rare');}board.querySelector(`[data-index="${result.index}"]`)?.classList.add('merge-pop');}
+ if(result.craftedMilestone&&state.stage===3){
+  const pending=masteryPending(state);
+  moment(nameOf(state.board[result.index])+' crafted',pending.length?'Equip this instrument above to prepare the expedition.':'Expedition prepared · choose your Vault kit',state.board[result.index]);
   sound.play('milestone');
+ }
+ if(a.type==='request'&&before===0&&landingBefore===1&&result.tideFragment){
+  const pier=firstPier(state);
+  if(pier?.level===1)moment('First support restored','Ivo: The first pier beam is secure. One more delivery will finish the walkway.',tideItem(0));
+  if(pier?.level===2)moment('The walkway is restored','Ivo: We can cross. Neri has a second compass fragment — merge the two to trace the fleet.',tideItem(0));
+  $('.world').classList.add('changed');
+ }
+ if(result.tideDiscovery&&state.board[result.index]?.tier===1&&!knownBefore.has('chart:tide:1')){
+  moment('The first Reef Compass','Neri: Its needle points toward the missing coast. Now prepare a Lens and Spanner to follow it.',state.board[result.index]);
+  sound.play('rare');$('.world').classList.add('changed');
+ }else if(result.tideDiscovery){moment(nameOf(state.board[result.index]),state.board[result.index].tier===4?'Ocean Crown installed at the Loft · tap REVEAL SIGNAL to uncover the fleet’s message':state.board[result.index].tier===2&&!state.camp.deepSurvey?'Pearl discovered · Deep Survey is now available at the Loft':'New treasure · deliver it or merge toward '+TIDE_NAMES[Math.min(4,state.board[result.index].tier+1)],state.board[result.index]);}
+ if(a.type==='request'&&projectBefore?.cost&&projectBefore.supplies<projectBefore.cost){
+  const nowReady=campGoal(state);
+  if(nowReady.name===projectBefore.name&&nowReady.supplies>=nowReady.cost){
+   moment(projectBefore.name+' ready','You earned enough supplies · tap the camp improvement to build it');
+   sound.play('milestone');$('.world').classList.add('changed');
+  }
+ }
+ if(a.type==='buildPier'){moment('Supply Pier built','Camp orders now fund useful material cases', {type:'crate',kind:'salvage'});sound.play('milestone');$('.world').classList.add('changed');}
+ if(a.type==='packPier'){moment('Supply case delivered','Tap the new case on the board to unpack useful parts', {type:'crate',kind:{rig:'salvage',chart:'survey',flux:'relic'}[a.family]});sound.play('rare');}
+ if(a.type==='press'){sound.play('merge',1);board.querySelector(`[data-index="${result.index}"]`)?.classList.add('merge-pop');}
+ if(result.event==='restoration'){moment(a.type==='upgradeWorkshop'?'Precision Bench installed':'Workshop restored',a.type==='upgradeWorkshop'?'Spare tool + chart → spanner':'Tap Workshop or Rivet Rover for a Grip tool · 2 energy + 1 charge',item('rig',a.type==='upgradeWorkshop'?2:1));sound.play('milestone');$('.world').classList.add('changed');board.querySelector('.source[data-family="rig"]')?.classList.add('unlocked');}
+ if(a.type==='produce'||a.type==='press'){
+  board.querySelector(`[data-index="${selected}"]`)?.classList.add('react');
+  if(from&&!reduced()){const to=board.querySelector(`[data-index="${result.index}"]`)?.getBoundingClientRect();if(to){const el=document.createElement('div');el.className='flight';el.innerHTML=art(state.board[result.index]);el.style.cssText=`left:${from.x}px;top:${from.y}px;--dx:${to.x-from.x}px;--dy:${to.y-from.y}px`;document.body.append(el);setTimeout(()=>el.remove(),460);}}
+ }
+ if(result.event==='milestone'){
+  $('.world').classList.remove('changed');void $('.world').offsetWidth;$('.world').classList.add('changed');
   platform.event([{type:'milestone_completed'}]);
-  burst($('#scene').getBoundingClientRect(),'gold',true);
-  $('#story').hidden=true;
-  $('#scene').classList.remove('flash');void $('#scene').offsetWidth;$('#scene').classList.add('flash');
-  for(const i of r.reveal)$(`#board [data-i="${i}"]`)?.classList.add('drop');
-  const opened=Object.keys(before.unlocked).find(k=>!before.unlocked[k]&&state.producers[k].unlocked);
-  if(opened){
-   $(`#board [data-i="${r.unlocked}"]`)?.classList.add('drop');
-   setTimeout(()=>moment(PRODUCERS[opened].name+' repaired',PRODUCERS[opened].job,{type:'source',id:opened}),900);
-  }else if(r.task.reward.upgrade||r.choice)setTimeout(()=>moment('Producer upgraded','Every third tap now makes a better part.'),900);
-  else if(r.task.reward.orders)setTimeout(()=>moment('Crew orders open','Spare parts now buy energy.'),900);
+  if(state.stage===4&&before<4){const reveal=()=>celebrate('A map of tomorrow.', 'Neri: The Vault is not a treasure room. Its moving stars chart a coast that does not yet exist. Who hid this map of the future? Complete camp orders, restore your expedition facilities, and recover the missing Tide instruments.');if(reduced())reveal();else setTimeout(reveal,850);}
  }
- return r;
+ return result;
 }
-
-function tapCell(i){
- const x=state.board[i];
- if(x?.type==='source'){selected=null;run({type:'produce',id:x.id});return;}
- if(x?.type==='crate'){run({type:'open',index:i});return;}
- const sel=state.board[selected];
- if(x?.type==='item'){
-  if(sel?.type==='item'&&selected!==i&&sel.family===x.family&&sel.tier===x.tier){run({type:'merge',from:selected,to:i});return;}
-  selected=selected===i?null:i;render();return;
- }
- if(!x&&sel&&selected!==null){run({type:'move',from:selected,to:i});selected=null;render();return;}
- selected=null;render();
+function clickTile(i){
+ const x=state.board[i],prev=state.board[selected];
+ if(focus==='bench')focus='goal';
+ const link=circuit(state,i);if(x?.type==='site'&&link){run({type:'power',index:i});return;}
+ if(selected===i&&['item','glyph','brace'].includes(x?.type)){selected=null;render();return;}
+ const use=useAction(state,selected,i)??useAction(state,i,selected);if(use){run(use);return;}
+ if(selected!==null&&selected!==i&&movable(prev)&&(!x||prev.type==='item'&&x.type==='item'&&sameKind(x,prev))){run({type:'merge',from:selected,to:i});return;}
+ selected=i;render();
+ if(x?.type==='crate')run({type:'crate',index:i});
+ if(x?.type==='source'&&sourceUnlocked(state,x.id)&&state.charges[x.id]>0)run({type:'produce',id:x.id});
 }
-
-// Taps and drags share one pointer path; a drag that ends on a cell merges or moves.
-let drag=null;
-const board=$('#board');
-board.addEventListener('pointerdown',e=>{
- const b=e.target.closest('.cell');if(!b)return;
- const i=+b.dataset.i,x=state.board[i];
- drag={i,x0:e.clientX,y0:e.clientY,moved:false,ghost:null,movable:x?.type==='item'||x?.type==='crate'};
+$('.boardHeading').addEventListener('click',e=>{
+ const button=e.target.closest('#quickRefill');if(!button)return;
+ const id=button.dataset.source;
+ if(state.board[selected]?.type==='source'&&state.board[selected].id===id&&!state.charges[id]&&state.energy>=3)run({type:'service',id});
 });
-board.addEventListener('pointermove',e=>{
- if(!drag?.movable)return;
- const dx=e.clientX-drag.x0,dy=e.clientY-drag.y0;
- if(!drag.moved&&Math.hypot(dx,dy)<10)return;
- if(!drag.moved){
-  drag.moved=true;board.setPointerCapture?.(e.pointerId);
-  const src=board.querySelector(`[data-i="${drag.i}"]`),r=src.getBoundingClientRect();
-  drag.ghost=document.createElement('div');drag.ghost.className='dragGhost';drag.ghost.innerHTML=art(state.board[drag.i]);
-  drag.ghost.style.cssText=`width:${r.width}px;height:${r.height}px;left:${r.left}px;top:${r.top}px`;
-  document.body.append(drag.ghost);src.classList.add('lifted');
-  drag.ox=r.left;drag.oy=r.top;
+board.addEventListener('click',e=>{const tile=e.target.closest('[data-index]')??document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-index]');if(tile&&board.contains(tile)&&performance.now()>suppressUntil)clickTile(+tile.dataset.index);});
+board.addEventListener('pointerdown',e=>{const tile=e.target.closest('[data-index]');if(!tile||e.button!==0)return;suppressUntil=0;const i=+tile.dataset.index;if(!['item','crate','brace','glyph','prism'].includes(state.board[i]?.type))return;drag={from:i,id:e.pointerId,x:e.clientX,y:e.clientY,moved:false};tile.classList.add('picked');board.setPointerCapture?.(e.pointerId);});
+board.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)return;if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>8)drag.moved=true;if(drag.moved){board.querySelector(`[data-index="${drag.from}"]`)?.classList.add('dragging');board.querySelectorAll('.target').forEach(x=>x.classList.remove('target'));const target=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-index]');const to=target?+target.dataset.index:-1,a=state.board[drag.from],b=state.board[to];if(to>=0&&to!==drag.from&&(!b||(a?.type==='prism'&&movable(b))||b?.type==='prism'||(a?.type==='item'&&b.type==='item'&&sameKind(a,b)&&a.tier<maxTier(a,state))||useAction(state,drag.from,to)))target.classList.add('target');}});
+board.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;const d=drag;drag=null;board.querySelectorAll('.dragging,.target,.picked').forEach(x=>x.classList.remove('dragging','target','picked'));if(!d.moved)return;suppressUntil=performance.now()+300;const tile=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-index]');if(tile){selected=d.from;const index=+tile.dataset.index,x=state.board[index];const use=useAction(state,d.from,index);if(use)run(use);else if(!x||movable(x))run({type:'merge',from:d.from,to:index});else render();}});
+board.addEventListener('pointercancel',()=>{drag=null;board.querySelectorAll('.dragging,.target,.picked').forEach(x=>x.classList.remove('dragging','target','picked'));});
+$('#selection').addEventListener('click',e=>{const button=e.target.closest('[data-action]'),type=button?.dataset.action;if(!type)return;const x=state.board[selected];run({type:type==='serviceTool'?'service':type,index:button.dataset.target!==undefined?+button.dataset.target:selected,from:button.dataset.target!==undefined?selected:undefined,id:button.dataset.source??x?.id,useTool:type==='serviceTool'});});
+$('#goalButton').onclick=()=>{const ending=signalPending();if(ending){showFleet();return;}const g=visibleGoal();if(g?.kind==='camp'){
+ if(g.action==='orders'){
+   const o=state.requests.orders.find(o=>o?.id===g.orderId)??state.requests.orders.find(o=>o&&requestProgress(state,o).ready)??state.requests.orders.find(Boolean);
+   if(o&&requestProgress(state,o).ready){requestId=null;focus='goal';run({type:'request',id:o.id});return;}
+   requestId=o?.id??null;focus='request';selected=null;render();$('#requests').scrollIntoView({block:'nearest'});message.textContent=o?'Make the highlighted order items, then tap the order to collect '+o.supplies+' supplies.':'Deliver orders to earn camp supplies.';return;
+  }
+ if(g.action==='treasure'){const pair=state.board.flatMap((x,i)=>isTide(x)&&x.tier<maxTier(x,state)&&state.board.some((y,j)=>i!==j&&sameKind(x,y))?[i]:[]);selected=pair[0]??null;focus=pair.length?'goal':'pier';render();(pair.length?board:$('#selection')).scrollIntoView({block:'nearest'});return;}
+ run({type:g.action});return;
+ }if(g?.action==='inspect'){const choices=state.board.flatMap((x,i)=>(state.stage===1?x?.type==='route':x?.type==='site'&&x.phase!=='done')?[i]:[]);selected=choices[(choices.indexOf(selected)+1)%choices.length];focus='goal';render();message.textContent=g.text;return;}g?run({type:g.action??'goal'}):showJournal();};
+$('#goalNeeds').onclick=e=>{focus='goal';const instrument=e.target.closest('[data-instrument]')?.dataset.instrument;if(instrument){instrumentFocus=instrument;selected=null;if(instrumentReady(state,instrument))run({type:'prepareInstrument',family:instrument});else render();return;}const kit=e.target.closest('[data-kit]')?.dataset.kit;if(kit){kitFocus=kit;if(ready(state,KITS[kit].needs))run({type:'goal',kit});else{message.textContent=KITS[kit].needs.map(r=>nameOf(item(r.family,r.tier,r.line))).join(' + ');selected=null;render();}return;}const infusion=e.target.closest('[data-infuse]')?.dataset.infuse;if(infusion){run({type:'infuse',id:infusion});return;}const badge=e.target.closest('[data-site-index]');if(badge){selected=+badge.dataset.siteIndex;const x=state.board[selected];if(badge.dataset.engineAction){const action=badge.dataset.engineAction;if(badge.classList.contains('available')){run({type:action,index:selected});return;}render();$('#selection').scrollIntoView({block:'nearest'});return;}if(x?.type==='rock'){render();return;}const need=x?.type==='site'?equipment(x.kind):{family:ROUTES[x.id].family,tier:2,count:1};if((x.type==='route'&&state.stage===1||x.type==='site'&&x.phase==='idle')&&ready(state,[need])){run({type:x.type==='route'?'breach':'deploy',index:selected});return;}}render();message.textContent=visibleGoal()?.text??'Keep collecting rare discoveries.';};
+$('#scene').onclick=e=>{
+ if(e.target.closest('#fleetCrown')){showFleet();return;}
+ if(e.target.closest('#campPierWorld')){selected=null;focus='pier';render();$('#selection').scrollIntoView({block:'nearest'});return;}
+ if(e.target.closest('#workshopBench')){
+  selected=null;focus='bench';render();
+  $('#selection').scrollIntoView({block:'nearest'});return;
  }
- drag.ghost.style.transform=`translate(${dx}px,${dy}px) scale(1.12)`;
-});
-function endDrag(e){
- if(!drag)return;
- const d=drag;drag=null;
- if(!d.moved){tapCell(d.i);return;}
- d.ghost.remove();
- const over=document.elementFromPoint(e.clientX,e.clientY)?.closest('#board .cell');
- const to=over?+over.dataset.i:null;
- if(to===null||to===d.i){render();return;}
- const x=state.board[d.i],y=state.board[to];
- const r=run({type:x?.type==='item'&&y?.type==='item'?'merge':'move',from:d.i,to});
- if(!r.ok)render();
+ if(!e.target.closest('#workshop'))return;if(!state.workshop.repaired){const result=run({type:'restoreWorkshop'});if(!result.ok)message.textContent=`Camp requests fund repairs · ${state.requests.supplies}/${WORKSHOP_COST} supplies`;return;}selected=state.board.findIndex(x=>x?.type==='source'&&x.id==='rig');if(!state.charges.rig){render();$('#selection').scrollIntoView({block:'nearest'});return;}run({type:'press',id:'rig'});board.scrollIntoView({block:'center'});};
+$('#requests').onclick=e=>{
+ if(e.target.closest('#ordersToggle')){postChapterOrdersOpen=!postChapterOrdersOpen;render();return;}
+ const camp=e.target.closest('[data-camp-action]');
+ if(camp){const result=run({type:camp.dataset.campAction,family:camp.dataset.family});if(result.ok)board.scrollIntoView({block:'nearest'});return;}
+ const id=e.target.closest('[data-request]')?.dataset.request;if(!id)return;
+ const o=state.requests.orders.find(o=>o?.id===id);if(!o)return;
+ if(requestProgress(state,o).ready){requestId=null;focus='goal';run({type:'request',id});return;}
+ requestId=id;focus='request';selected=null;render();board.scrollIntoView({block:'nearest'});
+};
+$('#contracts').onclick=e=>{if(e.target.closest('[data-side-next]')){const choices=sideOptions();sideView=choices[(choices.indexOf(sideChoice())+1)%choices.length];render();return;}const type=e.target.closest('[data-contract]')?.dataset.contract;if(!type)return;
+ if(type==='startOpportunity'){sideView='opportunity';run({type});focus='opportunity';render();return;}
+ sideView=type;focus=type;const can=type==='contract'?ready(state,normalContract(state).needs):type==='opportunity'?(state.opportunity&&(Date.now()>state.opportunity.ends||ready(state,state.opportunity.needs))):state.board.some(x=>x?.type==='glyph')&&ready(state,[{family:'chart',tier:2,count:1}]);
+ if(can)run({type});else{render();message.textContent=type==='discovery'?'Find a sight lens and an echo fragment.':hint();}
+};
+$('#soundButton').textContent=sound.enabled()?'Sound on':'Sound off';
+$('#soundButton').onclick=()=>{$('#soundButton').textContent=sound.toggle()?'Sound on':'Sound off';sound.play('merge',2);};
+$('#rationButton').onclick=()=>run({type:'ration'});
+function celebrate(title,text){$('#celebrationContent').innerHTML=`${scene(state.stage,state.post)}<h2>${title}</h2><p>${text}</p>`;$('#celebration').showModal();}
+function showFleet(){
+ if(!fleetEarned(state))return;
+ let step=0;const dialog=$('#fleetReveal');
+ const draw=()=>{
+  const entry=FLEET_LINES[step];
+  $('#fleetDialogue').innerHTML=`<b>${entry.voice}</b><p>${entry.line}</p>`;
+  $('#fleetProgress').textContent=`${step+1} / ${FLEET_LINES.length}`;
+  $('#fleetNext').textContent=step===2?'Keep exploring':'Continue';
+  $('#fleetMilestone').hidden=step!==2;
+  dialog.dataset.beat=step;
+ };
+ $('#fleetNext').onclick=()=>{
+  if(step<2){step++;draw();return;}
+  run({type:'viewFleet'});dialog.close();
+ };
+ draw();dialog.showModal();sound.play('milestone');
 }
-board.addEventListener('pointerup',endDrag);
-board.addEventListener('pointercancel',()=>{drag?.ghost?.remove();drag=null;render();});
-board.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){const b=e.target.closest('.cell');if(b){e.preventDefault();tapCell(+b.dataset.i);}}});
-board.addEventListener('click',e=>{if(e.detail===0){const b=e.target.closest('.cell');if(b)tapCell(+b.dataset.i);}});
-
-$('#task').addEventListener('click',e=>{
- const b=e.target.closest('button');if(!b)return;
- if(b.hasAttribute('data-replay')){$('#replayConfirm').showModal();return;}
- if(b.hasAttribute('data-continue')){beat=null;render();const t=currentTask(state);if(t&&!reduced())$('#task').classList.add('enter');setTimeout(()=>$('#task').classList.remove('enter'),500);return;}
- const t=currentTask(state);
- if(b.getAttribute('aria-disabled')==='true'){
-  const g=suggest(state);warn(t?.choices?'Make the part for one side first.':'Make the parts first: '+g.text.charAt(0).toLowerCase()+g.text.slice(1));hintCells=g.cells;renderBoard();
-  for(const i of hintCells)$(`#board [data-i="${i}"]`)?.classList.add('nudge');
-  return;
- }
- run(b.dataset.choice?{type:'task',choice:b.dataset.choice}:{type:'task'});
-});
-$('#orders').addEventListener('click',e=>{const b=e.target.closest('[data-order]');if(b)run({type:'order',id:b.dataset.order},b.getBoundingClientRect());});
-$('#selection').addEventListener('click',e=>{if(e.target.closest('[data-recycle]'))run({type:'recycle',index:selected},cellRect(selected));});
-$('#mealButton').onclick=e=>run({type:'meal'},e.currentTarget.getBoundingClientRect());
-$('#story').onclick=()=>{$('#story').hidden=true;};
-
-// ---------- Menu, sound, replay ----------
-const soundLabel=()=>{$('#soundButton').textContent=sound.enabled()?'Sound: on':'Sound: off';};
-$('#soundButton').onclick=()=>{sound.toggle();soundLabel();};
-$('#menuButton').onclick=()=>$('#menu').showModal();
-for(const b of document.querySelectorAll('dialog .close,[data-close]'))b.onclick=()=>b.closest('dialog').close();
-$('#replayButton').onclick=()=>{$('#menu').close();$('#replayConfirm').showModal();};
+function showJournal(){
+ const story=storySnapshot(state);
+ $('#journalContent').innerHTML=`<small>VAULTWAKE · FIELD JOURNAL</small><h2>The coast that vanished</h2><h3>Expedition report · ${story.expedition.title}</h3><p><b>${story.expedition.voice}:</b> ${story.expedition.line}</p><p><b>Unanswered:</b> ${story.expedition.question}</p><h3>Camp discoveries · ${story.camp.title}</h3><p><b>${story.camp.voice}:</b> ${story.camp.line}</p><p><b>Next clue:</b> ${story.camp.question}</p><h3>Your discoveries · ${state.discovered.length}/29</h3>${Object.entries(FAMILIES).map(([f,d])=>`<h3>${d.name}</h3><div class="collection">${d.names.map((n,t)=>`<div class="${state.discovered.includes(f+':'+t)?'':'unknown'}">${art(item(f,t))}<small>${n}</small></div>`).join('')}</div>`).join('')}<h3>Wayfinding · Tide treasures${state.camp.loft?'':' · build the Charting Loft'}</h3><div class="collection">${TIDE_NAMES.map((n,t)=>`<div class="${state.discovered.includes('chart:tide:'+t)?'':'unknown'}">${art(tideItem(t))}<small>${n}</small></div>`).join('')}</div><p>${state.contracts} contracts · ${state.merges} merges · ${state.marks} expedition merit</p>`;$('#journal').showModal();
+}
+$('#journalButton').onclick=showJournal;
+$('#replayCancel').onclick=()=>$('#replayConfirm').close();
 $('#replayBegin').onclick=()=>{
- try{state=beginReplay(localStorage);replayActive=true;}catch{state=fresh();replayActive=true;}
- selected=null;shownScene=null;beat=null;$('#replayConfirm').close();render();intro();
+ try{
+  const next=beginReplay(localStorage);
+  state=next;replayActive=true;
+  selected=null;focus='goal';requestId=null;sideView=null;showVaultGoal=false;postChapterOrdersOpen=false;
+  $('#replayConfirm').close();render();persist();window.scrollTo(0,0);
+ }catch{$('#replayConfirmText').textContent='Replay could not be saved. Your original progress is unchanged.';}
 };
 $('#returnSave').onclick=()=>{
- try{state=returnOriginal(localStorage);}catch{state=fresh();}
- replayActive=false;selected=null;shownScene=null;beat=null;render();persist();say('Back to your saved expedition.');
+ try{
+  state=returnOriginal(localStorage);replayActive=false;
+  selected=null;focus='goal';requestId=null;sideView=null;showVaultGoal=false;postChapterOrdersOpen=false;
+  render();persist();window.scrollTo(0,0);
+ }catch{message.textContent='Could not return to the original save. Replay progress remains safe.';}
 };
 
-function intro(){
- if(state.task===0&&state.moves===0)tell('Ivo','The storm wrecked our landing. Tap two matching parts to merge them into a better tool.',12000);
-}
-
-soundLabel();render();persist();intro();platform.init();
+$('#helpButton').onclick=()=>{$('#journalContent').innerHTML='<h2>The Tideglass Vault</h2><ul><li>MERGE twins to make useful equipment.</li><li>Complete ORDERS to earn restoration supplies. Spend supplies on the Workshop, Pier and Charting Loft to unlock new production and discoveries.</li><li>Make the two route tools, then choose working space or relic supplies. Repair the Stone lift next. Recover buried gear with a spanner, or restore its device with a coil.</li><li>Choose a receiver: Relic finder brings relic supplies; Power bridge recharges sources.</li><li>Merge two Violet Shards from Echo Crucible. Use their Loop Cell on the Stone Lift, then activate your chosen receiver to raise the vault rings.</li><li>DELIVER optional supplies, or keep them for the expedition. ••• shows other optional tasks.</li><li>OPEN rewards when you have room. Use a fragment with a sight lens for richer source drops.</li></ul>';$('#journal').showModal();};
+for(const dialog of document.querySelectorAll('dialog')){dialog.querySelector('.close').onclick=()=>dialog.close();dialog.querySelector('.continue')?.addEventListener('click',()=>dialog.close());dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close();});}
+setInterval(()=>{const op=opportunity(state),clock=$('#opClock');if(op&&clock){clock.textContent=op.remaining?(ready(state,op.needs)?'✓ READY · ':'MAKE · ')+Math.ceil(op.remaining/1000)+'s':'PASSED · DISMISS';if(!op.remaining){const card=clock.closest('.contract');card.classList.remove('ready');card.removeAttribute('aria-label');}}},1000);
+render();persist();platform.init();
