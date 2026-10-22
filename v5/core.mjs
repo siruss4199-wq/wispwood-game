@@ -67,15 +67,18 @@ function crackAround(s,index){
 export const freesCrust=(x,y)=>x?.type==='item'&&!isTide(x)&&y?.type==='crust'&&x.family===y.family&&x.tier===y.tier;
 export function fresh(now=Date.now()){
  const board=Array(BOARD_SIZE).fill(null);
- for(let k=0;k<GATE_LEVELS.length;k++)board[CORE_SIZE+k]=gate(GATE_LEVELS[k]);
  board[0]=source('rig');board[5]=source('chart');board[30]=source('flux');
  [[7,'rig',0],[8,'rig',0],[9,'chart',0],[10,'chart',0],[13,'rig',1],[14,'chart',1],[15,'flux',0],[16,'flux',0],[19,'rig',0],[20,'rig',0],[21,'chart',0],[22,'chart',0]].forEach(([i,f,t])=>board[i]=item(f,t));
  // Starter pockets leave nine working spaces; extra saltstone is recoverable salvage.
  for(const [from,to] of [[19,2],[20,18],[21,11],[22,33]]){board[to]=board[from];board[from]=null;}
  // The old excavation strip and two spare corners hold salt-crusted parts to free.
- [[25,'rig',0],[26,'chart',0],[28,'rig',1],[29,'flux',0],[17,'rig',0],[35,'chart',1]].forEach(([i,f,t])=>board[i]=crust(f,t));
- // Two sealed jars and a mystery chest beside starter pairs: early merges crack them.
- board[22]=sealedJar(5);board[3]=sealedJar(8);board[12]=sealedCache();
+ // A covered start (like the genre's cobweb boards): most parts begin salt-crusted.
+ // Each free single has crusted twins nearby; merging it onto one frees that twin
+ // a tier up. The new 7×7 column and row start crusted too (gates only in old saves).
+ [[2,'rig',0],[4,'chart',1],[10,'chart',0],[11,'chart',0],[14,'chart',1],[16,'flux',0],[17,'rig',0],[25,'rig',0],[26,'chart',0],[28,'rig',1],[29,'flux',0],[33,'chart',0],[35,'chart',1],
+  [36,'chart',0],[37,'chart',1],[39,'flux',0],[40,'flux',1],[41,'rig',1],[43,'rig',0],[44,'flux',0],[46,'chart',0],[47,'rig',2],[48,'chart',1]].forEach(([i,f,t])=>board[i]=crust(f,t));
+ // Four sealed jars and two mystery chests among them: merges beside them crack them.
+ board[22]=sealedJar(5);board[3]=sealedJar(8);board[38]=sealedJar(10);board[45]=sealedJar(5);board[12]=sealedCache();board[42]=sealedCache();
  for(const i of [19,32])board[i]={type:'rock'};
  ['winch','scope','relay'].forEach((kind,n)=>board[[20,23,31][n]]={type:'site',kind,phase:'idle',progress:0});
  board[24]={type:'route',id:'ridge'};board[27]={type:'route',id:'conduit'};board[34]=container('salvage');
