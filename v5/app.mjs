@@ -30,6 +30,8 @@ if(premium){enablePremium(new URLSearchParams(location.search).get('art'));docum
 const scene=premium?prototypeScene:vectorScene;
 const $=s=>document.querySelector(s);
 let state,replayActive=false;try{({state,active:replayActive}=loadSlot(localStorage));}catch{state=fresh();}
+// ?replay=new (playtest links) starts a new game in the replay slot; the original save is kept.
+if(new URLSearchParams(location.search).get('replay')==='new'){try{state=beginReplay(localStorage);replayActive=true;}catch{}history.replaceState(null,'',location.pathname);}
 let selected=null,focus='goal',drag=null,suppressUntil=0,sideView=null,requestId=null,kitFocus='field',showVaultGoal=false,postChapterOrdersOpen=false;
 let instrumentFocus='rig';
 // Story beats are earned progress: show the new line in play, briefly, never blocking.
