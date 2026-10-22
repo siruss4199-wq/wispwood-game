@@ -62,3 +62,18 @@ saves; browser walkthrough at 360/390/430 px. Build 5 label and test link.
   40 cargo still sealed, energy 16–19 at the end, no waiting.
 - UI: crates you can open now pulse their key; generator cargo glows; tapping a crate
   says what opens it and who makes that part; a new generator shows its whole chain.
+
+## Slower opening (build 6, user: "Sul bainaa deerees ni hurdan zadarch telj baina")
+In build 5 the top half of the board was open by the fourth restoration: keys next
+to the camp were Copper offcuts and Grip tools, and any crate could be opened anywhere.
+- Only cargo touching open ground (an orthogonal neighbour that is not cargo) can be
+  opened (`reachable`). Deeper crates are darker and keep even their key hidden; when a
+  crate opens, the keys of the crates behind it pop into view.
+- Keys one tier harder: Grip tools and Split spanners next to the camp (the Survey Kite
+  still opens with a Grip tool), tier 3 further out, a Beacon lens in the far corner.
+- Shell Trap's cargo moved from cell 28 to 22 so it is reached during Landing Beach.
+- Level chest back to +10 energy (more keys to make).
+- Scripted player, 5–6 s per action: 7 crates open by the Workshop (was ~24), Survey
+  Kite ~3 min, Rope Winch ~11–13, Shell Trap ~13–16, Lantern Kiln ~20–24, Landing Beach
+  in 23–28 min, 22 of 40 crates still sealed at the end, energy ~15, no waiting.
+- Also fixed: the hint read "Restore Restore the Coastal Workshop".

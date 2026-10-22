@@ -16,7 +16,7 @@ export const VERSION=3,MAX_TIER=7,MAX_ENERGY=120;// MAX_TIER: the longest chain
 export const SOURCES=Object.fromEntries(Object.entries(GENERATOR_NAMES).map(([id,name])=>[id,{name}]));
 export const XP={merge:1,restore:5,feed:5,unseal:2};// orders pay their stars as XP
 export const STAR_VALUE=[1,1,2,4,7,12];// stars per item by tier
-export const CHEST_ENERGY=5;
+export const CHEST_ENERGY=10;
 // Coast Camp's own crates (the generator boxes of v5/kits.mjs, by size).
 export const CRATES=['Driftwood crate','Sea chest','Captain\'s trunk'];
 // Generators in the order they are found; each is opened with the one before's parts.
@@ -53,15 +53,15 @@ export const CAMP=[0,1,2,6,7,8,12,13,18];
 const I=item,K=kit,E=jar,S=stars,G=source;
 export const CARGO={
  3:['rig',1,G('chart')],
- 4:['rig',1,E(5)],9:['rig',1,I('rig',1)],14:['rig',0,S(2)],19:['rig',1,K('rig',1)],24:['rig',0,E(5)],
- 5:['rig',1,S(2)],10:['chart',0,I('chart',1)],15:['chart',2,G('rope')],20:['rig',2,K('rig',1)],25:['chart',1,E(5)],30:['rig',1,I('rig',2)],
- 36:['chart',1,S(3)],11:['rig',2,K('chart',1)],16:['chart',0,E(5)],21:['rig',1,S(2)],26:['chart',2,I('chart',2)],31:['rig',2,E(5)],43:['chart',1,K('rig',1)],
- 37:['rope',1,S(3)],17:['rope',0,I('rope',1)],22:['chart',2,K('chart',2)],27:['rig',2,E(5)],32:['rope',1,K('rope',1)],44:['chart',1,S(3)],
- 38:['rope',1,E(5)],23:['rope',3,G('lamp')],28:['rope',2,G('shell')],33:['rig',3,S(4)],45:['chart',2,I('chart',2)],
- 39:['shell',1,K('shell',1)],29:['rope',2,S(4)],34:['rig',3,K('rig',2)],46:['shell',0,E(5)],
- 40:['shell',2,S(4)],35:['lamp',1,K('lamp',1)],47:['rope',2,E(5)],
- 41:['lamp',2,S(4)],48:['shell',2,K('shell',2)],
- 42:['lamp',3,K('rig',3)]
+ 4:['rig',1,E(5)],9:['rig',2,I('rig',1)],14:['rig',1,S(2)],19:['rig',2,K('rig',1)],24:['rig',1,E(5)],
+ 5:['rig',2,S(2)],10:['chart',1,I('chart',1)],15:['chart',2,G('rope')],20:['rig',2,K('rig',1)],25:['chart',1,E(5)],30:['rig',2,I('rig',2)],
+ 36:['chart',2,S(3)],11:['rig',3,K('chart',1)],16:['chart',1,E(5)],21:['rig',2,S(2)],26:['chart',2,I('chart',2)],31:['rig',3,E(5)],43:['chart',2,K('rig',1)],
+ 37:['rope',2,S(3)],17:['rope',1,I('rope',1)],22:['rope',2,G('shell')],27:['rig',3,E(5)],32:['rope',2,K('rope',1)],44:['chart',2,S(3)],
+ 38:['rope',2,E(5)],23:['rope',3,G('lamp')],28:['chart',3,K('chart',2)],33:['rig',3,S(4)],45:['chart',3,I('chart',2)],
+ 39:['shell',2,K('shell',1)],29:['rope',3,S(4)],34:['rig',4,K('rig',2)],46:['shell',1,E(5)],
+ 40:['shell',3,S(4)],35:['lamp',2,K('lamp',1)],47:['rope',3,E(5)],
+ 41:['lamp',3,S(4)],48:['shell',3,K('shell',2)],
+ 42:['lamp',4,K('rig',3)]
 };
 export const cargoAt=i=>{const c=CARGO[i];return c?cargo({family:c[0],tier:c[1]},structuredClone(c[2])):null;};
 export function fresh(now=Date.now()){
@@ -120,8 +120,13 @@ function reveal(s,j){
 function note(s){const fresh=[];for(const x of s.board)if(x?.type==='item'){const k=x.family+x.tier;if(!s.found.includes(k)){s.found.push(k);fresh.push(k);}}return fresh;}
 // The most recently found generator (for rewards that follow your newest chain).
 export const newestGenerator=s=>[...GENERATOR_ORDER].reverse().find(g=>sourceOpen(s,g))??'rig';
-// Which part each cargo still on the board is waiting for.
-export const cargoKeys=s=>s.board.flatMap((x,i)=>x?.type==='cargo'?[{index:i,...x.key}]:[]);
+// Only cargo touching open ground (an orthogonal neighbour that is not cargo) can be
+// opened, so the board opens outward from the camp one ring at a time; cargo
+// further in keeps even its key hidden.
+const neighbours=i=>{const [r,c]=cellPos(i);return [[r-1,c],[r+1,c],[r,c-1],[r,c+1]].map(([rr,cc])=>rr<0||cc<0||rr>6||cc>6?-1:cc===6?36+rr:rr===6?43+cc:rr*6+cc).filter(j=>j>=0);};
+export const reachable=(s,i)=>s.board[i]?.type==='cargo'&&neighbours(i).some(j=>s.board[j]?.type!=='cargo');
+// Which part each reachable cargo is waiting for.
+export const cargoKeys=s=>s.board.flatMap((x,i)=>reachable(s,i)?[{index:i,...x.key}]:[]);
 
 // ---- levels ----
 function gainXp(s,amount){
@@ -172,6 +177,7 @@ function step(s,a,now){
   if(!['item','kit'].includes(x?.type))return fail('That stays where it is.');
   // A part laid on the cargo it opens is used up, and the cargo opens.
   if(y?.type==='cargo'){
+   if(!reachable(s,to))return fail('Open the cargo next to your camp first: this one is buried deeper.');
    if(!matches(x,y.key))return fail(`This cargo opens with a ${CHAINS[y.key.family].names[y.key.tier]}.`);
    s.board[from]=null;const opened=reveal(s,to);
    return {ok:true,event:'unseal',index:to,opened,xp:XP.unseal,message:'Cargo opened · '+(opened.type==='source'?'a new generator: '+SOURCES[opened.id].name+'!':opened.type==='jar'?`+${opened.energy} energy`:opened.type==='stars'?`+${opened.stars} ★`:opened.type==='space'?'empty':nameOf(s.board[to]))};
@@ -263,7 +269,7 @@ const covered=x=>x?.type==='sand'||x?.type==='gate'||x?.type==='water';
 function upgrade(s){
  const keyOf=i=>{const c=CARGO[i];return c?{family:c[0],tier:c[1]}:{family:'rig',tier:1};};
  s.board=s.board.map((x,i)=>covered(x)?cargo(keyOf(i),x.find):x);
- for(const [g,cell] of [['rope',15],['shell',28],['lamp',23]]){
+ for(const [g,cell] of [['rope',15],['shell',22],['lamp',23]]){
   if(s.board.some(x=>x?.type==='source'&&x.id===g||x?.type==='cargo'&&x.find?.type==='source'&&x.find.id===g))continue;
   const key={family:CARGO[cell][0],tier:CARGO[cell][1]};
   let j=s.board[cell]?.type==='cargo'?cell:s.board.findIndex(x=>x?.type==='cargo'&&x.find?.type!=='source');

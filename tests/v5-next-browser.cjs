@@ -1,7 +1,7 @@
 // Coast Camp in a real browser at 360/390/430 px: the scripted player's choices are
 // made through visible taps only, through two restorations; then reload, the map,
 // the menu, and the Classic save left untouched.
-// Sealed cargo covers the board; each crate shows the part that opens it.
+// Sealed cargo covers the board; crates touching open ground show the part that opens them.
 const assert=require('node:assert/strict');const {chromium,webkit}=require('playwright');
 const URL='http://127.0.0.1:8080/v5/play.html';
 const read=page=>page.evaluate(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')));
@@ -32,23 +32,24 @@ async function perform(page,a){
    await page.reload();await page.waitForSelector('#board .tile');
    assert.equal(await page.locator('#beat[open]').count(),1,'the area intro plays on a new camp');await closeBeats(page);
    assert.equal(await page.locator('#board .tile').count(),49);
-   assert.equal(await page.locator('#board .tile.cargo').count(),40,'sealed cargo covers all but the camp');assert.equal(await page.locator('#board .cargoKey').count(),40,'each crate shows its key');assert.equal(await page.locator('#board .tile.source').count(),1,'one generator to start');
+   assert.equal(await page.locator('#board .tile.cargo').count(),40,'sealed cargo covers all but the camp');assert.equal(await page.locator('#board .cargoKey').count(),5,'only the crates touching the camp show their keys');assert.equal(await page.locator('#board .tile.cargo.deep').count(),35,'the rest are buried deeper');assert.equal(await page.locator('#board .tile.source').count(),1,'one generator to start');
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'no sideways scroll');
    for(const t of await page.locator('#board .tile').all()){const b=await t.boundingBox();assert.ok(b.width>=44&&b.height>=44,'44px touch targets');}
    for(const sel of ['#energyPill','#starPill','#levelPill','#mapButton','#menuButton']){const b=await page.locator(sel).boundingBox();assert.ok(b&&b.x>=0&&b.x+b.width<=width,sel+' fits the header');}
    let restores=0;
-   for(let n=0;n<160&&restores<2;n++){
+   // Play on until two places are restored and the Survey Kite has come out of its cargo.
+   for(let n=0;n<220&&(restores<2||!(await read(page)).board.some(x=>x?.type==='source'&&x.id==='chart'));n++){
     const a=await page.evaluate(async()=>{const {nextAction}=await import('/tests/v5-next-policy.mjs');return nextAction(JSON.parse(localStorage.getItem('vaultwake-v5-coast')));});
     assert.ok(a,'the scripted player always has a move early on');
     await perform(page,a);if(a.type==='restore')restores++;
    }
-   assert.equal(restores,2,'two places restored through the UI');
-   const s=await read(page);assert.deepEqual(s.done,['beach-path','beach-tent']);
-   assert.equal(await page.locator('.restoredIcon').count(),2,'restored places stand on the coast picture');
-   assert.ok(await page.locator('#board .tile.cargo').count()<40,'cargo was opened by laying parts on it');
+   assert.ok(restores>=2,'places restored through the UI');
+   const s=await read(page);assert.deepEqual(s.done.slice(0,2),['beach-path','beach-tent']);
+   assert.equal(await page.locator('.restoredIcon').count(),s.done.length,'restored places stand on the coast picture');
+   assert.ok(await page.locator('#board .tile.cargo').count()<40,'cargo was opened by laying parts on it');assert.equal(await page.locator('#board .tile.source[data-family="chart"]').count(),1,'the Survey Kite came out of its cargo');
    await page.reload();await page.waitForSelector('#board .tile');
    assert.deepEqual((await read(page)).board,s.board,'reload keeps the board');assert.equal(await page.locator('#beat[open]').count(),0,'no intro on a running camp');
-   await page.locator('#mapButton').tap();assert.equal(await page.locator('#coastMap .place').count(),7);assert.equal(await page.locator('#coastMap .place[data-status="done"]').count(),2);
+   await page.locator('#mapButton').tap();assert.equal(await page.locator('#coastMap .place').count(),7);assert.equal(await page.locator('#coastMap .place[data-status="done"]').count(),s.done.length);
    await page.locator('#coastMap .close').tap();
    await page.locator('#menuButton').tap();assert.equal(await page.locator('#classicLink').getAttribute('href'),'index.html');await page.locator('#menu .close').tap();
    assert.equal(await page.evaluate(()=>localStorage.getItem('vaultwake-v5')),classic,'Classic save untouched');

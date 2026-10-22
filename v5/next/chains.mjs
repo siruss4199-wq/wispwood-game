@@ -68,7 +68,8 @@ const CARGO='<path d="M10 30L50 18L90 30V78L50 92L10 78Z" fill="#8a6440"/><path 
 // Draw any Coast Camp cell: new chains and crates here, everything else with the
 // shared art. Water shows what lies on the sea floor beneath it.
 export function draw(x,cls=''){
- if(x?.type==='cargo')return `<svg class="art cargoArt ${cls}" viewBox="0 0 100 100" aria-hidden="true" data-art="cargo">${MATERIALS}<g stroke-linejoin="round" stroke-linecap="round">${CARGO}</g></svg><span class="cargoKey" aria-hidden="true">${draw({type:'item',family:x.key.family,tier:x.key.tier})}</span>`;
+ // Deep cargo (not yet touching open ground) keeps even its key hidden.
+ if(x?.type==='cargo')return `<svg class="art cargoArt ${cls}" viewBox="0 0 100 100" aria-hidden="true" data-art="cargo">${MATERIALS}<g stroke-linejoin="round" stroke-linecap="round">${CARGO}</g></svg>`+(x.deep?'':`<span class="cargoKey" aria-hidden="true">${draw({type:'item',family:x.key.family,tier:x.key.tier})}</span>`);
  if(x?.type==='source'&&GENERATOR_SHAPES[x.id])return `<svg class="art ${cls}" viewBox="0 0 100 100" aria-hidden="true" data-art="source-${x.id}">${MATERIALS}<g stroke-linejoin="round" stroke-linecap="round">${GENERATOR_SHAPES[x.id]}</g></svg>`;
  if(x?.type==='water')return x.find?draw(x.find,(cls+' submerged').trim()):'';
  if(x?.type==='jar')return art(x,cls);

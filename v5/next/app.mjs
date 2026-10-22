@@ -1,6 +1,6 @@
 // Coast Camp: the new-loop page (v5/play.html). Same look as Classic V5, one loop:
 // generators → merge → crew orders → ★ stars → restore the coast on the map.
-import {SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,orderProgress,nextTask,currentArea,areaDone,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys} from './game.mjs';
+import {SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,orderProgress,nextTask,currentArea,areaDone,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys,reachable} from './game.mjs';
 import {AREAS} from './areas.mjs';
 import {cellPos} from '../core.mjs';
 import {CHAINS,draw,maxTier,chainsAt,GENERATOR_CHAINS} from './chains.mjs';
@@ -15,7 +15,7 @@ import {sound,reduced,burst,rewardFlight,moment as sharedMoment} from '../feedba
 function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el=document.querySelector('.moment');if(!x||!el)return;const icon=document.createElement('span');icon.style.cssText='float:left;width:42px;height:42px;margin-right:10px';icon.innerHTML=draw(x);icon.firstElementChild.style.cssText='width:100%;height:100%';el.prepend(icon);}
 
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 5 · sealed cargo';
+export const BUILD='Build 6 · cargo opens from the camp outward';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
@@ -71,7 +71,7 @@ function renderBoard(){
  const focusKeys=new Set(focus?.needs.map(r=>r.family+r.tier)??[]);
  board.innerHTML=state.board.map((x,i)=>{
   const [r,c]=cellPos(i),locked=x?.type==='source'&&!sourceOpen(state,x.id);
-  const twin=sel&&i!==selected&&(sel.type==='item'&&(x?.type==='item'&&matches(x,sel)&&sel.tier<maxTier(sel.family)||x?.type==='cargo'&&matches(sel,x.key))||sel.type==='kit'&&(kitsMerge(sel,x)||feeds(sel,x))||sel.type==='cargo'&&matches(x,sel.key));
+  const twin=sel&&i!==selected&&(sel.type==='item'&&(x?.type==='item'&&matches(x,sel)&&sel.tier<maxTier(sel.family)||x?.type==='cargo'&&reachable(state,i)&&matches(sel,x.key))||sel.type==='kit'&&(kitsMerge(sel,x)||feeds(sel,x))||sel.type==='cargo'&&matches(x,sel.key));
   const wanted=x?.type==='item'&&want.has(x.family+x.tier),focused=x?.type==='item'&&focusKeys.has(x.family+x.tier);
   let badge='';
   if(x?.type==='source')badge=locked?`<span class="lockedLabel">NEXT AREA</span>`:`<span class="energyCue">ϟ1</span>${producerLevel(x)>1?`<span class="srcLevel">Lv${producerLevel(x)}</span>`:''}`;
@@ -79,8 +79,8 @@ function renderBoard(){
   else if(x?.type==='jar')badge=`<span class="sealBadge">+${x.energy}ϟ</span>`;
   else if(x?.type==='cargo'&&x.find?.type==='source')badge='<span class="cargoGlow" aria-hidden="true"></span>';
   else if(wanted)badge='<span class="useBadge" aria-hidden="true">★</span>';
-  const ready=x?.type==='cargo'&&state.board.some(y=>matches(y,x.key));
-  return `<button class="tile ${x?.type??'empty'} ${ready?'keyReady':''} ${locked?'locked':''} ${selected===i?'selected':''} ${twin?'match':''} ${wanted?'wanted':''} ${focused?'nextAction':''}" data-index="${i}" style="grid-row:${r+1};grid-column:${c+1}" ${x?.family||x?.id?`data-family="${x.family??x.id}"`:''} aria-label="${nameOf(x)}${locked?' · locked':''}. Space ${i+1}" aria-pressed="${selected===i}">${draw(x)}${badge}</button>`;
+  const deep=x?.type==='cargo'&&!reachable(state,i),ready=x?.type==='cargo'&&!deep&&state.board.some(y=>matches(y,x.key));
+  return `<button class="tile ${x?.type??'empty'} ${ready?'keyReady':''} ${deep?'deep':''} ${locked?'locked':''} ${selected===i?'selected':''} ${twin?'match':''} ${wanted?'wanted':''} ${focused?'nextAction':''}" data-index="${i}" style="grid-row:${r+1};grid-column:${c+1}" ${x?.family||x?.id?`data-family="${x.family??x.id}"`:''} aria-label="${nameOf(x)}${locked?' · locked':''}. Space ${i+1}" aria-pressed="${selected===i}">${draw(deep?{...x,deep:true}:x)}${badge}</button>`;
  }).join('');
  $('#free').textContent=state.board.filter(x=>x===null).length+' spaces';
 }
@@ -99,6 +99,7 @@ function renderSelection(){
  }else if(x.type==='kit'){
   desc=`Tap again for a free part (${chainsOf(state,x.family).map(c=>CHAINS[c].names[0]).join(' or ')} chain) · ${x.left} of ${kitCapacity(x)} left.`+(kitFull(x)&&x.size<MAX_KIT_SIZE?` Or merge with a twin into a ${CRATES[x.size]} (${KIT_DROPS[x.size+1].length} better parts).`:kitFull(x)?` Or drag it onto ${SOURCES[x.family].name} to level it up.`:'');
   buttons='<button class="accent" data-action="openKit">Take a part</button>';
+} else if(x.type==='cargo'&&!reachable(state,selected)){title='Sealed cargo';desc='Buried deeper in the cargo. Open the crates around it first, and this one will show the part that opens it.'+(x.find?.type==='source'?' Something glows inside.':'');
  }else if(x.type==='cargo'){const k=CHAINS[x.key.family].names[x.key.tier],have=state.board.some(y=>matches(y,x.key)),gen=CHAINS[x.key.family].gen;
   title='Sealed cargo';desc=`Opens with a ${k}: lay one on it. What is inside is a surprise`+(x.find?.type==='source'?' — something glows in there.':'.')+(have?' You have one: tap it, then this cargo.':sourceOpen(state,gen)?` ${SOURCES[gen].name} makes them.`:` Its generator is still sealed somewhere on the board.`);}
  else if(x.type==='jar')desc='Energy, sealed in a jar.';
@@ -107,7 +108,7 @@ function renderSelection(){
 function renderHint(){
  const task=nextTask(state),ready=state.orders.find(o=>orderItems(state,o));let hint;
  if(!state.merges)hint='START · Tap a Copper offcut, then its twin';
- else if(task&&state.stars>=task.cost)hint=`★ ${task.cost} ready · Restore ${task.name} ↑`;
+ else if(task&&state.stars>=task.cost)hint=`★ ${task.cost} ready · ${task.name} ↑`;
  else if(ready)hint='Order ready · tap it to collect ★';
  else if(cargoKeys(state).some(k=>state.board.some(y=>matches(y,k))))hint='Lay a matching part on a crate to open it';
  else if(state.energy<1){const t=refillTimes(state,Date.now());hint='Out of energy · +1 in '+clock(t?.next??0);}
@@ -124,7 +125,7 @@ function header(){
 function run(a){
  const before={stars:state.stars,energy:state.energy},fromRect=a.type==='produce'?board.querySelector(`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===a.id)}"]`)?.getBoundingClientRect():a.type==='openKit'?board.querySelector(`[data-index="${a.index}"]`)?.getBoundingClientRect():null;
  const orderRect=a.type==='deliver'?$(`[data-order="${a.id}"]`)?.getBoundingClientRect():null;
- const r=act(state,a,Date.now());
+ const reachBefore=new Set(cargoKeys(state).map(k=>k.index)),r=act(state,a,Date.now());
  if(!r.ok){$('#message').textContent=r.message;sound.play('tap');return r;}
  $('#message').textContent=r.message;
  if(r.event==='merge'||r.event==='move'||r.event==='producerUp'||r.event==='unseal')selected=r.event==='producerUp'||r.event==='unseal'?null:r.index;
@@ -139,7 +140,9 @@ function run(a){
  if(r.event==='unseal'){tile?.classList.add('unsealed');burst(tile?.getBoundingClientRect(),'gold',r.opened.type==='source');sound.play(r.opened.type==='source'?'milestone':'rare');
   if(r.opened.type==='stars')rewardFlight(tile?.getBoundingClientRect(),$('#starPill').getBoundingClientRect(),`+${r.opened.stars} ★`);
   if(r.opened.type==='jar')rewardFlight(tile?.getBoundingClientRect(),$('#energyPill').getBoundingClientRect(),`+${r.opened.energy} ϟ`);
-  if(r.opened.type==='source')newGeneratorMoment(r.opened.id);}
+  if(r.opened.type==='source')newGeneratorMoment(r.opened.id);
+  // Crates that now touch open ground show their keys for the first time.
+  for(const k of cargoKeys(state))if(!reachBefore.has(k.index))board.querySelector(`[data-index="${k.index}"]`)?.classList.add('newKey');}
  if(r.found?.length&&r.event!=='restore'){const k=r.found.at(-1),x=item(k.replace(/\d+$/,''),+k.match(/\d+$/)[0]);if(x.tier>=2)setTimeout(()=>moment('New: '+nameOf(x),x.tier<maxTier(x.family)?'Next: '+CHAINS[x.family].names[x.tier+1]:'Top of the chain',x),r.levelUp?1600:0);}
  if(r.levelUp){const u=r.levelUp.at(-1);setTimeout(()=>{moment('Level '+u.level+'!',`Chest: +${r.levelUp.reduce((n,v)=>n+v.energy,0)} ϟ`+(u.family?' · '+nameOf({type:'kit',family:u.family,size:1}):'')+'',u.family?{type:'kit',family:u.family,size:1,left:3}:null);sound.play('milestone');$('#levelPill').classList.add('levelUp');setTimeout(()=>$('#levelPill').classList.remove('levelUp'),1400);},r.event==='restore'?0:400);}
  return r;

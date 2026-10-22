@@ -83,7 +83,7 @@ test('every third order brings a small box of its kind; boxes and generator leve
 test('levels give a chest with a driftwood crate of a generator you have',()=>{
  const s=fresh(0);s.level.xp=19;const e=s.energy,r=ok(s,{type:'merge',from:7,to:8});
  assert.equal(r.levelUp[0].level,2);assert.equal(r.levelUp[0].family,'rig');assert.equal(s.board.filter(x=>x?.type==='cargo').length,40);
- assert.equal(s.energy,e+5);
+ assert.equal(s.energy,e+10);
 });
 
 test('energy refills over time and a low-energy ration helps once an hour',()=>{
@@ -124,19 +124,21 @@ test('crates are named for the coast; merges and feeding work as before',()=>{
  const s=fresh(0);s.board[1]=kit('rig',3);s.board[6]=kit('rig',3);assert.match(act(s,{type:'merge',from:1,to:6},1).message,/as big as crates get/);
 });
 
-test('cargo opens only with the part it shows; the part is used up and the contents come out',()=>{
+test('cargo opens only with the part it shows, only at the edge of open ground; the part is used up',()=>{
  const s=fresh(0);
- // 14 holds a star pouch and opens with a Copper offcut.
- assert.deepEqual(s.board[14].key,{family:'rig',tier:0});
- refused(s,{type:'merge',from:13,to:14});// a Grip tool is the wrong part
+ // 14 holds a star pouch and opens with a Grip tool; it touches the camp.
+ assert.deepEqual(s.board[14].key,{family:'rig',tier:1});
+ refused(s,{type:'merge',from:7,to:14});// a Copper offcut is the wrong part
  refused(s,{type:'move',from:7,to:3});refused(s,{type:'openKit',index:3});refused(s,{type:'recycle',index:3});
- const stars=s.stars,r=ok(s,{type:'merge',from:7,to:14});
- assert.equal(r.event,'unseal');assert.equal(s.board[7],null,'the key is used');assert.equal(s.board[14],null,'a star pouch leaves the space free');assert.equal(s.stars,stars+2);assert.equal(r.xp,2);
- // Energy pays out; parts and crates take the space.
+ const stars=s.stars,r=ok(s,{type:'merge',from:13,to:14});
+ assert.equal(r.event,'unseal');assert.equal(s.board[13],null,'the key is used');assert.equal(s.board[14],null,'a star pouch leaves the space free');assert.equal(s.stars,stars+2);assert.equal(r.xp,2);
+ // 4 is buried deeper: it opens only once a crate beside it is open.
+ s.board[1]=item('rig',1);assert.match(refused(s,{type:'unseal',from:1,index:4}).message,/deeper/);
+ const k=ok(s,{type:'unseal',from:1,index:3});assert.equal(k.opened.type,'source');
  s.board[1]=item('rig',1);const e=s.energy;ok(s,{type:'unseal',from:1,index:4});assert.equal(s.energy,e+5);assert.equal(s.board[4],null);
- s.board[1]=item('rig',1);ok(s,{type:'unseal',from:1,index:9});assert.deepEqual(s.board[9],item('rig',1));
- s.board[1]=item('rig',1);ok(s,{type:'unseal',from:1,index:19});assert.deepEqual(s.board[19],kit('rig',1));
- assert.equal(s.board.filter(x=>x?.type==='cargo').length,36);
+ s.board[1]=item('rig',2);ok(s,{type:'unseal',from:1,index:9});assert.deepEqual(s.board[9],item('rig',1));
+ s.board[1]=item('rig',2);ok(s,{type:'unseal',from:1,index:19});assert.deepEqual(s.board[19],kit('rig',1));
+ assert.equal(s.board.filter(x=>x?.type==='cargo').length,35);
 });
 
 test('one generator, one chain; each new generator comes out of cargo opened with the previous one\'s parts',async()=>{
@@ -149,16 +151,16 @@ test('one generator, one chain; each new generator comes out of cargo opened wit
  for(const [,c] of Object.entries(CARGO))assert.ok(GENERATOR_ORDER.includes(CHAINS[c[0]].gen));
  // Play it through: open the Kite cargo, tap the Kite, its single chain comes out.
  const s=fresh(0);s.board[1]=item('rig',1);const r=ok(s,{type:'unseal',from:1,index:3});
- assert.deepEqual(r.opened,{index:3,type:'source',id:'chart'});assert.equal(sourceOpen(s,'chart'),true);
+ assert.deepEqual(r.opened,{index:3,type:'source',id:'chart'});assert.ok(cargoKeys(s).some(k=>k.index===4),'opening a crate shows the keys of the crates behind it');assert.equal(sourceOpen(s,'chart'),true);
  for(let n=0;n<8;n++){const p=ok(s,{type:'produce',id:'chart'});assert.equal(s.board[p.index].family,'chart');s.board[p.index]=null;}
  refused(s,{type:'produce',id:'rope'});
 });
 
 test('cargo keys grow harder away from the camp and every generator is reachable',()=>{
  const s=fresh(0),keys=cargoKeys(s);
- const near=keys.filter(k=>[3,4,9,14,19,24].includes(k.index));
- assert.ok(near.every(k=>k.family==='rig'&&k.tier<=1),'next to the camp: Rover parts only');
- assert.ok(keys.some(k=>k.family==='lamp'&&k.tier===3),'the far corner needs a Signal lamp');
+ assert.deepEqual(keys.map(k=>k.index),[3,9,14,19,24],'only the crates touching the camp show their keys');
+ assert.ok(keys.every(k=>k.family==='rig'&&k.tier>=1&&k.tier<=2),'next to the camp: Grip tools and Split spanners');
+ assert.deepEqual(CARGO[42].slice(0,2),['lamp',4],'the far corner needs a Beacon lens');
  // A scripted player finds every generator during Landing Beach.
  const t=fresh(0);let now=0;const found=[];
  while(!t.done.includes('beach-cliff')&&now<60*60*1000){tick(t,now);const a=nextAction(t);if(!a){now+=30000;continue;}const r=ok(t,a,now);now+=6000;if(r.opened?.type==='source')found.push([r.opened.id,+(now/60000).toFixed(1)]);}
