@@ -31,6 +31,8 @@ export const item=(family,tier)=>({type:'item',family,tier});
 export const jar=energy=>({type:'jar',energy});
 export const stars=n=>({type:'stars',n});
 export const source=id=>({type:'source',id});
+// A Brass cog (found in cargo, user: "generator ahiulagch"): drag it onto a generator for +1 level.
+export const cog=()=>({type:'cog'});
 export const cargo=(key,find)=>({type:'cargo',key,...(find?{find}:{})});
 const integer=(x,a,b)=>Number.isInteger(x)&&x>=a&&x<=b;
 
@@ -43,6 +45,7 @@ export function nameOf(x){
  if(x.type==='stars')return 'Star pouch · +'+x.n+' ★';
  if(x.type==='cargo')return 'Sealed cargo · opens with a '+CHAINS[x.key.family].names[x.key.tier];
  if(x.type==='glass')return 'Tideglass · '+CHAINS[x.family].names[x.tier];
+ if(x.type==='cog')return 'Brass cog · +1 generator level';
  return '';
 }
 export const matches=(x,r)=>x?.type==='item'&&x.family===r.family&&x.tier===r.tier;
@@ -61,20 +64,23 @@ export const cellIndex=(r,c)=>c===6?36+r:r===6?43+c:r*6+c;
 const at=(r,c)=>cellIndex(r,c);
 export const CAMP=[at(2,2),at(2,3),at(2,4),at(3,2),at(3,3),at(3,4),at(4,2),at(4,3),at(4,4)];
 export const ROVER=at(3,3);
-const I=item,K=kit,E=jar,S=stars,G=source;
+const I=item,K=kit,E=jar,S=stars,G=source,C=cog;
 // [row, column, key chain, key tier, find]
 const CARGO_CELLS=[
- // Ring 2 (next to the camp): mostly Split spanners (tier 3); one Copper-to-Split crate
- // above the Rover to teach it; the Survey Kite in a corner behind a Crawler jack.
- [1,1,'rig',4,G('chart')],[1,2,'rig',3,E(10)],[1,3,'rig',2,S(3)],[1,4,'rig',3,I('rig',3)],[1,5,'rig',4,G('rig')],
- [3,1,'rig',3,K('rig',1)],[4,1,'chart',3,S(6)],[5,1,'chart',4,G('rope')],
- [2,5,'rig',3,K('rig',2)],[4,5,'chart',3,E(10)],[5,5,'chart',4,I('chart',3)],
- [5,2,'rig',3,S(6)],[5,4,'chart',3,K('chart',1)],
- // Ring 3 (the edge): tier 3–4 keys of every chain; the Shell Trap and Lantern Kiln far out.
- [0,1,'chart',3,G('chart')],[0,2,'rig',4,E(18)],[0,3,'rig',4,S(10)],[0,4,'chart',4,K('chart',2)],[0,5,'rope',3,G('shell')],
- [1,6,'shell',3,S(6)],[2,6,'rope',3,E(10)],[3,6,'rig',4,G('rope')],[4,6,'shell',3,G('lamp')],
- [6,6,'lamp',3,K('rig',3)],[6,4,'shell',3,K('shell',1)],[6,3,'rope',4,S(10)],[6,1,'rope',3,E(10)],[6,0,'rig',4,G('rig')],
- [4,0,'chart',4,S(10)],[3,0,'rig',4,K('rig',2)],[2,0,'shell',4,G('shell')]
+ // The more useful the find, the harder the key (user, 2026-10-22: "hairtsagnaas mash heregtei
+ // zuiliig hetsuu neey, jishee ni shine generator"): energy, stars and parts open with tier-3
+ // parts next to the camp and tier 3–4 at the edge; Brass cogs and generators with tier 4–5,
+ // the highest key of their ring.
+ // Ring 2 (next to the camp): Pocket winches; one Split-spanner crate above the Rover to teach it.
+ [1,1,'rig',4,G('chart')],[1,2,'rig',3,E(15)],[1,3,'rig',2,S(3)],[1,4,'rig',3,I('rig',3)],[1,5,'rig',5,G('rig')],
+ [3,1,'rig',3,K('rig',1)],[4,1,'chart',3,S(4)],[5,1,'chart',4,G('rope')],
+ [2,5,'rig',4,C()],[4,5,'chart',3,E(15)],[5,5,'chart',4,I('chart',3)],
+ [5,2,'rig',3,S(4)],[5,4,'chart',3,K('chart',1)],
+ // Ring 3 (the edge): tier 3–4 keys for everyday finds, tier 4–5 for cogs and generators.
+ [0,1,'chart',4,G('chart')],[0,2,'rig',4,E(25)],[0,3,'rig',4,S(10)],[0,4,'chart',4,K('chart',2)],[0,5,'rope',4,G('shell')],
+ [1,6,'shell',3,S(6)],[2,6,'rope',3,E(15)],[3,6,'rig',5,G('rope')],[4,6,'shell',4,G('lamp')],
+ [6,6,'lamp',4,C()],[6,4,'shell',3,K('shell',1)],[6,3,'rope',4,S(10)],[6,1,'rope',3,E(15)],[6,0,'rig',5,G('rig')],
+ [4,0,'chart',4,C()],[3,0,'rig',4,K('rig',2)],[2,0,'shell',4,G('shell')]
 ];
 export const CARGO=Object.fromEntries(CARGO_CELLS.map(([r,c,f,tier,find])=>[at(r,c),[f,tier,find]]));
 // Tideglass: a part locked in glass near the generator that makes it. It does not take a
@@ -136,6 +142,7 @@ function reveal(s,j){
  if(f.type==='stars'){s.board[j]=null;s.stars+=f.n;return {index:j,type:'stars',stars:f.n};}
  if(f.type==='source'){s.board[j]=source(f.id);return {index:j,type:'source',id:f.id};}
  if(f.type==='kit'){s.board[j]=kit(f.family,f.size);return {index:j,type:'kit'};}
+ if(f.type==='cog'){s.board[j]=cog();return {index:j,type:'cog'};}
  s.board[j]=item(f.family,f.tier);return {index:j,type:'item'};
 }
 // Parts seen for the first time (for "New!" moments in the UI).
@@ -206,19 +213,27 @@ function step(s,a,now){
   const from=a.from,to=a.to??a.index;
   if(!valid(from)||!valid(to)||from===to)return fail('Choose another space.');
   const x=s.board[from],y=s.board[to];
-  if(!['item','kit','source'].includes(x?.type))return fail('That stays where it is.');
+  if(!['item','kit','source','cog'].includes(x?.type))return fail('That stays where it is.');
   if(x.type==='source'){
    if(!y){s.board[to]=x;s.board[from]=null;return {ok:true,event:'move',index:to,message:'Moved.'};}
    if(!generatorsMerge(x,y))return fail(y?.type==='source'&&y.id===x.id&&producerLevel(y)>=MAX_GENERATOR_LEVEL?`${SOURCES[x.id].name} is at its top level.`:'Merge two generators of the same kind and level.');
    y.level=producerLevel(y)+1;s.board[from]=null;
    return withCracks({ok:true,event:'producerUp',index:to,xp:XP.feed,message:`${SOURCES[y.id].name} reaches level ${y.level}`},crack(s,to));
   }
+  // A Brass cog raises the generator it is laid on by one level.
+  if(x.type==='cog'){
+   if(!y){s.board[to]=x;s.board[from]=null;return {ok:true,event:'move',index:to,message:'Moved.'};}
+   if(y.type!=='source')return fail('Lay the Brass cog on a generator: +1 level.');
+   if(producerLevel(y)>=MAX_GENERATOR_LEVEL)return fail(`${SOURCES[y.id].name} is at its top level.`);
+   y.level=producerLevel(y)+1;s.board[from]=null;
+   return {ok:true,event:'producerUp',cog:true,index:to,xp:XP.feed,message:`Brass cog · ${SOURCES[y.id].name} reaches level ${y.level}`};
+  }
   // A part laid on the cargo it opens is used up, and the cargo opens.
   if(y?.type==='cargo'){
    if(!reachable(s,to))return fail('Open the cargo next to your camp first: this one is buried deeper.');
    if(!matches(x,y.key))return fail(`This cargo opens with a ${CHAINS[y.key.family].names[y.key.tier]}.`);
    s.board[from]=null;const opened=reveal(s,to);
-   return {ok:true,event:'unseal',index:to,opened,xp:XP.unseal,message:'Cargo opened · '+(opened.type==='source'?'a new generator: '+SOURCES[opened.id].name+'!':opened.type==='jar'?`+${opened.energy} energy`:opened.type==='stars'?`+${opened.stars} ★`:opened.type==='space'?'empty':nameOf(s.board[to]))};
+   return {ok:true,event:'unseal',index:to,opened,xp:XP.unseal,message:'Cargo opened · '+(opened.type==='source'?'a new generator: '+SOURCES[opened.id].name+'!':opened.type==='cog'?'a Brass cog! Lay it on a generator: +1 level':opened.type==='jar'?`+${opened.energy} energy`:opened.type==='stars'?`+${opened.stars} ★`:opened.type==='space'?'empty':nameOf(s.board[to]))};
   }
   if(a.type==='unseal')return fail('Lay the part on the cargo it opens.');
   if(y?.type==='glass')return fail(`Tideglass takes no part. Merge in a space beside it: ${GLASS_HITS} merges break it.`);
@@ -287,6 +302,7 @@ function validFind(f){
  if(f?.type==='stars')return integer(f.n,1,20);
  if(f?.type==='kit')return validCrate(f);
  if(f?.type==='source')return !!GENERATOR_CHAINS[f.id];
+ if(f?.type==='cog')return Object.keys(f).length===1;
  return false;
 }
 function validCell(x){
@@ -295,6 +311,7 @@ function validCell(x){
  if(x.type==='source')return !!SOURCES[x.id]&&validProducerLevel(x);
  if(x.type==='kit')return validCrate(x);
  if(x.type==='cargo')return !!x.key&&validItem(x.key)&&validFind(x.find);
+ if(x.type==='cog')return Object.keys(x).length===1;
  if(x.type==='glass')return validItem(x)&&x.tier<maxTier(x.family)&&(x.cracks===undefined||integer(x.cracks,0,GLASS_HITS-1));
  return false;
 }

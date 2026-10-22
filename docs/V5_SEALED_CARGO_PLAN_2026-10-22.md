@@ -155,3 +155,28 @@ differently:
 - Scripted player (now merges beside glass when it can): the camp's three glass cells
   break in the first 1–3 minutes, the outer ones as the board opens (7 of 10 broken by
   the end); Landing Beach in 35–49 min at 4–6 s per action as in build 10.
+
+## Build 12 — the more useful the find, the harder the key; Brass cogs (user: "Hairtsagnaas mash heregtei zuiliig hetsuu neey, jishee ni shine generator ch yumuu. Bas generator ahiulagch baij bolno, energy mungu ch yumuu")
+- **Key by value.** In each ring, crates holding a generator or a Brass cog need a
+  higher part than any crate with energy, stars, parts or a crate (unit-tested):
+  - next to the camp: everyday finds open with tier 3 (one tier-2 teaching crate);
+    Survey Kite and a cog with a Crawler jack (tier 4); the second Rivet Rover and the
+    Rope Winch with tier 4–5;
+  - at the edge: everyday finds tier 3–4; Shell Trap, Lantern Kiln, a Kite copy and two
+    cogs tier 4; the Rope Winch and Rivet Rover copies tier 5.
+- **Brass cog** (new find, approved by the user as a "generator upgrader"): three in
+  cargo (cells 17, 24, 42), glowing green where generators glow gold. Lay it on any
+  generator (tap then tap, or drag) for +1 level up to 5; used up. Moves like a part;
+  cannot be recycled. Saves: a new cell and find type `{type:'cog'}`; older saves have
+  none and load unchanged.
+- **Energy and stars for the costlier keys:** energy jars +15 (+25 at the edge), the tent
+  +15 and the beacon +25 energy; Landing Beach costs 6·10·14·16·19·20·22 ★.
+- **"Money":** stars are the coin of the camp for now (orders and star pouches pay them,
+  restorations spend them). A separate coin currency would need a place to spend it
+  (a shop) and is left for the user to decide.
+- Scripted players, 4–6 s per action: the curious player (goes for each new generator
+  while energy is 25+, without taking parts orders need unless energy is 40+) finds the
+  Kite at 4.5–7 min and every kind by 24–36 min, opens the cog beside the camp at
+  9–14 min (the two at the edge stay sealed for later), and restores
+  Landing Beach in 39–61 min with no waiting; an order-only player takes 15–23 min with
+  Rivet Rover alone.

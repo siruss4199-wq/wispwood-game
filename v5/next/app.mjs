@@ -15,7 +15,7 @@ import {sound,reduced,burst,rewardFlight,moment as sharedMoment} from '../feedba
 function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el=document.querySelector('.moment');if(!x||!el)return;const icon=document.createElement('span');icon.style.cssText='float:left;width:42px;height:42px;margin-right:10px';icon.innerHTML=draw(x);icon.firstElementChild.style.cssText='width:100%;height:100%';el.prepend(icon);}
 
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 11 · cracking glass';
+export const BUILD='Build 12 · brass cogs';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
@@ -71,13 +71,13 @@ function renderBoard(){
  const focusKeys=new Set(focus?.needs.map(r=>r.family+r.tier)??[]);
  board.innerHTML=state.board.map((x,i)=>{
   const [r,c]=cellPos(i),locked=x?.type==='source'&&!sourceOpen(state,x.id);
-  const twin=sel&&i!==selected&&(sel.type==='item'&&(x?.type==='item'&&matches(x,sel)&&sel.tier<maxTier(sel.family)||x?.type==='cargo'&&reachable(state,i)&&matches(sel,x.key))||sel.type==='kit'&&kitsMerge(sel,x)||generatorsMerge(sel,x)||sel.type==='cargo'&&matches(x,sel.key));
+  const twin=sel&&i!==selected&&(sel.type==='item'&&(x?.type==='item'&&matches(x,sel)&&sel.tier<maxTier(sel.family)||x?.type==='cargo'&&reachable(state,i)&&matches(sel,x.key))||sel.type==='kit'&&kitsMerge(sel,x)||generatorsMerge(sel,x)||sel.type==='cog'&&x?.type==='source'&&producerLevel(x)<MAX_GENERATOR_LEVEL||sel.type==='cargo'&&matches(x,sel.key));
   const wanted=x?.type==='item'&&want.has(x.family+x.tier),focused=x?.type==='item'&&focusKeys.has(x.family+x.tier);
   let badge='';
   if(x?.type==='source')badge=locked?`<span class="lockedLabel">NEXT AREA</span>`:`<span class="energyCue">ϟ1</span>${producerLevel(x)>1?`<span class="srcLevel">Lv${producerLevel(x)}</span>`:''}`;
   else if(x?.type==='kit')badge=`<span class="pulls">${x.left}</span>`;
   else if(x?.type==='jar')badge=`<span class="sealBadge">+${x.energy}ϟ</span>`;
-  else if(x?.type==='cargo'&&x.find?.type==='source')badge='<span class="cargoGlow" aria-hidden="true"></span>';
+  else if(x?.type==='cargo'&&(x.find?.type==='source'||x.find?.type==='cog'))badge=`<span class="cargoGlow ${x.find.type==='cog'?'cogGlow':''}" aria-hidden="true"></span>`;
   else if(wanted)badge='<span class="useBadge" aria-hidden="true">★</span>';
   const deep=x?.type==='cargo'&&!reachable(state,i),ready=x?.type==='cargo'&&!deep&&state.board.some(y=>matches(y,x.key));
   return `<button class="tile ${x?.type??'empty'} ${x?.cracks?'cracked':''} ${ready?'keyReady':''} ${deep?'deep':''} ${locked?'locked':''} ${selected===i?'selected':''} ${twin?'match':''} ${wanted?'wanted':''} ${focused?'nextAction':''}" data-index="${i}" style="grid-row:${r+1};grid-column:${c+1}" ${x?.family||x?.id?`data-family="${x.family??x.id}"`:''} aria-label="${nameOf(x)}${locked?' · locked':''}. Space ${i+1}" aria-pressed="${selected===i}">${draw(deep?{...x,deep:true}:x)}${badge}</button>`;
@@ -100,10 +100,11 @@ function renderSelection(){
   desc=`Tap again for a free part (${chainsOf(state,x.family).map(c=>CHAINS[c].names[0]).join(' or ')} chain) · ${x.left} of ${kitCapacity(x)} left.`+(kitFull(x)&&x.size<MAX_KIT_SIZE?` Or merge with a twin into a ${CRATES[x.size]} (${KIT_DROPS[x.size+1].length} better parts).`:'');
   buttons='<button class="accent" data-action="openKit">Take a part</button>';
 } else if(x.type==='glass'){const n=CHAINS[x.family].names;title=x.cracks?'Cracked tideglass':'Tideglass';desc=`A ${n[x.tier]} locked in tideglass. It takes no part: merge two parts in a space beside it and the glass cracks; ${GLASS_HITS} merges break it and the ${n[x.tier]} is yours.`+(x.cracks?` One more merge beside it.`:'');
- } else if(x.type==='cargo'&&!reachable(state,selected)){title='Sealed cargo';desc='Buried deeper in the cargo. Open the crates around it first, and this one will show the part that opens it.'+(x.find?.type==='source'?' Something glows inside.':'');
+ } else if(x.type==='cargo'&&!reachable(state,selected)){title='Sealed cargo';desc='Buried deeper in the cargo. Open the crates around it first, and this one will show the part that opens it.'+(x.find?.type==='source'?' Something glows inside.':x.find?.type==='cog'?' Something gleams inside.':'');
  }else if(x.type==='cargo'){const k=CHAINS[x.key.family].names[x.key.tier],have=state.board.some(y=>matches(y,x.key)),gen=CHAINS[x.key.family].gen;
-  title='Sealed cargo';desc=`Opens with a ${k}: lay one on it. What is inside is a surprise`+(x.find?.type==='source'?' — something glows in there.':'.')+(have?' You have one: tap it, then this cargo.':sourceOpen(state,gen)?` ${SOURCES[gen].name} makes them.`:` Its generator is still sealed somewhere on the board.`);}
+  title='Sealed cargo';desc=`Opens with a ${k}: lay one on it. What is inside is a surprise`+(x.find?.type==='source'?' — something glows in there.':x.find?.type==='cog'?' — something gleams in there.':'.')+(have?' You have one: tap it, then this cargo.':sourceOpen(state,gen)?` ${SOURCES[gen].name} makes them.`:` Its generator is still sealed somewhere on the board.`);}
  else if(x.type==='jar')desc='Energy, sealed in a jar.';
+ else if(x.type==='cog')desc=`Lay it on a generator (tap the cog, then the generator, or drag): +1 level, up to ${MAX_GENERATOR_LEVEL}. Higher levels make better parts.`;
  $('#selection').innerHTML=`<span class="preview">${draw(x)}</span><span class="copy"><b>${title}</b><small>${desc}</small></span><span class="actionGroup">${buttons}</span>`;
 }
 function renderHint(){
@@ -143,6 +144,7 @@ function run(a){
  if(r.event==='unseal'){tile?.classList.add('unsealed');burst(tile?.getBoundingClientRect(),'gold',r.opened.type==='source');sound.play(r.opened.type==='source'?'milestone':'rare');
   if(r.opened.type==='stars')rewardFlight(tile?.getBoundingClientRect(),$('#starPill').getBoundingClientRect(),`+${r.opened.stars} ★`);
   if(r.opened.type==='jar')rewardFlight(tile?.getBoundingClientRect(),$('#energyPill').getBoundingClientRect(),`+${r.opened.energy} ϟ`);
+  if(r.opened.type==='cog')moment('A Brass cog!','Lay it on a generator: it goes up one level and makes better parts.',{type:'cog'});
   if(r.opened.type==='source'){const copies=state.board.filter(y=>y?.type==='source'&&y.id===r.opened.id).length;if(copies>1)moment(`A second ${SOURCES[r.opened.id].name}!`,`Drag it onto the other one of the same level: they merge into a stronger generator.`,{type:'source',id:r.opened.id});else newGeneratorMoment(r.opened.id);}
   // Crates that now touch open ground show their keys for the first time.
   for(const k of cargoKeys(state))if(!reachBefore.has(k.index))board.querySelector(`[data-index="${k.index}"]`)?.classList.add('newKey');}
@@ -153,16 +155,16 @@ function run(a){
 function clickTile(i){
  const x=state.board[i],prev=state.board[selected];
  // A generator: tapping it makes a part; tapping a second identical one right after merges them.
- if(x?.type==='source'){const from=selected;selected=i;if(from!==i&&generatorsMerge(prev,x)){run({type:'merge',from,to:i});return;}if(sourceOpen(state,x.id))run({type:'produce',id:x.id,index:i});render();return;}
+ if(x?.type==='source'){const from=selected;selected=i;if(from!==i&&(generatorsMerge(prev,x)||prev?.type==='cog')){run({type:'merge',from,to:i});return;}if(sourceOpen(state,x.id))run({type:'produce',id:x.id,index:i});render();return;}
  if(selected!==null&&selected!==i&&prev){
-  if(prev.type==='item'&&(x?.type==='item'&&matches(x,prev)||x?.type==='cargo'&&matches(prev,x.key))||prev.type==='kit'&&kitsMerge(prev,x)||['item','kit','source'].includes(prev.type)&&!x){run({type:'merge',from:selected,to:i});return;}
+  if(prev.type==='item'&&(x?.type==='item'&&matches(x,prev)||x?.type==='cargo'&&matches(prev,x.key))||prev.type==='kit'&&kitsMerge(prev,x)||prev.type==='cog'&&x?.type==='source'||['item','kit','source','cog'].includes(prev.type)&&!x){run({type:'merge',from:selected,to:i});return;}
  }
  if(prev?.type==='cargo'&&matches(x,prev.key)){run({type:'unseal',from:i,index:selected});return;}
  if(x?.type==='kit'&&selected===i){run({type:'openKit',index:i});return;}
  selected=selected===i&&x?.type==='item'?null:x?i:null;render();
 }
 board.addEventListener('click',e=>{const t=e.target.closest('[data-index]');if(t&&performance.now()>suppressUntil)clickTile(+t.dataset.index);});
-board.addEventListener('pointerdown',e=>{const t=e.target.closest('[data-index]');if(!t||e.button!==0)return;const i=+t.dataset.index;if(!['item','kit','source'].includes(state.board[i]?.type))return;drag={from:i,id:e.pointerId,x:e.clientX,y:e.clientY,moved:false};});
+board.addEventListener('pointerdown',e=>{const t=e.target.closest('[data-index]');if(!t||e.button!==0)return;const i=+t.dataset.index;if(!['item','kit','source','cog'].includes(state.board[i]?.type))return;drag={from:i,id:e.pointerId,x:e.clientX,y:e.clientY,moved:false};});
 board.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)return;if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>8&&!drag.moved){drag.moved=true;board.querySelector(`[data-index="${drag.from}"]`)?.classList.add('dragging');}});
 board.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;const d=drag;drag=null;board.querySelectorAll('.dragging').forEach(x=>x.classList.remove('dragging'));if(!d.moved)return;suppressUntil=performance.now()+300;const t=document.elementFromPoint(e.clientX,e.clientY)?.closest('#board [data-index]');if(t&&+t.dataset.index!==d.from){selected=d.from;run({type:'merge',from:d.from,to:+t.dataset.index});}});
 board.addEventListener('pointercancel',()=>{drag=null;});

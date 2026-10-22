@@ -17,7 +17,8 @@ function target(s){
   const seen=new Set([goal]),queue=[goal];
   while(queue.length){const i=queue.shift();if(open.has(i))return {...open.get(i),newKind:!known};for(const j of near(i))if(!seen.has(j)&&s.board[j]?.type==='cargo'){seen.add(j);queue.push(j);}}
  }
- return keys.sort((a,b)=>a.tier-b.tier||a.index-b.index)[0]??null;
+ // Otherwise the cheapest crate, but only while energy is plentiful.
+ return s.energy>=30?keys.sort((a,b)=>a.tier-b.tier||a.index-b.index)[0]??null:null;
 }
 function wanted(s){
  const want=new Map();
@@ -33,8 +34,9 @@ export function nextAction(s){
  if(t&&s.stars>=t.cost)return {type:'restore',id:t.id};
  // Curious: the crate on the way to a glowing one opens first, even before deliveries.
  {const g=target(s),have=g?b.findIndex(x=>matches(x,g)):-1;if(have>=0)return {type:'unseal',from:have,index:g.index};}
- // After two orders, the key on the way to a new kind of generator is made first.
- {const g=s.ordersDone>=2?target(s):null;if(g?.newKind)for(let tier=g.tier-1;tier>=0;tier--){const pair=b.flatMap((x,i)=>matches(x,{family:g.family,tier})?[i]:[]);if(pair.length>=2)return pairMerge(b,pair[0],pair[1]);}}
+ // After two orders, and while energy lasts (25+), the key on the way (with parts no order needs, unless energy is plentiful: 40+) to a new kind of generator is made first.
+ {const g=s.ordersDone>=2&&s.energy>=25?target(s):null,ordered=new Map();for(const o of s.orders)for(const r of o.needs)ordered.set(r.family+r.tier,(ordered.get(r.family+r.tier)??0)+r.count);
+  if(g?.newKind)for(let tier=g.tier-1;tier>=0;tier--){const pair=b.flatMap((x,i)=>matches(x,{family:g.family,tier})?[i]:[]);if(pair.length-(s.energy>=40?0:ordered.get(g.family+tier)??0)>=2)return pairMerge(b,pair[0],pair[1]);}}
  for(const o of s.orders)if(orderItems(s,o))return {type:'deliver',id:o.id};
  // Open cargo with a part no order is waiting for (generator cargo first).
  const orderWant=new Map();for(const o of s.orders)for(const r of o.needs)orderWant.set(r.family+r.tier,(orderWant.get(r.family+r.tier)??0)+r.count);
@@ -45,6 +47,8 @@ export function nextAction(s){
  // Merge two identical generators into a stronger one.
  const gens=b.flatMap((x,i)=>x?.type==='source'?[i]:[]);
  for(const i of gens)for(const j of gens)if(i!==j&&generatorsMerge(b[i],b[j]))return {type:'merge',from:j>i?j:i,to:j>i?i:j};
+ // A Brass cog goes on the busiest generator that can still level up.
+ {const c=b.findIndex(x=>x?.type==='cog'),g=[...gens].sort((i,j)=>(s.taps[b[j].id]??0)-(s.taps[b[i].id]??0)).find(i=>(b[i].level??1)<5);if(c>=0&&g!==undefined)return {type:'merge',from:c,to:g};}
  const kits=b.flatMap((x,i)=>x?.type==='kit'?[i]:[]);
  for(const i of kits)for(const j of kits)if(i!==j&&kitsMerge(b[i],b[j]))return {type:'merge',from:i,to:j};
  const want=wanted(s),free=b.filter(x=>x===null).length;

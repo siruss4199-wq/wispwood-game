@@ -70,6 +70,14 @@ async function perform(page,a){
     await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:6});await page.mouse.up();}
    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).board[21].level===2,null,{timeout:4000});
    assert.equal((await read(page)).board[15],null);assert.match(await page.locator('#board [data-index="21"]').textContent(),/Lv2/);
+   // A Brass cog: tap it, then the Rover, and the Rover goes up a level.
+   await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.board[15]={type:'cog'};localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
+   await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
+   assert.equal(await page.locator('#board [data-index="15"].cog').count(),1,'the cog stands on the board');
+   await page.locator('#board [data-index="15"]').tap();assert.match(await page.locator('#selection').textContent(),/generator/);
+   await page.locator('#board [data-index="21"]').tap();
+   await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).board[21].level===3,null,{timeout:4000});
+   assert.equal((await read(page)).board[15],null,'the cog is used up');
    assert.deepEqual(errors,[]);
    console.log(`${engine} ${width} Coast Camp: intro → orders → 2 restorations → reload → map passed`);
    await context.close();
