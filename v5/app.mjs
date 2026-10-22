@@ -55,7 +55,14 @@ const GUIDE_NAMES={quick:'Quick',standard:'Standard',long:'Expedition kit'};
 // The fleet reveal is a pending story beat; once seen, play continues at the camp.
 const signalPending=()=>{const e=chapterEndView(state);return e?.status==='pending'?e:null;};
 const signalHeard=()=>chapterEndView(state)?.status==='complete';
+// An unopened case of the needed family holds free parts: open it before tapping a producer.
 function currentOrderDirection(){
+ const d=orderDirectionNow();
+ if(!d||!['produce','refill','energy'].includes(d.kind))return d;
+ const crate=state.board.findIndex(x=>x?.type==='crate'&&containerInfo(x).family===d.family);
+ return crate<0?d:{...d,kind:'crate',indices:[crate],crateName:containerInfo(state.board[crate]).name};
+}
+function orderDirectionNow(){
  if(signalPending())return null;
  if(state.stage===3&&masteryPending(state).length)return masteryDirection(state,instrumentFocus);
  let order=focus==='request'?state.requests.orders.find(o=>o?.id===requestId):null;
@@ -78,6 +85,7 @@ function directionText(direction){
  if(direction.kind==='make-space')return 'BOARD FULL · merge the highlighted pair';
  if(direction.kind==='full')return 'BOARD FULL · deliver an order or recycle a spare';
  if(direction.kind==='energy')return 'NEED ENERGY · deliver a ready order or use a field ration';
+ if(direction.kind==='crate')return 'OPEN THE '+direction.crateName.toUpperCase()+' · free parts for '+name;
  if(direction.kind==='refill')return 'REFILL '+source.toUpperCase()+' · then make '+name;
  if(direction.kind==='recover')return 'TAP '+source.toUpperCase()+' · recover Tide Treasures toward '+name;
  if(direction.kind==='produce')return 'TAP '+source.toUpperCase()+' · make parts for '+name;
@@ -180,7 +188,9 @@ function renderWorkshop(){
  if(state.workshop.precision&&!button.querySelector('.benchFitting'))button.insertAdjacentHTML('beforeend','<i class="benchFitting" aria-hidden="true">'+art(item('rig',2))+'</i>');
  let bench=$('#workshopBench');
  if(!bench){$('#scene').insertAdjacentHTML('beforeend','<button id="workshopBench"></button>');bench=$('#workshopBench');}
- bench.hidden=!restored||!state.workshop.precision&&visibleGoal()?.action!=='upgradeWorkshop'&&visibleGoal()?.name!=='Install Precision Bench';
+ // Optional upgrade: shown once affordable or installed, never beside another camp build.
+ const goalNow=visibleGoal(),competing=goalNow?.kind==='camp'&&goalNow.cost&&goalNow.name!=='Install Precision Bench';
+ bench.hidden=!restored||!state.workshop.precision&&(state.requests.supplies<BENCH_COST||competing);
  bench.classList.toggle('ready',state.workshop.precision?benchInputs(state).every(i=>i>=0)&&state.energy>=1&&state.charges.rig>0:state.requests.supplies>=BENCH_COST);
  bench.innerHTML=state.workshop.precision?art(item('rig',2))+'<span>Precision<br>Bench</span>':'<span>Precision Bench<br><b>'+Math.min(state.requests.supplies,BENCH_COST)+'/'+BENCH_COST+' ◆</b></span>';
  bench.setAttribute('aria-label',state.workshop.precision?'View Precision Bench recipe and fitting action':'View Precision Bench upgrade: '+BENCH_COST+' supplies. Grip tool and Ink scrap become a Split spanner.');

@@ -2,8 +2,9 @@ import {art} from './art.mjs';
 import {containerInfo} from './containers.mjs';
 // Presentation-only effects. No timers here mutate game state.
 import {platform} from '../v4/platform.mjs';
-let audioContext=null,lastTone=0,enabled=false;
-try{enabled=localStorage.getItem('vaultwake-sound')==='on';}catch{}
+// Merge feedback is part of the core feel: sound starts on unless the player turned it off.
+let audioContext=null,lastTone=0,enabled=true;
+try{enabled=localStorage.getItem('vaultwake-sound')!=='off';}catch{}
 export const sound={
  enabled:()=>enabled,
  toggle(){enabled=!enabled;try{localStorage.setItem('vaultwake-sound',enabled?'on':'off');}catch{}return enabled;},

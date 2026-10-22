@@ -476,3 +476,6 @@ body .world .objective.crewObjective{grid-template-columns:1fr;gap:7px}
 #storyLine .storyText i{color:#5d4a2a;font-weight:600}
 @keyframes storyIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){#storyLine{animation:none}}
+
+/* Unopened cases read as rewards, not furniture. */
+#board .tile.crate::after{content:"OPEN";position:absolute;left:50%;top:1px;transform:translateX(-50%);font-size:8.5px;font-weight:800;letter-spacing:.08em;padding:1px 5px;border-radius:6px;background:#fff6dc;color:#8a5a19;box-shadow:0 1px 0 #d9b77a;pointer-events:none}
