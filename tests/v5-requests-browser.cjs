@@ -45,7 +45,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs');const {chromium
    if(decision.type==='deliver'){
     const before=await read(),card=page.locator(`#requests [data-request="${decision.id}"]`);await shot('ready');await card.tap();
     if(width===390)await page.waitForTimeout(130);await shot('delivery');await page.waitForTimeout(900);
-    const after=await read();assert.equal(after.requests.supplies,before.requests.supplies+decision.supplies);assert.equal(after.energy,before.energy+decision.energy);assert.notEqual(after.requests.orders[lane].id,decision.id);await shot('replacement');await page.reload();assert.deepEqual((await read()).requests,after.requests);delivered=true;break;
+    const after=await read();assert.equal(after.requests.supplies,before.requests.supplies+decision.supplies);{const levels=after.level.level-before.level.level,base=before.energy+decision.energy;assert.ok([base+levels*10,base+levels*15].includes(after.energy),'delivery energy plus any level chest');}assert.notEqual(after.requests.orders[lane].id,decision.id);await shot('replacement');await page.reload();assert.deepEqual((await read()).requests,after.requests);delivered=true;break;
    }
    // Clear selection through the request, then exercise real board taps.
    await page.locator(`#requests [data-request="${(await read()).requests.orders[lane].id}"]`).tap();

@@ -51,7 +51,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs');const {chromium
   const tools=[];
   for(let n=0;n<4;n++){
    s=await read();if(!s.charges.rig){await page.locator('#workshop').tap();await page.locator('[data-action="service"]').tap();s=await read();}
-   const before=s;await page.locator('#workshop').tap();trace.push({type:'press'});s=await read();assert.equal(s.energy,before.energy-2);assert.equal(s.charges.rig,before.charges.rig-1);assert.equal(s.workshop.presses,n+1);
+   const before=s;await page.locator('#workshop').tap();trace.push({type:'press'});s=await read();assert.equal(s.energy,before.energy-2);assert.equal(s.charges.rig,before.charges.rig,'charges are retired');assert.equal(s.workshop.presses,n+1);
    const index=s.board.findIndex((x,i)=>x?.family==='rig'&&x.tier===1&&!before.board[i]);assert.ok(index>=0);tools.push(index);
   }
   await shot('04-pressed-tools');

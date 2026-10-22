@@ -25,7 +25,7 @@ const {chromium}=require('playwright');
     if(!fittingShots)await shot('04-fitting-requirements',false);
     const inputs=await page.evaluate(async()=>{const {benchInputs}=await import('/v5/workshop.mjs');return benchInputs(JSON.parse(localStorage.getItem('vaultwake-v5')));});
     await page.locator('[data-action="fitSpanner"]').tap();const after=await read();
-    assert.equal(after.energy,before.energy-1);assert.equal(after.charges.rig,before.charges.rig-1);assert.deepEqual(after.taps,before.taps);
+    assert.equal(after.energy,before.energy-1);assert.equal(after.charges.rig,before.charges.rig,'charges are retired');assert.deepEqual(after.taps,before.taps);
     assert.equal(after.board[inputs[0]].tier,2);assert.equal(after.board[inputs[1]],null);lineage.add(inputs[0]);
     if(!fittingShots){await page.waitForTimeout(750);await shot('05-fitted-spanner');fittingShots=true;}
    }else if(a.type==='press')await page.locator('#workshop').tap();

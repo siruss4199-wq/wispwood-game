@@ -135,7 +135,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
    assert.equal(await page.locator('#campPierWorld').getAttribute('data-deep'),'true');await shot('12-deep-survey-installed');
    if(!deepInstalled.charges.chart){await page.locator('#selection [data-action="service"]').tap();}
    const preRecovery=await read();await page.locator('#selection [data-action="recoverTide"]').tap();const postRecovery=await read();
-   assert.equal(postRecovery.energy,preRecovery.energy-3);assert.equal(postRecovery.charges.chart,preRecovery.charges.chart-1);assert.deepEqual(postRecovery.taps,preRecovery.taps);assert.ok(postRecovery.board.some((x,i)=>x?.line==='tide'&&x.tier===1&&!preRecovery.board[i]));await shot('13-guaranteed-compass');
+   assert.equal(postRecovery.energy,preRecovery.energy-3);assert.equal(postRecovery.charges.chart,preRecovery.charges.chart,'charges are retired');assert.deepEqual(postRecovery.taps,preRecovery.taps);assert.ok(postRecovery.board.some((x,i)=>x?.line==='tide'&&x.tier===1&&!preRecovery.board[i]));await shot('13-guaranteed-compass');
    // TT-1I: earn the first Sextant via actual recovery + merging.
    // Only after discovering it may a replacement order request that tier.
    for(let guard=0;!(await read()).discovered.includes('chart:tide:3');guard++){
