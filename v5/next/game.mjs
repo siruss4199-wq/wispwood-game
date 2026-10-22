@@ -16,7 +16,7 @@ export const VERSION=3,MAX_TIER=7,MAX_ENERGY=120;// MAX_TIER: the longest chain
 export const SOURCES=Object.fromEntries(Object.entries(GENERATOR_NAMES).map(([id,name])=>[id,{name}]));
 export const XP={merge:1,restore:5,feed:5,unseal:2};// feed: merging two generators// orders pay their stars as XP
 export const STAR_VALUE=[1,1,2,5,9,16];// stars per item by tier
-export const CHEST_ENERGY=10;
+export const CHEST_ENERGY=15;
 // Coast Camp's own crates (the generator boxes of v5/kits.mjs, by size).
 export const CRATES=['Driftwood crate','Sea chest','Captain\'s trunk'];
 // Generators in the order they are found; each is opened with the one before's parts.
@@ -68,25 +68,30 @@ const I=item,K=kit,E=jar,S=stars,G=source,C=cog;
 // [row, column, key chain, key tier, find]
 const CARGO_CELLS=[
  // The more useful the find, the harder the key (user, 2026-10-22: "hairtsagnaas mash heregtei
- // zuiliig hetsuu neey, jishee ni shine generator"): energy, stars and parts open with tier-3
- // parts next to the camp and tier 3–4 at the edge; Brass cogs and generators with tier 4–5,
- // the highest key of their ring.
- // Ring 2 (next to the camp): Pocket winches; one Split-spanner crate above the Rover to teach it.
- [1,1,'rig',4,G('chart')],[1,2,'rig',3,E(15)],[1,3,'rig',2,S(3)],[1,4,'rig',3,I('rig',3)],[1,5,'rig',5,G('rig')],
- [3,1,'rig',3,K('rig',1)],[4,1,'chart',3,S(4)],[5,1,'chart',4,G('rope')],
- [2,5,'rig',4,C()],[4,5,'chart',3,E(15)],[5,5,'chart',4,I('chart',3)],
- [5,2,'rig',3,S(4)],[5,4,'chart',3,K('chart',1)],
+ // zuiliig hetsuu neey, jishee ni shine generator"): everyday finds open with tier-3 parts next
+ // to the camp and tier 3–4 at the edge; Brass cogs and generators with tier 4–5, the highest
+ // key of their ring. Energy is rare and small (user: "energytei holbootoi yum garhaar amarhan
+ // duusah"): two +5 jars.
+ // Ring 2 (next to the camp, between the tideglass): one Split-spanner crate above the Rover
+ // to teach it; the Survey Kite in a corner.
+ [1,1,'rig',4,G('chart')],[1,3,'rig',2,S(3)],[1,5,'rig',5,G('rig')],
+ [2,1,'rig',3,K('rig',1)],[4,1,'chart',3,S(4)],[5,1,'chart',4,G('rope')],
+ [2,5,'rig',4,C()],[4,5,'chart',3,I('chart',3)],[5,5,'chart',3,K('chart',1)],
+ [5,3,'rig',3,E(5)],
  // Ring 3 (the edge): tier 3–4 keys for everyday finds, tier 4–5 for cogs and generators.
- [0,1,'chart',4,G('chart')],[0,2,'rig',4,E(25)],[0,3,'rig',4,S(10)],[0,4,'chart',4,K('chart',2)],[0,5,'rope',4,G('shell')],
- [1,6,'shell',3,S(6)],[2,6,'rope',3,E(15)],[3,6,'rig',5,G('rope')],[4,6,'shell',4,G('lamp')],
- [6,6,'lamp',4,C()],[6,4,'shell',3,K('shell',1)],[6,3,'rope',4,S(10)],[6,1,'rope',3,E(15)],[6,0,'rig',5,G('rig')],
+ [0,1,'chart',4,G('chart')],[0,2,'rig',4,E(5)],[0,3,'rig',4,S(10)],[0,4,'chart',4,K('chart',2)],[0,5,'rope',4,G('shell')],
+ [1,6,'shell',3,S(6)],[2,6,'rope',3,I('rope',2)],[3,6,'rig',5,G('rope')],[4,6,'shell',4,G('lamp')],
+ [6,6,'lamp',4,C()],[6,4,'shell',3,K('shell',1)],[6,3,'rope',4,S(10)],[6,1,'rope',3,K('rope',1)],[6,0,'rig',5,G('rig')],
  [4,0,'chart',4,C()],[3,0,'rig',4,K('rig',2)],[2,0,'shell',4,G('shell')]
 ];
 export const CARGO=Object.fromEntries(CARGO_CELLS.map(([r,c,f,tier,find])=>[at(r,c),[f,tier,find]]));
-// Tideglass: a part locked in glass near the generator that makes it. It does not take a
+// Tideglass: a part locked in glass near the generator that makes it. Six ring the camp, so a
+// new camp opens on half-buried parts beside the Rover (user, 2026-10-22, with a reference
+// board: "ehlel ni iimerhuuduu baimaar baina"; level-numbered cells were left out as a copy).
+// It does not take a
 // key like cargo: merges in the spaces beside it crack it, and the second breaks it and
 // frees the part as it is (user, 2026-10-22: "hairtsag mus 2 neeh yalgaa alga").
-export const GLASS=Object.fromEntries([[2,1,'rig',2],[3,5,'chart',1],[5,3,'rope',1],[0,0,'chart',3],[0,6,'shell',2],[5,6,'lamp',2],[6,5,'lamp',1],[6,2,'rope',3],[5,0,'rope',1],[1,0,'shell',1]].map(([r,c,f,tier])=>[at(r,c),[f,tier]]));
+export const GLASS=Object.fromEntries([[1,2,'rig',2],[1,4,'rig',1],[3,1,'rig',2],[3,5,'chart',1],[5,2,'rig',1],[5,4,'rope',1],[0,0,'chart',3],[0,6,'shell',2],[5,6,'lamp',2],[6,5,'lamp',1],[6,2,'rope',3],[5,0,'rope',1],[1,0,'shell',1]].map(([r,c,f,tier])=>[at(r,c),[f,tier]]));
 export const GLASS_HITS=2;
 export const glass=(family,tier)=>({type:'glass',family,tier});
 export const cargoAt=i=>{const c=CARGO[i];return c?cargo({family:c[0],tier:c[1]},structuredClone(c[2])):null;};

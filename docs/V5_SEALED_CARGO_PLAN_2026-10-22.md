@@ -180,3 +180,17 @@ differently:
   9–14 min (the two at the edge stay sealed for later), and restores
   Landing Beach in 39–61 min with no waiting; an order-only player takes 15–23 min with
   Rivet Rover alone.
+
+## Build 13 — a buried camp start, little energy in crates (user, with a reference board: "Hairtsagnaas bas dan energytei holbootoi yum garhaar amarhan duusah yumaa, ehlel ni iimerhuuduu baimaar baina")
+- **Start:** six tideglass cells ring the camp (Split spanners, Grip tools, a Route fold, a
+  Rope coil), so a new camp opens on half-buried parts beside the Rover; merges in the
+  camp crack them. Six crates touch the camp between them (one tier-2 teaching crate).
+  27 crates and 13 tideglass cells in all.
+- **Level-numbered cells were not used:** the user asked whether cells unlocked by player
+  level would just be a copy of the reference game; they would, so the board stays gated
+  by crate keys and tideglass, which are our own.
+- **Energy in crates is rare and small:** two +5 jars (was five jars, +15/+25). The crates
+  that held energy now hold parts and crates. Level chest +15 energy instead.
+- Scripted players, 4–6 s per action: the curious player finds the Survey Kite at 3–4 min
+  (it is reachable once the glass or crate beside it opens) and restores Landing Beach in
+  33–49 min with no waiting; an order-only player in 14–21 min.

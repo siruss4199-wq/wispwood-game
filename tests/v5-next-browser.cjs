@@ -33,7 +33,7 @@ async function perform(page,a){
    await page.reload();await page.waitForSelector('#board .tile');
    assert.equal(await page.locator('#beat[open]').count(),1,'the area intro plays on a new camp');await closeBeats(page);
    assert.equal(await page.locator('#board .tile').count(),49);
-   assert.equal(await page.locator('#board .tile.cargo').count(),30,'sealed cargo covers most of the board');assert.equal(await page.locator('#board .tile.glass').count(),10,'tideglass near each generator');assert.equal(await page.locator('#board .cargoKey').count(),9,'only the crates touching the camp show their keys');assert.equal(await page.locator('#board .tile.cargo.deep').count(),21,'the rest are buried deeper');assert.equal(await page.locator('#board .tile.source').count(),1,'one generator to start');assert.equal(await page.locator('#board [data-index="21"]').getAttribute('data-family'),'rig','Rivet Rover stands in the middle');
+   assert.equal(await page.locator('#board .tile.cargo').count(),27,'sealed cargo covers most of the board');assert.equal(await page.locator('#board .tile.glass').count(),13,'half-buried parts ring the camp, more near each generator');assert.equal(await page.locator('#board .cargoKey').count(),6,'only the crates touching the camp show their keys');assert.equal(await page.locator('#board .tile.cargo.deep').count(),21,'the rest are buried deeper');assert.equal(await page.locator('#board .tile.source').count(),1,'one generator to start');assert.equal(await page.locator('#board [data-index="21"]').getAttribute('data-family'),'rig','Rivet Rover stands in the middle');
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'no sideways scroll');
    for(const t of await page.locator('#board .tile').all()){const b=await t.boundingBox();assert.ok(b.width>=44&&b.height>=44,'44px touch targets');}
    for(const sel of ['#energyPill','#starPill','#levelPill','#mapButton','#menuButton']){const b=await page.locator(sel).boundingBox();assert.ok(b&&b.x>=0&&b.x+b.width<=width,sel+' fits the header');}
@@ -47,7 +47,7 @@ async function perform(page,a){
    assert.ok(restores>=2,'places restored through the UI');
    const s=await read(page);assert.deepEqual(s.done.slice(0,2),['beach-path','beach-tent']);
    assert.equal(await page.locator('.restoredIcon').count(),s.done.length,'restored places stand on the coast picture');
-   assert.ok(await page.locator('#board .tile.cargo').count()<30,'cargo was opened by laying parts on it');assert.equal(await page.locator('#board .tile.source[data-family="chart"]').count(),1,'the Survey Kite came out of its cargo');
+   assert.ok(await page.locator('#board .tile.cargo').count()<27,'cargo was opened by laying parts on it');assert.equal(await page.locator('#board .tile.source[data-family="chart"]').count(),1,'the Survey Kite came out of its cargo');
    await page.reload();await page.waitForSelector('#board .tile');
    assert.deepEqual((await read(page)).board,s.board,'reload keeps the board');assert.equal(await page.locator('#beat[open]').count(),0,'no intro on a running camp');
    await page.locator('#mapButton').tap();assert.equal(await page.locator('#coastMap .place').count(),7);assert.equal(await page.locator('#coastMap .place[data-status="done"]').count(),s.done.length);
@@ -61,8 +61,8 @@ async function perform(page,a){
    assert.equal(await page.evaluate(()=>localStorage.getItem('vaultwake-v5')),classic,'Classic save still untouched');
    // Tideglass takes no part: a merge in the camp space beside it (14) cracks it.
    await page.locator('#board [data-index="16"]').tap();await page.locator('#board [data-index="14"]').tap();
-   await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).board[13].cracks===1,null,{timeout:4000});
-   assert.equal(await page.locator('#board [data-index="13"].glass.cracked').count(),1,'the glass beside the merge shows its crack');
+   await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).board[8].cracks===1,null,{timeout:4000});
+   assert.equal(await page.locator('#board [data-index="8"].glass.cracked').count(),1,'the glass beside the merge shows its crack');
    // Generators grow by merging: drag a second Rivet Rover onto the first.
    await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.board[15]={type:'source',id:'rig'};localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
    await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);

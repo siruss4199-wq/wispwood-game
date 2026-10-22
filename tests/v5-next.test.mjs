@@ -21,7 +21,8 @@ test('a new camp: Rivet Rover alone in the middle of its camp, sealed cargo and 
  assert.deepEqual(s.board.flatMap((x,i)=>x===null?[i]:[]),[15,22,26]);
  assert.deepEqual(CAMP,[14,15,16,20,21,22,26,27,28]);assert.equal(ROVER,21);assert.deepEqual(s.board[21],source('rig'),'Rivet Rover stands in the middle of the board');
  assert.deepEqual(s.board.flatMap((x,i)=>x?.type==='source'?[x.id]:[]),['rig'],'one generator to start');
- assert.equal(s.board.filter(x=>x?.type==='cargo').length,30);assert.equal(s.board.filter(x=>x?.type==='glass').length,10);
+ assert.equal(s.board.filter(x=>x?.type==='cargo').length,27);assert.equal(s.board.filter(x=>x?.type==='glass').length,13);
+ assert.deepEqual([8,10,19,23,32,34].map(i=>s.board[i].type),Array(6).fill('glass'),'half-buried parts ring the camp');
  assert.ok(s.board.every((x,i)=>CAMP.includes(i)||x.type==='cargo'||x.type==='glass'));
  assert.deepEqual(s.orders.map(o=>o.needs),[[{family:'rig',tier:1,count:2}],[{family:'rig',tier:2,count:1}],[{family:'rig',tier:1,count:1},{family:'rig',tier:0,count:2}]]);
  assert.equal(s.stars,0);assert.equal(sourceOpen(s,'chart'),false);assert.equal(nextTask(s).id,'beach-path');
@@ -29,7 +30,7 @@ test('a new camp: Rivet Rover alone in the middle of its camp, sealed cargo and 
 
 test('the first merge completes the first order and opens nothing',()=>{
  const s=fresh(0),r=ok(s,{type:'merge',from:14,to:16});
- assert.equal(s.board.filter(x=>x?.type==='cargo').length,30,'merging never opens cargo');assert.equal(r.xp,1);
+ assert.equal(s.board.filter(x=>x?.type==='cargo').length,27,'merging never opens cargo');assert.equal(r.xp,1);
  assert.ok(orderItems(s,s.orders[0]));
  const d=ok(s,{type:'deliver',id:'o0'});assert.equal(d.stars,2);assert.equal(s.stars,2);assert.equal(s.orders[0].id,'o3');
  refused(s,{type:'deliver',id:'o0'});
@@ -55,7 +56,7 @@ test('restoring spends stars in order and applies each place\'s effect',()=>{
   if(t.id==='beach-workshop'){assert.deepEqual(s.board[r.effects.copy],source('rig'),'a second Rivet Rover');ok(s,{type:'merge',from:r.effects.copy,to:ROVER});assert.equal(s.board[ROVER].level,2);}
   if(t.id==='beach-pier')assert.deepEqual(s.board[r.effects.kit],kit('rig',2),'a sea chest for the newest generator (still Rover here)');
   if(t.id==='beach-beacon')assert.equal(s.energy,Math.min(120,e+25));
-  assert.equal(s.board.filter(x=>x?.type==='cargo').length,30,'restorations never open cargo');
+  assert.equal(s.board.filter(x=>x?.type==='cargo').length,27,'restorations never open cargo');
   if(t.id==='beach-cliff')assert.equal(r.effects.areaDone,'beach');
  }
  assert.equal(nextTask(s),null);refused(s,{type:'restore'});
@@ -84,8 +85,8 @@ test('every third order brings a small box of its kind; boxes and generator leve
 
 test('levels give a chest with a driftwood crate of a generator you have',()=>{
  const s=fresh(0);s.level.xp=19;const e=s.energy,r=ok(s,{type:'merge',from:14,to:16});
- assert.equal(r.levelUp[0].level,2);assert.equal(r.levelUp[0].family,'rig');assert.equal(s.board.filter(x=>x?.type==='cargo').length,30);
- assert.equal(CHEST_ENERGY,10);assert.equal(s.energy,e+10);
+ assert.equal(r.levelUp[0].level,2);assert.equal(r.levelUp[0].family,'rig');assert.equal(s.board.filter(x=>x?.type==='cargo').length,27);
+ assert.equal(CHEST_ENERGY,15);assert.equal(s.energy,e+15);
 });
 
 test('energy refills over time and a low-energy ration helps once an hour',()=>{
@@ -134,13 +135,15 @@ test('cargo opens only with the part it shows, only at the edge of open ground; 
  refused(s,{type:'move',from:14,to:3});refused(s,{type:'openKit',index:3});refused(s,{type:'recycle',index:3});
  s.board[15]=item('rig',2);const stars=s.stars,r=ok(s,{type:'merge',from:15,to:9});
  assert.equal(r.event,'unseal');assert.equal(s.board[15],null,'the key is used');assert.equal(s.board[9],null,'a star pouch leaves the space free');assert.equal(s.stars,stars+3);assert.equal(r.xp,2);
- // 2 is buried deeper: it opens only once a crate beside it is open.
+ // 2 is buried deeper (behind cargo and tideglass): it opens only once a neighbour is open.
  s.board[15]=item('rig',4);assert.match(refused(s,{type:'unseal',from:15,index:2}).message,/deeper/);
- s.board[22]=item('rig',3);let e=s.energy;const k=ok(s,{type:'unseal',from:22,index:8});assert.equal(k.opened.type,'jar');assert.equal(s.energy,e+15);
- e=s.energy;ok(s,{type:'unseal',from:15,index:2});assert.equal(s.energy,e+25,'deeper crates pay more');assert.equal(s.board[2],null);
- s.board[15]=item('rig',3);ok(s,{type:'unseal',from:15,index:10});assert.deepEqual(s.board[10],item('rig',3));
- s.board[15]=item('rig',3);ok(s,{type:'unseal',from:15,index:19});assert.deepEqual(s.board[19],kit('rig',1));
- assert.equal(s.board.filter(x=>x?.type==='cargo').length,25);
+ // Energy is rare and small: one of two +5 jars.
+ s.board[22]=item('rig',3);let e=s.energy;const k=ok(s,{type:'unseal',from:22,index:33});assert.equal(k.opened.type,'jar');assert.equal(s.energy,e+5);
+ assert.equal(Object.values(CARGO).filter(c=>c[2].type==='jar').length,2);assert.ok(Object.values(CARGO).every(c=>c[2].type!=='jar'||c[2].energy<=5));
+ // 3 now touches open ground (9): a Crawler jack opens its big star pouch.
+ const st=s.stars;ok(s,{type:'unseal',from:15,index:3});assert.equal(s.stars,st+10,'deeper crates pay more');assert.equal(s.board[3],null);
+ s.board[15]=item('rig',3);ok(s,{type:'unseal',from:15,index:13});assert.deepEqual(s.board[13],kit('rig',1));
+ assert.equal(s.board.filter(x=>x?.type==='cargo').length,23);
 });
 
 test('one generator, one chain; each new generator comes out of cargo opened with the previous one\'s parts',async()=>{
@@ -159,7 +162,7 @@ test('one generator, one chain; each new generator comes out of cargo opened wit
  // Play it through: open the Kite cargo, tap the Kite, its single chain comes out.
  // The Survey Kite sits in a corner behind a crate (or tideglass) and opens with a Crawler jack.
  const s=fresh(0);assert.ok(!cargoKeys(s).some(k=>k.index===7),'the Kite cargo is not at the camp edge');assert.deepEqual(s.board[7].key,{family:'rig',tier:4});
- s.board[15]=item('rig',3);ok(s,{type:'unseal',from:15,index:8});assert.ok(cargoKeys(s).some(k=>k.index===7),'opening a crate shows the keys of the crates behind it');
+ s.board[15]=item('rig',3);ok(s,{type:'unseal',from:15,index:13});assert.ok(cargoKeys(s).some(k=>k.index===7),'opening a crate shows the keys of the crates behind it');
  s.board[15]=item('rig',4);const r=ok(s,{type:'unseal',from:15,index:7});
  assert.deepEqual(r.opened,{index:7,type:'source',id:'chart'});assert.equal(sourceOpen(s,'chart'),true);
  for(let n=0;n<8;n++){const p=ok(s,{type:'produce',id:'chart'});assert.equal(s.board[p.index].family,'chart');s.board[p.index]=null;}
@@ -168,7 +171,7 @@ test('one generator, one chain; each new generator comes out of cargo opened wit
 
 test('cargo keys grow harder away from the camp and every generator is reachable',()=>{
  const s=fresh(0),keys=cargoKeys(s);
- assert.deepEqual(keys.map(k=>k.index),[8,9,10,17,19,25,29,32,34],'only the crates touching the camp show their keys');
+ assert.deepEqual(keys.map(k=>k.index),[9,13,17,25,29,33],'only the crates touching the camp show their keys');
  // The more useful the find, the harder the key: in each ring, generators and Brass cogs
  // need a higher part than any energy, stars, part or crate.
  const ring=i=>{const [r,c]=cellPos(i);return Math.max(Math.abs(r-3),Math.abs(c-3));},useful=f=>f.type==='source'||f.type==='cog';
@@ -208,21 +211,21 @@ test('build-4 (tide) and build-3 (sand) saves load as sealed cargo, keeping ever
 
 test('tideglass takes no part: merges beside it crack it, the second breaks it and frees the part as it is',()=>{
  const s=fresh(0);
- assert.deepEqual(s.board[13],{type:'glass',family:'rig',tier:2},'a Split spanner in glass beside the camp');
+ assert.deepEqual(s.board[8],{type:'glass',family:'rig',tier:2},'a Split spanner in glass beside the camp');
  s.board[15]=item('rig',2);
- assert.match(refused(s,{type:'merge',from:15,to:13}).message,/beside it/,'even its twin cannot be laid on it (that is what cargo does)');
- refused(s,{type:'move',from:13,to:15});refused(s,{type:'recycle',index:13});
+ assert.match(refused(s,{type:'merge',from:15,to:8}).message,/beside it/,'even its twin cannot be laid on it (that is what cargo does)');
+ refused(s,{type:'move',from:8,to:15});refused(s,{type:'recycle',index:8});
  // Glass is not open ground: cargo behind it stays sealed until the glass breaks.
- assert.ok(!cargoKeys(s).some(k=>k.index===12));
+ assert.ok(!cargoKeys(s).some(k=>k.index===2));
  // Merge two Copper offcuts on 14, the camp space beside the glass: it cracks.
- s.board[20]=item('rig',0);const r=ok(s,{type:'merge',from:16,to:14});
- assert.deepEqual(r.cracked,[13]);assert.equal(r.broken,undefined);assert.equal(s.board[13].cracks,1);assert.match(r.message,/cracks/);
+ const r=ok(s,{type:'merge',from:16,to:14});
+ assert.deepEqual(r.cracked,[8]);assert.equal(r.broken,undefined);assert.equal(s.board[8].cracks,1);assert.match(r.message,/cracks/);
  // A merge elsewhere does nothing to it.
- s.board[22]=item('rig',0);s.board[26]=item('rig',0);ok(s,{type:'merge',from:22,to:26});assert.equal(s.board[13].cracks,1);
+ s.board[22]=item('rig',0);s.board[26]=item('rig',0);ok(s,{type:'merge',from:26,to:22});assert.equal(s.board[8].cracks,1);
  // The second merge beside it breaks it: the Split spanner is free, nothing was used up.
- s.board[15]=item('rig',1);const t=ok(s,{type:'merge',from:15,to:14});
- assert.deepEqual(t.broken,[13]);assert.deepEqual(s.board[13],item('rig',2));assert.equal(t.xp,3);assert.match(t.message,/breaks/);
- assert.ok(cargoKeys(s).some(k=>k.index===12),'the cargo behind it now shows its key');
+ s.board[20]=item('rig',1);const t=ok(s,{type:'merge',from:20,to:14});
+ assert.deepEqual(t.broken,[8]);assert.deepEqual(s.board[8],item('rig',2));assert.equal(t.xp,3);assert.match(t.message,/breaks/);
+ assert.ok(cargoKeys(s).some(k=>k.index===2),'the cargo behind it now shows its key');
  // Glass of every generator's chain lies near where it is found.
  const fams=Object.values(GLASS).map(g=>g[0]);for(const f of ['rig','chart','rope','shell','lamp'])assert.ok(fams.includes(f),f);
  // Saves keep glass and its cracks; a build-9 save with uncracked glass still loads; malformed glass starts fresh.
