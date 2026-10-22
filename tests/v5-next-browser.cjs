@@ -48,6 +48,11 @@ async function perform(page,a){
    await page.locator('#coastMap .close').tap();
    await page.locator('#menuButton').tap();assert.equal(await page.locator('#classicLink').getAttribute('href'),'index.html');await page.locator('#menu .close').tap();
    assert.equal(await page.evaluate(()=>localStorage.getItem('vaultwake-v5')),classic,'Classic save untouched');
+   assert.match(await page.locator('#build').textContent(),/BUILD \d/,'the footer names the build');
+   // The playtest page's "start from the beginning" link starts a new camp and cleans the address.
+   await page.goto(URL+'?new=1');await page.waitForSelector('#board .tile');await closeBeats(page);
+   assert.equal((await read(page)).moves,0);assert.equal(new globalThis.URL(page.url()).search,'');
+   assert.equal(await page.evaluate(()=>localStorage.getItem('vaultwake-v5')),classic,'Classic save still untouched');
    assert.deepEqual(errors,[]);
    console.log(`${engine} ${width} Coast Camp: intro → orders → 2 restorations → reload → map passed`);
    await context.close();

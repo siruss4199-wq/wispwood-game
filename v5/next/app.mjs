@@ -14,10 +14,15 @@ import {sound,reduced,burst,rewardFlight,moment as sharedMoment} from '../feedba
 // The shared moment draws its icon with the Classic art; new chains need draw().
 function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el=document.querySelector('.moment');if(!x||!el)return;const icon=document.createElement('span');icon.style.cssText='float:left;width:42px;height:42px;margin-right:10px';icon.innerHTML=draw(x);icon.firstElementChild.style.cssText='width:100%;height:100%';el.prepend(icon);}
 
+// Shown in the footer so a playtester can tell which build is running.
+export const BUILD='Build 3 · more chains per generator';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
-let state=load(storage.get(SAVE_KEY)??'',Date.now()),selected=null,focusOrder=null,drag=null,suppressUntil=0;
+// ?new=1 (the playtest page's "start from the beginning" link) starts a new camp.
+const startNew=new URLSearchParams(location.search).has('new');
+if(startNew)history.replaceState(null,'',location.pathname);
+let state=startNew?fresh(Date.now()):load(storage.get(SAVE_KEY)??'',Date.now()),selected=null,focusOrder=null,drag=null,suppressUntil=0;
 const persist=()=>storage.set(SAVE_KEY,JSON.stringify(state));
 persist();
 
@@ -193,5 +198,6 @@ function playLines(title,lines,done){
 function newChainMoment(gen,chain){moment(`${SOURCES[gen].name} · new chain!`,CHAINS[chain].names.join(' → '),item(chain,0));}
 function showIntro(){const a=currentArea(state);if(a.intro)playLines(a.name,a.intro);}
 
+$('#build').textContent='COAST CAMP · '+BUILD.toUpperCase();
 render();header();setInterval(()=>{header();if(state.energy<1)renderHint();},1000);
 if(!state.moves)showIntro();
