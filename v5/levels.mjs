@@ -24,18 +24,19 @@ export function xpFor(a,result,order){
 
 // The case cycles Rover → Kite → Crucible parts; with two cases waiting or a full
 // board the chest pays extra energy instead.
-export function gainXp(s,amount,{container,put}){
+export function gainXp(s,amount,{container,put,openGates=()=>[]}){
  s.level=validLevel(s.level);
  const ups=[];
  s.level.xp+=amount;
  while(s.level.xp>=xpToNext(s.level.level)){
   s.level.xp-=xpToNext(s.level.level);s.level.level++;
+  const opened=openGates(s);
   const kind=CHEST_CASES[(s.level.level-2)%CHEST_CASES.length];
   // At most two waiting cases, so a chest never blocks the Supply Pier (three-case limit).
   const index=s.board.filter(x=>x?.type==='crate').length<2?put(s,container(kind)):-1;
   const energy=CHEST_ENERGY+(index<0?5:0);
   s.energy=Math.min(120,s.energy+energy);
-  ups.push({level:s.level.level,energy,kind:index<0?null:kind,index});
+  ups.push({level:s.level.level,energy,kind:index<0?null:kind,index,opened});
  }
  return ups;
 }

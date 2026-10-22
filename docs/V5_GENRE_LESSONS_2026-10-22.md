@@ -113,6 +113,22 @@ real time in which spent energy refills, as a reason to come back".
   cells at start: 4. New save cell types `jar` (energy 1–50) and `cache`.
 - (6) Energy reads against its refill cap, e.g. "36/50".
 
+## 7×7 board with level gates (user, 2026-10-22: "Том самбар + түвшингээр нээгдэх нүд")
+- Board grows from 6×6 to 7×7 (49 cells). Cells 0–35 keep their 6×6 positions, so
+  fixed sites, routes, saves and most code are unchanged; 36–42 are the new right
+  column (rows 0–6) and 43–48 the new bottom row (`cellPos` in `v5/core.mjs`).
+- The 13 new cells start as numbered sand gates: two open at each level from 2 to 7,
+  the corner at 8. A level-up opens them before the chest lands, and the level-up
+  moment names the new spaces.
+- Gates refuse moves, merges, cases and recycling; salt-cracking now uses real grid
+  neighbours, including across the new edge. Board-density heuristics count only
+  cells in play.
+- Saves: 36-cell boards load with the 13 gates appended and opened up to the saved
+  level; other lengths start fresh; gate levels must be 2–8. Tests: `tests/v5-board.test.mjs`.
+- Phones: at ≤400px the board gap shrinks to 2px so tiles stay ≥44px at 360px.
+- Also fixed: an earlier comment in the density simulation (step 4a) had swallowed two
+  assertions (minimum occupancy, no long empty stretch); they run again.
+
 ## Sources and limits
 No first-party data was found. Travel Town figures (100 energy, 72-cell board) come
 from fan guides; the "top-grossing" claim for Gossip Harbor is unverified. Level
