@@ -87,7 +87,7 @@ function hint(){
   const g=visibleGoal();
   if(g.action==='orders'){const o=state.requests.orders.find(x=>x?.id===g.orderId);if(o){const p=requestProgress(state,o),missing=p.progress.find(r=>r.current<r.count);return p.ready?'ORDER READY · collect '+o.supplies+' supplies above':missing?'NEXT ORDER · make '+nameOf(item(missing.family,missing.tier,missing.line)):'Complete the highlighted order';}return 'Deliver camp orders to earn supplies';}
   if(g.action==='treasure')return 'Survey Kite · recover and merge Tide Treasures';
-  return 'Build the next camp upgrade · '+g.name;
+  return g.ready?g.name.toUpperCase()+' READY · tap '+g.verb.split(' ·')[0]+' above':'Deliver crew orders · '+g.name;
  }
  if(state.stage===2&&optics(state).primed&&receivers(state).some(i=>circuit(state,i)))return state.board.includes(null)?'RINGS READY · ACTIVATE ABOVE ↑':'RINGS READY · MERGE TO FREE ONE SPACE';
  if(!state.merges&&state.stage===0&&!state.landingStep)return 'START · Tap the glowing pair';
@@ -162,12 +162,14 @@ function renderWorkshop(){
  if(button.querySelector('img').getAttribute('src')!==src)button.querySelector('img').src=src;
  button.dataset.state=state.workshop.precision?'precision':restored?'operational':'damaged';button.classList.toggle('repairReady',!restored&&ready);
  button.classList.toggle('pressAvailable',restored&&state.charges.rig>0&&state.energy>=2&&state.board.includes(null));
- button.querySelector('span').textContent=restored?'Press Grip · 2 ϟ':ready?'Repair · 8 ◆':`Workshop · ${state.requests.supplies}/8 ◆`;
+ // One primary action per screen: the scene names the Workshop only while it is the job.
+ const workshopJob=!restored&&state.stage===0&&state.landingStep===1&&state.discovered.includes('chart:tide:1');
+ button.querySelector('span').textContent=restored||!workshopJob?'':ready?'Repair · 8 ◆':`Workshop · ${state.requests.supplies}/8 ◆`;
  button.classList.toggle('precision',state.workshop.precision);
  if(state.workshop.precision&&!button.querySelector('.benchFitting'))button.insertAdjacentHTML('beforeend','<i class="benchFitting" aria-hidden="true">'+art(item('rig',2))+'</i>');
  let bench=$('#workshopBench');
  if(!bench){$('#scene').insertAdjacentHTML('beforeend','<button id="workshopBench"></button>');bench=$('#workshopBench');}
- bench.hidden=!restored;
+ bench.hidden=!restored||!state.workshop.precision&&visibleGoal()?.action!=='upgradeWorkshop'&&visibleGoal()?.name!=='Install Precision Bench';
  bench.classList.toggle('ready',state.workshop.precision?benchInputs(state).every(i=>i>=0)&&state.energy>=1&&state.charges.rig>0:state.requests.supplies>=BENCH_COST);
  bench.innerHTML=state.workshop.precision?art(item('rig',2))+'<span>Precision<br>Bench</span>':'<span>Precision Bench<br><b>'+Math.min(state.requests.supplies,BENCH_COST)+'/'+BENCH_COST+' ◆</b></span>';
  bench.setAttribute('aria-label',state.workshop.precision?'View Precision Bench recipe and fitting action':'View Precision Bench upgrade: '+BENCH_COST+' supplies. Grip tool and Ink scrap become a Split spanner.');
@@ -205,9 +207,10 @@ function renderRequests(){
  const action=state.workshop.repaired?(state.camp.pier
   ?state.camp.loft&&missing?.line==='tide'?`<button class="campAction" data-camp-action="recoverTide">${state.camp.deepSurvey?'Deep Survey':'Recover treasure'} · ${recoveryCost(state)}ϟ</button>`:`<button class="campAction ${q.supplies>=PACK_COST?'affordable':''}" data-camp-action="packPier" data-family="${family}" aria-label="Order a ${FAMILIES[family].name} supply case for ${PACK_COST} camp supplies">+${FAMILIES[family].name} case · ${PACK_COST}◆</button>`
   :`<button class="campAction ${q.supplies>=PIER_COST?'affordable':''}" data-camp-action="buildPier" aria-label="Build Supply Pier for ${PIER_COST} camp supplies">Build Pier · ${PIER_COST}◆</button>`):'';
+ const objective=visibleGoal(),campBuild=objective?.kind==='camp'&&objective.cost;
  const primary=campGoal(state);
  const purpose=(state.camp.earlyFragments??0)<2?'Next order: Tide Dial Fragment':primary?.cost?primary.name+' · '+Math.min(primary.supplies,primary.cost)+'/'+primary.cost+' ◆'+(primary.supplies>=primary.cost?' · READY':''):primary?.action==='treasure'?'Recover & merge the next treasure':primary?.action==='orders'?'Orders fund Supply Pier cases':(state.camp.earlyFragments??0)<2?'Next order: Tide Dial Fragment':!state.workshop.repaired?'Workshop 8◆':!state.camp.pier?'Unlock useful supply cases':!state.camp.loft?'Charting Loft 20◆':state.camp.deepSurvey?(state.discovered.includes('chart:tide:4')?'Fulfill treasure orders':'Discover the Ocean Crown'):pearlDiscovered(state)?'Deep Survey 18◆':'Discover a Pearl Astrolabe';
- $('#requests').innerHTML=`${ending?`<button id="ordersToggle" type="button" aria-expanded="${postChapterOrdersOpen}" class="ordersToggle">${postChapterOrdersOpen?'Hide optional camp orders':'Optional camp orders'} · ◆${q.supplies} <span aria-hidden="true">${postChapterOrdersOpen?'▴':'▾'}</span></button>`:''}<div class="requestHeading"><span>${ending?'OPTIONAL ORDERS':'CREW DELIVERIES'} <small>${orderPurpose(state)}</small></span><b title="Earn camp supplies by delivering orders">◆ <span id="supplies">${q.supplies}</span></b>${action}</div><div class="requestShelf" aria-label="Crew orders; swipe for alternatives">${q.orders.filter((o,i)=>o&&(!openingPier||openingPier.visibleLanes.includes(i))).sort((a,b)=>Number(b.id===suggestedRequest)-Number(a.id===suggestedRequest)).map(o=>{
+ $('#requests').innerHTML=`${ending?`<button id="ordersToggle" type="button" aria-expanded="${postChapterOrdersOpen}" class="ordersToggle">${postChapterOrdersOpen?'Hide optional camp orders':'Optional camp orders'} · ◆${q.supplies} <span aria-hidden="true">${postChapterOrdersOpen?'▴':'▾'}</span></button>`:''}<div class="requestHeading"><span>${ending?'OPTIONAL ORDERS':'CREW DELIVERIES'} <small>${orderPurpose(state)}</small></span><b title="Earn camp supplies by delivering orders">◆ <span id="supplies">${q.supplies}</span></b>${campBuild?'':action}</div><div class="requestShelf" aria-label="Crew orders; swipe for alternatives">${q.orders.filter((o,i)=>o&&(!openingPier||openingPier.visibleLanes.includes(i))).sort((a,b)=>Number(b.id===suggestedRequest)-Number(a.id===suggestedRequest)).map(o=>{
  const p=requestProgress(state,o),active=requestId===o.id&&focus==='request',energy=Math.min(o.energy,120-state.energy);
  return `<button class="requestCard ${p.ready?'ready':''} ${active?'active':''} ${o.id===suggestedRequest?'storySuggested':''}" data-request="${o.id}" aria-pressed="${active}" aria-label="${o.id===suggestedRequest?'Suggested next: ':''}${o.lane} request: ${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier,r.line))).join(', ')}. ${p.ready?active?'Deliver':'Ready. Tap once to collect':'In progress'}. Reward ${o.supplies} camp supplies${energy?` and ${energy} energy`:`, energy full`}"><b class="requestLane">${o.lane==='long'?'Expedition kit':o.lane==='quick'?'Quick':'Standard'}</b><span class="requestItems">${p.progress.map(r=>`<span>${art(item(r.family,r.tier,r.line))}<b>${r.current}/${r.count}</b>${r.protected?'<i title="One copy kept for expedition">◆</i>':''}</span>`).join('')}</span><span class="requestReward">+${o.supplies} ◆${energy?` · +${energy} ϟ`:``}</span><strong>${p.ready?'✓ COLLECT':active&&p.progress.some(r=>r.protected)?'MAKE SPARE':'MAKE'}</strong></button>`;
  }).join('')}</div>`;

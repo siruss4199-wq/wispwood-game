@@ -462,3 +462,6 @@ body .world .objective.crewObjective{grid-template-columns:1fr;gap:7px}
 /* Replay stays reachable after the signal without competing with the next objective. */
 .objective .replayChapter{display:inline-block;margin:6px 0 0;min-height:44px;padding:0 12px;background:none;border:1px dashed #9cc7c0;border-radius:10px;color:#1f6b66;font-family:inherit;font-weight:600;font-size:12px;line-height:1.2;cursor:pointer}
 .objective .replayChapter[hidden]{display:none}
+
+/* One primary action per screen: scene buildings carry a label only while they are the job. */
+#workshop>span:empty,#campPierWorld>span:empty{display:none}
