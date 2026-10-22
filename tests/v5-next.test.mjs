@@ -47,8 +47,8 @@ test('restoring spends stars in order and applies each place\'s effect',()=>{
  for(const t of AREAS[0].tasks){const e=s.energy,r=ok(s,{type:'restore',id:t.id});spent+=t.cost;assert.equal(s.stars,200-spent);
   if(t.id==='beach-tent')assert.equal(s.energy,Math.min(120,e+10));
   if(t.id==='beach-mast'){assert.equal(sourceOpen(s,'chart'),true);ok(s,{type:'produce',id:'chart'});}
-  if(t.id==='beach-workshop')assert.equal(s.board[0].level,2);
-  if(t.id==='beach-pier')assert.deepEqual(s.board[r.effects.kit],kit('chart',2));
+  if(t.id==='beach-workshop'){assert.equal(s.board[0].level,2);assert.equal(r.effects.newChain,'rope');}
+  if(t.id==='beach-pier'){assert.equal(s.board[5].level,2);assert.equal(r.effects.newChain,'shell');}
   if(t.id==='beach-beacon'){assert.equal(s.slots,4);assert.equal(s.orders.length,4);}
   if(t.id==='beach-cliff')assert.equal(r.effects.areaDone,'beach');
  }
@@ -111,4 +111,29 @@ test('a scripted player restores Landing Beach in 15–30 minutes and feels ener
   assert.ok(s.energy<25,'energy runs low by the end of the area');
   console.log(JSON.stringify({step,minutes:+(now/60000).toFixed(1),firstRestore:+(firstRestore/60000).toFixed(1),actions,levels:levels.length,energy:s.energy,waited}));
  }
+});
+
+test('generators make more chains as they level up; orders and boxes follow the open chains',async()=>{
+ const {chainsOf,openChains}=await import('../v5/next/game.mjs');const {CHAINS,maxTier,GENERATOR_CHAINS}=await import('../v5/next/chains.mjs');
+ const s=fresh(0);assert.deepEqual(chainsOf(s,'rig'),['rig']);
+ s.board[0].level=2;assert.deepEqual(chainsOf(s,'rig'),['rig','rope']);s.board[0].level=3;assert.deepEqual(chainsOf(s,'rig'),['rig','rope','lamp']);
+ s.done.push('beach-mast');s.board[5].level=2;assert.deepEqual(openChains(s),['rig','rope','lamp','chart','shell']);
+ // Pulls cover every open chain over time.
+ const made=new Set();for(let n=0;n<60;n++){const r=ok(s,{type:'produce',id:n%2?'rig':'chart'});made.add(s.board[r.index].family);s.board[r.index]=null;s.energy=40;}
+ assert.deepEqual([...made].sort(),['chart','lamp','rig','rope','shell']);
+ // New chains merge to their own top and no further.
+ for(const c of ['rope','lamp','shell']){const t=fresh(0);t.board[1]=item(c,maxTier(c)-1);t.board[6]=item(c,maxTier(c)-1);ok(t,{type:'merge',from:1,to:6});assert.equal(t.board[6].tier,maxTier(c));t.board[1]=item(c,maxTier(c));refused(t,{type:'merge',from:1,to:6});assert.ok(CHAINS[c].names[maxTier(c)]);}
+ // Orders use the open chains once the scripted first three are done.
+ const u=fresh(0);u.board[0].level=3;u.done.push('beach-mast');u.board[5].level=2;u.level.level=4;const seen=new Set();
+ for(let n=0;n<90;n++){const o=u.orders[n%3];for(const r of o.needs){seen.add(r.family);assert.ok(r.tier<maxTier(r.family));for(let k=0;k<r.count;k++)u.board[u.board.indexOf(null)]=item(r.family,r.tier);}ok(u,{type:'deliver',id:o.id});u.board=u.board.map(x=>x?.type==='kit'||x?.type==='item'?null:x);}
+ assert.deepEqual([...seen].sort(),['chart','lamp','rig','rope','shell']);
+ // Boxes drop parts of their generator's open chains; saves keep new-chain parts.
+ const v=fresh(0);v.board[0].level=2;v.board[1]=kit('rig',2);const drops=new Set();for(let k=0;k<5;k++){const r=ok(v,{type:'openKit',index:1});drops.add(v.board[r.index].family);if(r.index!==1)v.board[r.index]=null;}
+ assert.ok([...drops].every(c=>['rig','rope'].includes(c)));
+ v.board[6]=item('shell',5);assert.deepEqual(load(JSON.stringify(v),5).board[6],item('shell',5));
+ const w=structuredClone(v);w.board[6]=item('shell',6);assert.equal(load(JSON.stringify(w),5).moves,0,'beyond a chain top is malformed');
+ assert.deepEqual(Object.keys(GENERATOR_CHAINS),['rig','chart','flux']);
+ // A box from a new-chain order belongs to that chain's generator (a valid, saveable box).
+ const x=fresh(0);x.board[0].level=2;x.ordersDone=2;x.orders[0]={id:'oz',who:'ivo',needs:[{family:'rope',tier:1,count:1}],stars:1};x.board[1]=item('rope',1);
+ const d=ok(x,{type:'deliver',id:'oz'});assert.deepEqual(x.board[d.box],kit('rig',1));assert.equal(load(JSON.stringify(x),5).moves,x.moves);
 });

@@ -1,7 +1,8 @@
 // A scripted player for the new loop: restore when affordable, deliver ready orders,
 // grow boxes and generators, merge toward what orders need, otherwise tap the
 // generator whose parts are most wanted. Used by the pacing simulations.
-import {count,matches,orderItems,nextTask,sourceOpen,openFamilies} from '../v5/next/game.mjs';
+import {count,matches,orderItems,nextTask,sourceOpen,openFamilies,chainsOf} from '../v5/next/game.mjs';
+import {CHAINS,maxTier} from '../v5/next/chains.mjs';
 import {kitsMerge,feeds,kitFull,MAX_KIT_SIZE} from '../v5/kits.mjs';
 
 // How many of each part the live orders still want.
@@ -28,11 +29,12 @@ export function nextAction(s){
   if(pair.length>=2)return {type:'merge',from:pair[0],to:pair[1]};
  }
  // Any spare pair (keeps the board from clogging and digs the sand).
- for(let i=0;i<b.length;i++){const x=b[i];if(x?.type!=='item'||keep(i))continue;const j=b.findIndex((y,j)=>j>i&&matches(y,x)&&!keep(j));if(j>=0&&x.tier<7)return {type:'merge',from:i,to:j};}
+ for(let i=0;i<b.length;i++){const x=b[i];if(x?.type!=='item'||keep(i))continue;const j=b.findIndex((y,j)=>j>i&&matches(y,x)&&!keep(j));if(j>=0&&x.tier<maxTier(x.family))return {type:'merge',from:i,to:j};}
  // A started box, or one that cannot grow further, before paying energy.
  const open=kits.find(i=>!kitFull(b[i])||b[i].size===MAX_KIT_SIZE||free<=3);
  if(open!==undefined&&free>0)return {type:'openKit',index:open};
- const family=needs.map(r=>r.family).find(f=>sourceOpen(s,f))??openFamilies(s)[0];
+ // Tap the generator that makes a wanted chain right now.
+ const family=needs.map(r=>CHAINS[r.family].gen).find((g,k)=>sourceOpen(s,g)&&chainsOf(s,g).includes(needs[k].family))??openFamilies(s)[0];
  if(free>0&&s.energy>0)return {type:'produce',id:family};
  if(free===0){const i=b.findIndex((x,i)=>x?.type==='item'&&!keep(i));if(i>=0)return {type:'recycle',index:i};}
  return null;// wait for energy

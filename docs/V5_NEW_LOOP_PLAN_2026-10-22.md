@@ -92,3 +92,23 @@ First merge < 10 s · first order < 1 min · first restoration ≈ 3 min · a le
   0.6–0.7 min, Landing Beach in 16–19 min, five level-ups, energy ~11 at the end.
 - Tests: `tests/v5-next.test.mjs`, `tests/v5-next-browser.cjs` (360/390/430 px, added
   to CI). Save key `vaultwake-v5-coast`; Classic keys are never written.
+
+## More chains per generator (user, 2026-10-22: "A+B hiigeed uz", after a level-86 reference board)
+The reference board had only four generators but some thirty item types: each
+generator makes several short chains. Coast Camp had three generators with one chain each.
+- `v5/next/chains.mjs`: Rivet Rover makes Fieldworks parts, then **Rope** at level 2
+  (Frayed twine → Cargo hoist, 6 tiers) and **Lamps** at level 3 (Candle stub → Beacon
+  lens, 5). Survey Kite makes Wayfinding, then **Shells** at level 2 (Sand dollar →
+  Coral crown, 6). New chains are drawn in SVG in the existing style.
+- (B) The Workshop restoration raises Rivet Rover to level 2 (rope); the supply pier now
+  raises Survey Kite to level 2 (shells) instead of giving a box. Feeding Large boxes
+  raises levels further (lamps at Rover level 3). Each new chain shows its whole line.
+- A generator with several chains makes a chain the crew orders still need three pulls
+  in five, otherwise any of its chains. Without this lean, a scripted player needed
+  100 minutes (70 of them waiting for energy) for Landing Beach.
+- Orders draw from every open chain; boxes drop parts of their generator's open chains;
+  a box from a new-chain order belongs to that chain's generator.
+- Scripted player, 5–6 s per action: Landing Beach in 15–18 min, energy ~15 at the end;
+  all five open chains appear in orders.
+- Fixed while building: a box from a rope order was created with the family "rope",
+  which would have made the save invalid on reload. Covered by a test.

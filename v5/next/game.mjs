@@ -2,14 +2,15 @@
 // merges grow them and dig the sand, crew orders pay ◆ stars, stars restore the coast.
 // Deterministic reducer: act(s,a,now) mutates s and returns {ok,...}; a refused
 // action leaves s untouched. Classic V5 (v5/core.mjs) and its saves are not used.
-import {FAMILIES,cellPos,cellAt,BOARD_SIZE,CORE_SIZE,GATE_LEVELS} from '../core.mjs';
+import {cellPos,cellAt,BOARD_SIZE,CORE_SIZE,GATE_LEVELS} from '../core.mjs';
 import {kit,kitName,kitDrop,kitsMerge,feeds,producerLevel,levelLift,validKit,validProducerLevel,nearestFree,MAX_KIT_SIZE} from '../kits.mjs';
 import {xpToNext,validLevel,freshLevel} from '../levels.mjs';
 import {settleEnergy,REFILL_CAP,RATION_ENERGY,rationWait} from '../energy.mjs';
 import {AREAS,TASKS} from './areas.mjs';
+import {CHAINS,chainsAt,chainOpenedAt,maxTier} from './chains.mjs';
 
 export const SAVE_KEY='vaultwake-v5-coast';
-export const VERSION=1,MAX_TIER=7,MAX_ENERGY=120;
+export const VERSION=1,MAX_TIER=7,MAX_ENERGY=120;// MAX_TIER: the longest chain
 export const SOURCES={rig:{name:'Rivet Rover'},chart:{name:'Survey Kite'},flux:{name:'Echo Crucible'}};
 export const XP={merge:1,restore:5,feed:5};// orders pay their stars as XP
 export const STAR_VALUE=[1,1,2,4,7,12];// stars per item by tier
@@ -24,7 +25,7 @@ const integer=(x,a,b)=>Number.isInteger(x)&&x>=a&&x<=b;
 
 export function nameOf(x){
  if(!x)return 'Empty space';
- if(x.type==='item')return FAMILIES[x.family].names[x.tier];
+ if(x.type==='item')return CHAINS[x.family].names[x.tier];
  if(x.type==='source')return SOURCES[x.id].name;
  if(x.type==='kit')return kitName(x);
  if(x.type==='jar')return 'Energy jar · +'+x.energy;
@@ -40,6 +41,17 @@ export function sourceOpen(s,id){
  return s.area>=1;// Echo Crucible opens with the Survey Worksite (step 2)
 }
 export const openFamilies=s=>['rig','chart','flux'].filter(id=>sourceOpen(s,id));
+// The chains a generator makes at its current level, and all chains open now.
+export const chainsOf=(s,gen)=>chainsAt(gen,producerLevel(s.board.find(x=>x?.type==='source'&&x.id===gen)));
+export const openChains=s=>openFamilies(s).flatMap(g=>chainsOf(s,g));
+// A generator with several chains leans toward the chains crew orders still need
+// (three pulls in five), as the genre's generators quietly do; otherwise any chain.
+function pickChain(s,chains,n){
+ if(chains.length===1)return chains[0];
+ const missing=chains.filter(c=>s.orders.some(o=>o.needs.some(r=>r.family===c&&count(s,r)<r.count)));
+ const pool=missing.length&&rand(n)<.6?missing:chains;
+ return pool[Math.floor(rand(n*977+13)*pool.length)];
+}
 
 // A small open camp around Rivet Rover; sand with finds everywhere else; the 7×7
 // column and row are numbered gates that open with the level.
@@ -60,15 +72,15 @@ export function fresh(now=Date.now()){
 // The first three teach the loop; then a deterministic mix grows with the level.
 const FIRST=[[['rig',1,2]],[['rig',2,1]],[['rig',1,1],['rig',0,2]]];
 function rand(n){let t=(n*2654435761+0x6D2B79F5)>>>0;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296;}
-const crewFor=needs=>needs.length>1?'bram':{rig:'ivo',chart:'neri',flux:'tamsin'}[needs[0].family];
+const crewFor=needs=>needs.length>1?'bram':{rig:'ivo',chart:'neri',flux:'tamsin'}[CHAINS[needs[0].family].gen];
 export function makeOrder(s){
  const n=s.orderSeq++;let needs;
  if(n<FIRST.length)needs=FIRST[n].map(([family,tier,count])=>({family,tier,count}));
  else{
-  const families=openFamilies(s),level=s.level.level,top=Math.min(4,1+Math.floor(level/2));
+  const families=openChains(s),level=s.level.level,top=Math.min(4,1+Math.floor(level/2));
   const live=new Set(s.orders.filter(Boolean).flatMap(o=>o.needs.map(r=>r.family+r.tier)));
   let family,tier,k=0;
-  do{family=families[Math.floor(rand(n*7+k)*families.length)];tier=1+Math.floor(rand(n*11+k)*top);k++;}while(live.has(family+tier)&&k<8);
+  do{family=families[Math.floor(rand(n*7+k)*families.length)];tier=1+Math.floor(rand(n*11+k)*Math.min(top,maxTier(family)-1));k++;}while(live.has(family+tier)&&k<8);
   needs=[{family,tier,count:tier===1&&rand(n*13)<.5?2:1}];
   if(level>=3&&rand(n*17)<.3){const other=families.find(f=>f!==family)??family;if(other!==family||tier>1)needs.push({family:other,tier:1,count:1});}
  }
@@ -142,7 +154,7 @@ function step(s,a,now){
   if(i<0||!SOURCES[a.id])return fail('No such generator.');
   if(!sourceOpen(s,a.id))return fail(a.id==='chart'?'Restore the signal mast to fly the Survey Kite.':'Echo Crucible wakes at the Survey Worksite.');
   if(s.energy<1)return fail('Out of energy. It refills +1 every 2 minutes.');
-  const n=s.taps[a.id]+1,tier=Math.min(3,(n%4===0?1:0)+levelLift(producerLevel(s.board[i]),n)),x=item(a.id,tier),j=put(s,x,i);
+  const n=s.taps[a.id]+1,chain=pickChain(s,chainsOf(s,a.id),n*31+a.id.length),tier=Math.min(3,maxTier(chain),(n%4===0?1:0)+levelLift(producerLevel(s.board[i]),n)),x=item(chain,tier),j=put(s,x,i);
   if(j<0)return fail('The board is full. Merge or deliver parts first.');
   s.energy--;s.taps[a.id]=n;
   return {ok:true,event:'produce',index:j,message:nameOf(x)};
@@ -154,19 +166,19 @@ function step(s,a,now){
   if(!['item','kit'].includes(x?.type))return fail('That stays where it is.');
   if(!y){s.board[to]=x;s.board[from]=null;return {ok:true,event:'move',index:to,message:'Moved.'};}
   if(x.type==='kit'){
-   if(feeds(x,y)){y.level=producerLevel(y)+1;s.board[from]=null;return {ok:true,event:'producerUp',index:to,xp:XP.feed,message:`${SOURCES[y.id].name} reaches level ${y.level}`};}
+   if(feeds(x,y)){y.level=producerLevel(y)+1;s.board[from]=null;const newChain=chainOpenedAt(y.id,y.level);return {ok:true,event:'producerUp',index:to,xp:XP.feed,...(newChain?{newChain}:{}),message:`${SOURCES[y.id].name} reaches level ${y.level}`+(newChain?` · new: ${CHAINS[newChain].names[0]}`:'')};}
    if(!kitsMerge(x,y))return fail(y?.type==='kit'&&x.size===MAX_KIT_SIZE?'Large boxes are as big as boxes get. Open one, or feed it to its generator.':'Merge two unopened boxes of the same kind and size.');
    s.board[to]=kit(x.family,x.size+1);s.board[from]=null;s.merges++;
    return {ok:true,event:'merge',index:to,xp:XP.merge,dug:digAround(s,to),message:nameOf(s.board[to])};
   }
   if(y.type!=='item'||y.family!==x.family||y.tier!==x.tier)return fail('Merge two identical parts.');
-  if(x.tier>=MAX_TIER)return fail('This is the top of its chain.');
+  if(x.tier>=maxTier(x.family))return fail('This is the top of its chain.');
   s.board[to]=item(x.family,x.tier+1);s.board[from]=null;s.merges++;
   return {ok:true,event:'merge',index:to,xp:XP.merge,dug:digAround(s,to),message:nameOf(s.board[to])};
  }
  if(a.type==='openKit'){
   const box=valid(a.index)?s.board[a.index]:null;if(box?.type!=='kit')return fail('Choose a box.');
-  const x=kitDrop(box),last=box.left===1,i=last?a.index:nearestFree(s.board,a.index,cellPos);
+  const drop=kitDrop(box),chains=chainsOf(s,box.family),chain=chains[(s.moves+box.left)%chains.length],x=item(chain,Math.min(drop.tier,maxTier(chain))),last=box.left===1,i=last?a.index:nearestFree(s.board,a.index,cellPos);
   if(i<0)return fail('Make space next to the box first.');
   box.left--;s.board[i]=x;
   return {ok:true,event:'kit',index:i,message:nameOf(x)+(last?' · the box is empty':` · ${box.left} left`)};
@@ -178,7 +190,7 @@ function step(s,a,now){
   for(const i of take)s.board[i]=null;
   s.stars+=o.stars;s.ordersDone++;s.orders[lane]=makeOrder(s);
   // Every third order also brings a small box of its kind.
-  const box=s.ordersDone%3===0?put(s,kit(o.needs[0].family,1),take[0]):-1;
+  const box=s.ordersDone%3===0?put(s,kit(CHAINS[o.needs[0].family].gen,1),take[0]):-1;
   return {ok:true,event:'deliver',index:box>=0?box:null,xp:o.stars,stars:o.stars,box,freed:take,message:`+${o.stars} ★`+(box>=0?' · '+nameOf(s.board[box]):'')};
  }
  if(a.type==='restore'){
@@ -187,7 +199,7 @@ function step(s,a,now){
   if(s.stars<t.cost)return fail(`${t.name} needs ${t.cost} ★. Deliver crew orders for stars.`);
   s.stars-=t.cost;s.done.push(t.id);const e=t.effect??{},effects={};
   if(e.energy){s.energy=Math.min(MAX_ENERGY,s.energy+e.energy);effects.energy=e.energy;}
-  if(e.producer){const src=s.board.find(x=>x?.type==='source'&&x.id===e.producer);if(src&&producerLevel(src)<5){src.level=producerLevel(src)+1;effects.producer=e.producer;}}
+  if(e.producer){const src=s.board.find(x=>x?.type==='source'&&x.id===e.producer);if(src&&producerLevel(src)<5){src.level=producerLevel(src)+1;effects.producer=e.producer;const c=chainOpenedAt(src.id,src.level);if(c)effects.newChain=c;}}
   if(e.kit){effects.kit=put(s,kit(e.kit[0],e.kit[1]));}
   if(e.slots&&s.slots<e.slots){s.slots=e.slots;while(s.orders.length<s.slots)s.orders.push(makeOrder(s));effects.slots=e.slots;}
   if(e.source)effects.source=e.source;
@@ -210,15 +222,15 @@ function step(s,a,now){
 // ---- saves ----
 function validCell(x){
  if(x===null)return true;if(!x||typeof x!=='object')return false;
- if(x.type==='item')return !!FAMILIES[x.family]&&integer(x.tier,0,MAX_TIER);
+ if(x.type==='item')return !!CHAINS[x.family]&&integer(x.tier,0,maxTier(x.family));
  if(x.type==='source')return !!SOURCES[x.id]&&validProducerLevel(x);
  if(x.type==='kit')return validKit(x);
  if(x.type==='jar')return integer(x.energy,1,50);
  if(x.type==='gate')return integer(x.level,2,8);
- if(x.type==='sand'){const f=x.find;return f===undefined||f?.type==='item'&&!!FAMILIES[f.family]&&integer(f.tier,0,3)||f?.type==='jar'&&integer(f.energy,1,50)||f?.type==='kit'&&validKit(f);}
+ if(x.type==='sand'){const f=x.find;return f===undefined||f?.type==='item'&&!!CHAINS[f.family]&&integer(f.tier,0,Math.min(3,maxTier(f.family)))||f?.type==='jar'&&integer(f.energy,1,50)||f?.type==='kit'&&validKit(f);}
  return false;
 }
-const validNeed=r=>r&&FAMILIES[r.family]&&integer(r.tier,0,MAX_TIER)&&integer(r.count,1,4);
+const validNeed=r=>r&&CHAINS[r.family]&&integer(r.tier,0,maxTier(r.family))&&integer(r.count,1,4);
 const validOrder=o=>o&&typeof o.id==='string'&&Array.isArray(o.needs)&&o.needs.length>=1&&o.needs.length<=2&&o.needs.every(validNeed)&&integer(o.stars,1,99)&&['ivo','neri','tamsin','bram'].includes(o.who);
 export function load(raw,now=Date.now()){
  try{

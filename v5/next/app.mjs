@@ -1,15 +1,18 @@
 // Coast Camp: the new-loop page (v5/play.html). Same look as Classic V5, one loop:
 // generators → merge → crew orders → ★ stars → restore the coast on the map.
-import {SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,orderProgress,nextTask,currentArea,areaDone,sourceOpen,SOURCES,MAX_TIER} from './game.mjs';
+import {SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,orderProgress,nextTask,currentArea,areaDone,sourceOpen,SOURCES,chainsOf} from './game.mjs';
 import {AREAS} from './areas.mjs';
-import {FAMILIES,cellPos} from '../core.mjs';
+import {cellPos} from '../core.mjs';
+import {CHAINS,draw,maxTier,chainsAt,GENERATOR_CHAINS} from './chains.mjs';
 import {art,portrait} from '../art.mjs';
 import {enablePremium} from '../premium.mjs';
 import {kitsMerge,feeds,kitFull,kitDrop,kitCapacity,producerLevel,KIT_SIZES,KIT_DROPS,MAX_KIT_SIZE,MAX_PRODUCER_LEVEL} from '../kits.mjs';
 import {xpToNext} from '../levels.mjs';
 import {refillTimes,clock,REFILL_CAP,rationWait} from '../energy.mjs';
 import {CREW} from '../crew.mjs';
-import {sound,reduced,burst,rewardFlight,moment} from '../feedback.mjs';
+import {sound,reduced,burst,rewardFlight,moment as sharedMoment} from '../feedback.mjs';
+// The shared moment draws its icon with the Classic art; new chains need draw().
+function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el=document.querySelector('.moment');if(!x||!el)return;const icon=document.createElement('span');icon.style.cssText='float:left;width:42px;height:42px;margin-right:10px';icon.innerHTML=draw(x);icon.firstElementChild.style.cssText='width:100%;height:100%';el.prepend(icon);}
 
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
@@ -55,7 +58,7 @@ function render(){
 function renderOrders(){
  $('#requests').innerHTML=`<div class="requestHeading"><span>CREW ORDERS <small>Deliver for ★ stars</small></span><b title="Stars">★ ${state.stars}</b></div><div class="requestShelf">${[...state.orders].sort((a,b)=>Number(!!orderItems(state,b))-Number(!!orderItems(state,a))).map(o=>{
   const p=orderProgress(state,o),ready=!!orderItems(state,o),who=CREW[o.who];
-  return `<button class="requestCard ${ready?'ready':''} ${focusOrder===o.id?'active':''}" data-order="${o.id}" aria-label="${who.name} asks for ${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier))).join(', ')}. ${ready?'Ready: tap to deliver.':'In progress.'} Reward ${o.stars} stars"><span class="requestCrew">${portrait(o.who)}<b class="requestLane"><em>${who.name}</em>${who.role}</b></span><span class="requestItems">${p.map(r=>`<span>${art(item(r.family,r.tier))}<b>${r.have}/${r.count}</b></span>`).join('')}</span><span class="requestReward">+${o.stars} ★</span><strong>${ready?'✓ DELIVER':'MAKE'}</strong></button>`;
+  return `<button class="requestCard ${ready?'ready':''} ${focusOrder===o.id?'active':''}" data-order="${o.id}" aria-label="${who.name} asks for ${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier))).join(', ')}. ${ready?'Ready: tap to deliver.':'In progress.'} Reward ${o.stars} stars"><span class="requestCrew">${portrait(o.who)}<b class="requestLane"><em>${who.name}</em>${who.role}</b></span><span class="requestItems">${p.map(r=>`<span>${draw(item(r.family,r.tier))}<b>${r.have}/${r.count}</b></span>`).join('')}</span><span class="requestReward">+${o.stars} ★</span><strong>${ready?'✓ DELIVER':'MAKE'}</strong></button>`;
  }).join('')}</div>`;
 }
 function renderBoard(){
@@ -63,7 +66,7 @@ function renderBoard(){
  const focusKeys=new Set(focus?.needs.map(r=>r.family+r.tier)??[]);
  board.innerHTML=state.board.map((x,i)=>{
   const [r,c]=cellPos(i),locked=x?.type==='source'&&!sourceOpen(state,x.id);
-  const twin=sel&&i!==selected&&(sel.type==='item'&&x?.type==='item'&&matches(x,sel)&&sel.tier<MAX_TIER||sel.type==='kit'&&(kitsMerge(sel,x)||feeds(sel,x)));
+  const twin=sel&&i!==selected&&(sel.type==='item'&&x?.type==='item'&&matches(x,sel)&&sel.tier<maxTier(sel.family)||sel.type==='kit'&&(kitsMerge(sel,x)||feeds(sel,x)));
   const wanted=x?.type==='item'&&want.has(x.family+x.tier),focused=x?.type==='item'&&focusKeys.has(x.family+x.tier);
   let badge='';
   if(x?.type==='source')badge=locked?`<span class="lockedLabel">${x.id==='chart'?'SIGNAL MAST':'WORKSITE'}</span>`:`<span class="energyCue">ϟ1</span>${producerLevel(x)>1?`<span class="srcLevel">Lv${producerLevel(x)}</span>`:''}`;
@@ -71,7 +74,7 @@ function renderBoard(){
   else if(x?.type==='jar')badge=`<span class="sealBadge">+${x.energy}ϟ</span>`;
   else if(x?.type==='gate')badge=`<span class="gateLevel" aria-hidden="true">${x.level}</span>`;
   else if(wanted)badge='<span class="useBadge" aria-hidden="true">★</span>';
-  return `<button class="tile ${x?.type??'empty'} ${locked?'locked':''} ${selected===i?'selected':''} ${twin?'match':''} ${wanted?'wanted':''} ${focused?'nextAction':''}" data-index="${i}" style="grid-row:${r+1};grid-column:${c+1}" ${x?.family||x?.id?`data-family="${x.family??x.id}"`:''} aria-label="${nameOf(x)}${locked?' · locked':''}. Space ${i+1}" aria-pressed="${selected===i}">${art(x)}${badge}</button>`;
+  return `<button class="tile ${x?.type??'empty'} ${locked?'locked':''} ${selected===i?'selected':''} ${twin?'match':''} ${wanted?'wanted':''} ${focused?'nextAction':''}" data-index="${i}" style="grid-row:${r+1};grid-column:${c+1}" ${x?.family||x?.id?`data-family="${x.family??x.id}"`:''} aria-label="${nameOf(x)}${locked?' · locked':''}. Space ${i+1}" aria-pressed="${selected===i}">${draw(x)}${badge}</button>`;
  }).join('');
  $('#free').textContent=state.board.filter(x=>x===null).length+' spaces';
 }
@@ -80,19 +83,20 @@ function renderSelection(){
  if(!x){$('#selection').innerHTML='';return;}
  title=nameOf(x);
  if(x.type==='item'){
-  desc=x.tier<MAX_TIER?`Merge with a twin → ${FAMILIES[x.family].names[x.tier+1]}.`:'Top of its chain.';
+  desc=x.tier<maxTier(x.family)?`Merge with a twin → ${CHAINS[x.family].names[x.tier+1]}.`:'Top of its chain.';
   if(wantedKeys().has(x.family+x.tier))desc='★ A crew order wants this. '+desc;
   buttons='<button data-action="recycle">Recycle · +1 ϟ</button>';
  }else if(x.type==='source'){
-  desc=sourceOpen(state,x.id)?`Level ${producerLevel(x)} · tap for a ${FAMILIES[x.id].names[0]} or better · 1 energy.`+(producerLevel(x)<MAX_PRODUCER_LEVEL?' Feed it a Large box of its kind to level it up.':''):x.id==='chart'?'Restore the signal mast on the map to fly the Survey Kite.':'Wakes at the Survey Worksite (next area).';
+  const makes=GENERATOR_CHAINS[x.id].map(([c,l])=>producerLevel(x)>=l?CHAINS[c].names[0]:`${CHAINS[c].names[0]} at Lv${l}`).join(' · ');
+  desc=sourceOpen(state,x.id)?`Level ${producerLevel(x)} · 1 energy a tap · makes ${makes}.`+(producerLevel(x)<MAX_PRODUCER_LEVEL?' Feed it a Large box of its kind to level it up.':''):x.id==='chart'?'Restore the signal mast on the map to fly the Survey Kite.':'Wakes at the Survey Worksite (next area).';
   if(sourceOpen(state,x.id))buttons=`<button class="accent" data-action="produce">Make · 1 ϟ</button>`;
  }else if(x.type==='kit'){
-  desc=`Tap again for a free ${FAMILIES[x.family].names[kitDrop(x).tier]} · ${x.left} of ${kitCapacity(x)} left.`+(kitFull(x)&&x.size<MAX_KIT_SIZE?` Or merge with a twin into a ${KIT_SIZES[x.size]} box (${KIT_DROPS[x.size+1].length} better parts).`:kitFull(x)?` Or drag it onto ${SOURCES[x.family].name} to level it up.`:'');
+  desc=`Tap again for a free part (${chainsOf(state,x.family).map(c=>CHAINS[c].names[0]).join(' or ')} chain) · ${x.left} of ${kitCapacity(x)} left.`+(kitFull(x)&&x.size<MAX_KIT_SIZE?` Or merge with a twin into a ${KIT_SIZES[x.size]} box (${KIT_DROPS[x.size+1].length} better parts).`:kitFull(x)?` Or drag it onto ${SOURCES[x.family].name} to level it up.`:'');
   buttons='<button class="accent" data-action="openKit">Take a part</button>';
  }else if(x.type==='sand')desc=x.find?`Something is buried here. Merge two parts right next to it to dig it out.`:'Sand. Merge two parts right next to it to dig it away.';
  else if(x.type==='gate')desc=`Opens at level ${x.level} (you are level ${state.level.level}).`;
  else if(x.type==='jar')desc='Energy, sealed in a jar.';
- $('#selection').innerHTML=`<span class="preview">${art(x)}</span><span class="copy"><b>${title}</b><small>${desc}</small></span><span class="actionGroup">${buttons}</span>`;
+ $('#selection').innerHTML=`<span class="preview">${draw(x)}</span><span class="copy"><b>${title}</b><small>${desc}</small></span><span class="actionGroup">${buttons}</span>`;
 }
 function renderHint(){
  const task=nextTask(state),ready=state.orders.find(o=>orderItems(state,o));let hint;
@@ -121,11 +125,11 @@ function run(a){
  persist();render();
  const tile=r.index!=null?board.querySelector(`[data-index="${r.index}"]`):null;
  if(r.event==='merge'){tile?.classList.add('merge-pop');burst(tile?.getBoundingClientRect(),state.board[r.index]?.family);sound.play('merge',state.board[r.index]?.tier??0);for(const d of r.dug??[])board.querySelector(`[data-index="${d.index}"]`)?.classList.add('unlocked');}
- if((r.event==='produce'||r.event==='kit')&&fromRect&&tile&&!reduced()){const to=tile.getBoundingClientRect(),el=document.createElement('div');el.className='flight';el.innerHTML=art(state.board[r.index]);el.style.cssText=`left:${fromRect.x}px;top:${fromRect.y}px;--dx:${to.x-fromRect.x}px;--dy:${to.y-fromRect.y}px`;document.body.append(el);setTimeout(()=>el.remove(),460);}
+ if((r.event==='produce'||r.event==='kit')&&fromRect&&tile&&!reduced()){const to=tile.getBoundingClientRect(),el=document.createElement('div');el.className='flight';el.innerHTML=draw(state.board[r.index]);el.style.cssText=`left:${fromRect.x}px;top:${fromRect.y}px;--dx:${to.x-fromRect.x}px;--dy:${to.y-fromRect.y}px`;document.body.append(el);setTimeout(()=>el.remove(),460);}
  if(r.event==='deliver'){rewardFlight(orderRect,$('#starPill').getBoundingClientRect(),`+${r.stars} ★`);sound.play('contract');$('#starPill').classList.remove('bump');void $('#starPill').offsetWidth;$('#starPill').classList.add('bump');}
- if(r.event==='producerUp'){const src=state.board[r.index];moment(SOURCES[src.id].name+' · level '+src.level,'Its parts come out better more often.',src);sound.play('milestone');}
+ if(r.event==='producerUp'){const src=state.board[r.index];if(r.newChain)newChainMoment(src.id,r.newChain);else moment(SOURCES[src.id].name+' · level '+src.level,'Its parts come out better more often.',src);sound.play('milestone');}
  if(r.event==='restore')showBeat(r.task,r.effects);
- if(r.found?.length&&r.event!=='restore'){const k=r.found.at(-1),x=item(k.replace(/\d+$/,''),+k.match(/\d+$/)[0]);if(x.tier>=2)setTimeout(()=>moment('New: '+nameOf(x),x.tier<MAX_TIER?'Next: '+FAMILIES[x.family].names[x.tier+1]:'Top of the chain',x),r.levelUp?1600:0);}
+ if(r.found?.length&&r.event!=='restore'){const k=r.found.at(-1),x=item(k.replace(/\d+$/,''),+k.match(/\d+$/)[0]);if(x.tier>=2)setTimeout(()=>moment('New: '+nameOf(x),x.tier<maxTier(x.family)?'Next: '+CHAINS[x.family].names[x.tier+1]:'Top of the chain',x),r.levelUp?1600:0);}
  if(r.levelUp){const u=r.levelUp.at(-1);setTimeout(()=>{moment('Level '+u.level+'!',`Chest: +${r.levelUp.reduce((n,v)=>n+v.energy,0)} ϟ`+(u.family?' · '+nameOf({type:'kit',family:u.family,size:1}):'')+(u.opened.length?` · ${u.opened.length} new spaces`:''),u.family?{type:'kit',family:u.family,size:1,left:3}:null);sound.play('milestone');$('#levelPill').classList.add('levelUp');setTimeout(()=>$('#levelPill').classList.remove('levelUp'),1400);for(const v of r.levelUp)for(const i of v.opened)board.querySelector(`[data-index="${i}"]`)?.classList.add('unlocked');},r.event==='restore'?0:400);}
  return r;
 }
@@ -174,6 +178,7 @@ $('#mapContent').addEventListener('click',e=>{
 function showBeat(id,effects){
  const area=AREAS.find(a=>a.tasks.some(t=>t.id===id)),t=area.tasks.find(t=>t.id===id);
  const extra=[];if(effects?.source==='chart')extra.push(['neri','Survey Kite unlocked: tap it for Kite parts.']);
+ if(effects?.newChain)extra.push([CHAINS[effects.newChain].gen==='rig'?'ivo':'neri',`New chain: ${CHAINS[effects.newChain].names.join(' → ')}.`]);
  if(effects?.areaDone)extra.push(['bram',`${area.name} fully restored! The Survey Worksite opens in the next update.`]);
  playLines(t.name,t.lines.concat(extra),()=>{const icon=$(`.restoredIcon[data-task="${id}"]`);icon?.classList.add('pop');burst($('.world').getBoundingClientRect(),'gold',true);});
  sound.play('milestone');
@@ -184,6 +189,8 @@ function playLines(title,lines,done){
   $('#beatNext').onclick=()=>{n++;if(n<lines.length)show();else{dlg.close();done?.();}};};
  show();if(!dlg.open)dlg.showModal();
 }
+// A generator level that opens a chain shows the whole new chain.
+function newChainMoment(gen,chain){moment(`${SOURCES[gen].name} · new chain!`,CHAINS[chain].names.join(' → '),item(chain,0));}
 function showIntro(){const a=currentArea(state);if(a.intro)playLines(a.name,a.intro);}
 
 render();header();setInterval(()=>{header();if(state.energy<1)renderHint();},1000);
