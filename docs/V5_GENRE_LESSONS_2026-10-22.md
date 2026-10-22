@@ -85,6 +85,22 @@ step is reverted. Lesson from the rollback: never change loop and look together.
 - Saves: `charges` stays in the save for compatibility; `load()` refills 0–7 values to 7.
   Tests updated in ten files to the new rule; `tests/v5-levels.test.mjs` covers the save.
 
+## Goal progress and energy refill (user request 2026-10-22)
+Asked for: "a feeling that what the player does completes something" and "show the
+real time in which spent energy refills, as a reason to come back".
+- Goal progress (`v5/progress.mjs`): the main goal card shows a bar and percentage.
+  Parts count partially (a Grip tool is half a Split spanner), builds count saved ◆,
+  the landing pier counts finished deliveries plus the part in hand. A "+N%" rises
+  when it grows; at 100% the bar turns gold.
+- Energy refill (`v5/energy.mjs`): +1 every 2 minutes up to 50; rewards can still go
+  above 50 (cap 120). The energy pill shows "+1 1:45" (or FULL); tapping it gives the
+  time to full. Energy earned while away is credited on open ("Welcome back · +12").
+  Settled by the UI clock and on open, never inside `act`, so refused actions stay atomic.
+- Saves: new `energyAt` timestamp; older saves start the clock at load (nothing
+  retroactive); a future timestamp is reset. Tests: `tests/v5-progress.test.mjs`.
+- Open question for the user: the free field ration (+12 at ≤3 energy) still removes
+  any need to wait. Limit it (e.g. once per hour) or keep it?
+
 ## Sources and limits
 No first-party data was found. Travel Town figures (100 energy, 72-cell board) come
 from fan guides; the "top-grossing" claim for Gossip Harbor is unverified. Level

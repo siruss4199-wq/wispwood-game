@@ -10,13 +10,15 @@ import {fleetEarned,fleetPending,FLEET_LINES} from './fleet.mjs';
 import {storySnapshot,requestBrief} from './story.mjs';
 import {coastPlaces,placeById,doneIds,CAMP_PLACES,readyPlaces} from './coast-map.mjs';
 import {xpToNext} from './levels.mjs';
+import {refillTimes,clock,REFILL_CAP,REFILL_EVERY} from './energy.mjs';
+import {goalProgress} from './progress.mjs';
 import {LOFT_COST,DEEP_SURVEY_COST,recoveryCost,pearlDiscovered,TIDE_NAMES,isTide,maxTier,sameKind,discoveryKey,tideItem,nextTide} from './treasures.mjs';
 import {KITS} from './journey.mjs';
 import {PIER_COST,PACK_COST} from './camp.mjs';
 import {requestProgress} from './requests.mjs';
 import {WORKSHOP_COST,BENCH_COST,BENCH_NEEDS,benchInputs} from './workshop.mjs';
 import {containerInfo,contents} from './containers.mjs';
-import {SAVE_KEY,FAMILIES,SOURCES,STAGES,fresh,load,act,goal,expeditionGoal,count,ready,matches,nameOf,normalContract,opportunity,nextOutput,burstOutput,item,near,sourceUnlocked,freesCrust} from './core.mjs';
+import {SAVE_KEY,FAMILIES,SOURCES,STAGES,fresh,load,act,tick,goal,expeditionGoal,count,ready,matches,nameOf,normalContract,opportunity,nextOutput,burstOutput,item,near,sourceUnlocked,freesCrust} from './core.mjs';
 import {art,scene as vectorScene,portrait} from './art.mjs';
 import {feedback,sound,reduced,snapshotTask,moment} from './feedback.mjs';
 import {platform} from '../v4/platform.mjs';
@@ -252,6 +254,29 @@ function renderSide(){
  const reward=choice==='contract'?(c.exchange?art(c.exchange)+(c.surge?'<span class="tradeSurge">+3 rich pulls</span>':''):'+'+c.energy+' ϟ'):rare?'Richer drops':'3 rich pulls';
  $('#contracts').innerHTML=`<button class="contract ${rare?'discovery':choice.includes('pportunity')?'opportunity':''} ${can?'ready':''}" data-contract="${choice}" data-requirements="${needs.length}" aria-label="Optional: ${title} ${can?'ready to use':''}"><span class="contractHead">${portrait(rare?'neri':'ivo')}<span><small>OPTIONAL</small><b>${title}</b></span></span><span class="needs">${rare?art({type:'glyph'}):''}${needsHTML(needs)}</span><span class="reward">${reward}<small ${choice==='opportunity'?'id="opClock"':''}>${can?'✓ READY':choice==='startOpportunity'?'OPEN · 3 MIN':choice==='opportunity'?Math.ceil(op.remaining/1000)+'s':'COLLECT'}</small></span></button><button class="sideMore" data-side-next aria-label="Other optional tasks" ${sideOptions().length<2?'hidden':''}>•••</button>`;
 }
+// ---------- Goal progress: every useful merge or delivery visibly moves the bar ----------
+let lastGoal=null,lastProgress=null;
+function renderProgress(g){
+ let el=$('#goalProgress');
+ if(!el){el=document.createElement('div');el.id='goalProgress';el.className='goalProgress';el.setAttribute('role','progressbar');el.setAttribute('aria-valuemin','0');el.setAttribute('aria-valuemax','100');el.innerHTML='<i><s></s></i><b></b>';$('.objective').append(el);}
+ const pct=g?goalProgress(state,g):null;
+ el.hidden=pct===null;
+ if(pct===null){lastGoal=null;lastProgress=null;return;}
+ el.querySelector('s').style.width=pct+'%';el.querySelector('b').textContent=pct+'%';
+ el.setAttribute('aria-valuenow',pct);el.setAttribute('aria-label',g.name+' · '+pct+'% done');
+ el.classList.toggle('complete',pct>=100);
+ if(g.name===lastGoal&&lastProgress!==null&&pct>lastProgress){
+  const up=document.createElement('span');up.className='progressUp';up.textContent='+'+(pct-lastProgress)+'%';el.append(up);setTimeout(()=>up.remove(),1200);
+  if(pct>=100){el.classList.remove('done');void el.offsetWidth;el.classList.add('done');sound.play('rare');}
+ }
+ lastGoal=g.name;lastProgress=pct;
+}
+// ---------- Energy refill clock ----------
+function renderEnergyClock(){
+ const t=refillTimes(state,Date.now()),el=$('#energyTimer');
+ el.textContent=t?'+1 '+clock(t.next):'FULL';
+ $('.resource').title=t?`+1 energy every ${REFILL_EVERY/60000} min up to ${REFILL_CAP} · full in ${clock(t.full)}`:`Energy refills to ${REFILL_CAP} on its own`;
+}
 function render(){
  const ending=signalPending(),heard=signalHeard();
  $('#replayNotice').hidden=!replayActive;
@@ -262,7 +287,7 @@ function render(){
  $('.world').classList.toggle('compassFound',state.stage===0&&state.landingStep===1&&state.discovered.includes('chart:tide:1'));
  $('#mapReady').hidden=!readyPlaces(state).length;
  $('.destination').textContent=state.stage===4?'VAULT DISCOVERED':'OPEN THE TIDEGLASS VAULT';
- $('#energy').textContent=state.energy;$('#marks').textContent=state.marks;
+ $('#energy').textContent=state.energy;renderEnergyClock();$('#marks').textContent=state.marks;
  $('#levelNum').textContent=state.level.level;$('#levelPill').style.setProperty('--p',Math.round(100*state.level.xp/xpToNext(state.level.level))+'%');
  $('#levelPill').setAttribute('aria-label',`Expedition level ${state.level.level} · ${state.level.xp}/${xpToNext(state.level.level)} XP`);
  const viewStage=state.stage===0&&state.landingStep===1?1:state.stage;
@@ -272,7 +297,7 @@ function render(){
  $('#chapterLabel').textContent=ending?'CHAPTER 1 · THE SIGNAL':heard?'THE SIGNAL ANSWERS':state.stage===4?'DISCOVERY · THE SKY WITHIN':'THE SALTGLASS REACH';
  $('.objective').dataset.stage=state.stage;$('.objective').dataset.journey=state.stage===4&&!state.journey.infusions?'active':'';
  const baseGoal=visibleGoal(),g=ending?{name:ending.title,phase:ending.phase,next:ending.detail,verb:ending.action,kind:'chapterEnd',needs:[],action:'viewFleet'}:state.stage===3&&!state.journey.kit&&!masteryPending(state).length&&baseGoal?.kind!=='camp'?{...baseGoal,needs:KITS[kitFocus].needs}:baseGoal;$('#goalTitle').textContent=g?.name??'Keep exploring the coast';$('#step').textContent=g?.phase??(state.stage<4?`${state.stage+1} / 4`:'DISCOVERED');
- $('#goalNeeds').innerHTML=ending?`<span class="chapterEndDetail">${ending.detail}</span>`:missionSlots();$('#goalButton').textContent=ending?.status==='complete'?(replayActive?'RESTART REPLAY':'PLAY FROM START'):g?.verb??'Journal';
+ $('#goalNeeds').innerHTML=ending?`<span class="chapterEndDetail">${ending.detail}</span>`:missionSlots();renderProgress(ending?null:g);$('#goalButton').textContent=ending?.status==='complete'?(replayActive?'RESTART REPLAY':'PLAY FROM START'):g?.verb??'Journal';
  const goalReady=ending?true:g?.kind==='camp'?!!g.ready:!!g&&g.action!=='inspect'&&ready(state,g.needs)&&(g.action!=='power'||state.board.includes(null))&&!(state.stage===0&&state.landingStep===0&&state.merges===0);$('#goalButton').hidden=ending?false:g?.kind==='camp'?false:!goalReady||state.stage===2||state.stage===3&&!state.journey.kit;$('#goalButton').disabled=false;
  $('.objective').classList.toggle('ready',goalReady);$('.objective').classList.toggle('crewObjective',g?.kind==='camp');$('.objective').classList.toggle('chapterEndObjective',!!ending);$('.objective').classList.remove('almost');$('#nextUnlock').textContent=g?.next??'';
  if(goalReady)$('#step').textContent=ending?'FINISHED':state.stage===2&&g?.action==='power'?'TAP BELOW':'READY';
@@ -409,7 +434,7 @@ function run(a){
  const rewardOrigin=document.querySelector(a.type==='contract'||a.type==='opportunity'?'#contracts':'.objective')?.getBoundingClientRect();
  const before=state.stage,landingBefore=state.landingStep,from=['produce','press'].includes(a.type)?board.querySelector(`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===a.id)}"]`)?.getBoundingClientRect():null;
  const knownBefore=new Set(state.discovered);const result=act(state,a,now);message.textContent=result.message;
- if(!result.ok)return result;
+ if(!result.ok){const t=refillTimes(state,Date.now());if(a.type==='produce'&&t&&state.energy<(SOURCES[a.id]?.cost??1))message.textContent=`Out of energy. +1 in ${clock(t.next)} · full in ${clock(t.full)}. Deliver an order or recycle to keep going.`;return result;}
  // A camp place restored anywhere gets its story beat; other progress keeps the scene line.
  const restored=doneIds(state).find(id=>CAMP_PLACES.includes(id)&&!placesBefore.includes(id));
  if(restored)setTimeout(()=>$('#coastMap').open?showBeat(restored):sceneBeat(restored),$('#coastMap').open?0:700);
@@ -613,4 +638,9 @@ $('#returnSave').onclick=()=>{
 $('#helpButton').onclick=()=>{$('#journalContent').innerHTML='<h2>The Tideglass Vault</h2><ul><li>MERGE twins to make useful equipment.</li><li>Complete ORDERS to earn restoration supplies. Spend supplies on the Workshop, Pier and Charting Loft to unlock new production and discoveries.</li><li>Make the two route tools, then choose working space or relic supplies. Repair the Stone lift next. Recover buried gear with a spanner, or restore its device with a coil.</li><li>Choose a receiver: Relic finder brings relic supplies; Power bridge gives energy and rich pulls.</li><li>Merge two Violet Shards from Echo Crucible. Use their Loop Cell on the Stone Lift, then activate your chosen receiver to raise the vault rings.</li><li>DELIVER optional supplies, or keep them for the expedition. ••• shows other optional tasks.</li><li>OPEN rewards when you have room. Use a fragment with a sight lens for richer source drops.</li></ul>';$('#journal').showModal();};
 for(const dialog of document.querySelectorAll('dialog')){dialog.querySelector('.close').onclick=()=>dialog.close();dialog.querySelector('.continue')?.addEventListener('click',()=>dialog.close());dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close();});}
 setInterval(()=>{const op=opportunity(state),clock=$('#opClock');if(op&&clock){clock.textContent=op.remaining?(ready(state,op.needs)?'✓ READY · ':'MAKE · ')+Math.ceil(op.remaining/1000)+'s':'PASSED · DISMISS';if(!op.remaining){const card=clock.closest('.contract');card.classList.remove('ready');card.removeAttribute('aria-label');}}},1000);
+// Energy refilled while away is credited on open and named once.
+const away=tick(state,Date.now());
 render();persist();platform.init();
+if(away>0)setTimeout(()=>moment('Welcome back','+'+away+' energy refilled while you were away'),600);
+setInterval(()=>{const gained=tick(state,Date.now());if(gained){render();persist();}else renderEnergyClock();},1000);
+$('.resource').onclick=()=>{const t=refillTimes(state,Date.now());message.textContent=t?`Energy refills +1 every ${REFILL_EVERY/60000} minutes up to ${REFILL_CAP}. Next in ${clock(t.next)} · full in ${clock(t.full)}.`:`Energy is full. It refills on its own up to ${REFILL_CAP}; orders and recycling add more.`;};

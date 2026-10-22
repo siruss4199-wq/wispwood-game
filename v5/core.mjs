@@ -1,4 +1,5 @@
 import {campGoal} from './camp-goals.mjs';
+import {settleEnergy} from './energy.mjs';
 import {freshLevel,validLevel,xpFor,gainXp} from './levels.mjs';
 import {freshMastery,masteryPending,instrumentReady,recordCraftMastery} from './mastery.mjs';
 import {fleetEarned} from './fleet.mjs';
@@ -48,7 +49,7 @@ export function fresh(now=Date.now()){
  for(const i of [19,32])board[i]={type:'rock'};
  ['winch','scope','relay'].forEach((kind,n)=>board[[20,23,31][n]]={type:'site',kind,phase:'idle',progress:0});
  board[24]={type:'route',id:'ridge'};board[27]={type:'route',id:'conduit'};board[34]=container('salvage');
- const state={version:5,board,stage:0,landingStep:0,routePrepared:false,seals:freshSeals(),producerStreak:0,energy:32,marks:0,moves:0,merges:0,contracts:0,serial:0,charges:{rig:7,chart:7,flux:7},taps:{rig:0,chart:0,flux:0},normal:0,opportunity:null,discovery:false,discoveryDone:false,boost:false,post:0,discovered:[],craftMastery:freshMastery(),expedition:expeditionState(),level:freshLevel(),startedAt:now,lastAt:now,rations:0,history:[]};syncRequests(state);workshopState(state);journeyState(state);campState(state);return state;
+ const state={version:5,board,stage:0,landingStep:0,routePrepared:false,seals:freshSeals(),producerStreak:0,energy:32,marks:0,moves:0,merges:0,contracts:0,serial:0,charges:{rig:7,chart:7,flux:7},taps:{rig:0,chart:0,flux:0},normal:0,opportunity:null,discovery:false,discoveryDone:false,boost:false,post:0,discovered:[],craftMastery:freshMastery(),expedition:expeditionState(),level:freshLevel(),energyAt:now,startedAt:now,lastAt:now,rations:0,history:[]};syncRequests(state);workshopState(state);journeyState(state);campState(state);return state;
 }
 export function goal(s){return s.stage===4?(campGoal(s)??expeditionGoal(s)):expeditionGoal(s);}
 export function expeditionGoal(s){
@@ -154,6 +155,9 @@ function activate(s,site){
 }
 // Mutating reducer is intentionally atomic: failed commands leave all state untouched.
 // Every successful action can earn expedition XP; a new level opens a chest.
+// Real-time energy refill, settled by the UI clock (never inside act, so a
+// refused action still leaves the state untouched).
+export function tick(s,now=Date.now()){return settleEnergy(s,now);}
 export function act(s,a,now=Date.now()){
  const order=a?.type==='request'?s.requests?.orders?.find(o=>o?.id===a.id)??null:null;
  const result=step(s,a,now);
@@ -459,6 +463,8 @@ export function load(raw,now=Date.now()){
    }else s.routePrepared=s.stage>=2;
   }
   s.level=validLevel(s.level);
+  // Energy refill clock (added 2026-10-22): older saves start counting now, nothing retroactive.
+  if(!Number.isFinite(s.energyAt)||s.energyAt<0||s.energyAt>now)s.energyAt=now;
   journeyState(s);syncRequests(s);workshopState(s);return s;
  }catch{return fresh(now);}
 }
