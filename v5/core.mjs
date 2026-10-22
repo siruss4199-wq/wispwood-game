@@ -1,446 +1,216 @@
-import {campGoal} from './camp-goals.mjs';
-import {freshMastery,masteryPending,instrumentReady,recordCraftMastery} from './mastery.mjs';
-import {fleetEarned} from './fleet.mjs';
-import {TIDE_NAMES,isTide,maxTier,sameKind,discoveryKey,tideItem,buildLoft,upgradeLoft,recoverTide} from './treasures.mjs';
-import {journeyState,KITS,ENGINE_NEEDS} from './journey.mjs';
-import {campState,buildPier,packPier} from './camp.mjs';
-import {syncRequests,deliverRequest} from './requests.mjs';
-import {workshopState,restoreWorkshop,upgradeWorkshop,fitSpanner} from './workshop.mjs';
-import {container,containerInfo,contents,CONTAINERS} from './containers.mjs';
-import {routePrepared} from './navigation.mjs';
-import {freshSeals,allSeals,circuit,migrateSeals,linkPhase,loopCell,movable,optics,unfold,receivers} from './seals.mjs';
-import {ANCHORS,ROUTES,FINDS,surveyFinds,findSite,canRestore,equipment,anchors,activeAnchors,completedAnchors,trace,expeditionState,installSites} from './expedition.mjs';
-// Vaultwake: deterministic rules, independent of rendering and wall-clock timers.
+// Vaultwake V5 core (state version 6): one loop. Producers make parts, parts
+// merge, merged items restore the coast one task at a time. Deterministic,
+// independent of rendering and wall-clock timers.
+import {TASKS,PRODUCERS} from './chapter.mjs';
+import {container,containerInfo,CONTAINERS} from './containers.mjs';
+import {freshOrders,validOrders,syncOrders,orderProgress,reservedItems,heldNeeds,ordersOpen} from './orders.mjs';
+
 export const SAVE_KEY='vaultwake-v5';
+export const VERSION=6,MAX_ENERGY=100,MAX_TIER=7,MEAL=15;
 export const FAMILIES={
  rig:{name:'Fieldworks',color:'#f27755',source:'rig',names:['Copper offcut','Grip tool','Split spanner','Pocket winch','Crawler jack','Bridge rig','Dune hauler','Expedition crawler']},
  chart:{name:'Wayfinding',color:'#43bfe7',source:'chart',names:['Ink scrap','Route fold','Sight lens','Survey scope','Bearing dial','Star chart','Horizon model','Sky atlas']},
  flux:{name:'Resonance',color:'#ac83fa',source:'flux',names:['Violet shard','Loop cell','Pulse coil','Resonator','Phase lantern','Orbit engine','Vault heart','Aurora beacon']}
 };
-export const SOURCES={rig:{name:'Rivet Rover',cost:1,family:'rig',unlock:0},chart:{name:'Survey Kite',cost:1,family:'chart',unlock:1},flux:{name:'Echo Crucible',cost:2,family:'flux',unlock:2}};
-export const sourceUnlocked=(s,id)=>!!SOURCES[id]&&(s.stage>=SOURCES[id].unlock||(id==='chart'&&s.stage===0&&s.landingStep>=1));
-const req=(family,tier,count=1)=>({family,tier,count});
-export const STAGES=[
- {name:'Clear the landing',verb:'Clear path',scene:'Blocked approach',needs:[req('rig',1)],energy:4,next:'Survey Kite + coast survey',text:'Stabilize the landing. Then combine Fieldworks and Wayfinding to chart a breach.',phase:'LANDING 1 / 2'},
- {name:'Find the buried door',verb:'Excavate',scene:'Excavation camp',needs:[req('rig',4),req('chart',3)],energy:6,next:'Echo Crucible + excavation cache',text:'A crawler jack and survey scope will uncover the entrance.'},
- {name:'Wake the ring engine',verb:'Power rings',scene:'Entrance uncovered',needs:[req('flux',4),req('rig',4)],energy:6,next:'Powered vault + enriched sources',text:'Raise the rings with a lantern and crawler jack.'},
- {name:'Open the Tideglass Vault',verb:'Open vault',scene:'Rings awakened',needs:[req('chart',5),req('flux',5),req('rig',3)],energy:20,next:'The chamber + relic cache',text:'Align a star chart and orbit engine to open the vault.'}
-];
-export const POST_GOALS=[
- {name:'Chart the next crossing',verb:'Chart crossing',scene:'Vault opened',needs:[req('chart',6),req('rig',5)],energy:35,next:'Archive expedition badge'},
- {name:'Build an aurora beacon',verb:'Light beacon',scene:'Vault opened',needs:[req('flux',7)],energy:50,next:'Aurora collector badge'}
-];
-export const nameOf=x=>!x?'Empty space':x.type==='prism'?'Ring reflector':x.type==='site'?ANCHORS[x.kind].name:x.type==='route'?ROUTES[x.id].name:x.type==='item'?(isTide(x)?TIDE_NAMES[x.tier]:FAMILIES[x.family].names[x.tier]):x.type==='source'?SOURCES[x.id].name:x.type==='rock'?'Saltstone blocker':x.type==='marker'?'Buried survey marker':x.type==='lock'?'Dormant relic lock':x.type==='crate'?containerInfo(x).name:x.type==='brace'?'Trail brace':x.type==='glyph'?'Echo fragment':'Buried ground';
-export const item=(family,tier,line)=>({type:'item',family,tier,...(line?{line}:{})});
-const source=id=>({type:'source',id});
+export const SOURCES=Object.fromEntries(Object.entries(PRODUCERS).map(([id,p])=>[id,{name:p.name,cost:1,family:id}]));
+export const item=(family,tier)=>({type:'item',family,tier});
+export const source=id=>({type:'source',id});
+export const matches=(x,r)=>x?.type==='item'&&x.family===r.family&&x.tier===r.tier;
+export const sameKind=(a,b)=>a?.type==='item'&&b?.type==='item'&&a.family===b.family&&a.tier===b.tier;
+export const nameOf=x=>!x?'Empty space':x.type==='item'?FAMILIES[x.family].names[x.tier]:x.type==='source'?PRODUCERS[x.id].name:x.type==='crate'?containerInfo(x).name:'Object';
+export const count=(s,r)=>s.board.filter(x=>matches(x,r)).length;
+export const ready=(s,needs)=>needs.every(r=>count(s,r)>=r.count);
+export const currentTask=s=>TASKS[s.task]??null;
+const valid=i=>Number.isInteger(i)&&i>=0&&i<36;
+const free=s=>s.board.filter(x=>x===null).length;
+const put=(s,x)=>{const i=s.board.indexOf(null);if(i>=0)s.board[i]=x;return i;};
+
+function freshProducers(){return {rig:{unlocked:true,level:1,rich:0},chart:{unlocked:false,level:1,rich:0},flux:{unlocked:false,level:1,rich:0}};}
+
 export function fresh(now=Date.now()){
  const board=Array(36).fill(null);
- board[0]=source('rig');board[5]=source('chart');board[30]=source('flux');
- [[7,'rig',0],[8,'rig',0],[9,'chart',0],[10,'chart',0],[13,'rig',1],[14,'chart',1],[15,'flux',0],[16,'flux',0],[19,'rig',0],[20,'rig',0],[21,'chart',0],[22,'chart',0]].forEach(([i,f,t])=>board[i]=item(f,t));
- // Starter pockets leave nine working spaces; extra saltstone is recoverable salvage.
- for(const [from,to] of [[19,2],[20,18],[21,11],[22,33]]){board[to]=board[from];board[from]=null;}
- for(const i of [24,25,26,27,28,29])board[i]={type:'sealed'};
- for(const i of [19,32])board[i]={type:'rock'};
- ['winch','scope','relay'].forEach((kind,n)=>board[[20,23,31][n]]={type:'site',kind,phase:'idle',progress:0});
- board[24]={type:'route',id:'ridge'};board[27]={type:'route',id:'conduit'};board[34]=container('salvage');
- const state={version:5,board,stage:0,landingStep:0,routePrepared:false,seals:freshSeals(),producerStreak:0,energy:32,marks:0,moves:0,merges:0,contracts:0,serial:0,charges:{rig:7,chart:7,flux:7},taps:{rig:0,chart:0,flux:0},normal:0,opportunity:null,discovery:false,discoveryDone:false,boost:false,post:0,discovered:[],craftMastery:freshMastery(),expedition:expeditionState(),startedAt:now,lastAt:now,rations:0,history:[]};syncRequests(state);workshopState(state);journeyState(state);campState(state);return state;
+ board[0]=source('rig');
+ // A lively first board: the glowing pair, three more pairs, two Grip tools and a parts case.
+ for(const i of [7,8,9,10,14,15,19,20])board[i]=item('rig',0);
+ for(const i of [13,21])board[i]=item('rig',1);
+ board[28]=container('salvage');
+ const s={version:VERSION,board,task:0,choice:null,energy:30,producers:freshProducers(),orders:freshOrders(),
+  taps:{rig:0,chart:0,flux:0},moves:0,merges:0,meals:0,discovered:['rig:0','rig:1'],startedAt:now,lastAt:now};
+ syncOrders(s);return s;
 }
-export function goal(s){return s.stage===4?(campGoal(s)??expeditionGoal(s)):expeditionGoal(s);}
-export function expeditionGoal(s){
- if(s.stage===3&&masteryPending(s).length){
-  return {name:'Choose your expedition specialty',verb:'Equip one instrument',scene:'The rings reveal a sealed passage',needs:[req('rig',4)],action:'inspect',next:'Build and equip ONE instrument. Its producer gains three enriched pulls for your next restoration.',text:'Jack for repair parts, Dial for navigation, or Lantern for power. Choose the chain you want to develop.',phase:'CHOOSE ONE · CRAFT & EQUIP'};
+
+// Item output of one producer tap: rich pulls give a tier-1 part; an upgraded
+// producer gives one every third tap; a roomy board gets a second raw part.
+function produce(s,id){
+ const p=s.producers[id];
+ const rich=p.rich>0||(p.level>1&&(s.taps[id]+1)%3===0);
+ if(p.rich>0)p.rich--;
+ const out=[item(id,rich?1:0)];
+ if(free(s)>10)out.push(item(id,0));
+ s.taps[id]++;
+ return out.map(x=>put(s,x)).filter(i=>i>=0);
+}
+
+function discover(s,x){const key=x.family+':'+x.tier;if(s.discovered.includes(key))return false;s.discovered.push(key);return true;}
+
+function applyReward(s,reward={}){
+ const out={revealed:[],unlocked:null};
+ if(reward.energy)s.energy=Math.min(MAX_ENERGY,s.energy+reward.energy);
+ if(reward.upgrade)s.producers[reward.upgrade].level=2;
+ if(reward.rich){const [id,n]=reward.rich;s.producers[id].rich+=n;}
+ if(reward.unlock&&!s.producers[reward.unlock].unlocked){
+  s.producers[reward.unlock].unlocked=true;
+  const home=PRODUCERS[reward.unlock].home,i=s.board[home]===null?home:s.board.indexOf(null);
+  if(i>=0){s.board[i]=source(reward.unlock);out.unlocked=i;}
  }
- if(s.stage===0&&s.landingStep===1)return {name:'Chart the safe crossing',verb:'View routes',scene:'Survey camp established',needs:[req('chart',2),req('rig',2)],energy:8,next:'Choose a route with prepared equipment',text:'Make a Sight Lens and Split Spanner. Choose which one to use on the crossing.',phase:'LANDING 2 / 2'};
- if(s.stage===1)return {name:'Choose your crossing',verb:'Clear',scene:'Survey worksite',needs:[req('rig',2),req('chart',2)],action:'inspect',next:'Either route unlocks Echo Crucible',text:'Use the spanner for working space, or the lens for relic supplies. Keep the other tool.',phase:'CHOOSE ONE'};
- if(s.stage===2){
-  const receivers=anchors(s).filter(x=>x.kind!=='winch'),stable=s.seals?.stabilization,receiver=receivers.some(x=>x.phase==='done');
-  if(!stable)return {name:'Repair the Stone Lift',verb:'Use equipment',scene:'Entrance uncovered',needs:ready(s,[equipment('winch')])||!s.board.some(x=>x?.type==='rock'&&x.find==='winch')?[equipment('winch')]:[req('rig',2),req('flux',2)],action:'inspect',next:'Open buried ground · recover survey parts',text:'Recover the winch with a spanner, or repair it with a Pulse Coil.',phase:'REPAIR'};
-  if(!receiver)return {name:'Choose your ring receiver',verb:'Choose receiver',scene:'Lift repaired',needs:receivers.filter(x=>x.phase==='idle').map(x=>equipment(x.kind)),action:'inspect',next:'Relic supplies or production boost',text:'Use a Survey Scope for relic supplies, or a Resonator for production.',phase:'CHOOSE ONE'};
-  if(!optics(s).primed)return {name:'Charge the Stone Lift',verb:'Use Loop Cell',scene:'Receiver prepared',needs:[req('flux',1)],action:'prime',next:'Wake your receiver · power the vault rings',text:'Merge Violet Shards from Echo Crucible into a Loop Cell. Use it on the Lift.',phase:'CHARGE'};
-  return {name:'Wake the ring engine',verb:'Activate receiver',scene:'Lift charged',needs:[],action:circuit(s)?'power':'inspect',next:'The rings awaken · vault entrance ready',text:'Activate your prepared receiver to claim its reward and raise the rings.',phase:'ACTIVATE'};
- }
- if(s.stage===3&&!s.journey?.kit)return {name:'Pack for the vault',verb:'Open vault',scene:'Rings awakened',needs:KITS.field.needs,energy:20,action:allSeals(s)?'goal':'inspect',next:'Choose the finds you bring back',text:'Use tools for salvage, or navigation gear for survey finds.',phase:'CHOOSE YOUR FINDS'};
- if(s.stage===4&&!s.journey?.engine)return {name:'Restore the star-ocean engine',verb:'Restore engine',scene:'A living star ocean',needs:ENGINE_NEEDS,action:'restoreEngine',next:'Loop Cells boost a producer of your choice',text:'Tools, a lens and a coil awaken the engine inside the vault.',phase:'VAULT DISCOVERY'};
- if(s.stage===4&&s.journey?.engine&&!s.journey.infusions&&s.journey.boost)return {name:'Use your prepared '+SOURCES[s.journey.boost.family].name,verb:'Use enriched pull',scene:'Star-ocean engine restored',needs:[],action:'useEnriched',next:'Finish these enriched pulls, then charge a producer of your choice with a Loop Cell.',text:'Your expedition instrument still has '+s.journey.boost.left+' enriched pulls.',phase:'YOUR SPECIALTY'};
- if(s.stage===4&&s.journey?.engine&&!s.journey.infusions)return {name:'Choose your first enriched run',verb:'Choose producer',scene:'Star-ocean engine restored',needs:[req('flux',1)],action:'inspect',next:'One Loop Cell · three rich producer pulls',text:'Use a Loop Cell on any producer. Its next three pulls yield richer parts.',phase:'NEW CAPABILITY'};
- if(s.stage===3)return {name:'Open the Tideglass Vault',verb:'Open vault',scene:'Rings awakened',needs:[],energy:20,next:'The chamber + relic cache',text:'All three seals are secured.',action:allSeals(s)?'goal':'inspect'};
- return STAGES[s.stage]??POST_GOALS[s.post]??null;
+ if(reward.case){const i=put(s,container(reward.case));if(i>=0)out.revealed.push(i);else s.energy=Math.min(MAX_ENERGY,s.energy+5);}
+ return out;
 }
-export function count(s,r){return s.board.filter(x=>matches(x,r)).length;}
-export function ready(s,needs){return needs.every(r=>count(s,r)>=r.count);}
-export function matches(x,r){return x?.type==='item'&&x.family===r.family&&x.tier===r.tier&&(x.line??'')===(r.line??'');}
-function consume(s,needs){for(const r of needs)for(let n=0;n<r.count;n++)s.board[s.board.findIndex(x=>matches(x,r))]=null;}
-export function normalContract(s){
- // Keep two cells for wiring, or buy receiver equipment and improved pulls.
- if(s.stage===2&&s.seals?.stabilization&&!s.expedition.vaultTrade){
-  return {title:'Cell exchange',who:'Neri · navigator',needs:[req('flux',1,2)],energy:8,marks:4,exchange:item(s.expedition.route==='conduit'?'flux':'chart',3),surge:true,vaultTrade:true};
- }
- if(s.stage>=2&&s.stage<4&&s.expedition.trades<3){
-  const from=['rig','chart','flux'][s.expedition.trades],to=['chart','flux','rig'][s.expedition.trades];
-  return {title:'Equipment exchange',who:'Neri · navigator',needs:[req(from,3)],energy:6,marks:4,exchange:item(to,3)};
- }
- const early=[{title:'Fuel for the climb',who:'Ivo · quartermaster',needs:[req('rig',1)],energy:12,marks:2},{title:'Mark a safe route',who:'Neri · navigator',needs:[req('chart',2)],energy:16,marks:3},{title:'Anchor the tents',who:'Ivo · quartermaster',needs:[req('rig',2),req('chart',1)],energy:20,marks:4}];
- if(s.normal<3)return early[s.normal];
- const f=s.stage>=2?['rig','chart','flux'][s.normal%3]:['rig','chart'][s.normal%2];
- const tier=1+(s.normal%3);return {title:['Supply run','Equipment exchange','Camp commission'][s.normal%3],who:s.normal%2?'Neri · navigator':'Ivo · quartermaster',needs:[req(f,tier),...(s.normal%3===2?[req('rig',1)]:[])],energy:8+2**tier*(f==='flux'?3:2),marks:3+tier};
+
+function consume(s,needs){
+ const used=[];
+ for(const r of needs)for(let n=0;n<r.count;n++){const i=s.board.findIndex((x,i)=>!used.includes(i)&&matches(x,r));used.push(i);}
+ for(const i of used)s.board[i]=null;
+ return used;
 }
-export function opportunity(s,now=Date.now()){
- if(!s.opportunity)return null;
- return {...s.opportunity,remaining:Math.max(0,s.opportunity.ends-now)};
-}
-export function nextOutput(s,id){
- const n=s.taps[id]+1;
- if(n%9===0)return {type:'glyph'};
- // Late-game anti-grind: reward consecutive dry pulls with one actual pair.
- // This never overrides the scheduled ninth-pull glyph.
- if(s.stage>=3&&(s.producerStreak??0)>=2&&s.journey?.boost?.family!==id){
-  const tier=[3,2,1,0].find(t=>count(s,req(id,t))===1);
-  if(tier!==undefined)return item(id,tier);
- }
- const base=s.boost&&n%3===0?2:n%4===0?1:0;
- return item(id,base+(s.surge>0||s.journey?.boost?.family===id&&s.journey.boost.left>0?1:0));
-}
-// Action-limited, shared across sources: spend the improved pulls where they matter.
-// Never stack or expire while the player thinks. Old saves simply have no active surge.
-function surge(s){s.surge=3;}
-export function near(s,needs){
- const missing=needs.flatMap(r=>Array(Math.max(0,r.count-count(s,r))).fill(r));
- if(!missing.length)return 'READY';
- if(missing.length===1){const r=missing[0];return r.tier>0&&count(s,{family:r.family,tier:r.tier-1,line:r.line})>=2?'1 MERGE AWAY':'1 ITEM LEFT';}
- return '';
-}
-function put(s,x){const i=s.board.indexOf(null);if(i<0)return -1;s.board[i]=x;return i;}
-// Supply rewards are finite, usable material. Never displace a kept object.
-function supplies(s,n=4,delivery=false,kind=null){
- const added=[];const families=s.stage>=2?['rig','chart','flux']:['rig','chart'];
- for(let k=0;k<n&&s.board.filter(Boolean).length<(delivery&&k===0?30:25);k++){
-  const canPack=kind&&!s.board.some(x=>x?.type==='crate'&&x.kind===kind)&&s.board.filter(x=>x?.type==='crate').length<3;
-  const x=k===0?(canPack?container(kind):item(families[s.normal%families.length],1)):item(families[(k+s.normal)%families.length],0);
-  const i=put(s,x);if(i>=0)added.push(i);
- }
- return added;
-}
-// Roomy boards get a second raw part; crowded boards keep their last working spaces.
-export function burstOutput(s,id){return s.board.filter(x=>x===null).length>12||((s.taps[id]+1)%3===0&&s.board.filter(x=>x===null).length>5);}
-// One tap reveals as much as fits. The last find uses the container's own cell.
-// No discarded rewards, automatic inventory replacement or per-item confirmation.
-function unpack(s,index){
- const box=s.board[index],info=containerInfo(box),revealed=[];
- while(box.left>0){
-  const last=box.left===1;if(!last&&!s.board.includes(null))break;
-  const x={...info.outputs[box.left-1]};box.left--;
-  const i=last?(s.board[index]=x,index):put(s,x);revealed.push(i);
- }
- if(box.left===0&&box.kind==='salvage')s.charges.rig=Math.min(7,s.charges.rig+2);
- return revealed;
-}
-function remember(s,event,now){s.history.push({event,at:now});s.history=s.history.slice(-40);}
-function activate(s,site){
- const opened=[],revealed=[];site.phase='done';site.progress=2;delete site.reclaimed;
- const uncover=type=>{for(let i=0;i<36&&opened.length<2;i++)if(s.board[i]?.type===type&&!s.board[i].find){s.board[i]=null;opened.push(i);}};
- if(site.kind==='winch'){uncover('rock');uncover('sealed');for(let n=0;n<2;n++){const i=put(s,item('chart',1));if(i>=0)revealed.push(i);}}
- else if(site.kind==='scope'){uncover('sealed');surge(s);for(let n=0;n<2;n++){const i=put(s,item('flux',0));if(i>=0)revealed.push(i);}}
- else {for(const id of Object.keys(SOURCES))s.charges[id]=7;surge(s);}
- for(let n=0;n<2&&s.board.filter(Boolean).length<24;n++){const i=put(s,item(ANCHORS[site.kind].drive,0));if(i>=0)revealed.push(i);}
- trace(s,'device-used',{kind:site.kind,crossFamily:ANCHORS[site.kind].drive,opened,revealed});
- if(site.kind==='winch'&&s.seals&&!s.seals.stabilization){s.seals.stabilization=true;trace(s,'seal',{seal:'stabilization',method:'repair'});}
- return {opened,revealed};
-}
-// Mutating reducer is intentionally atomic: failed commands leave all state untouched.
+
+export function taskNeeds(s,choice=s.choice){const t=currentTask(s);if(!t)return [];return t.choices?(t.choices[choice]?.needs??[]):t.needs;}
+
+// Mutating reducer, atomic: a failed command leaves the state untouched.
 export function act(s,a,now=Date.now()){
  const fail=message=>({ok:false,message});
- if(a.type==='useEnriched'){
-  const id=s.journey?.boost?.family;if(!id)return fail('No enriched pulls remain.');
-  return act(s,{type:s.charges[id]?'produce':'service',id},now);
- }
- // Acknowledging a story changes only its receipt, never gameplay resources.
- if(a.type==='viewFleet'){
-  if(!fleetEarned(s))return fail('Merge two Celestial Sextants to discover the Ocean Crown.');
-  s.camp.fleetViewed=true;
-  return {ok:true,message:'Chapter 1 mystery milestone reached · camp orders and optional discoveries continue.',event:'story',index:null};
- }
- const done=(message,event='action',index=null)=>{s.moves++;s.lastAt=now;syncRequests(s);if(event!=='produce')s.producerStreak=0;installSites(s);unfold(s);if(event==='milestone')remember(s,event,now);for(const x of s.board)if(x?.type==='item'){const key=discoveryKey(x);if(!s.discovered.includes(key))s.discovered.push(key);}return {ok:true,message,event,index};};
- const valid=i=>Number.isInteger(i)&&i>=0&&i<36;
- if(a.type==='prepareInstrument'){
-  if(s.stage!==3||!masteryPending(s).length)return fail('Your expedition is already prepared.');
-  if(!instrumentReady(s,a.family))return fail('Merge this instrument yourself, then equip it from the objective.');
-  consume(s,[req(a.family,4)]);s.journey.instrument=a.family;s.journey.boost={family:a.family,left:3};
-  trace(s,'instrument-equipped',{family:a.family});
-  return done('Expedition equipped · '+SOURCES[a.family].name+' gains three enriched pulls. Choose your Vault kit.','milestone');
- }
- if(a.type==='restoreEngine'){
-  if(s.stage!==4||s.journey?.engine||!ready(s,ENGINE_NEEDS))return fail('Bring a Split Spanner, Sight Lens and Pulse Coil to the vault engine.');
-  consume(s,ENGINE_NEEDS);s.journey.engine=true;put(s,item('flux',1));trace(s,'engine-restored');
-  return done('Star-ocean engine restored · use the returned Loop Cell on a producer.','milestone');
- }
- if(a.type==='infuse'){
-  const from=a.from??s.board.findIndex(loopCell);
-  if(!s.journey?.engine||!SOURCES[a.id]||!sourceUnlocked(s,a.id)||!valid(from)||!loopCell(s.board[from]))return fail('Use a Loop Cell on a producer after restoring the vault engine.');
-  if(s.journey.boost?.left)return fail('Use your remaining enriched pulls before charging another run.');
-  s.board[from]=null;s.journey.boost={family:a.id,left:3};s.journey.infusions++;trace(s,'infusion',{family:a.id});
-  return done(SOURCES[a.id].name+' · three enriched pulls ready. Normal energy and charges apply.','discovery',s.board.findIndex(x=>x?.type==='source'&&x.id===a.id));
- }
- if(a.type==='upgradeLoft'){const r=upgradeLoft(s);return r.ok?done(r.message,'loft'):r;}
- if(a.type==='buildLoft'){const r=buildLoft(s);return r.ok?done(r.message,'loft'):r;}
- if(a.type==='recoverTide'){const r=recoverTide(s);return r.ok?done(r.message,'tide',r.index):r;}
- if(a.type==='buildPier'){const result=buildPier(s,container);return result.ok?{...done(result.message,'campBuild',result.index),reveal:[result.index]}:result;}
- if(a.type==='packPier'){const result=packPier(s,a.family,container,sourceUnlocked);return result.ok?{...done(result.message,'campPack',result.index),reveal:[result.index]}:result;}
- if(a.type==='restoreWorkshop'){const result=restoreWorkshop(s);return result.ok?done(result.message,'restoration'):result;}
- if(a.type==='upgradeWorkshop'){const result=upgradeWorkshop(s);return result.ok?done(result.message,'restoration'):result;}
- if(a.type==='fitSpanner'){const result=fitSpanner(s);return result.ok?done(result.message,'manufacture',result.index):result;}
- if(a.type==='press'){
-  if(!s.workshop?.repaired)return fail('Restore the Coastal Workshop to unlock the tool press.');
-  if(!s.board.some(x=>x?.type==='source'&&x.id==='rig'))return fail('Rivet Rover missing.');
-  if(!s.charges.rig)return fail('Service Rivet Rover first.');
-  if(s.energy<2)return fail('Tool press needs 2 energy.');
-  if(!s.board.includes(null))return fail('Make space: merge or deliver an item first.');
-  const i=put(s,item('rig',1));s.energy-=2;s.charges.rig--;s.workshop.presses++;
-  return done('Grip tool pressed · 2 energy · one Rover charge','produce',i);
- }
- if(a.type==='request'){
-  const result=deliverRequest(s,a.id);if(!result.ok)return result;s.contracts++;
-  // Each delivery frees a consumed item cell. The first two deliveries after
-  // landing earn real fragments, without replacing supplies or requiring a Loft.
-  let fragment=-1;
-  if(sourceUnlocked(s,'chart')&&(s.camp.earlyFragments??0)<2){
-   fragment=put(s,tideItem(0));
-   if(fragment>=0)s.camp.earlyFragments=(s.camp.earlyFragments??0)+1;
-  }
-  return {...done(result.message+(fragment>=0?' · Tide Dial Fragment earned! Merge two into a Reef Compass.':''),'contract',fragment>=0?fragment:null),reward:result.reward,...(fragment>=0?{reveal:[fragment],tideFragment:true}:{})};
- }
+ const done=(message,event,index=null,extra={})=>{s.moves++;s.lastAt=now;syncOrders(s);return {ok:true,message,event,index,...extra};};
  if(a.type==='merge'||a.type==='move'){
   if(!valid(a.from)||!valid(a.to)||a.from===a.to)return fail('Choose another space.');
   const x=s.board[a.from],y=s.board[a.to];
-  if(!movable(x))return fail('That object stays here.');
-  // Reflectors are equipment, never merge ingredients. Swap with kept stock
-  // even on a full board; a wrong placement can always be undone.
-  if(x.type==='prism'&&movable(y)||y?.type==='prism'&&movable(x)){
-   s.board[a.to]=x;s.board[a.from]=y;trace(s,'reflector-move',{from:a.from,to:a.to,swapped:true});return done('Reflector repositioned.','move',a.to);
-  }
+  if(x?.type!=='item'&&x?.type!=='crate')return fail('That stays where it is.');
   if(!y){s.board[a.to]=x;s.board[a.from]=null;return done('Moved.','move',a.to);}
-  if(!sameKind(x,y)||x.tier>=maxTier(x,s))return fail('Merge two identical objects.');
-  if(!isTide(x)&&x.tier===3&&anchors(s).some(site=>site.phase==='idle'&&ANCHORS[site.kind].equipment===x.family))trace(s,'kept-for-merge',{family:x.family});
-  s.board[a.to]=item(x.family,x.tier+1,x.line);s.board[a.from]=null;s.merges++;const bonus=s.merges%3===0?1:0;s.energy=Math.min(120,s.energy+bonus);
-  const crafted=s.board[a.to];
-  const craftedMilestone=recordCraftMastery(s,crafted);
-  const firstCraft=crafted.tier>=2&&!s.discovered.includes(discoveryKey(crafted));
-  if(isTide(crafted)){const tideDiscovery=!s.discovered.includes(discoveryKey(crafted));return {...done(nameOf(crafted)+' · fulfill tide orders or keep your collection.','merge',a.to),tideDiscovery};}
-  const resupply=firstCraft&&s.stage<4?supplies(s,3):[];
-  // A newly crafted device brings a named, useful cross-family find. Use the
-  // merge-freed cell when crowded; never hide rewards in a counter.
-  let discoveryReward=null;
-  if(firstCraft&&crafted.tier===3){const kind={rig:'survey',chart:'relic',flux:'salvage'}[crafted.family],family={rig:'chart',chart:'flux',flux:'rig'}[crafted.family];const loose=s.stage<3||s.board.filter(x=>x?.type==='crate').length>=2;const i=put(s,loose?item(family,1):container(kind));if(i>=0)discoveryReward={index:i,kind,loose};}
-  // Large assemblies return reusable offcuts, keeping expensive merges from hollowing the tray.
-  const offcuts=!firstCraft&&crafted.tier>=3&&s.board.filter(Boolean).length<23;
-  if(offcuts)put(s,item(crafted.family,0));
-  const chainFind=false;
-  const breakthrough=firstCraft&&crafted.tier>=3;
-  if(breakthrough){s.charges[crafted.family]=Math.min(7,s.charges[crafted.family]+2);if(crafted.tier>=5)s.energy=Math.min(120,s.energy+4);}
-  return {...done(`${nameOf(crafted)}${craftedMilestone?' · crew instrument calibrated':''}${breakthrough?' · source recharged':''}${resupply.length?' · expedition supplies':''}${bonus?' · +1 energy':''}`,'merge',a.to),breakthrough,newDiscovery:firstCraft,discoveryReward,craftedMilestone};
+  if(!sameKind(x,y))return fail('Merge two identical parts.');
+  if(x.tier>=MAX_TIER)return fail('That part is already complete.');
+  const made=item(x.family,x.tier+1);s.board[a.to]=made;s.board[a.from]=null;s.merges++;
+  const first=discover(s,made);if(first&&made.tier>=2)s.energy=Math.min(MAX_ENERGY,s.energy+2);
+  return done(nameOf(made)+(first?' · new discovery':''),'merge',a.to,{made,first});
  }
  if(a.type==='produce'){
-  const p=SOURCES[a.id];if(!p||!sourceUnlocked(s,a.id))return fail(`Unlock after ${a.id==='chart'?'stabilizing the landing':'opening a breach'}.`);
-  if(!s.board.some(x=>x?.type==='source'&&x.id===a.id))return fail('Source missing.');
-  if(!s.charges[a.id])return fail('Service this source: a grip tool or 3 energy.');
-  if(s.energy<p.cost)return fail('Deliver a contract, recycle an item, or use a field ration.');
-  if(!s.board.includes(null))return fail('Board full. Merge, deliver, recycle, or clear a blocker.');
-  const enriched=s.journey?.boost?.family===a.id&&s.journey.boost.left>0,surged=s.surge>0||enriched,burst=burstOutput(s,a.id),x=nextOutput(s,a.id),i=put(s,x);const windfall=burst&&(s.taps[a.id]+1)%7===0;const bonusIndex=burst?put(s,item(a.id,windfall?1:0)):-1;s.energy-=p.cost;s.charges[a.id]--;s.taps[a.id]++;s.producerStreak=(s.producerStreak??0)+1;
-  if(x.type!=='glyph'){if(enriched){s.journey.boost.left--;if(!s.journey.boost.left)s.journey.boost=null;}else if(s.surge>0)s.surge--;}
-  if(x.type==='glyph')s.discovery=true;
-  return {...done(x.type==='glyph'?'Echo fragment found! A discovery awaits.':`${nameOf(x)}${windfall?' + bonus tool!':burst?' + raw part':''} · ${s.charges[a.id]} charges left`,'produce',i),bonus:windfall?a.id:null,improved:surged&&x.type==='item',reveal:windfall?[i,bonusIndex]:[]};
+  const p=s.producers[a.id];
+  if(!p?.unlocked)return fail('Not repaired yet.');
+  if(!s.board.some(x=>x?.type==='source'&&x.id===a.id))return fail('Producer missing.');
+  if(s.energy<1)return fail('Out of energy. Deliver a crew order or take a field meal.');
+  if(!free(s))return fail('Board full. Merge, deliver or recycle a part.');
+  s.energy--;const revealed=produce(s,a.id);
+  const x=s.board[revealed[0]];discover(s,x);
+  return done(nameOf(x)+(revealed.length>1?' + raw part':''),'produce',revealed[0],{reveal:revealed,improved:x.tier>0});
  }
- if(a.type==='service'){
-  if(!SOURCES[a.id]||!sourceUnlocked(s,a.id)||s.charges[a.id]>0)return fail('This source does not need service.');
-  const r=req('rig',1);
-  if(a.useTool){if(!ready(s,[r]))return fail('Make a grip tool first.');consume(s,[r]);}
-  else {if(s.energy<3)return fail('Need 3 energy or a grip tool.');s.energy-=3;}
-  s.charges[a.id]=7;
-  const restocked=s.board.filter(Boolean).length<22;if(restocked){put(s,item(a.id,0));put(s,item(a.id,0));}
-  return done(`Seven fresh charges.${restocked?' Two spare parts unpacked.':''}`,'service');
- }
- if(a.type==='breach'){
-  const x=s.board[a.index],r=ROUTES[x?.id];
-  if(s.stage!==1||!s.routePrepared||x?.type!=='route'||!r)return fail('Survey the crossing, then choose one breach.');
-  const need=req(r.family,2),from=a.from??s.board.findIndex(x=>matches(x,need));if(!valid(from)||!matches(s.board[from],need))return fail(`Bring a ${FAMILIES[r.family].names[2]}.`);
-  s.board[from]=null;s.expedition.route=x.id;s.stage=2;s.discovery=true;
-  s.seals.navigation=true;trace(s,'seal',{seal:'navigation',method:'prepared-route',route:x.id});
-  for(let i=r.start;i<r.start+3;i++)s.board[i]=null;
-  s.board[r.start]={type:'glyph'};
-  if(x.id==='ridge')s.board[r.start+1]=item('rig',1);
-  else {s.board[r.start+1]=item('flux',2);s.board[r.start+2]=container('relic');surge(s);}
-  s.energy=Math.min(120,s.energy+6);trace(s,'breach',{route:x.id});
-  return {...done(`${r.name} opened · ${r.benefit} · Echo Crucible unlocked.`,'milestone',a.index),opened:[r.start,r.start+1,r.start+2]};
- }
- if(a.type==='deploy'){
-  const site=s.board[a.index];if(s.stage<2||site?.type!=='site'||site.phase!=='idle')return fail('Choose an unused device.');
-  const need=equipment(site.kind),from=a.from??s.board.findIndex(x=>matches(x,need));
-  if(!valid(from)||!matches(s.board[from],need))return fail(`Use a ${FAMILIES[need.family].names[3]}.`);
-  trace(s,'deployment',{kind:site.kind,family:need.family,contractAlternative:normalContract(s).needs.some(r=>matches(s.board[from],r)),mergeAvailable:count(s,need)>=2});
-  s.board[from]=null;site.repair='recover';const before=s.stage,change=activate(s,site);
-  return {...done(ANCHORS[site.kind].effect,s.stage>before?'milestone':'deployment',a.index),reveal:change.revealed,opened:change.opened};
- }
- if(a.type==='restore'){
-  const rock=s.board[a.index];if(!valid(a.index)||!canRestore(s,rock))return fail('Choose surveyed machinery that is not restored yet.');
-  const from=a.from??s.board.findIndex(x=>matches(x,req('flux',2)));
-  if(!valid(from)||!matches(s.board[from],req('flux',2)))return fail('Use a pulse coil to restore this machinery.');
-  const site=findSite(s,rock),siteIndex=s.board.indexOf(site),before=s.stage;
-  trace(s,'find-choice',{choice:'restore',kind:rock.find,spent:'flux',keptAlternative:'recover'});
-  trace(s,'deployment',{kind:site.kind,family:'flux',method:'restore',mergeAvailable:count(s,req('flux',2))>=2});
-  s.board[from]=null;s.board[a.index]=null;site.repair='restore';const change=activate(s,site);
-  return {...done(ANCHORS[site.kind].effect,s.stage>before?'milestone':'deployment',siteIndex),reveal:change.revealed,opened:[a.index,...change.opened],restored:siteIndex};
- }
- if(a.type==='power'){
-  const path=circuit(s,a.index);if(!path)return fail('Charge the repaired Lift, then choose a prepared receiver.');
-  if(!s.board.includes(null))return fail('Merge or deliver one item to make room for the receiver reward.');
-  const receiver=s.board[path.at(-1)].kind;let reward;
-  s.seals.resonance=true;s.seals.link=path;s.stage=3;s.energy=Math.min(120,s.energy+6);
-  if(receiver==='relay'){for(const id of Object.keys(SOURCES))s.charges[id]=7;surge(s);reward=put(s,item('rig',3));}
-  else reward=put(s,container('relic',5));
-  trace(s,'seal',{seal:'resonance',method:'charged-receiver',path,receiver});trace(s,'powered');
-  return {...done(receiver==='relay'?'Rings online · pocket winch recovered · three rich pulls':'Rings online · a sealed relic ampoule recovered','milestone',path.at(-1)),reveal:[reward],opened:[]};
- }
- if(a.type==='prime'){
-  const from=a.from??s.board.findIndex(loopCell),lift=s.board.findIndex(x=>x?.type==='site'&&x.kind==='winch'&&x.phase==='done');
-  if(!linkPhase(s)||optics(s).primed||lift<0||!valid(from)||!loopCell(s.board[from])||a.index!==undefined&&a.index!==lift)return fail('Use one Loop Cell on the repaired lift.');
-  s.board[from]=null;s.seals.optics={...optics(s),primed:true};trace(s,'engine-charged');return done('Lift charged · activate your prepared receiver.','deployment',lift);
- }
- if(a.type==='goal'){
-  if(s.stage===3&&masteryPending(s).length)return fail('Craft and equip one expedition instrument before opening the Vault.');
-  if(s.stage===3&&!allSeals(s))return fail('Resolve all three vault seals first.');
-  // Order-funded camp restorations sit on the main path: the crossing gear is
-  // fitted in Ivo's Workshop, and the vault expedition sails from the Pier.
-  if(s.stage===0&&s.landingStep===1&&!s.workshop?.repaired)return fail('Restore the Coastal Workshop first. Ivo fits the crossing gear there.');
-  if(s.stage===3&&!s.camp?.pier)return fail('Build the Supply Pier first. The vault expedition sails from it.');
-  if(s.stage===3&&a.kit&&!KITS[a.kit])return fail('Choose a salvage or survey kit.');
-  const kit=s.stage===3&&!s.journey?.kit?(KITS[a.kit]?a.kit:Object.keys(KITS).find(k=>ready(s,KITS[k].needs))):null;
-  const g=kit?{...expeditionGoal(s),needs:KITS[kit].needs}:expeditionGoal(s);if(s.stage===3&&!s.journey?.kit&&!kit)return fail('Prepare a salvage or survey kit.');if(!g||g.action&&g.action!=='goal'||!ready(s,g.needs))return fail('Make the highlighted expedition items.');
-  if(kit&&s.board.filter(x=>!x||['sealed','route'].includes(x.type)).length+2<3)return fail('Make one free space for your vault finds.');
-  // Crossing survey is a preparation milestone, not a delivery.
-  // Consuming both route tools here made the player craft them twice.
-  const routeSurvey=s.stage===0&&s.landingStep===1;
-  if(routeSurvey){s.routePrepared=true;surveyFinds(s);}
-  else consume(s,g.needs);
-  if(kit){s.journey.kit=kit;trace(s,'vault-kit',{kit});}
-  s.energy=Math.min(120,s.energy+g.energy);
-  // The first reward opens a new producer and changes the camp, but not the main stage.
-  if(s.stage===0&&s.landingStep===0){
-   s.landingStep=1;
-   put(s,item('chart',0));put(s,item('rig',0));
-   trace(s,'landing-secured',{chartOnline:true});
-   return done('Landing secured · Survey Kite online · field parts received. Chart the crossing next.','milestone');
+ if(a.type==='open'){
+  const box=s.board[a.index];if(!valid(a.index)||box?.type!=='crate')return fail('Choose a supply case.');
+  const outputs=containerInfo(box).outputs,revealed=[];
+  while(box.left>0){
+   const last=box.left===1;if(!last&&!s.board.includes(null))break;
+   const x={...outputs[box.left-1]};box.left--;
+   const i=last?(s.board[a.index]=x,a.index):put(s,x);revealed.push(i);discover(s,x);
   }
-  if(s.stage<4){if(s.stage===0)s.landingStep=2;s.stage++;
-   if(s.stage===4){for(let i=0;i<36;i++)if(['sealed','route'].includes(s.board[i]?.type))s.board[i]=null;const packed=s.board.find(x=>x?.type==='crate'&&x.kind==='relic');if(kit){const family=kit==='field'?'rig':'chart';for(const tier of [2,1,1])put(s,item(family,tier));}else if(packed)packed.left=5;else put(s,container('relic',5));s.marks+=15;trace(s,'vault',{discovered:[...s.discovered]});}
-  }else{s.post++;s.marks+=10;}
-  // Before the Vault rewards are raw parts and rich pulls, never finished tier-2+ parts.
-  supplies(s,6,false,s.stage===2?'relic':null);
-  if(s.stage===1||s.stage===2)surge(s);
-  return done(s.stage===4&&s.post===0?'The Tideglass Vault is open. The sky inside is moving.':g.next,'milestone');
- }
- if(a.type==='contract'){
-  const c=normalContract(s);if(!ready(s,c.needs))return fail('Make the highlighted contract items.');
-  consume(s,c.needs);s.energy=Math.min(120,s.energy+c.energy);s.marks+=c.marks;s.normal++;s.contracts++;
-  if(c.exchange){put(s,{...c.exchange});if(c.vaultTrade)s.expedition.vaultTrade=true;else s.expedition.trades++;trace(s,c.vaultTrade?'vault-diversion':'exchange',{from:c.needs[0].family,to:c.exchange.family,spentTier:c.needs[0].tier});}
-  const shipment=c.exchange?[]:supplies(s,4,true,{rig:'salvage',chart:'survey',flux:'relic'}[c.needs[0].family]);
-  if(c.surge)surge(s);
-  return done(`${c.exchange?nameOf(c.exchange)+' received':'Supplies secured'}${shipment.length?' · field supplies':''}${c.surge?' · 3 rich pulls':''} · +${c.energy} energy`,'contract');
- }
- if(a.type==='startOpportunity'){
-  if(s.stage<1||s.opportunity)return fail('One opportunity at a time.');
-  s.opportunity={needs:[req(s.stage>=2?'flux':'chart',3)],energy:12,marks:8,ends:now+180000};return done('Signal window started · three minutes.');
- }
- if(a.type==='opportunity'){
-  if(!s.opportunity)return fail('No active signal.');
-  if(now>s.opportunity.ends){s.opportunity=null;return done('Signal passed. No items lost.');}
-  if(!ready(s,s.opportunity.needs))return fail('Make the highlighted signal item.');
-  consume(s,s.opportunity.needs);s.energy=Math.min(120,s.energy+s.opportunity.energy);s.marks+=8;s.opportunity=null;s.contracts++;supplies(s,4,true,'survey');surge(s);return done('Signal reached · Supply Surge: choose your next 3 improved pulls','contract');
- }
- if(a.type==='discovery'){
-  const i=s.board.findIndex(x=>x?.type==='glyph');
-  if(i<0||!ready(s,[req('chart',2)]))return fail('Decode an echo fragment with a sight lens.');
-  if(s.discoveryDone)return fail('Fragment already decoded. Recycle extras for energy.');
-  s.board[i]=null;consume(s,[req('chart',2)]);s.discoveryDone=true;s.boost=true;s.energy=Math.min(120,s.energy+8);s.marks+=6;supplies(s,4,true,'relic');
-  trace(s,'decoded',{alternative:activeAnchors(s).length>0});
-  return done('Hidden cache located. All sources now yield richer parts.','discovery');
- }
- if(a.type==='branch'){
-  if(!valid(a.index)||!matches(s.board[a.index],req('rig',2)))return fail('A split spanner can become a trail brace.');
-  s.board[a.index]={type:'brace'};return done('Trail brace built. Tap a saltstone blocker to clear it.','branch',a.index);
- }
- if(a.type==='clear'){
-  if(!valid(a.index)||s.board[a.index]?.type!=='rock')return fail('Choose saltstone.');
-  const b=a.from??s.board.findIndex(x=>x?.type==='brace'||matches(x,req('rig',2)));if(!valid(b)||!(s.board[b]?.type==='brace'||matches(s.board[b],req('rig',2))))return fail('Use a split spanner to clear this stone.');
-  const find=s.board[a.index].find;
-  if(FINDS[find]){
-   s.board[b]=null;s.board[a.index]=item(FINDS[find].family,3);
-   trace(s,'brace-clear');trace(s,'find-choice',{choice:'recover',kind:find,spent:'rig',keptAlternative:'restore'});
-   return {...done(`${nameOf(s.board[a.index])} recovered · keep, trade, or use on its device`,'clear',a.index),reveal:[a.index],recovered:true};
-  }
-  s.board[b]=null;s.board[a.index]=container('locker');
-  trace(s,'brace-clear');
-  const revealed=unpack(s,a.index);surge(s);return {...done('Saltbound Locker revealed · Supply Surge: 3 improved pulls','clear',a.index),reveal:revealed,containerKind:'locker'};
- }
- if(a.type==='crate'){
-  if(!valid(a.index)||s.board[a.index]?.type!=='crate')return fail('Choose a reward container.');
-  const box=s.board[a.index],kind=box.kind??'locker',name=containerInfo(box).name;
-  if(box.left>1&&!s.board.includes(null))return fail('Merge or move a loose item out first. This reward is safely packed.');
-  const revealed=unpack(s,a.index);
-  return {...done(`${name} · ${revealed.length} finds${s.board[a.index]?.type==='crate'?' · rest safely packed':''}`,'container',a.index),reveal:revealed,containerKind:kind};
+  if(!revealed.length)return fail('Board full. Merge or deliver a part first.');
+  return done(containerInfo(box).name+' · '+revealed.length+' parts','container',a.index,{reveal:revealed,kind:box.kind});
  }
  if(a.type==='recycle'){
-  if(!valid(a.index))return fail('Choose an item.');const x=s.board[a.index];
-  if(!x||!['item','glyph','brace'].includes(x.type))return fail('Only loose items can be recycled.');
-  if(isTide(x))return fail('Tide treasures are Neri’s clues. Merge twins or deliver a tide order.');
-  const gain=x.type==='item'?Math.max(1,2**x.tier):x.type==='glyph'?5:3;s.board[a.index]=null;s.energy=Math.min(120,s.energy+gain);return done(`Recycled · +${gain} energy`,'recycle');
+  const x=s.board[a.index];if(!valid(a.index)||x?.type!=='item')return fail('Choose a part.');
+  if(reservedItems(s).has(a.index)&&count(s,x)<=heldNeeds(s).filter(r=>matches(x,r)).reduce((n,r)=>n+r.count,0))return fail('The current task needs this part.');
+  const gain=Math.max(1,x.tier);s.board[a.index]=null;s.energy=Math.min(MAX_ENERGY,s.energy+gain);
+  return done('Recycled · +'+gain+' energy','recycle',a.index);
  }
- if(a.type==='ration'){
-  if(s.energy>3)return fail('Field rations are reserved for low energy.');
-  s.energy+=12;s.rations++;return done('Field ration · +12 energy. No waiting required.','ration');
+ if(a.type==='meal'){
+  if(s.energy>=1)return fail('Meals are for an empty energy bar.');
+  s.energy=MEAL;s.meals++;return done('Field meal · +'+MEAL+' energy','meal');
+ }
+ if(a.type==='order'){
+  const lane=s.orders.lanes.findIndex(o=>o?.id===a.id);if(lane<0)return fail('That order has changed.');
+  const o=s.orders.lanes[lane],p=orderProgress(s,o);
+  if(!p.ready)return fail(p.progress.some(r=>r.held)?'The coast task is holding that part. Make a spare.':'Make the requested part first.');
+  for(const i of p.indices)s.board[i]=null;
+  s.energy=Math.min(MAX_ENERGY,s.energy+o.energy);s.orders.completed++;s.orders.seq[lane]++;s.orders.lanes[lane]=null;
+  const reward=o.case?applyReward(s,{case:o.case}):{revealed:[]};
+  return done(o.who+' · +'+o.energy+' energy'+(o.case?' · supply case':''),'order',null,{order:o,used:p.indices,reveal:reward.revealed});
+ }
+ if(a.type==='task'){
+  const t=currentTask(s);if(!t)return fail('The chapter is complete.');
+  const choice=t.choices?a.choice:null;
+  if(t.choices&&!t.choices[choice])return fail('Choose Ridge or Conduit.');
+  const needs=t.choices?t.choices[choice].needs:t.needs;
+  if(!ready(s,needs))return fail('Make the parts this task needs.');
+  const used=consume(s,needs);
+  if(choice)s.choice=choice;
+  const reward=applyReward(s,t.reward);
+  if(choice){const extra=applyReward(s,t.choices[choice].reward);reward.revealed.push(...extra.revealed);}
+  s.task++;
+  if(t.reward.orders)syncOrders(s);
+  return done(t.choices?t.choices[choice].line:t.line,'task',null,{task:t,choice,used,reveal:reward.revealed,unlocked:reward.unlocked});
  }
  return fail('Unknown action.');
 }
-export function load(raw,now=Date.now()){
- try{
-  const s=JSON.parse(raw);if(s?.version!==5||!Array.isArray(s.board)||s.board.length!==36)return fresh(now);
-  const integer=(v,min,max)=>Number.isInteger(v)&&v>=min&&v<=max;
-  if(!integer(s.stage,0,4)||!integer(s.energy,0,120)||!integer(s.post,0,2))return fresh(now);
-  // V5 save migration: retain older board/progress when landingStep was absent.
-  if(s.landingStep===undefined)s.landingStep=s.stage===0?0:2;
-  if(!integer(s.landingStep,0,2)||s.stage===0&&s.landingStep===2)return fresh(now);
-  if(s.stage>0)s.landingStep=2;
-  for(const x of s.board){if(x===null)continue;if(!x||typeof x!=='object')return fresh(now);
-   if(x.type==='item'){if(!FAMILIES[x.family]||!integer(x.tier,0,maxTier(x))||x.line!==undefined&&(!isTide(x)||x.family!=='chart'))return fresh(now);}
-   else if(x.type==='source'){if(!SOURCES[x.id])return fresh(now);}
-   else if(x.type==='crate'){if(!integer(x.left,1,5)||x.kind!==undefined&&!CONTAINERS[x.kind])return fresh(now);x.kind??='locker';}
-   else if(x.type==='site'){if(!ANCHORS[x.kind]||!['idle','active','done'].includes(x.phase)||!integer(x.progress,0,2)||x.phase==='idle'&&x.progress!==0||x.phase==='done'&&x.progress!==2||x.phase==='active'&&x.progress>1||x.reclaimed!==undefined&&typeof x.reclaimed!=='boolean')return fresh(now);}
-   else if(x.type==='route'){if(!ROUTES[x.id])return fresh(now);}
-   else if(x.type==='prism'){if(!integer(x.id,0,1)||!integer(x.turn,0,1))return fresh(now);}
-   else if(!['glyph','brace','rock','sealed','marker','lock'].includes(x.type))return fresh(now);
-   if(x.type==='rock'&&x.find!==undefined&&!FINDS[x.find])delete x.find;
-  }
-  for(const id of Object.keys(SOURCES))if(!integer(s.charges?.[id],0,7)||!integer(s.taps?.[id],0,1000000)||s.board.filter(x=>x?.type==='source'&&x.id===id).length!==1)return fresh(now);
-  for(const k of ['normal','moves','merges','marks','contracts','rations'])if(!integer(s[k],0,1000000))return fresh(now);
-  if(!Array.isArray(s.discovered)||!s.discovered.every(x=>typeof x==='string'&&/^((rig|chart|flux):[0-7]|chart:tide:[0-4])$/.test(x)))return fresh(now);
-  if(s.opportunity&&(!Number.isFinite(s.opportunity.ends)||!Array.isArray(s.opportunity.needs)||s.opportunity.needs.length!==1||!['chart','flux'].includes(s.opportunity.needs[0]?.family)||s.opportunity.needs[0].tier!==3||s.opportunity.needs[0].count!==1))s.opportunity=null;
-  if(s.opportunity)s.opportunity.energy=s.opportunity.energy===28?28:12;
-  s.history=Array.isArray(s.history)?s.history.filter(x=>x?.event==='milestone'&&Number.isFinite(x.at)).slice(-40):[];
-  if(s.surge!==undefined&& !integer(s.surge,0,3))delete s.surge;
-  if(!s.expedition){
-   s.expedition=expeditionState(s.stage);
-   if(s.stage<2)for(const [id,r] of Object.entries(ROUTES))if(s.board[r.start]?.type==='sealed')s.board[r.start]={type:'route',id};
-  }else if(![1,2].includes(s.expedition.version)||!integer(s.expedition.trades,0,3)||s.expedition.route!==null&&!ROUTES[s.expedition.route])return fresh(now);
-  if(s.expedition.vaultTrade!==undefined&&typeof s.expedition.vaultTrade!=='boolean')delete s.expedition.vaultTrade;
-  s.expedition.log=Array.isArray(s.expedition.log)?s.expedition.log.filter(x=>x&&typeof x.type==='string'&&integer(x.move,0,1000000)).slice(-200):[];
-  installSites(s);migrateSeals(s);campState(s);if(s.expedition.version===1){for(const site of anchors(s))if(site.phase==='active')activate(s,site);s.expedition.version=2;}delete s.mission;
-  if(!integer(s.producerStreak,0,1000000))s.producerStreak=0;
-  // Idempotent migration from older V5 builds whose survey already
-  // consumed both route ingredients. Keep all existing board progress.
-  if(s.routePrepared!==true){
-   if(s.stage===1){
-    for(const family of ['rig','chart'])if(count(s,req(family,2))===0)put(s,item(family,2));
-    s.routePrepared=true;
-   }else s.routePrepared=s.stage>=2;
-  }
-  journeyState(s);syncRequests(s);workshopState(s);return s;
- }catch{return fresh(now);}
+
+// ---------- Saves ----------
+const integer=(v,min,max)=>Number.isInteger(v)&&v>=min&&v<=max;
+function validBoard(board){
+ if(!Array.isArray(board)||board.length!==36)return false;
+ return board.every(x=>x===null||x?.type==='item'&&FAMILIES[x.family]&&integer(x.tier,0,MAX_TIER)||x?.type==='source'&&PRODUCERS[x.id]||x?.type==='crate'&&CONTAINERS[x.kind]&&integer(x.left,1,3));
 }
+
+export function load(raw,now=Date.now()){
+ let s;try{s=JSON.parse(raw);}catch{return fresh(now);}
+ if(s?.version===5)s=migrateV5(s,now);
+ if(s?.version!==VERSION||!validBoard(s.board)||!integer(s.task,0,TASKS.length)||!integer(s.energy,0,MAX_ENERGY))return fresh(now);
+ const p=freshProducers();
+ for(const id of Object.keys(p))if(s.producers?.[id]){p[id]={unlocked:id==='rig'||s.producers[id].unlocked===true,level:s.producers[id].level===2?2:1,rich:integer(s.producers[id].rich,0,20)?s.producers[id].rich:0};}
+ s.producers=p;
+ s.choice=['ridge','conduit'].includes(s.choice)?s.choice:null;
+ s.orders=validOrders(s.orders);
+ s.orders.lanes=s.orders.lanes.map(o=>o&&s.producers[o.needs[0].family].unlocked?o:null);
+ for(const k of ['moves','merges','meals'])if(!integer(s[k],0,1e7))s[k]=0;
+ s.taps={rig:integer(s.taps?.rig,0,1e7)?s.taps.rig:0,chart:integer(s.taps?.chart,0,1e7)?s.taps.chart:0,flux:integer(s.taps?.flux,0,1e7)?s.taps.flux:0};
+ s.discovered=Array.isArray(s.discovered)?s.discovered.filter(x=>typeof x==='string'&&/^(rig|chart|flux):[0-7]$/.test(x)):[];
+ // Every unlocked producer is on the board; never a locked one.
+ for(const id of Object.keys(PRODUCERS)){
+  const at=s.board.findIndex(x=>x?.type==='source'&&x.id===id);
+  if(!s.producers[id].unlocked&&at>=0)s.board[at]=null;
+  if(s.producers[id].unlocked&&at<0){const home=PRODUCERS[id].home,i=s.board[home]===null?home:s.board.indexOf(null);if(i>=0)s.board[i]=source(id);else{const r=s.board.findIndex(x=>x?.type==='item');s.board[r]=source(id);}}
+ }
+ if(!Number.isFinite(s.startedAt))s.startedAt=now;
+ if(!Number.isFinite(s.lastAt))s.lastAt=now;
+ syncOrders(s);
+ return s;
+}
+
+// Version 5 → 6: furthest earned progress becomes completed tasks (sequential),
+// the crossing choice is kept, items/producers/cases stay, board fixtures leave.
+export function migrateV5(old,now=Date.now()){
+ const stage=integer(old.stage,0,4)?old.stage:0,landing=old.landingStep??(stage?2:0);
+ const sites=(old.board??[]).filter(x=>x?.type==='site');
+ const receiver=sites.some(x=>x.kind!=='winch'&&x.phase==='done');
+ const done=['path',
+  (old.camp?.earlyFragments??0)>=1?'brace':null,
+  (old.camp?.earlyFragments??0)>=2||old.camp?.pier?'deck':null,
+  old.discovered?.includes('chart:tide:1')?'table':null,
+  old.workshop?.repaired?'workshop':null,
+  stage>=1?'survey':null,stage>=2?'crossing':null,
+  old.seals?.stabilization||stage>=3?'lift':null,receiver||stage>=3?'beacon':null,
+  stage>=3?'rings':null,stage>=4?'vault':null,old.camp?.fleetViewed?'signal':null];
+ let task=0;
+ if(stage>0||landing>=1)for(const [i,id] of done.entries())if(id)task=Math.max(task,i+1);
+ const board=Array(36).fill(null);
+ (old.board??[]).forEach((x,i)=>{
+  if(x?.type==='item'&&FAMILIES[x.family]&&integer(x.tier,0,MAX_TIER))board[i]=item(x.family,x.tier);
+  else if(x?.type==='source'&&PRODUCERS[x.id])board[i]=source(x.id);
+  else if(x?.type==='crate'&&integer(x.left,1,5))board[i]=container(CONTAINERS[x.kind]?x.kind:'locker',Math.min(3,x.left));
+ });
+ const producers=freshProducers();
+ if(task>=3)producers.chart.unlocked=true;
+ if(task>=7)producers.flux.unlocked=true;
+ if(task>=5)producers.rig.level=2;
+ const choice=old.expedition?.route==='ridge'||old.expedition?.route==='conduit'?old.expedition.route:null;
+ if(task>=7)producers[choice==='conduit'?'chart':'rig'].level=2;
+ return {version:VERSION,board,task,choice:task>=7?choice??'ridge':null,energy:Math.max(10,Math.min(MAX_ENERGY,integer(old.energy,0,1000)?old.energy:40)),producers,orders:freshOrders(),
+  taps:{rig:old.taps?.rig??0,chart:old.taps?.chart??0,flux:old.taps?.flux??0},moves:old.moves??0,merges:old.merges??0,meals:0,
+  discovered:(old.discovered??[]).filter(x=>/^(rig|chart|flux):[0-7]$/.test(x)),startedAt:old.startedAt??now,lastAt:now,migratedFrom:5};
+}
+
+export {TASKS,reservedItems,heldNeeds,orderProgress,ordersOpen};
