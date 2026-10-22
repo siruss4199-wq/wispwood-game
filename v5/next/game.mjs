@@ -173,13 +173,21 @@ export const newestGenerator=s=>[...GENERATOR_ORDER].reverse().find(g=>sourceOpe
 // opened, so the board opens outward from the camp one ring at a time; cargo
 // further in keeps even its key hidden.
 const neighbours=i=>{const [r,c]=cellPos(i);return [[r-1,c],[r+1,c],[r,c-1],[r,c+1]].map(([rr,cc])=>rr<0||cc<0||rr>6||cc>6?-1:cc===6?36+rr:rr===6?43+cc:rr*6+cc).filter(j=>j>=0);};
-export const reachable=(s,i)=>s.board[i]?.type==='cargo'&&neighbours(i).some(j=>!['cargo','glass'].includes(s.board[j]?.type));
+// The tide covers the board's outer ring, one side at a time, until the beach has enough
+// upgrades (build 19, user: "board bas hurdan l tseverlegdeed baina"; the board's space now
+// grows with the story): left side after 3 upgrades, bottom 6, right 9, top 12. Nothing
+// under the tide opens or cracks; the cells keep what they hold.
+export const TIDE=Object.fromEntries(Array.from({length:BOARD_SIZE},(_,i)=>{const [r,c]=cellPos(i);return [i,r===0?12:c===6?9:r===6?6:c===0?3:0];}).filter(([,n])=>n));
+export const tideLocked=(s,i)=>(TIDE[i]??0)>builtCount(s);
+export const reachable=(s,i)=>s.board[i]?.type==='cargo'&&!tideLocked(s,i)&&neighbours(i).some(j=>!['cargo','glass'].includes(s.board[j]?.type));
 // Which part each reachable cargo is waiting for.
 export const cargoKeys=s=>s.board.flatMap((x,i)=>reachable(s,i)?[{index:i,...x.key}]:[]);
-// A merge on cell i cracks the tideglass beside it; the last crack frees the part.
-function crack(s,i){
+// A merge on cell i cracks the tideglass beside it, if what it makes is at least as strong
+// as the part in the glass (build 19: small merges no longer chip it); the last crack frees
+// the part. Glass under the tide does not crack.
+function crack(s,i,power=Infinity){
  const cracked=[],freed=[];
- for(const j of neighbours(i)){const g=s.board[j];if(g?.type!=='glass')continue;
+ for(const j of neighbours(i)){const g=s.board[j];if(g?.type!=='glass'||power<g.tier||tideLocked(s,j))continue;
   g.cracks=(g.cracks??0)+1;if(g.cracks>=GLASS_HITS){s.board[j]=item(g.family,g.tier);freed.push(j);}else cracked.push(j);}
  return {cracked,freed,bonus:freed.length*XP.unseal};
 }
@@ -200,11 +208,11 @@ function gainXp(s,amount){
  while(s.level.xp>=xpToNext(s.level.level)){
   s.level.xp-=xpToNext(s.level.level);s.level.level++;
   const families=openFamilies(s).filter(g=>g!=='flux'),family=families[(s.level.level-2)%families.length];
-  // Odd levels from 5 bring a copy of a generator you have, to merge with it.
-  const copy=s.level.level>=5&&s.level.level%2===1;
-  const index=put(s,copy?source(family):kit(family,1));const energy=CHEST_ENERGY+(index<0?5:0);
+  // A driftwood crate of a generator you have (generators themselves come from the beach's
+  // stages only since build 19).
+  const index=put(s,kit(family,1));const energy=CHEST_ENERGY+(index<0?5:0);
   s.energy=Math.min(MAX_ENERGY,s.energy+energy);
-  ups.push({level:s.level.level,energy,family:index<0?null:family,index,...(copy&&index>=0?{generator:family}:{})});
+  ups.push({level:s.level.level,energy,family:index<0?null:family,index});
  }
  return ups;
 }
@@ -293,12 +301,12 @@ function step(s,a,now){
    if(y?.type==='source')return fail('Crates give parts. To level a generator up, merge it with another of the same kind and level.');
    if(!kitsMerge(x,y))return fail(y?.type==='kit'&&x.size===MAX_KIT_SIZE?`A ${CRATES[MAX_KIT_SIZE-1]} is as big as crates get. Open it for its parts.`:'Merge two unopened crates of the same kind and size.');
    s.board[to]=kit(x.family,x.size+1);s.board[from]=null;s.merges++;
-   return withCracks({ok:true,event:'merge',index:to,xp:XP.merge,message:nameOf(s.board[to])},crack(s,to));
+   return withCracks({ok:true,event:'merge',index:to,xp:XP.merge,message:nameOf(s.board[to])},crack(s,to,x.size+1));
   }
   if(y.type!=='item'||y.family!==x.family||y.tier!==x.tier)return fail('Merge two identical parts.');
   if(x.tier>=maxTier(x.family))return fail('This is the top of its chain.');
   s.board[to]=item(x.family,x.tier+1);s.board[from]=null;s.merges++;
-  return withCracks({ok:true,event:'merge',index:to,xp:XP.merge,message:nameOf(s.board[to])},crack(s,to));
+  return withCracks({ok:true,event:'merge',index:to,xp:XP.merge,message:nameOf(s.board[to])},crack(s,to,x.tier+1));
  }
  if(a.type==='openKit'){
   const box=valid(a.index)?s.board[a.index]:null;if(box?.type!=='kit')return fail('Choose a crate.');

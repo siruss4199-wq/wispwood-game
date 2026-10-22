@@ -112,3 +112,9 @@
 .beachCount{margin:8px 16px 0;font-size:13px;font-weight:800;color:#5f7380;letter-spacing:.04em}
 .place .pips{margin:2px 0}
 .backToBoard{display:block;margin:6px auto 4px;min-height:48px;padding:0 22px;border-radius:14px}
+
+/* The tide (build 19): the outer ring stays under water until the beach has enough upgrades. */
+#board .tile.tide::after{content:"";position:absolute;inset:0;border-radius:inherit;background:linear-gradient(180deg,#5fb6d6aa,#2f7fa8cc);pointer-events:none}
+#board .tile.tide .art{filter:saturate(.6) brightness(.85)}
+.tideBadge{position:absolute;z-index:2;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:2px;padding:2px 6px;border-radius:10px;background:#0f4f6bdd;color:#e8fbff;font-size:13px;font-weight:900;line-height:1}
+.tideBadge .wave{width:16px;height:9px}
