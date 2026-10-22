@@ -25,13 +25,16 @@ function wanted(s){
  const t=target(s);if(t){const k=t.family+t.tier;want.set(k,(want.get(k)??0)+1);}
  return want;
 }
+// Two parts merge on whichever space has more tideglass beside it (merges there crack it).
+const glassBeside=(b,i)=>near(i).filter(j=>b[j]?.type==='glass').length;
+const pairMerge=(b,i,j)=>glassBeside(b,i)>glassBeside(b,j)?{type:'merge',from:j,to:i}:{type:'merge',from:i,to:j};
 export function nextAction(s){
  const b=s.board,t=nextTask(s);
  if(t&&s.stars>=t.cost)return {type:'restore',id:t.id};
  // Curious: the crate on the way to a glowing one opens first, even before deliveries.
  {const g=target(s),have=g?b.findIndex(x=>matches(x,g)):-1;if(have>=0)return {type:'unseal',from:have,index:g.index};}
  // After two orders, the key on the way to a new kind of generator is made first.
- {const g=s.ordersDone>=2?target(s):null;if(g?.newKind)for(let tier=g.tier-1;tier>=0;tier--){const pair=b.flatMap((x,i)=>matches(x,{family:g.family,tier})?[i]:[]);if(pair.length>=2)return {type:'merge',from:pair[0],to:pair[1]};}}
+ {const g=s.ordersDone>=2?target(s):null;if(g?.newKind)for(let tier=g.tier-1;tier>=0;tier--){const pair=b.flatMap((x,i)=>matches(x,{family:g.family,tier})?[i]:[]);if(pair.length>=2)return pairMerge(b,pair[0],pair[1]);}}
  for(const o of s.orders)if(orderItems(s,o))return {type:'deliver',id:o.id};
  // Open cargo with a part no order is waiting for (generator cargo first).
  const orderWant=new Map();for(const o of s.orders)for(const r of o.needs)orderWant.set(r.family+r.tier,(orderWant.get(r.family+r.tier)??0)+r.count);
@@ -42,8 +45,6 @@ export function nextAction(s){
  // Merge two identical generators into a stronger one.
  const gens=b.flatMap((x,i)=>x?.type==='source'?[i]:[]);
  for(const i of gens)for(const j of gens)if(i!==j&&generatorsMerge(b[i],b[j]))return {type:'merge',from:j>i?j:i,to:j>i?i:j};
- // Break tideglass with a spare twin (the part comes free one tier up).
- for(let j=0;j<b.length;j++)if(b[j]?.type==='glass'){const i=b.findIndex(x=>x?.type==='item'&&x.family===b[j].family&&x.tier===b[j].tier);if(i>=0&&count(s,b[j])>(orderWant.get(b[j].family+b[j].tier)??0))return {type:'merge',from:i,to:j};}
  const kits=b.flatMap((x,i)=>x?.type==='kit'?[i]:[]);
  for(const i of kits)for(const j of kits)if(i!==j&&kitsMerge(b[i],b[j]))return {type:'merge',from:i,to:j};
  const want=wanted(s),free=b.filter(x=>x===null).length;
@@ -52,10 +53,10 @@ export function nextAction(s){
  const keep=(i)=>{const x=b[i];const n=want.get(x.family+x.tier)??0;return n>0&&count(s,x)<=n;};
  for(const r of needs)for(let tier=r.tier-1;tier>=0;tier--){
   const pair=b.flatMap((x,i)=>matches(x,{family:r.family,tier})&&!keep(i)?[i]:[]);
-  if(pair.length>=2)return {type:'merge',from:pair[0],to:pair[1]};
+  if(pair.length>=2)return pairMerge(b,pair[0],pair[1]);
  }
  // Any spare pair (keeps the board from clogging and digs the sand).
- for(let i=0;i<b.length;i++){const x=b[i];if(x?.type!=='item'||keep(i))continue;const j=b.findIndex((y,j)=>j>i&&matches(y,x)&&!keep(j));if(j>=0&&x.tier<maxTier(x.family))return {type:'merge',from:i,to:j};}
+ for(let i=0;i<b.length;i++){const x=b[i];if(x?.type!=='item'||keep(i))continue;const j=b.findIndex((y,j)=>j>i&&matches(y,x)&&!keep(j));if(j>=0&&x.tier<maxTier(x.family))return pairMerge(b,i,j);}
  // A started box, or one that cannot grow further, before paying energy.
  const open=kits.find(i=>!kitFull(b[i])||b[i].size===MAX_KIT_SIZE||free<=3||s.energy<4);
  if(open!==undefined&&free>0)return {type:'openKit',index:open};

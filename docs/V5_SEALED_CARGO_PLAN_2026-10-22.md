@@ -123,8 +123,8 @@ left the shells and lamps unfound, so the Grip tool stays.
 - **Rivet Rover in the middle.** The camp is the 3×3 square at the centre of the 7×7
   board (cells 14–16, 20–22, 26–28; the Rover on 21). Cargo and tideglass fill the two
   rings around it: 30 crates and 10 glass cells. Nine crates touch the camp at the start.
-- **Keys need well-merged parts.** Next to the camp: Split spanners (tier 3) and Sight
-  lenses; one crate straight above the Rover opens with a tier-2 part to teach it. The
+- **Keys need well-merged parts.** Next to the camp: Pocket winches (Rover tier 3) and Survey
+  scopes (Kite tier 3); one crate straight above the Rover opens with a Split spanner (tier 2) to teach it. The
   outer ring wants tier 3–4 parts of every chain. The Survey Kite sits in a corner behind
   a crate (or the Split-spanner glass beside it) and opens with a Crawler jack (tier 4).
   Crates that cost more pay more: energy +10/+18, star pouches +3 to +10.
@@ -138,3 +138,20 @@ left the shells and lamps unfound, so the Grip tool stays.
   energy 0–11 at the end; an order-only player takes 18–27 min with Rivet Rover alone.
 - Saves: no shape change (still version 3). A build-9 camp keeps its own board; only new
   camps get the centre layout.
+
+## Build 11 — tideglass cracks from merges beside it (user: "Hairtsag mus 2 neeh yalgaa alga, zugeer l design uur bolhoos neg uuregtei baina")
+Cargo and tideglass both opened by laying one particular part on them. They now work
+differently:
+- **Cargo** (unchanged): a deliberate job. It shows the part it wants; lay that part on
+  it and it is used up; what is inside is a surprise.
+- **Tideglass**: takes no part. Every merge (parts, crates or generators) in a space
+  beside it cracks it; the second breaks it and the part inside is free as it is, nothing
+  used up (`GLASS_HITS`=2, `crack()` in `v5/next/game.mjs`). Where you merge now matters,
+  and glass opens by itself as you work near it. Laying a part on glass is refused.
+- Glass contents: the three beside the camp stay (Split spanner, Route fold, Rope coil);
+  the outer seven are one tier higher than in build 9, since they no longer turn a twin
+  into the next tier. Cracked glass shows dark crack lines; a crack shakes it.
+- Saves: glass may carry `cracks` (0–1); build-9/10 glass without it loads as uncracked.
+- Scripted player (now merges beside glass when it can): the camp's three glass cells
+  break in the first 1–3 minutes, the outer ones as the board opens (7 of 10 broken by
+  the end); Landing Beach in 35–49 min at 4–6 s per action as in build 10.

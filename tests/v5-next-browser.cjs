@@ -59,6 +59,10 @@ async function perform(page,a){
    await page.goto(URL+'?new=1');await page.waitForSelector('#board .tile');await closeBeats(page);
    assert.equal((await read(page)).moves,0);assert.equal(new globalThis.URL(page.url()).search,'');
    assert.equal(await page.evaluate(()=>localStorage.getItem('vaultwake-v5')),classic,'Classic save still untouched');
+   // Tideglass takes no part: a merge in the camp space beside it (14) cracks it.
+   await page.locator('#board [data-index="16"]').tap();await page.locator('#board [data-index="14"]').tap();
+   await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).board[13].cracks===1,null,{timeout:4000});
+   assert.equal(await page.locator('#board [data-index="13"].glass.cracked').count(),1,'the glass beside the merge shows its crack');
    // Generators grow by merging: drag a second Rivet Rover onto the first.
    await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.board[15]={type:'source',id:'rig'};localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
    await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);

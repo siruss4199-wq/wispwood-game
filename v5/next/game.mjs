@@ -77,8 +77,11 @@ const CARGO_CELLS=[
  [4,0,'chart',4,S(10)],[3,0,'rig',4,K('rig',2)],[2,0,'shell',4,G('shell')]
 ];
 export const CARGO=Object.fromEntries(CARGO_CELLS.map(([r,c,f,tier,find])=>[at(r,c),[f,tier,find]]));
-// Tideglass: a part locked in glass near the generator that makes it; merge a free twin onto it.
-export const GLASS=Object.fromEntries([[2,1,'rig',2],[3,5,'chart',1],[5,3,'rope',1],[0,0,'chart',2],[0,6,'shell',1],[5,6,'lamp',1],[6,5,'lamp',0],[6,2,'rope',2],[5,0,'rope',0],[1,0,'shell',0]].map(([r,c,f,tier])=>[at(r,c),[f,tier]]));
+// Tideglass: a part locked in glass near the generator that makes it. It does not take a
+// key like cargo: merges in the spaces beside it crack it, and the second breaks it and
+// frees the part as it is (user, 2026-10-22: "hairtsag mus 2 neeh yalgaa alga").
+export const GLASS=Object.fromEntries([[2,1,'rig',2],[3,5,'chart',1],[5,3,'rope',1],[0,0,'chart',3],[0,6,'shell',2],[5,6,'lamp',2],[6,5,'lamp',1],[6,2,'rope',3],[5,0,'rope',1],[1,0,'shell',1]].map(([r,c,f,tier])=>[at(r,c),[f,tier]]));
+export const GLASS_HITS=2;
 export const glass=(family,tier)=>({type:'glass',family,tier});
 export const cargoAt=i=>{const c=CARGO[i];return c?cargo({family:c[0],tier:c[1]},structuredClone(c[2])):null;};
 export function fresh(now=Date.now()){
@@ -146,6 +149,14 @@ const neighbours=i=>{const [r,c]=cellPos(i);return [[r-1,c],[r+1,c],[r,c-1],[r,c
 export const reachable=(s,i)=>s.board[i]?.type==='cargo'&&neighbours(i).some(j=>!['cargo','glass'].includes(s.board[j]?.type));
 // Which part each reachable cargo is waiting for.
 export const cargoKeys=s=>s.board.flatMap((x,i)=>reachable(s,i)?[{index:i,...x.key}]:[]);
+// A merge on cell i cracks the tideglass beside it; the last crack frees the part.
+function crack(s,i){
+ const cracked=[],freed=[];
+ for(const j of neighbours(i)){const g=s.board[j];if(g?.type!=='glass')continue;
+  g.cracks=(g.cracks??0)+1;if(g.cracks>=GLASS_HITS){s.board[j]=item(g.family,g.tier);freed.push(j);}else cracked.push(j);}
+ return {cracked,freed,bonus:freed.length*XP.unseal};
+}
+const withCracks=(r,c)=>{if(c.cracked.length)r.cracked=c.cracked;if(c.freed.length){r.broken=c.freed;r.xp+=c.bonus;r.message+=' · the tideglass breaks';}else if(c.cracked.length)r.message+=' · the tideglass cracks';return r;};
 
 // ---- levels ----
 function gainXp(s,amount){
@@ -200,7 +211,7 @@ function step(s,a,now){
    if(!y){s.board[to]=x;s.board[from]=null;return {ok:true,event:'move',index:to,message:'Moved.'};}
    if(!generatorsMerge(x,y))return fail(y?.type==='source'&&y.id===x.id&&producerLevel(y)>=MAX_GENERATOR_LEVEL?`${SOURCES[x.id].name} is at its top level.`:'Merge two generators of the same kind and level.');
    y.level=producerLevel(y)+1;s.board[from]=null;
-   return {ok:true,event:'producerUp',index:to,xp:XP.feed,message:`${SOURCES[y.id].name} reaches level ${y.level}`};
+   return withCracks({ok:true,event:'producerUp',index:to,xp:XP.feed,message:`${SOURCES[y.id].name} reaches level ${y.level}`},crack(s,to));
   }
   // A part laid on the cargo it opens is used up, and the cargo opens.
   if(y?.type==='cargo'){
@@ -210,24 +221,18 @@ function step(s,a,now){
    return {ok:true,event:'unseal',index:to,opened,xp:XP.unseal,message:'Cargo opened · '+(opened.type==='source'?'a new generator: '+SOURCES[opened.id].name+'!':opened.type==='jar'?`+${opened.energy} energy`:opened.type==='stars'?`+${opened.stars} ★`:opened.type==='space'?'empty':nameOf(s.board[to]))};
   }
   if(a.type==='unseal')return fail('Lay the part on the cargo it opens.');
-  // A free twin breaks the tideglass: the part comes free one tier up.
-  if(y?.type==='glass'){
-   if(x.type!=='item'||x.family!==y.family||x.tier!==y.tier)return fail(`Merge a free ${CHAINS[y.family].names[y.tier]} onto it to break the glass.`);
-   if(y.tier>=maxTier(y.family))return fail('This is the top of its chain.');
-   s.board[to]=item(y.family,y.tier+1);s.board[from]=null;s.merges++;
-   return {ok:true,event:'merge',freed:true,index:to,xp:XP.merge+1,message:'The tideglass breaks · '+nameOf(s.board[to])};
-  }
+  if(y?.type==='glass')return fail(`Tideglass takes no part. Merge in a space beside it: ${GLASS_HITS} merges break it.`);
   if(!y){s.board[to]=x;s.board[from]=null;return {ok:true,event:'move',index:to,message:'Moved.'};}
   if(x.type==='kit'){
    if(y?.type==='source')return fail('Crates give parts. To level a generator up, merge it with another of the same kind and level.');
    if(!kitsMerge(x,y))return fail(y?.type==='kit'&&x.size===MAX_KIT_SIZE?`A ${CRATES[MAX_KIT_SIZE-1]} is as big as crates get. Open it for its parts.`:'Merge two unopened crates of the same kind and size.');
    s.board[to]=kit(x.family,x.size+1);s.board[from]=null;s.merges++;
-   return {ok:true,event:'merge',index:to,xp:XP.merge,message:nameOf(s.board[to])};
+   return withCracks({ok:true,event:'merge',index:to,xp:XP.merge,message:nameOf(s.board[to])},crack(s,to));
   }
   if(y.type!=='item'||y.family!==x.family||y.tier!==x.tier)return fail('Merge two identical parts.');
   if(x.tier>=maxTier(x.family))return fail('This is the top of its chain.');
   s.board[to]=item(x.family,x.tier+1);s.board[from]=null;s.merges++;
-  return {ok:true,event:'merge',index:to,xp:XP.merge,message:nameOf(s.board[to])};
+  return withCracks({ok:true,event:'merge',index:to,xp:XP.merge,message:nameOf(s.board[to])},crack(s,to));
  }
  if(a.type==='openKit'){
   const box=valid(a.index)?s.board[a.index]:null;if(box?.type!=='kit')return fail('Choose a crate.');
@@ -290,7 +295,7 @@ function validCell(x){
  if(x.type==='source')return !!SOURCES[x.id]&&validProducerLevel(x);
  if(x.type==='kit')return validCrate(x);
  if(x.type==='cargo')return !!x.key&&validItem(x.key)&&validFind(x.find);
- if(x.type==='glass')return validItem(x)&&x.tier<maxTier(x.family);
+ if(x.type==='glass')return validItem(x)&&x.tier<maxTier(x.family)&&(x.cracks===undefined||integer(x.cracks,0,GLASS_HITS-1));
  return false;
 }
 const validNeed=r=>r&&CHAINS[r.family]&&integer(r.tier,0,maxTier(r.family))&&integer(r.count,1,4);

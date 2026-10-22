@@ -199,18 +199,28 @@ test('build-4 (tide) and build-3 (sand) saves load as sealed cargo, keeping ever
  const t=load(JSON.stringify(v1),5);assert.equal(t.version,3);assert.equal(t.moves,33);assert.ok(!t.board.some(x=>['sand','gate','water'].includes(x?.type)));
 });
 
-test('tideglass: a free twin breaks it and the part comes free one tier up; each generator finds glass of its own chain',()=>{
+test('tideglass takes no part: merges beside it crack it, the second breaks it and frees the part as it is',()=>{
  const s=fresh(0);
- assert.deepEqual(s.board[13],{type:'glass',family:'rig',tier:2},'a Split spanner in glass beside the camp teaches it');
- refused(s,{type:'merge',from:14,to:13});// a Copper offcut does not break it
+ assert.deepEqual(s.board[13],{type:'glass',family:'rig',tier:2},'a Split spanner in glass beside the camp');
+ s.board[15]=item('rig',2);
+ assert.match(refused(s,{type:'merge',from:15,to:13}).message,/beside it/,'even its twin cannot be laid on it (that is what cargo does)');
  refused(s,{type:'move',from:13,to:15});refused(s,{type:'recycle',index:13});
  // Glass is not open ground: cargo behind it stays sealed until the glass breaks.
  assert.ok(!cargoKeys(s).some(k=>k.index===12));
- s.board[15]=item('rig',2);const r=ok(s,{type:'merge',from:15,to:13});assert.equal(r.freed,true);assert.deepEqual(s.board[13],item('rig',3));assert.equal(s.board[15],null);assert.equal(r.xp,2);
- assert.ok(cargoKeys(s).some(k=>k.index===12));
+ // Merge two Copper offcuts on 14, the camp space beside the glass: it cracks.
+ s.board[20]=item('rig',0);const r=ok(s,{type:'merge',from:16,to:14});
+ assert.deepEqual(r.cracked,[13]);assert.equal(r.broken,undefined);assert.equal(s.board[13].cracks,1);assert.match(r.message,/cracks/);
+ // A merge elsewhere does nothing to it.
+ s.board[22]=item('rig',0);s.board[26]=item('rig',0);ok(s,{type:'merge',from:22,to:26});assert.equal(s.board[13].cracks,1);
+ // The second merge beside it breaks it: the Split spanner is free, nothing was used up.
+ s.board[15]=item('rig',1);const t=ok(s,{type:'merge',from:15,to:14});
+ assert.deepEqual(t.broken,[13]);assert.deepEqual(s.board[13],item('rig',2));assert.equal(t.xp,3);assert.match(t.message,/breaks/);
+ assert.ok(cargoKeys(s).some(k=>k.index===12),'the cargo behind it now shows its key');
  // Glass of every generator's chain lies near where it is found.
  const fams=Object.values(GLASS).map(g=>g[0]);for(const f of ['rig','chart','rope','shell','lamp'])assert.ok(fams.includes(f),f);
- // Saves keep glass; malformed glass starts fresh.
- const t=fresh(0);assert.deepEqual(load(JSON.stringify(t),5).board[0],t.board[0]);assert.equal(t.board[0].type,'glass');
- t.board[0]={type:'glass',family:'rig',tier:7};t.moves=3;assert.equal(load(JSON.stringify(t),5).moves,0);
+ // Saves keep glass and its cracks; a build-9 save with uncracked glass still loads; malformed glass starts fresh.
+ const u=fresh(0);u.board[0].cracks=1;u.moves=3;assert.deepEqual(load(JSON.stringify(u),5).board[0],{type:'glass',family:'chart',tier:3,cracks:1});
+ const old=fresh(0);delete old.board[0].cracks;old.moves=4;assert.equal(load(JSON.stringify(old),5).moves,4);
+ for(const f of [x=>x.board[0]={type:'glass',family:'rig',tier:7},x=>x.board[0].cracks=2,x=>x.board[0].cracks=-1]){const v=fresh(0);v.moves=3;f(v);assert.equal(load(JSON.stringify(v),5).moves,0,f.toString());}
 });
+
