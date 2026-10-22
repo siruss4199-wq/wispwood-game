@@ -1,5 +1,5 @@
-// Item chains for Coast Camp. Each generator makes more than one chain, and new
-// chains open as the generator levels up (user, 2026-10-22: "A+B hiigeed uz").
+// Item chains for Coast Camp: one generator, one chain (docs/V5_SEALED_CARGO_PLAN).
+// New generators are found in sealed cargo opened with the previous one's parts.
 // The three Classic chains keep their art; the new ones are drawn here in the same
 // style (100×100, the shared material gradients, a soft ground shadow).
 import {FAMILIES} from '../core.mjs';
@@ -8,14 +8,21 @@ import {MATERIALS} from '../objects.mjs';
 
 export const CHAINS={
  rig:{gen:'rig',names:FAMILIES.rig.names},
- rope:{gen:'rig',names:['Frayed twine','Rope coil','Fishing net','Pulley block','Rope ladder','Cargo hoist']},
- lamp:{gen:'rig',names:['Candle stub','Tin lantern','Storm lantern','Signal lamp','Beacon lens']},
+ rope:{gen:'rope',names:['Frayed twine','Rope coil','Fishing net','Pulley block','Rope ladder','Cargo hoist']},
+ lamp:{gen:'lamp',names:['Candle stub','Tin lantern','Storm lantern','Signal lamp','Beacon lens']},
  chart:{gen:'chart',names:FAMILIES.chart.names},
- shell:{gen:'chart',names:['Sand dollar','Cockle shell','Conch','Pearl oyster','Nautilus','Coral crown']},
+ shell:{gen:'shell',names:['Sand dollar','Cockle shell','Conch','Pearl oyster','Nautilus','Coral crown']},
  flux:{gen:'flux',names:FAMILIES.flux.names}
 };
-// Generator → its chains and the generator level each one needs.
-export const GENERATOR_CHAINS={rig:[['rig',1],['rope',2],['lamp',3]],chart:[['chart',1],['shell',2]],flux:[['flux',1]]};
+// Generator → its chain (the level column stays for saves and future use).
+export const GENERATOR_CHAINS={rig:[['rig',1]],chart:[['chart',1]],rope:[['rope',1]],shell:[['shell',1]],lamp:[['lamp',1]],flux:[['flux',1]]};
+export const GENERATOR_NAMES={rig:'Rivet Rover',chart:'Survey Kite',rope:'Rope Winch',shell:'Shell Trap',lamp:'Lantern Kiln',flux:'Echo Crucible'};
+// The three generators drawn for Coast Camp (Rover, Kite and Crucible keep their art).
+const GENERATOR_SHAPES={
+ rope:'<ellipse cx="50" cy="84" rx="38" ry="8" fill="#6d4a26" opacity=".35"/><path d="M14 80L26 30H74L86 80Z" fill="#8a5a2e"/><path d="M20 78L30 36H70L80 78Z" fill="#b07a46"/><circle cx="50" cy="50" r="22" fill="#a87a45"/><circle cx="50" cy="50" r="18" fill="none" stroke="#e4bf82" stroke-width="6"/><circle cx="50" cy="50" r="10" fill="none" stroke="#c99a5e" stroke-width="6"/><circle cx="50" cy="50" r="4" fill="url(#vw-brass)"/><path d="M50 50L84 34" stroke="#8c9aa8" stroke-width="6" stroke-linecap="round"/><circle cx="86" cy="33" r="6" fill="url(#vw-coral)"/><path d="M72 64Q86 74 78 88" fill="none" stroke="#e4bf82" stroke-width="5" stroke-linecap="round"/>',
+ shell:'<ellipse cx="50" cy="86" rx="38" ry="7" fill="#3b6f85" opacity=".3"/><path d="M14 40Q50 24 86 40L80 82Q50 92 20 82Z" fill="#c48a52"/><path d="M14 40Q50 24 86 40L80 82Q50 92 20 82Z" fill="none" stroke="#7a5532" stroke-width="3"/><path d="M22 44V80M36 38V86M50 35V88M64 38V86M78 44V80M16 56Q50 44 84 56M18 70Q50 60 82 70" stroke="#e0b07a" stroke-width="3" fill="none"/><path d="M50 30Q62 10 74 18" fill="none" stroke="#8c9aa8" stroke-width="4"/><path d="M34 62L18 50Q20 30 34 28Q48 30 50 46Z" fill="#ffc7a8" stroke="#e58f6c" stroke-width="3"/><path d="M34 62L26 34M34 62L36 30M34 62L44 38" stroke="#e58f6c" stroke-width="2.5"/><circle cx="66" cy="66" r="7" fill="#fff" stroke="#d9e2ee" stroke-width="2"/>',
+ lamp:'<ellipse cx="50" cy="88" rx="36" ry="7" fill="#6d4a26" opacity=".3"/><path d="M20 86L26 44H74L80 86Z" fill="url(#vw-stone)"/><path d="M30 86V60Q50 44 70 60V86Z" fill="#3b2a24"/><path d="M36 86V64Q50 54 64 64V86Z" fill="#ff9a3c"/><path d="M50 84Q38 74 46 62Q50 70 54 62Q62 74 50 84Z" fill="#ffd774"/><rect x="40" y="18" width="20" height="28" rx="3" fill="url(#vw-stone)"/><path d="M44 16Q50 4 56 16" fill="none" stroke="#c9c2b8" stroke-width="5" opacity=".6"/><circle cx="76" cy="40" r="9" fill="#fff3b0" opacity=".7"/><path d="M70 30L82 30L80 44H72Z" fill="url(#vw-brass)"/>'
+};
 export const maxTier=chain=>CHAINS[chain].names.length-1;
 export const chainName=(chain,tier)=>CHAINS[chain].names[tier];
 export const chainsAt=(gen,level)=>GENERATOR_CHAINS[gen].filter(([,l])=>level>=l).map(([c])=>c);
@@ -54,10 +61,15 @@ const CRATE_SHAPES=[
  '<rect x="16" y="46" width="68" height="38" rx="5" fill="#a56a3c"/><path d="M16 48Q16 22 50 22Q84 22 84 48Z" fill="#c2834d"/><path d="M28 24V84M72 24V84" stroke="#5b6573" stroke-width="6"/><path d="M16 48H84" stroke="#5b6573" stroke-width="5"/><rect x="43" y="44" width="14" height="16" rx="3" fill="url(#vw-brass)"/><circle cx="50" cy="52" r="2.5" fill="#5b3a1c"/><path d="M22 31Q50 19 78 31" stroke="#e0a86d" stroke-width="3" fill="none"/>',
  '<circle cx="50" cy="52" r="46" fill="#ffe68a" opacity=".28"/><rect x="10" y="42" width="80" height="44" rx="6" fill="#7b3f2a"/><path d="M10 44Q10 16 50 16Q90 16 90 44Z" fill="#9a5134"/><path d="M10 44H90M10 80H90" stroke="url(#vw-brass)" stroke-width="6"/><path d="M24 18V86M76 18V86" stroke="url(#vw-brass)" stroke-width="6"/><circle cx="50" cy="57" r="12" fill="url(#vw-brass)"/><path d="M50 49l3 6 6 1-4.5 4 1 6-5.5-3-5.5 3 1-6-4.5-4 6-1z" fill="#fff3b0"/><path d="M18 27Q50 11 82 27" stroke="#c97d55" stroke-width="3" fill="none"/>'
 ];
-const TAG={rig:'#f27755',chart:'#43bfe7',flux:'#ac83fa'};
+const TAG={rig:'#f27755',chart:'#43bfe7',flux:'#ac83fa',rope:'#c9a36a',shell:'#ff9f8a',lamp:'#ffc93c'};
+// Sealed cargo: a crate stencilled "?" with the part that opens it pinned to its
+// corner; cargo holding a generator glows.
+const CARGO='<path d="M10 30L50 18L90 30V78L50 92L10 78Z" fill="#8a6440"/><path d="M10 30L50 42L90 30L50 18Z" fill="#b48a5c"/><path d="M50 42V92" stroke="#5f4226" stroke-width="3"/><path d="M10 48L50 60L90 48M10 64L50 76L90 64" stroke="#6f4f30" stroke-width="2.5" fill="none"/><path d="M10 30L50 42L90 30" fill="none" stroke="#5f4226" stroke-width="3"/><path d="M14 34L14 76M86 34V76" stroke="#5b6573" stroke-width="5"/><text x="30" y="74" font-size="26" font-weight="900" fill="#f3dcb3" font-family="system-ui,sans-serif" opacity=".85">?</text>';
 // Draw any Coast Camp cell: new chains and crates here, everything else with the
 // shared art. Water shows what lies on the sea floor beneath it.
 export function draw(x,cls=''){
+ if(x?.type==='cargo')return `<svg class="art cargoArt ${cls}" viewBox="0 0 100 100" aria-hidden="true" data-art="cargo">${MATERIALS}<g stroke-linejoin="round" stroke-linecap="round">${CARGO}</g></svg><span class="cargoKey" aria-hidden="true">${draw({type:'item',family:x.key.family,tier:x.key.tier})}</span>`;
+ if(x?.type==='source'&&GENERATOR_SHAPES[x.id])return `<svg class="art ${cls}" viewBox="0 0 100 100" aria-hidden="true" data-art="source-${x.id}">${MATERIALS}<g stroke-linejoin="round" stroke-linecap="round">${GENERATOR_SHAPES[x.id]}</g></svg>`;
  if(x?.type==='water')return x.find?draw(x.find,(cls+' submerged').trim()):'';
  if(x?.type==='jar')return art(x,cls);
  if(x?.type==='kit')return `<svg class="art crateArt crate${x.size} ${cls}" viewBox="0 0 100 100" aria-hidden="true" data-art="crate-${x.size}-${x.family}">${MATERIALS}<ellipse cx="50" cy="91" rx="34" ry="5" fill="#263957" opacity=".18"/><g stroke-linejoin="round" stroke-linecap="round">${CRATE_SHAPES[x.size-1]}</g><circle cx="82" cy="80" r="9" fill="${TAG[x.family]}" stroke="#fff" stroke-width="3"/></svg>`;

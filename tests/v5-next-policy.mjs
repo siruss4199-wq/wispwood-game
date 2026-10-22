@@ -1,20 +1,31 @@
 // A scripted player for the new loop: restore when affordable, deliver ready orders,
-// grow boxes and generators, merge toward what orders need, otherwise tap the
-// generator whose parts are most wanted. Used by the pacing simulations.
-import {count,matches,orderItems,nextTask,sourceOpen,openFamilies,chainsOf} from '../v5/next/game.mjs';
+// open sealed cargo with spare parts (generator cargo first), grow crates, merge toward
+// what orders and cargo need, otherwise tap the generator whose parts are wanted.
+import {count,matches,orderItems,nextTask,sourceOpen,openFamilies,cargoKeys} from '../v5/next/game.mjs';
 import {CHAINS,maxTier} from '../v5/next/chains.mjs';
 import {kitsMerge,feeds,kitFull,MAX_KIT_SIZE} from '../v5/kits.mjs';
 
-// How many of each part the live orders still want.
+// How many of each part the live orders still want, plus the key of one cargo to
+// work toward (a generator's cargo first, else the cheapest one we can make).
+function target(s){
+ const keys=cargoKeys(s).filter(k=>sourceOpen(s,CHAINS[k.family].gen));
+ const gen=keys.find(k=>s.board[k.index].find?.type==='source');
+ return gen??keys.sort((a,b)=>a.tier-b.tier||a.index-b.index)[0]??null;
+}
 function wanted(s){
  const want=new Map();
  for(const o of s.orders)for(const r of o.needs){const k=r.family+r.tier;want.set(k,(want.get(k)??0)+r.count);}
+ const t=target(s);if(t){const k=t.family+t.tier;want.set(k,(want.get(k)??0)+1);}
  return want;
 }
 export function nextAction(s){
  const b=s.board,t=nextTask(s);
  if(t&&s.stars>=t.cost)return {type:'restore',id:t.id};
  for(const o of s.orders)if(orderItems(s,o))return {type:'deliver',id:o.id};
+ // Open cargo with a part no order is waiting for (generator cargo first).
+ const orderWant=new Map();for(const o of s.orders)for(const r of o.needs)orderWant.set(r.family+r.tier,(orderWant.get(r.family+r.tier)??0)+r.count);
+ const keys=cargoKeys(s).sort((a,b)=>Number(b.index===target(s)?.index)-Number(a.index===target(s)?.index));
+ for(const k of keys){const have=b.findIndex(x=>matches(x,k));if(have>=0&&count(s,k)>(orderWant.get(k.family+k.tier)??0))return {type:'unseal',from:have,index:k.index};}
  const kits=b.flatMap((x,i)=>x?.type==='kit'?[i]:[]);
  for(const i of kits){
   for(const j of kits)if(i!==j&&kitsMerge(b[i],b[j]))return {type:'merge',from:i,to:j};
@@ -34,7 +45,7 @@ export function nextAction(s){
  const open=kits.find(i=>!kitFull(b[i])||b[i].size===MAX_KIT_SIZE||free<=3);
  if(open!==undefined&&free>0)return {type:'openKit',index:open};
  // Tap the generator that makes a wanted chain right now.
- const family=needs.map(r=>CHAINS[r.family].gen).find((g,k)=>sourceOpen(s,g)&&chainsOf(s,g).includes(needs[k].family))??openFamilies(s)[0];
+ const family=needs.map(r=>CHAINS[r.family].gen).find(g=>sourceOpen(s,g))??openFamilies(s)[0];
  if(free>0&&s.energy>0)return {type:'produce',id:family};
  if(free===0){const i=b.findIndex((x,i)=>x?.type==='item'&&!keep(i));if(i>=0)return {type:'recycle',index:i};}
  return null;// wait for energy

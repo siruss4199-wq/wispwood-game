@@ -54,3 +54,18 @@
 /* Crates: the drawing grows with the size. */
 #board .tile.kit .crate1{transform:scale(.82)}
 #board .tile.kit .crate2{transform:scale(.92)}
+/* Sealed cargo: the crate fills the tile; the part that opens it is pinned to the
+   top-right corner. Cargo you can open now pulses; generator cargo glows. */
+#board .tile.cargo{background:linear-gradient(160deg,#e9d6b4,#d9bf92);box-shadow:inset 0 -3px 0 #c3a374,inset 0 0 0 1px #f4e6c8;border-radius:10px}
+#board .tile.cargo .cargoArt{width:86%;height:86%;opacity:.95}
+.cargoKey{position:absolute;right:-2px;top:-4px;width:46%;height:46%;border-radius:50%;background:#fffaf0;box-shadow:0 1px 3px #0004,0 0 0 2px #f2b84b;display:grid;place-items:center;pointer-events:none}
+.cargoKey .art{width:86%;height:86%}
+.cargoGlow{position:absolute;inset:6%;border-radius:12px;box-shadow:0 0 12px 4px #ffe48a,inset 0 0 10px #fff3b0;pointer-events:none}
+@media(prefers-reduced-motion:no-preference){.cargoGlow{animation:cargoGlow 2.4s ease-in-out infinite}#board .tile.cargo.keyReady .cargoKey{animation:keyReady 1.4s ease-in-out infinite}}
+@keyframes cargoGlow{50%{opacity:.45}}
+@keyframes keyReady{50%{transform:scale(1.15);box-shadow:0 1px 3px #0004,0 0 0 3px #2c9a78}}
+#board .tile.cargo.match{outline:3px dashed #229a92;outline-offset:-3px}
+@media(prefers-reduced-motion:no-preference){#board .tile.unsealed{animation:unsealed .8s cubic-bezier(.2,1.5,.4,1)}}
+@keyframes unsealed{from{transform:scale(.6) rotate(-6deg);filter:brightness(1.5)}to{}}
+/* The key badge sits on its own crate wherever a crate is drawn (board, selection, moments). */
+.selection .preview,.moment span:first-child{position:relative}

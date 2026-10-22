@@ -1,6 +1,6 @@
 // Coast Camp: the new-loop page (v5/play.html). Same look as Classic V5, one loop:
 // generators → merge → crew orders → ★ stars → restore the coast on the map.
-import {SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,orderProgress,nextTask,currentArea,areaDone,sourceOpen,SOURCES,chainsOf,CRATES,tideStepOf} from './game.mjs';
+import {SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,orderProgress,nextTask,currentArea,areaDone,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys} from './game.mjs';
 import {AREAS} from './areas.mjs';
 import {cellPos} from '../core.mjs';
 import {CHAINS,draw,maxTier,chainsAt,GENERATOR_CHAINS} from './chains.mjs';
@@ -15,7 +15,7 @@ import {sound,reduced,burst,rewardFlight,moment as sharedMoment} from '../feedba
 function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el=document.querySelector('.moment');if(!x||!el)return;const icon=document.createElement('span');icon.style.cssText='float:left;width:42px;height:42px;margin-right:10px';icon.innerHTML=draw(x);icon.firstElementChild.style.cssText='width:100%;height:100%';el.prepend(icon);}
 
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 4 · the tide';
+export const BUILD='Build 5 · sealed cargo';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
@@ -71,14 +71,16 @@ function renderBoard(){
  const focusKeys=new Set(focus?.needs.map(r=>r.family+r.tier)??[]);
  board.innerHTML=state.board.map((x,i)=>{
   const [r,c]=cellPos(i),locked=x?.type==='source'&&!sourceOpen(state,x.id);
-  const twin=sel&&i!==selected&&(sel.type==='item'&&x?.type==='item'&&matches(x,sel)&&sel.tier<maxTier(sel.family)||sel.type==='kit'&&(kitsMerge(sel,x)||feeds(sel,x)));
+  const twin=sel&&i!==selected&&(sel.type==='item'&&(x?.type==='item'&&matches(x,sel)&&sel.tier<maxTier(sel.family)||x?.type==='cargo'&&matches(sel,x.key))||sel.type==='kit'&&(kitsMerge(sel,x)||feeds(sel,x))||sel.type==='cargo'&&matches(x,sel.key));
   const wanted=x?.type==='item'&&want.has(x.family+x.tier),focused=x?.type==='item'&&focusKeys.has(x.family+x.tier);
   let badge='';
-  if(x?.type==='source')badge=locked?`<span class="lockedLabel">${x.id==='chart'?'SIGNAL MAST':'WORKSITE'}</span>`:`<span class="energyCue">ϟ1</span>${producerLevel(x)>1?`<span class="srcLevel">Lv${producerLevel(x)}</span>`:''}`;
+  if(x?.type==='source')badge=locked?`<span class="lockedLabel">NEXT AREA</span>`:`<span class="energyCue">ϟ1</span>${producerLevel(x)>1?`<span class="srcLevel">Lv${producerLevel(x)}</span>`:''}`;
   else if(x?.type==='kit')badge=`<span class="pulls">${x.left}</span>`;
   else if(x?.type==='jar')badge=`<span class="sealBadge">+${x.energy}ϟ</span>`;
+  else if(x?.type==='cargo'&&x.find?.type==='source')badge='<span class="cargoGlow" aria-hidden="true"></span>';
   else if(wanted)badge='<span class="useBadge" aria-hidden="true">★</span>';
-  return `<button class="tile ${x?.type??'empty'} ${locked?'locked':''} ${selected===i?'selected':''} ${twin?'match':''} ${wanted?'wanted':''} ${focused?'nextAction':''}" data-index="${i}" style="grid-row:${r+1};grid-column:${c+1}${x?.type==='water'?`;--d:${tideStepOf(i)}`:''}" ${x?.family||x?.id?`data-family="${x.family??x.id}"`:''} aria-label="${nameOf(x)}${locked?' · locked':''}. Space ${i+1}" aria-pressed="${selected===i}">${draw(x)}${badge}</button>`;
+  const ready=x?.type==='cargo'&&state.board.some(y=>matches(y,x.key));
+  return `<button class="tile ${x?.type??'empty'} ${ready?'keyReady':''} ${locked?'locked':''} ${selected===i?'selected':''} ${twin?'match':''} ${wanted?'wanted':''} ${focused?'nextAction':''}" data-index="${i}" style="grid-row:${r+1};grid-column:${c+1}" ${x?.family||x?.id?`data-family="${x.family??x.id}"`:''} aria-label="${nameOf(x)}${locked?' · locked':''}. Space ${i+1}" aria-pressed="${selected===i}">${draw(x)}${badge}</button>`;
  }).join('');
  $('#free').textContent=state.board.filter(x=>x===null).length+' spaces';
 }
@@ -91,21 +93,23 @@ function renderSelection(){
   if(wantedKeys().has(x.family+x.tier))desc='★ A crew order wants this. '+desc;
   buttons='<button data-action="recycle">Recycle · +1 ϟ</button>';
  }else if(x.type==='source'){
-  const makes=GENERATOR_CHAINS[x.id].map(([c,l])=>producerLevel(x)>=l?CHAINS[c].names[0]:`${CHAINS[c].names[0]} at Lv${l}`).join(' · ');
-  desc=sourceOpen(state,x.id)?`Level ${producerLevel(x)} · 1 energy a tap · makes ${makes}.`+(producerLevel(x)<MAX_PRODUCER_LEVEL?` Feed it a ${CRATES[2]} of its colour to level it up.`:''):x.id==='chart'?'Restore the signal mast on the map to fly the Survey Kite.':'Wakes at the Survey Worksite (next area).';
+  const chain=CHAINS[GENERATOR_CHAINS[x.id][0][0]];
+  desc=sourceOpen(state,x.id)?`Level ${producerLevel(x)} · 1 energy a tap · ${chain.names.slice(0,4).join(' → ')} …`+(producerLevel(x)<MAX_PRODUCER_LEVEL?` Feed it a ${CRATES[2]} of its colour to level it up.`:''):'Wakes at the Survey Worksite (next area).';
   if(sourceOpen(state,x.id))buttons=`<button class="accent" data-action="produce">Make · 1 ϟ</button>`;
  }else if(x.type==='kit'){
   desc=`Tap again for a free part (${chainsOf(state,x.family).map(c=>CHAINS[c].names[0]).join(' or ')} chain) · ${x.left} of ${kitCapacity(x)} left.`+(kitFull(x)&&x.size<MAX_KIT_SIZE?` Or merge with a twin into a ${CRATES[x.size]} (${KIT_DROPS[x.size+1].length} better parts).`:kitFull(x)?` Or drag it onto ${SOURCES[x.family].name} to level it up.`:'');
   buttons='<button class="accent" data-action="openKit">Take a part</button>';
- }else if(x.type==='water'){const t=AREAS[0].tasks[tideStepOf(selected)-1];desc=(x.find?'This comes ashore':'This space dries')+(t?` when “${t.name}” is done on the map. Each restoration draws the tide back one step.`:' as the tide draws back.');}
+ }else if(x.type==='cargo'){const k=CHAINS[x.key.family].names[x.key.tier],have=state.board.some(y=>matches(y,x.key)),gen=CHAINS[x.key.family].gen;
+  title='Sealed cargo';desc=`Opens with a ${k}: lay one on it. What is inside is a surprise`+(x.find?.type==='source'?' — something glows in there.':'.')+(have?' You have one: tap it, then this cargo.':sourceOpen(state,gen)?` ${SOURCES[gen].name} makes them.`:` Its generator is still sealed somewhere on the board.`);}
  else if(x.type==='jar')desc='Energy, sealed in a jar.';
  $('#selection').innerHTML=`<span class="preview">${draw(x)}</span><span class="copy"><b>${title}</b><small>${desc}</small></span><span class="actionGroup">${buttons}</span>`;
 }
 function renderHint(){
  const task=nextTask(state),ready=state.orders.find(o=>orderItems(state,o));let hint;
  if(!state.merges)hint='START · Tap a Copper offcut, then its twin';
- else if(task&&state.stars>=task.cost)hint=`★ ${task.cost} ready · Restore ${task.name}: the tide draws back ↑`;
+ else if(task&&state.stars>=task.cost)hint=`★ ${task.cost} ready · Restore ${task.name} ↑`;
  else if(ready)hint='Order ready · tap it to collect ★';
+ else if(cargoKeys(state).some(k=>state.board.some(y=>matches(y,k))))hint='Lay a matching part on a crate to open it';
  else if(state.energy<1){const t=refillTimes(state,Date.now());hint='Out of energy · +1 in '+clock(t?.next??0);}
  else hint='Make the parts the crew orders want';
  $('#hint').textContent=hint;
@@ -123,25 +127,30 @@ function run(a){
  const r=act(state,a,Date.now());
  if(!r.ok){$('#message').textContent=r.message;sound.play('tap');return r;}
  $('#message').textContent=r.message;
- if(r.event==='merge'||r.event==='move'||r.event==='producerUp')selected=r.event==='producerUp'?null:r.index;
+ if(r.event==='merge'||r.event==='move'||r.event==='producerUp'||r.event==='unseal')selected=r.event==='producerUp'||r.event==='unseal'?null:r.index;
  if(r.event==='deliver'){focusOrder=null;selected=null;}
  persist();render();
  const tile=r.index!=null?board.querySelector(`[data-index="${r.index}"]`):null;
  if(r.event==='merge'){tile?.classList.add('merge-pop');burst(tile?.getBoundingClientRect(),state.board[r.index]?.family);sound.play('merge',state.board[r.index]?.tier??0);for(const d of r.dug??[])board.querySelector(`[data-index="${d.index}"]`)?.classList.add('unlocked');}
  if((r.event==='produce'||r.event==='kit')&&fromRect&&tile&&!reduced()){const to=tile.getBoundingClientRect(),el=document.createElement('div');el.className='flight';el.innerHTML=draw(state.board[r.index]);el.style.cssText=`left:${fromRect.x}px;top:${fromRect.y}px;--dx:${to.x-fromRect.x}px;--dy:${to.y-fromRect.y}px`;document.body.append(el);setTimeout(()=>el.remove(),460);}
  if(r.event==='deliver'){rewardFlight(orderRect,$('#starPill').getBoundingClientRect(),`+${r.stars} ★`);sound.play('contract');$('#starPill').classList.remove('bump');void $('#starPill').offsetWidth;$('#starPill').classList.add('bump');}
- if(r.event==='producerUp'){const src=state.board[r.index];if(r.newChain)newChainMoment(src.id,r.newChain);else moment(SOURCES[src.id].name+' · level '+src.level,'Its parts come out better more often.',src);sound.play('milestone');}
+ if(r.event==='producerUp'){const src=state.board[r.index];moment(SOURCES[src.id].name+' · level '+src.level,'Its parts come out better more often.',src);sound.play('milestone');}
  if(r.event==='restore')showBeat(r.task,r.effects);
+ if(r.event==='unseal'){tile?.classList.add('unsealed');burst(tile?.getBoundingClientRect(),'gold',r.opened.type==='source');sound.play(r.opened.type==='source'?'milestone':'rare');
+  if(r.opened.type==='stars')rewardFlight(tile?.getBoundingClientRect(),$('#starPill').getBoundingClientRect(),`+${r.opened.stars} ★`);
+  if(r.opened.type==='jar')rewardFlight(tile?.getBoundingClientRect(),$('#energyPill').getBoundingClientRect(),`+${r.opened.energy} ϟ`);
+  if(r.opened.type==='source')newGeneratorMoment(r.opened.id);}
  if(r.found?.length&&r.event!=='restore'){const k=r.found.at(-1),x=item(k.replace(/\d+$/,''),+k.match(/\d+$/)[0]);if(x.tier>=2)setTimeout(()=>moment('New: '+nameOf(x),x.tier<maxTier(x.family)?'Next: '+CHAINS[x.family].names[x.tier+1]:'Top of the chain',x),r.levelUp?1600:0);}
  if(r.levelUp){const u=r.levelUp.at(-1);setTimeout(()=>{moment('Level '+u.level+'!',`Chest: +${r.levelUp.reduce((n,v)=>n+v.energy,0)} ϟ`+(u.family?' · '+nameOf({type:'kit',family:u.family,size:1}):'')+'',u.family?{type:'kit',family:u.family,size:1,left:3}:null);sound.play('milestone');$('#levelPill').classList.add('levelUp');setTimeout(()=>$('#levelPill').classList.remove('levelUp'),1400);},r.event==='restore'?0:400);}
  return r;
 }
 function clickTile(i){
  const x=state.board[i],prev=state.board[selected];
- if(x?.type==='source'){selected=i;if(sourceOpen(state,x.id)){if(prev?.type==='kit'&&feeds(prev,x)){run({type:'merge',from:selected,to:i});return;}run({type:'produce',id:x.id});}render();return;}
+ if(x?.type==='source'){const from=selected;selected=i;if(sourceOpen(state,x.id)){if(prev?.type==='kit'&&feeds(prev,x)){run({type:'merge',from,to:i});return;}run({type:'produce',id:x.id});}render();return;}
  if(selected!==null&&selected!==i&&prev){
-  if(prev.type==='item'&&x?.type==='item'&&matches(x,prev)||prev.type==='kit'&&(kitsMerge(prev,x)||feeds(prev,x))||['item','kit'].includes(prev.type)&&!x){run({type:'merge',from:selected,to:i});return;}
+  if(prev.type==='item'&&(x?.type==='item'&&matches(x,prev)||x?.type==='cargo'&&matches(prev,x.key))||prev.type==='kit'&&(kitsMerge(prev,x)||feeds(prev,x))||['item','kit'].includes(prev.type)&&!x){run({type:'merge',from:selected,to:i});return;}
  }
+ if(prev?.type==='cargo'&&matches(x,prev.key)){run({type:'unseal',from:i,index:selected});return;}
  if(x?.type==='kit'&&selected===i){run({type:'openKit',index:i});return;}
  selected=selected===i&&x?.type==='item'?null:x?i:null;render();
 }
@@ -180,13 +189,10 @@ $('#mapContent').addEventListener('click',e=>{
 });
 function showBeat(id,effects){
  const area=AREAS.find(a=>a.tasks.some(t=>t.id===id)),t=area.tasks.find(t=>t.id===id);
- const extra=[];if(effects?.source==='chart')extra.push(['neri','Survey Kite unlocked: tap it for Kite parts.']);
- if(effects?.newChain)extra.push([CHAINS[effects.newChain].gen==='rig'?'ivo':'neri',`New chain: ${CHAINS[effects.newChain].names.join(' → ')}.`]);
- if(effects?.tide?.length)extra.push(['neri',`The tide draws back: ${effects.tide.length} new spaces on the board`+(effects.tide.some(d=>d.type!=='space')?', and what lay under the water is ours now.':'.')]);
+ const extra=[];
  if(effects?.areaDone)extra.push(['bram',`${area.name} fully restored! The Survey Worksite opens in the next update.`]);
  playLines(t.name,t.lines.concat(extra),()=>{const icon=$(`.restoredIcon[data-task="${id}"]`);icon?.classList.add('pop');burst($('.world').getBoundingClientRect(),'gold',true);
-  // Show the water drawing back on the board.
-  if(effects?.tide?.length){board.scrollIntoView({block:'nearest',behavior:reduced()?'auto':'smooth'});for(const d of effects.tide)board.querySelector(`[data-index="${d.index}"]`)?.classList.add('ashore');}});
+  if(effects?.kit>=0)board.querySelector(`[data-index="${effects.kit}"]`)?.classList.add('unsealed');});
  sound.play('milestone');
 }
 function playLines(title,lines,done){
@@ -196,7 +202,8 @@ function playLines(title,lines,done){
  show();if(!dlg.open)dlg.showModal();
 }
 // A generator level that opens a chain shows the whole new chain.
-function newChainMoment(gen,chain){moment(`${SOURCES[gen].name} · new chain!`,CHAINS[chain].names.join(' → '),item(chain,0));}
+// A generator found in cargo shows its whole chain.
+function newGeneratorMoment(gen){const c=CHAINS[GENERATOR_CHAINS[gen][0][0]];moment(`New generator: ${SOURCES[gen].name}!`,c.names.join(' → '),{type:'source',id:gen});}
 function showIntro(){const a=currentArea(state);if(a.intro)playLines(a.name,a.intro);}
 
 $('#build').textContent='COAST CAMP · '+BUILD.toUpperCase();

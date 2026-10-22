@@ -1,7 +1,7 @@
 // Coast Camp in a real browser at 360/390/430 px: the scripted player's choices are
 // made through visible taps only, through two restorations; then reload, the map,
 // the menu, and the Classic save left untouched.
-// The tide covers the board and draws back with each restoration.
+// Sealed cargo covers the board; each crate shows the part that opens it.
 const assert=require('node:assert/strict');const {chromium,webkit}=require('playwright');
 const URL='http://127.0.0.1:8080/v5/play.html';
 const read=page=>page.evaluate(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')));
@@ -15,6 +15,7 @@ async function perform(page,a){
  else if(a.type==='restore'){await page.locator('#taskButton').tap();await closeBeats(page);}
  else if(a.type==='recycle'){if(!await pressed(a.index))await tile(a.index).tap();await page.locator('#selection [data-action="recycle"]').tap();}
  else if(a.type==='ration')await page.locator('#rationButton').tap();
+ else if(a.type==='unseal'){if(!await pressed(a.from))await tile(a.from).tap();await tile(a.index).tap();}
  else throw Error('Unexpected action '+JSON.stringify(a));
  await page.waitForFunction(n=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).moves>n,s.moves,{timeout:4000});
 }
@@ -31,7 +32,7 @@ async function perform(page,a){
    await page.reload();await page.waitForSelector('#board .tile');
    assert.equal(await page.locator('#beat[open]').count(),1,'the area intro plays on a new camp');await closeBeats(page);
    assert.equal(await page.locator('#board .tile').count(),49);
-   assert.equal(await page.locator('#board .tile.water').count(),38,'the tide covers all but the camp and generators');
+   assert.equal(await page.locator('#board .tile.cargo').count(),40,'sealed cargo covers all but the camp');assert.equal(await page.locator('#board .cargoKey').count(),40,'each crate shows its key');assert.equal(await page.locator('#board .tile.source').count(),1,'one generator to start');
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'no sideways scroll');
    for(const t of await page.locator('#board .tile').all()){const b=await t.boundingBox();assert.ok(b.width>=44&&b.height>=44,'44px touch targets');}
    for(const sel of ['#energyPill','#starPill','#levelPill','#mapButton','#menuButton']){const b=await page.locator(sel).boundingBox();assert.ok(b&&b.x>=0&&b.x+b.width<=width,sel+' fits the header');}
@@ -44,7 +45,7 @@ async function perform(page,a){
    assert.equal(restores,2,'two places restored through the UI');
    const s=await read(page);assert.deepEqual(s.done,['beach-path','beach-tent']);
    assert.equal(await page.locator('.restoredIcon').count(),2,'restored places stand on the coast picture');
-   assert.equal(await page.locator('#board .tile.water').count(),28,'two restorations drew the tide back two steps (6 + 4 cells)');
+   assert.ok(await page.locator('#board .tile.cargo').count()<40,'cargo was opened by laying parts on it');
    await page.reload();await page.waitForSelector('#board .tile');
    assert.deepEqual((await read(page)).board,s.board,'reload keeps the board');assert.equal(await page.locator('#beat[open]').count(),0,'no intro on a running camp');
    await page.locator('#mapButton').tap();assert.equal(await page.locator('#coastMap .place').count(),7);assert.equal(await page.locator('#coastMap .place[data-status="done"]').count(),2);
