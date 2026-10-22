@@ -1,7 +1,7 @@
 // Goal progress and the energy refill clock.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {fresh,load,tick,item} from '../v5/core.mjs';
+import {fresh,load,tick,act,item} from '../v5/core.mjs';
 import {needProgress,goalProgress} from '../v5/progress.mjs';
 import {settleEnergy,refillTimes,clock,REFILL_EVERY,REFILL_CAP} from '../v5/energy.mjs';
 
@@ -46,6 +46,14 @@ test('energy refills one point every two minutes up to 50, never retroactively p
 
 test('the refill clock reads naturally',()=>{
  assert.deepEqual([1000,105000,600000,47*60000,72*60000,120*60000].map(clock),['0:01','1:45','10m','47m','1h 12m','2h']);
+});
+
+test('a full bar rests the clock; spending below 50 starts it from that moment',()=>{
+ const s=fresh(0);s.energy=REFILL_CAP;s.energyAt=0;
+ assert.equal(tick(s,REFILL_EVERY*30),0);assert.equal(s.energyAt,0,'no save churn while full');
+ s.board[30]=null;const r=act(s,{type:'produce',id:'rig'},REFILL_EVERY*30);assert.equal(r.ok,true);
+ assert.equal(s.energy,REFILL_CAP-1);assert.equal(s.energyAt,REFILL_EVERY*30);
+ assert.equal(tick(s,REFILL_EVERY*31-1),0);assert.equal(tick(s,REFILL_EVERY*31),1);
 });
 
 test('saves keep the refill clock; older saves start it at load time',()=>{

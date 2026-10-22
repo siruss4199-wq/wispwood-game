@@ -1,5 +1,5 @@
 import {campGoal} from './camp-goals.mjs';
-import {settleEnergy,rationWait,RATION_ENERGY} from './energy.mjs';
+import {settleEnergy,rationWait,RATION_ENERGY,REFILL_CAP} from './energy.mjs';
 import {freshLevel,validLevel,xpFor,gainXp} from './levels.mjs';
 import {freshMastery,masteryPending,instrumentReady,recordCraftMastery} from './mastery.mjs';
 import {fleetEarned} from './fleet.mjs';
@@ -160,8 +160,10 @@ function activate(s,site){
 export function tick(s,now=Date.now()){return settleEnergy(s,now);}
 export function act(s,a,now=Date.now()){
  const order=a?.type==='request'?s.requests?.orders?.find(o=>o?.id===a.id)??null:null;
- const result=step(s,a,now);
+ const wasFull=s.energy>=REFILL_CAP,result=step(s,a,now);
  if(!result.ok)return result;
+ // Dropping below the refill cap starts the refill clock from this moment.
+ if(wasFull&&s.energy<REFILL_CAP)s.energyAt=now;
  const xp=xpFor(a,result,order);
  if(!xp)return result;
  const levelUp=gainXp(s,xp,{container,put});

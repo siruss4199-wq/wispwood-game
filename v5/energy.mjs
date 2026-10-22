@@ -10,7 +10,8 @@ const valid=t=>Number.isFinite(t)&&t>=0;
 // Adds the energy earned since s.energyAt; returns how much was added.
 export function settleEnergy(s,now){
  if(!valid(s.energyAt)||s.energyAt>now)s.energyAt=now;
- if(s.energy>=REFILL_CAP){s.energyAt=now;return 0;}
+ // Full: the clock rests (the save stays unchanged); act() restarts it on spending.
+ if(s.energy>=REFILL_CAP)return 0;
  const steps=Math.floor((now-s.energyAt)/REFILL_EVERY);
  if(steps<=0)return 0;
  const gained=Math.min(steps,REFILL_CAP-s.energy);
