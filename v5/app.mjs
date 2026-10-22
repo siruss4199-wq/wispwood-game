@@ -9,6 +9,7 @@ import {loadSlot,beginReplay,returnOriginal,slotKey} from './replay.mjs';
 import {fleetEarned,fleetPending,FLEET_LINES} from './fleet.mjs';
 import {storySnapshot,requestBrief} from './story.mjs';
 import {coastPlaces,placeById,doneIds,CAMP_PLACES,readyPlaces} from './coast-map.mjs';
+import {xpToNext} from './levels.mjs';
 import {LOFT_COST,DEEP_SURVEY_COST,recoveryCost,pearlDiscovered,TIDE_NAMES,isTide,maxTier,sameKind,discoveryKey,tideItem,nextTide} from './treasures.mjs';
 import {KITS} from './journey.mjs';
 import {PIER_COST,PACK_COST} from './camp.mjs';
@@ -262,6 +263,8 @@ function render(){
  $('#mapReady').hidden=!readyPlaces(state).length;
  $('.destination').textContent=state.stage===4?'VAULT DISCOVERED':'OPEN THE TIDEGLASS VAULT';
  $('#energy').textContent=state.energy;$('#marks').textContent=state.marks;
+ $('#levelNum').textContent=state.level.level;$('#levelPill').style.setProperty('--p',Math.round(100*state.level.xp/xpToNext(state.level.level))+'%');
+ $('#levelPill').setAttribute('aria-label',`Expedition level ${state.level.level} · ${state.level.xp}/${xpToNext(state.level.level)} XP`);
  const viewStage=state.stage===0&&state.landingStep===1?1:state.stage;
  const sceneKey=viewStage+':'+state.post;if($('#scene').dataset.key!==sceneKey){$('#scene').innerHTML=scene(viewStage,state.post);$('#scene').dataset.key=sceneKey;}$('#sceneLabel').textContent=ending?'The fleet signal is found':heard?'Someone answered the fleet signal':visibleGoal()?.scene??STAGES[state.stage]?.scene??'The vault is open';
  renderWorkshop();
@@ -448,6 +451,8 @@ function run(a){
  if(result.event==='milestone'&&(state.stage>before||state.landingStep>landingBefore)){const id=state.landingStep>landingBefore&&state.stage===0?'chart':state.stage===2?'flux':null;if(id)board.querySelector(`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===id)}"]`)?.classList.add('unlocked');}
  if(result.index!==null&&result.event!=='merge')board.querySelector(`[data-index="${result.index}"]`)?.classList.add('pop');
  if(result.discoveryReward){board.querySelector(`[data-index="${result.discoveryReward.index}"]`)?.classList.add('rewardLanded');}
+ // A new level opens a chest: name what it gave and show the case landing.
+ if(result.levelUp){const up=result.levelUp.at(-1);setTimeout(()=>{moment('Level '+up.level+'!','Chest: +'+result.levelUp.reduce((n,u)=>n+u.energy,0)+' ϟ'+result.levelUp.filter(u=>u.kind).map(u=>' · '+containerInfo({kind:u.kind}).name).join(''),up.kind?{type:'crate',kind:up.kind}:null);sound.play('milestone');for(const u of result.levelUp)if(u.index>=0)board.querySelector(`[data-index="${u.index}"]`)?.classList.add('unlocked');$('#levelPill').classList.add('levelUp');setTimeout(()=>$('#levelPill').classList.remove('levelUp'),1400);},500);}
  if(a.type==='restoreEngine'){moment('Star-ocean engine restored','Use a Loop Cell on a producer · three enriched pulls',item('flux',5));}
  if(a.type==='infuse'){moment(SOURCES[a.id].name+' enriched','Next three pulls · richer parts',item(a.id,1));}
  if(a.type==='upgradeLoft'){selected=null;focus='pier';render();moment('Deep Survey installed','Guaranteed compasses · two new treasures to merge',tideItem(3));sound.play('milestone');$('.world').classList.add('changed');}

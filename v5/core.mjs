@@ -1,4 +1,5 @@
 import {campGoal} from './camp-goals.mjs';
+import {freshLevel,validLevel,xpFor,gainXp} from './levels.mjs';
 import {freshMastery,masteryPending,instrumentReady,recordCraftMastery} from './mastery.mjs';
 import {fleetEarned} from './fleet.mjs';
 import {TIDE_NAMES,isTide,maxTier,sameKind,discoveryKey,tideItem,buildLoft,upgradeLoft,recoverTide} from './treasures.mjs';
@@ -47,7 +48,7 @@ export function fresh(now=Date.now()){
  for(const i of [19,32])board[i]={type:'rock'};
  ['winch','scope','relay'].forEach((kind,n)=>board[[20,23,31][n]]={type:'site',kind,phase:'idle',progress:0});
  board[24]={type:'route',id:'ridge'};board[27]={type:'route',id:'conduit'};board[34]=container('salvage');
- const state={version:5,board,stage:0,landingStep:0,routePrepared:false,seals:freshSeals(),producerStreak:0,energy:32,marks:0,moves:0,merges:0,contracts:0,serial:0,charges:{rig:7,chart:7,flux:7},taps:{rig:0,chart:0,flux:0},normal:0,opportunity:null,discovery:false,discoveryDone:false,boost:false,post:0,discovered:[],craftMastery:freshMastery(),expedition:expeditionState(),startedAt:now,lastAt:now,rations:0,history:[]};syncRequests(state);workshopState(state);journeyState(state);campState(state);return state;
+ const state={version:5,board,stage:0,landingStep:0,routePrepared:false,seals:freshSeals(),producerStreak:0,energy:32,marks:0,moves:0,merges:0,contracts:0,serial:0,charges:{rig:7,chart:7,flux:7},taps:{rig:0,chart:0,flux:0},normal:0,opportunity:null,discovery:false,discoveryDone:false,boost:false,post:0,discovered:[],craftMastery:freshMastery(),expedition:expeditionState(),level:freshLevel(),startedAt:now,lastAt:now,rations:0,history:[]};syncRequests(state);workshopState(state);journeyState(state);campState(state);return state;
 }
 export function goal(s){return s.stage===4?(campGoal(s)??expeditionGoal(s)):expeditionGoal(s);}
 export function expeditionGoal(s){
@@ -153,7 +154,17 @@ function activate(s,site){
  return {opened,revealed};
 }
 // Mutating reducer is intentionally atomic: failed commands leave all state untouched.
+// Every successful action can earn expedition XP; a new level opens a chest.
 export function act(s,a,now=Date.now()){
+ const order=a?.type==='request'?s.requests?.orders?.find(o=>o?.id===a.id)??null:null;
+ const result=step(s,a,now);
+ if(!result.ok)return result;
+ const xp=xpFor(a,result,order);
+ if(!xp)return result;
+ const levelUp=gainXp(s,xp,{container,put});
+ return levelUp.length?{...result,xp,levelUp}:{...result,xp};
+}
+function step(s,a,now){
  const fail=message=>({ok:false,message});
  if(a.type==='useEnriched'){
   const id=s.journey?.boost?.family;if(!id)return fail('No enriched pulls remain.');
@@ -454,6 +465,7 @@ export function load(raw,now=Date.now()){
     s.routePrepared=true;
    }else s.routePrepared=s.stage>=2;
   }
+  s.level=validLevel(s.level);
   journeyState(s);syncRequests(s);workshopState(s);return s;
  }catch{return fresh(now);}
 }

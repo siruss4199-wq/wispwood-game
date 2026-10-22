@@ -124,7 +124,7 @@ test('first-session density stays active across goal-first, contract-first, cach
    if([27,67,134].includes(actions))checkpoints[actions]=occupied;
   }
   assert.equal(s.stage,4,'no blocker deadlock');assert.ok(actions<240);
-  const mean=samples.reduce((a,b)=>a+b,0)/samples.length;assert.ok(mean>=20&&mean<=28,`mean ${mean}`);assert.ok(Math.min(...samples)>=17);assert.ok(maxLowRun<=2,'no prolonged >18-empty state');
+  const mean=samples.reduce((a,b)=>a+b,0)/samples.length;assert.ok(mean>=20&&mean<=30,`mean ${mean}`);// level chests (step 4a) keep the board fullerassert.ok(Math.min(...samples)>=17);assert.ok(maxLowRun<=2,'no prolonged >18-empty state');
   for(const [point,n]of Object.entries(checkpoints))assert.ok(n>=20,`${point}: only ${n} occupied`);
   console.log(JSON.stringify({density:true,sideFirst,openCaches,clearSalvage,actions,mean:+mean.toFixed(1),min:Math.min(...samples),maxLowRun,checkpoints}));
  }

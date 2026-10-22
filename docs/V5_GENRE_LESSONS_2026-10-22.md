@@ -63,6 +63,18 @@ step is reverted. Lesson from the rollback: never change loop and look together.
 - Uses the existing ◆ supplies: step 1's stars do not exist yet. No save fields.
   Tests: `tests/v5-coast-map.test.mjs`, `tests/v5-coast-map-browser.cjs`.
 
+## Step 4a — expedition level and chest (approved 2026-10-22, "daraagiin alhmiig heregjuul")
+- `v5/levels.mjs`: XP per successful action — merge 1, crew order 2 + its ◆ (3/5/8),
+  camp restoration 10, expedition milestone 15. Level n → n+1 needs 10+10n XP (20, 30,
+  40 … capped at 80).
+- Each level opens a chest: +10 energy and a raw-parts case (Rover → Kite → Crucible in
+  turn). With two cases already waiting (or no space) the chest pays +5 more energy
+  instead, so chests never block the Supply Pier's three-case limit.
+- Header: the level number in a ring that fills with XP (replaces the merit counter,
+  which stays in the save). Level-up shows a moment naming the chest.
+- Saves: new `level` field `{version:1,level,xp}`; older saves load at level 1 with
+  nothing granted retroactively. Tests: `tests/v5-levels.test.mjs`.
+
 ## Sources and limits
 No first-party data was found. Travel Town figures (100 energy, 72-cell board) come
 from fan guides; the "top-grossing" claim for Gossip Harbor is unverified. Level

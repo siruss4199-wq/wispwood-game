@@ -38,3 +38,9 @@
 .beatDots i{width:8px;height:8px;border-radius:50%;background:#d5cbb5}
 .beatDots i.on{background:#0f6f6a}
 .beat .primary{width:100%;min-height:48px}
+/* Expedition level: the number inside a ring that fills with XP; a pulse on level-up. */
+.levelPill{--p:0%;flex:none;display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:conic-gradient(#2c9a78 var(--p),#dde7e4 0);transition:background .4s}
+.levelPill b{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#0f6f6a;color:#fff;font-size:13px}
+header .merit{display:none}
+@media(max-width:400px){header .brand b{font-size:15px;letter-spacing:.6px}header{gap:6px}}
+@media(prefers-reduced-motion:no-preference){.levelPill.levelUp{animation:levelPop 1.2s ease-out}@keyframes levelPop{20%{transform:scale(1.2);box-shadow:0 0 0 6px #f5aa4366}100%{transform:none}}}
