@@ -15,11 +15,11 @@ test('Deep Survey needs Loft, actual Pearl discovery and supplies; purchase pres
  const board=structuredClone(s.board),orders=structuredClone(s.requests.orders);ok(s,{type:'upgradeLoft'});assert.equal(s.requests.supplies,0);assert.deepEqual(s.board,board);assert.deepEqual(s.requests.orders,orders);reject(s,{type:'upgradeLoft'});assert.deepEqual(load(JSON.stringify(s)),s);
  const noLoft=loft();pearl(noLoft);noLoft.camp.loft=false;reject(noLoft,{type:'upgradeLoft'});
 });
-test('upgraded recovery guarantees a compass for 3 energy and one charge without advancing normal rare schedules',()=>{
+test('upgraded recovery guarantees a compass for exactly 3 energy without advancing normal rare schedules',()=>{
  const s=loft();pearl(s);ok(s,{type:'upgradeLoft'});const taps={...s.taps},energy=s.energy,charge=s.charges.chart;s.surge=3;
  for(let n=0;n<3;n++){const r=ok(s,{type:'recoverTide'});assert.deepEqual(s.board[r.index],tideItem(1));}
- assert.equal(s.energy,energy-9);assert.equal(s.charges.chart,charge-3);assert.equal(s.camp.deepDives,3);assert.equal(s.surge,3);assert.deepEqual(s.taps,taps);
- s.board=s.board.map(x=>x??item('rig',0));reject(s,{type:'recoverTide'});s.board[7]=null;s.energy=2;reject(s,{type:'recoverTide'});s.energy=5;s.charges.chart=0;reject(s,{type:'recoverTide'});
+ assert.equal(s.energy,energy-9);assert.equal(s.charges.chart,charge);assert.equal(s.camp.deepDives,3);assert.equal(s.surge,3);assert.deepEqual(s.taps,taps);
+ s.board=s.board.map(x=>x??item('rig',0));reject(s,{type:'recoverTide'});s.board[7]=null;s.energy=2;reject(s,{type:'recoverTide'});s.energy=3;s.charges.chart=0;ok(s,{type:'recoverTide'});assert.equal(s.energy,0);assert.equal(s.charges.chart,0);
 });
 test('upper tide merges are gated, distinct from navigation parts and stop at Ocean Crown',()=>{
  const s=loft();pearl(s);s.board[7]=tideItem(2);reject(s,{type:'merge',from:7,to:8});ok(s,{type:'upgradeLoft'});ok(s,{type:'merge',from:7,to:8});assert.deepEqual(s.board[8],tideItem(3));

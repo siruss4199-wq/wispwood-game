@@ -75,6 +75,16 @@ step is reverted. Lesson from the rollback: never change loop and look together.
 - Saves: new `level` field `{version:1,level,xp}`; older saves load at level 1 with
   nothing granted retroactively. Tests: `tests/v5-levels.test.mjs`.
 
+## Step 4b — producer charges retired (2026-10-22, "daraagiin alham")
+- A producer tap, the Workshop press, the bench fit and tide recovery cost energy only.
+  The `service` action is refused ("Producers no longer need service").
+- What used to give charges now gives energy: first tier-3+ craft +3 (+7 from tier 5),
+  relay device and relay receiver +10. The salvage case no longer adds Rover charges.
+- UI: no charge dots, refill buttons or "charges left" text; producer panel shows the
+  next output and its energy cost.
+- Saves: `charges` stays in the save for compatibility; `load()` refills 0–7 values to 7.
+  Tests updated in ten files to the new rule; `tests/v5-levels.test.mjs` covers the save.
+
 ## Sources and limits
 No first-party data was found. Travel Town figures (100 energy, 72-cell board) come
 from fan guides; the "top-grossing" claim for Gossip Harbor is unverified. Level

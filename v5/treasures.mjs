@@ -28,8 +28,8 @@ export function buildLoft(s){
 export function recoverTide(s){
  if(!s.camp?.loft)return {ok:false,message:'Build the Charting Loft on your Supply Pier first.'};
  if(s.stage===0&&!s.landingStep)return {ok:false,message:'Clear the landing to unlock Survey Kite.'};
- const cost=recoveryCost(s);if(s.energy<cost||!s.charges.chart)return {ok:false,message:`Recovery needs ${cost} energy and 1 Survey Kite charge.`};
+ const cost=recoveryCost(s);if(s.energy<cost)return {ok:false,message:`Recovery needs ${cost} energy.`};
  const index=s.board.indexOf(null);if(index<0)return {ok:false,message:'Merge or deliver an item to make room for your find.'};
- s.board[index]=nextTide(s);s.camp.dives++;if(s.camp.deepSurvey)s.camp.deepDives++;s.energy-=cost;s.charges.chart--;
+ s.board[index]=nextTide(s);s.camp.dives++;if(s.camp.deepSurvey)s.camp.deepDives++;s.energy-=cost;
  return {ok:true,index,message:TIDE_NAMES[s.board[index].tier]+' recovered · merge twins or fulfill a tide order.'};
 }

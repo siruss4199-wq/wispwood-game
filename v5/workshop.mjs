@@ -26,7 +26,7 @@ export function upgradeWorkshop(s){
 }
 export function fitSpanner(s){
  if(!s.workshop?.precision)return {ok:false,message:'Upgrade the Workshop to fit spanners.'};
- if(!s.board.some(x=>x?.type==='source'&&x.id==='rig')||!s.charges.rig)return {ok:false,message:'Service Rivet Rover first.'};
+ if(!s.board.some(x=>x?.type==='source'&&x.id==='rig'))return {ok:false,message:'Rivet Rover missing.'};
  if(s.energy<1)return {ok:false,message:'Fitting needs 1 energy.'};
  const indices=benchInputs(s);
  if(indices.some(i=>i<0))return {ok:false,message:'Keep expedition tools. Bring a spare Grip tool and Ink scrap.'};
@@ -34,6 +34,6 @@ export function fitSpanner(s){
  // Marked as a spare: it's made to be delivered, never mistaken for the one
  // expedition-reserved rig/chart tier-2 tool (see reservedItems).
  s.board[indices[0]]={type:'item',family:'rig',tier:2,spare:true};s.board[indices[1]]=null;
- s.energy--;s.charges.rig--;s.workshop.fittings=(s.workshop.fittings??0)+1;
- return {ok:true,index:indices[0],message:'Split spanner fitted · 1 energy · one Rover charge'};
+ s.energy--;s.workshop.fittings=(s.workshop.fittings??0)+1;
+ return {ok:true,index:indices[0],message:'Split spanner fitted · 1 energy'};
 }

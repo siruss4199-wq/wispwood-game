@@ -136,7 +136,6 @@ function unpack(s,index){
   const x={...info.outputs[box.left-1]};box.left--;
   const i=last?(s.board[index]=x,index):put(s,x);revealed.push(i);
  }
- if(box.left===0&&box.kind==='salvage')s.charges.rig=Math.min(7,s.charges.rig+2);
  return revealed;
 }
 function remember(s,event,now){s.history.push({event,at:now});s.history=s.history.slice(-40);}
@@ -147,7 +146,7 @@ function activate(s,site){
  const dissolve=()=>{let n=0;for(let i=0;i<36&&n<2;i++)if(s.board[i]?.type==='crust'){s.board[i]=item(s.board[i].family,s.board[i].tier);revealed.push(i);n++;}};
  if(site.kind==='winch'){uncover('rock');uncover('sealed');dissolve();for(let n=0;n<2;n++){const i=put(s,item('chart',1));if(i>=0)revealed.push(i);}}
  else if(site.kind==='scope'){uncover('sealed');dissolve();surge(s);for(let n=0;n<2;n++){const i=put(s,item('flux',0));if(i>=0)revealed.push(i);}}
- else {for(const id of Object.keys(SOURCES))s.charges[id]=7;surge(s);}
+ else {s.energy=Math.min(120,s.energy+10);surge(s);}
  for(let n=0;n<2&&s.board.filter(Boolean).length<24;n++){const i=put(s,item(ANCHORS[site.kind].drive,0));if(i>=0)revealed.push(i);}
  trace(s,'device-used',{kind:site.kind,crossFamily:ANCHORS[site.kind].drive,opened,revealed});
  if(site.kind==='winch'&&s.seals&&!s.seals.stabilization){s.seals.stabilization=true;trace(s,'seal',{seal:'stabilization',method:'repair'});}
@@ -168,7 +167,7 @@ function step(s,a,now){
  const fail=message=>({ok:false,message});
  if(a.type==='useEnriched'){
   const id=s.journey?.boost?.family;if(!id)return fail('No enriched pulls remain.');
-  return act(s,{type:s.charges[id]?'produce':'service',id},now);
+  return act(s,{type:'produce',id},now);
  }
  // Acknowledging a story changes only its receipt, never gameplay resources.
  if(a.type==='viewFleet'){
@@ -195,7 +194,7 @@ function step(s,a,now){
   if(!s.journey?.engine||!SOURCES[a.id]||!sourceUnlocked(s,a.id)||!valid(from)||!loopCell(s.board[from]))return fail('Use a Loop Cell on a producer after restoring the vault engine.');
   if(s.journey.boost?.left)return fail('Use your remaining enriched pulls before charging another run.');
   s.board[from]=null;s.journey.boost={family:a.id,left:3};s.journey.infusions++;trace(s,'infusion',{family:a.id});
-  return done(SOURCES[a.id].name+' · three enriched pulls ready. Normal energy and charges apply.','discovery',s.board.findIndex(x=>x?.type==='source'&&x.id===a.id));
+  return done(SOURCES[a.id].name+' · three enriched pulls ready. Normal energy applies.','discovery',s.board.findIndex(x=>x?.type==='source'&&x.id===a.id));
  }
  if(a.type==='upgradeLoft'){const r=upgradeLoft(s);return r.ok?done(r.message,'loft'):r;}
  if(a.type==='buildLoft'){const r=buildLoft(s);return r.ok?done(r.message,'loft'):r;}
@@ -208,11 +207,10 @@ function step(s,a,now){
  if(a.type==='press'){
   if(!s.workshop?.repaired)return fail('Restore the Coastal Workshop to unlock the tool press.');
   if(!s.board.some(x=>x?.type==='source'&&x.id==='rig'))return fail('Rivet Rover missing.');
-  if(!s.charges.rig)return fail('Service Rivet Rover first.');
   if(s.energy<2)return fail('Tool press needs 2 energy.');
   if(!s.board.includes(null))return fail('Make space: merge or deliver an item first.');
-  const i=put(s,item('rig',1));s.energy-=2;s.charges.rig--;s.workshop.presses++;
-  return done('Grip tool pressed · 2 energy · one Rover charge','produce',i);
+  const i=put(s,item('rig',1));s.energy-=2;s.workshop.presses++;
+  return done('Grip tool pressed · 2 energy','produce',i);
  }
  if(a.type==='request'){
   const result=deliverRequest(s,a.id);if(!result.ok)return result;s.contracts++;
@@ -253,29 +251,22 @@ function step(s,a,now){
   if(offcuts)put(s,item(crafted.family,0));
   const chainFind=false;
   const breakthrough=firstCraft&&crafted.tier>=3;
-  if(breakthrough){s.charges[crafted.family]=Math.min(7,s.charges[crafted.family]+2);if(crafted.tier>=5)s.energy=Math.min(120,s.energy+4);}
-  return {...done(`${freed?'Freed from the salt · ':''}${nameOf(crafted)}${craftedMilestone?' · crew instrument calibrated':''}${breakthrough?' · source recharged':''}${resupply.length?' · expedition supplies':''}${bonus?' · +1 energy':''}`,'merge',a.to),breakthrough,newDiscovery:firstCraft,discoveryReward,craftedMilestone,freedCrust:freed};
+  if(breakthrough)s.energy=Math.min(120,s.energy+(crafted.tier>=5?7:3));
+  return {...done(`${freed?'Freed from the salt · ':''}${nameOf(crafted)}${craftedMilestone?' · crew instrument calibrated':''}${breakthrough?' · breakthrough energy':''}${resupply.length?' · expedition supplies':''}${bonus?' · +1 energy':''}`,'merge',a.to),breakthrough,newDiscovery:firstCraft,discoveryReward,craftedMilestone,freedCrust:freed};
  }
  if(a.type==='produce'){
   const p=SOURCES[a.id];if(!p||!sourceUnlocked(s,a.id))return fail(`Unlock after ${a.id==='chart'?'stabilizing the landing':'opening a breach'}.`);
   if(!s.board.some(x=>x?.type==='source'&&x.id===a.id))return fail('Source missing.');
-  if(!s.charges[a.id])return fail('Service this source: a grip tool or 3 energy.');
   if(s.energy<p.cost)return fail('Deliver a contract, recycle an item, or use a field ration.');
   if(!s.board.includes(null))return fail('Board full. Merge, deliver, recycle, or clear a blocker.');
-  const enriched=s.journey?.boost?.family===a.id&&s.journey.boost.left>0,surged=s.surge>0||enriched,burst=burstOutput(s,a.id),x=nextOutput(s,a.id),i=put(s,x);const windfall=burst&&(s.taps[a.id]+1)%7===0;const bonusIndex=burst?put(s,item(a.id,windfall?1:0)):-1;s.energy-=p.cost;s.charges[a.id]--;s.taps[a.id]++;s.producerStreak=(s.producerStreak??0)+1;
+  const enriched=s.journey?.boost?.family===a.id&&s.journey.boost.left>0,surged=s.surge>0||enriched,burst=burstOutput(s,a.id),x=nextOutput(s,a.id),i=put(s,x);const windfall=burst&&(s.taps[a.id]+1)%7===0;const bonusIndex=burst?put(s,item(a.id,windfall?1:0)):-1;s.energy-=p.cost;s.taps[a.id]++;s.producerStreak=(s.producerStreak??0)+1;
   if(x.type!=='glyph'){if(enriched){s.journey.boost.left--;if(!s.journey.boost.left)s.journey.boost=null;}else if(s.surge>0)s.surge--;}
   if(x.type==='glyph')s.discovery=true;
-  return {...done(x.type==='glyph'?'Echo fragment found! A discovery awaits.':`${nameOf(x)}${windfall?' + bonus tool!':burst?' + raw part':''} · ${s.charges[a.id]} charges left`,'produce',i),bonus:windfall?a.id:null,improved:surged&&x.type==='item',reveal:windfall?[i,bonusIndex]:[]};
+  return {...done(x.type==='glyph'?'Echo fragment found! A discovery awaits.':`${nameOf(x)}${windfall?' + bonus tool!':burst?' + raw part':''}`,'produce',i),bonus:windfall?a.id:null,improved:surged&&x.type==='item',reveal:windfall?[i,bonusIndex]:[]};
  }
- if(a.type==='service'){
-  if(!SOURCES[a.id]||!sourceUnlocked(s,a.id)||s.charges[a.id]>0)return fail('This source does not need service.');
-  const r=req('rig',1);
-  if(a.useTool){if(!ready(s,[r]))return fail('Make a grip tool first.');consume(s,[r]);}
-  else {if(s.energy<3)return fail('Need 3 energy or a grip tool.');s.energy-=3;}
-  s.charges[a.id]=7;
-  const restocked=s.board.filter(Boolean).length<22;if(restocked){put(s,item(a.id,0));put(s,item(a.id,0));}
-  return done(`Seven fresh charges.${restocked?' Two spare parts unpacked.':''}`,'service');
- }
+ // Producers no longer run out of charges (step 4b); old service commands are refused.
+ if(a.type==='service')return fail('Producers no longer need service. A tap only costs energy.');
+
  if(a.type==='breach'){
   const x=s.board[a.index],r=ROUTES[x?.id];
   if(s.stage!==1||!s.routePrepared||x?.type!=='route'||!r)return fail('Survey the crossing, then choose one breach.');
@@ -317,7 +308,7 @@ function step(s,a,now){
   if(!s.board.includes(null))return fail('Merge or deliver one item to make room for the receiver reward.');
   const receiver=s.board[path.at(-1)].kind;let reward;
   s.seals.resonance=true;s.seals.link=path;s.stage=3;s.energy=Math.min(120,s.energy+6);
-  if(receiver==='relay'){for(const id of Object.keys(SOURCES))s.charges[id]=7;surge(s);reward=put(s,item('rig',3));}
+  if(receiver==='relay'){s.energy=Math.min(120,s.energy+10);surge(s);reward=put(s,item('rig',3));}
   else reward=put(s,container('relic',5));
   trace(s,'seal',{seal:'resonance',method:'charged-receiver',path,receiver});trace(s,'powered');
   return {...done(receiver==='relay'?'Rings online · pocket winch recovered · three rich pulls':'Rings online · a sealed relic ampoule recovered','milestone',path.at(-1)),reveal:[reward],opened:[]};
@@ -442,6 +433,8 @@ export function load(raw,now=Date.now()){
    else if(!['glyph','brace','rock','sealed','marker','lock'].includes(x.type))return fresh(now);
    if(x.type==='rock'&&x.find!==undefined&&!FINDS[x.find])delete x.find;
   }
+  // Charges are retired (step 4b): kept full so older code paths and saves stay valid.
+  for(const id of Object.keys(SOURCES))if(integer(s.charges?.[id],0,7))s.charges[id]=7;
   for(const id of Object.keys(SOURCES))if(!integer(s.charges?.[id],0,7)||!integer(s.taps?.[id],0,1000000)||s.board.filter(x=>x?.type==='source'&&x.id===id).length!==1)return fresh(now);
   for(const k of ['normal','moves','merges','marks','contracts','rations'])if(!integer(s[k],0,1000000))return fresh(now);
   if(!Array.isArray(s.discovered)||!s.discovered.every(x=>typeof x==='string'&&/^((rig|chart|flux):[0-7]|chart:tide:[0-4])$/.test(x)))return fresh(now);

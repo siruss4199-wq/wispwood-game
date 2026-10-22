@@ -28,10 +28,10 @@ test('engine is earned through gameplay; restored capability survives reload and
  ok(s,{type:'infuse',id:'chart',from:i});assert.equal(s.board[i],null);assert.equal(s.energy,before.energy);assert.deepEqual(s.charges,before.charges);assert.deepEqual(s.taps,before.taps);assert.equal(s.journey.infusions,1);reject(s,{type:'infuse',id:'rig'});assert.deepEqual(load(JSON.stringify(s)),s);
 });
 test('enriched run affects only selected source, keeps normal cost and rare cadence, and does not waste Supply Surge',()=>{
- const s=engine();ok(s,{type:'infuse',id:'chart'});s.board=s.board.map(x=>x?.type==='source'?x:null);s.energy=80;s.charges={rig:7,chart:7,flux:7};s.surge=2;s.taps.chart=8;
+ const s=engine();ok(s,{type:'infuse',id:'chart'});s.board=s.board.map(x=>x?.type==='source'?x:null);s.energy=80;s.surge=2;s.taps.chart=8;
  assert.equal(nextOutput(s,'chart').type,'glyph');ok(s,{type:'produce',id:'chart'});assert.equal(s.journey.boost.left,3);assert.equal(s.surge,2);
  ok(s,{type:'produce',id:'rig'});assert.equal(s.journey.boost.left,3);assert.equal(s.surge,1);
- for(let n=0;n<3;n++){s.producerStreak=0;const base=structuredClone(s);base.journey.boost=null;base.surge=0;assert.equal(nextOutput(s,'chart').tier,nextOutput(base,'chart').tier+1);const energy=s.energy,charge=s.charges.chart;ok(s,{type:'produce',id:'chart'});assert.equal(s.energy,energy-1);assert.equal(s.charges.chart,charge-1);assert.equal(s.surge,1);Object.assign(s,load(JSON.stringify(s)));}
+ for(let n=0;n<3;n++){s.producerStreak=0;const base=structuredClone(s);base.journey.boost=null;base.surge=0;assert.equal(nextOutput(s,'chart').tier,nextOutput(base,'chart').tier+1);const energy=s.energy,charge=s.charges.chart;ok(s,{type:'produce',id:'chart'});assert.equal(s.energy,energy-1);assert.equal(s.charges.chart,charge);assert.equal(s.surge,1);Object.assign(s,load(JSON.stringify(s)));}
  assert.equal(s.journey.boost,null);
 });
 test('engine missing ingredients and full-board production fail without charging anything',()=>{

@@ -157,7 +157,7 @@ function missionSlots(){
    return slot({family:'rig',tier:2,count:1},rock,'clear','Recover winch','Keep equipment or repair the Lift')+slot({family:'flux',tier:2,count:1},rock,'restore','Restore Lift','Open ground + survey parts');
   }
   const targets=receivers(state);
-  if(!targets.length)return anchors(state).filter(x=>x.kind!=='winch').map(x=>slot(equipment(x.kind),state.board.indexOf(x),'deploy',nameOf(x),x.kind==='scope'?'Relic supplies':'Refill sources + rich pulls')).join('');
+  if(!targets.length)return anchors(state).filter(x=>x.kind!=='winch').map(x=>slot(equipment(x.kind),state.board.indexOf(x),'deploy',nameOf(x),x.kind==='scope'?'Relic supplies':'Energy + rich pulls')).join('');
   if(!optics(state).primed)return slot({family:'flux',tier:1,count:1},lift,'prime','Charge Stone Lift',ready(state,[{family:'flux',tier:1,count:1}])?'Use cell → wake the receiver':'Echo Crucible → merge two Violet Shards');
   const room=state.board.includes(null);
   return targets.map(i=>`<button class="missionSlot engineActivate ${room?'available':'blocked'}" data-site-index="${i}" data-engine-action="power" aria-label="${room?'Activate the rings':'Make one free space to activate the rings'} using ${nameOf(state.board[i])}. ${state.board[i].kind==='scope'?'Claim a relic case':'Receive a winch and three improved pulls'}"><span class="activateArt">${art(state.board[i])}</span><span class="activateCopy"><b>${room?'ACTIVATE RINGS →':'MAKE ONE SPACE'}</b><small>${nameOf(state.board[i])} · ${state.board[i].kind==='scope'?'Relic rewards':'Producer boost'}</small></span></button>`).join('');
@@ -185,7 +185,7 @@ function renderWorkshop(){
  const src='assets/premium/workshop-'+(restored?'operational':'damaged')+'.webp';
  if(button.querySelector('img').getAttribute('src')!==src)button.querySelector('img').src=src;
  button.dataset.state=state.workshop.precision?'precision':restored?'operational':'damaged';button.classList.toggle('repairReady',!restored&&ready);
- button.classList.toggle('pressAvailable',restored&&state.charges.rig>0&&state.energy>=2&&state.board.includes(null));
+ button.classList.toggle('pressAvailable',restored&&state.energy>=2&&state.board.includes(null));
  // One primary action per screen: the scene names the Workshop only while it is the job.
  const workshopJob=!restored&&state.stage===0&&state.landingStep===1&&state.discovered.includes('chart:tide:1');
  button.querySelector('span').textContent=restored||!workshopJob?'':ready?'Repair · 8 ◆':`Workshop · ${state.requests.supplies}/8 ◆`;
@@ -196,10 +196,10 @@ function renderWorkshop(){
  // Optional upgrade: shown once affordable or installed, never beside another camp build.
  const goalNow=visibleGoal(),competing=goalNow?.kind==='camp'&&goalNow.cost&&goalNow.name!=='Install Precision Bench';
  bench.hidden=!restored||!state.workshop.precision&&(state.requests.supplies<BENCH_COST||competing);
- bench.classList.toggle('ready',state.workshop.precision?benchInputs(state).every(i=>i>=0)&&state.energy>=1&&state.charges.rig>0:state.requests.supplies>=BENCH_COST);
+ bench.classList.toggle('ready',state.workshop.precision?benchInputs(state).every(i=>i>=0)&&state.energy>=1:state.requests.supplies>=BENCH_COST);
  bench.innerHTML=state.workshop.precision?art(item('rig',2))+'<span>Precision<br>Bench</span>':'<span>Precision Bench<br><b>'+Math.min(state.requests.supplies,BENCH_COST)+'/'+BENCH_COST+' ◆</b></span>';
  bench.setAttribute('aria-label',state.workshop.precision?'View Precision Bench recipe and fitting action':'View Precision Bench upgrade: '+BENCH_COST+' supplies. Grip tool and Ink scrap become a Split spanner.');
- button.setAttribute('aria-label',restored?'Coastal Workshop operational. Tap here to press a Grip tool for 2 energy and one Rover charge, or select Rivet Rover.':`Coastal Workshop damaged. Repair for 8 supplies. You have ${state.requests.supplies}.`);
+ button.setAttribute('aria-label',restored?'Coastal Workshop operational. Tap here to press a Grip tool for 2 energy, or select Rivet Rover.':`Coastal Workshop damaged. Repair for 8 supplies. You have ${state.requests.supplies}.`);
  renderFirstPier();
 }
 function renderFirstPier(){
@@ -289,7 +289,7 @@ function render(){
   const useful=isSource&&!locked&&(orderProgress?orderProgress.progress.some(r=>r.family===x.id&&r.current<r.count):needed().some(r=>r.family===x.id&&count(state,r)<r.count));
   const expedition=!!g?.needs.some(r=>matches(x,r)),contract=sideVisible&&(!!order||sideChoice()==='contract')&&c.needs.some(r=>matches(x,r));
   const matching=selectedItem?.type==='item'&&i!==selected&&(x?.type==='item'&&sameKind(x,selectedItem)||freesCrust(selectedItem,x))&&selectedItem.tier<maxTier(selectedItem,state);
-  return `<button class="tile ${x?.type??'empty'} ${locked?'locked':''} ${useful?'useful':''} ${selected===i?'selected':''} ${matching?'match':''} ${needed().some(r=>matches(x,r))?'wanted':''}" data-index="${i}" ${x?.family||isSource||x?.type==='crate'?`data-family="${x.family??(isSource?x.id:containerInfo(x).family)}"`:''} data-variant="${i%3}" data-use="${expedition&&contract?'both':expedition?'expedition':contract?'contract':''}" aria-label="${nameOf(x)}${x?.type==='crate'?' · tap to reveal · '+contents(x).map(nameOf).join(', '):''}${expedition&&contract?' · needed for expedition and contract':expedition?' · needed for expedition':contract?' · useful for contract':''}${locked?' · locked':isSource?' · '+SOURCES[x.id].cost+' energy · '+state.charges[x.id]+' charges':''}. Space ${i+1}" aria-pressed="${selected===i}">${art((x?.type==='site'&&state.stage<2||x?.type==='route'&&state.stage!==1)?{type:'sealed'}:x)}${expedition||contract?`<span class="useBadge" aria-hidden="true">${expedition?'◆':''}${contract?'▰':''}</span>`:''}${isSource?(locked?`<span class="lockedLabel">${x.id==='chart'?'CLEAR PATH':'EXCAVATE'}</span>`:`<span class="energyCue">ϟ${SOURCES[x.id].cost}</span><span class="charge">${Array.from({length:7},(_,n)=>`<i class="${n>=state.charges[x.id]?'used':''}"></i>`).join('')}</span>`):x?.type==='crate'?`<span class="pulls">${x.left}</span>`:''}</button>`;
+  return `<button class="tile ${x?.type??'empty'} ${locked?'locked':''} ${useful?'useful':''} ${selected===i?'selected':''} ${matching?'match':''} ${needed().some(r=>matches(x,r))?'wanted':''}" data-index="${i}" ${x?.family||isSource||x?.type==='crate'?`data-family="${x.family??(isSource?x.id:containerInfo(x).family)}"`:''} data-variant="${i%3}" data-use="${expedition&&contract?'both':expedition?'expedition':contract?'contract':''}" aria-label="${nameOf(x)}${x?.type==='crate'?' · tap to reveal · '+contents(x).map(nameOf).join(', '):''}${expedition&&contract?' · needed for expedition and contract':expedition?' · needed for expedition':contract?' · useful for contract':''}${locked?' · locked':isSource?' · '+SOURCES[x.id].cost+' energy':''}. Space ${i+1}" aria-pressed="${selected===i}">${art((x?.type==='site'&&state.stage<2||x?.type==='route'&&state.stage!==1)?{type:'sealed'}:x)}${expedition||contract?`<span class="useBadge" aria-hidden="true">${expedition?'◆':''}${contract?'▰':''}</span>`:''}${isSource?(locked?`<span class="lockedLabel">${x.id==='chart'?'CLEAR PATH':'EXCAVATE'}</span>`:`<span class="energyCue">ϟ${SOURCES[x.id].cost}</span>`):x?.type==='crate'?`<span class="pulls">${x.left}</span>`:''}</button>`;
  }).join('');
  const direction=currentOrderDirection();
  for(const index of direction?.indices??[]){
@@ -319,23 +319,9 @@ function render(){
   tile.setAttribute('aria-label',state.stage<2&&x.type==='site'?'Buried device':nameOf(x));
  }
  for(const tile of board.querySelectorAll('.tile.item,.tile.glyph')){const x=state.board[+tile.dataset.index];if((readySignal&&state.opportunity.needs.some(r=>matches(x,r)))||($('.discovery.ready')&&(x.type==='glyph'||matches(x,{family:'chart',tier:2}))))tile.classList.add('deliveryReady');}
- $('#free').textContent=state.board.filter(x=>x===null).length+' spaces';$('#hint').textContent=hint();$('#rationButton').hidden=state.energy>3;renderSelection();renderQuickRefill();
+ $('#free').textContent=state.board.filter(x=>x===null).length+' spaces';$('#hint').textContent=hint();$('#rationButton').hidden=state.energy>3;renderSelection();
  if(state.surge>0){$('#free').textContent=`ϟ SURGE · ${state.surge} pulls`;$('#free').title='Shared by all producers. Choose which family gets improved parts. No timer.';board.dataset.event='surge';}else{delete board.dataset.event;$('#free').removeAttribute('title');}
  if(state.discovery&&!state.discoveryDone&&!state.opportunity&&state.board.some(x=>x?.type==='glyph')){const label=$('.discovery .reward small');if(label&&state.board.some(x=>x?.type==='glyph')&&!ready(state,[{family:'chart',tier:2,count:1}]))label.textContent='1 LENS LEFT';}
-}
-function renderQuickRefill(){
- const x=state.board[selected],can=x?.type==='source'&&sourceUnlocked(state,x.id)&&!state.charges[x.id]&&state.energy>=3;
- let button=$('#quickRefill');
- if(!button){
-  $('.boardHeading').insertAdjacentHTML('beforeend','<button type="button" id="quickRefill" hidden></button>');
-  button=$('#quickRefill');
- }
- button.hidden=!can;$('#free').hidden=!!can;
- if(can){
-  button.dataset.source=x.id;
-  button.textContent='REFILL '+SOURCES[x.id].name+' · 3 ϟ';
-  button.setAttribute('aria-label','Refill '+SOURCES[x.id].name+' for 3 energy; return to current order');
- }
 }
 function renderSelection(){
  const x=state.board[selected],ending=signalHeard();let title=ending?'The signal answers':state.stage<4?'Open the Tideglass Vault':'The star ocean awaits',desc=ending?'Neri and Ivo traced the missing fleet, and something answered. Keep the camp working; replay Chapter 1 from the objective card any time.':state.stage<4?'Merge identical objects. Choose expedition progress or supplies.':state.journey.engine?'Use Loop Cells on producers for enriched runs.':'Restore the engine inside with a spanner, lens and coil.',buttons='';
@@ -353,7 +339,7 @@ function renderSelection(){
   desc=state.workshop.precision?'Spare Grip Tool + Ink Scrap makes a Split Spanner. Expedition equipment stays protected.':'Upgrade the Workshop to fit expedition tools from spare materials.';
   const inputs=benchInputs(state);
   buttons='<span class="benchRoute">'+BENCH_NEEDS.map((r,n)=>'<span class="benchInput '+(inputs[n]>=0?'present':'missing')+'">'+art(item(r.family,r.tier,r.line))+'<small>'+(inputs[n]>=0?'✓':'0/1')+'</small></span>').join('')+'<span>→</span>'+art(item('rig',2))+'</span>';
-  buttons+=state.workshop.precision?'<button class="benchAction '+(inputs.every(i=>i>=0)&&state.energy>=1&&state.charges.rig?'available':'')+'" data-action="fitSpanner">Fit Spanner · 1 ϟ + 1 charge</button>':'<button class="benchAction '+(state.requests.supplies>=BENCH_COST?'available':'')+'" data-action="upgradeWorkshop">Install bench · 12 ◆</button>';
+  buttons+=state.workshop.precision?'<button class="benchAction '+(inputs.every(i=>i>=0)&&state.energy>=1?'available':'')+'" data-action="fitSpanner">Fit Spanner · 1 ϟ</button>':'<button class="benchAction '+(state.requests.supplies>=BENCH_COST?'available':'')+'" data-action="upgradeWorkshop">Install bench · 12 ◆</button>';
  }
  if(!x&&!state.merges&&state.stage===0&&!state.landingStep){title='Start with the glowing pair';desc='Tap one Copper Offcut, then tap its twin. They become a Grip Tool.';}
  else if(!x&&state.stage===0&&!state.landingStep){title='Landing ready';desc='You made a Grip Tool. Tap CLEAR PATH above to open the landing.';}
@@ -363,13 +349,12 @@ function renderSelection(){
  }
  if(!x&&focus==='pier'){
   title=state.camp.deepSurvey?'Deep Survey Loft':state.camp.loft?'Charting Loft':'Develop the Supply Pier';
-  desc=state.camp.deepSurvey?'Every recovery: Reef Compass · 3 energy + 1 Kite charge.':state.camp.loft?'Recovery: 2 energy + 1 Kite charge. Deep Survey unlocks two treasures and guaranteed compasses.':'Build a Charting Loft · permanently unlock Wayfinding treasures.';
+  desc=state.camp.deepSurvey?'Every recovery: Reef Compass · 3 energy.':state.camp.loft?'Recovery: 2 energy. Deep Survey unlocks two treasures and guaranteed compasses.':'Build a Charting Loft · permanently unlock Wayfinding treasures.';
   buttons='<span class="benchRoute tidePreview">'+TIDE_NAMES.map((_,tier)=>'<span class="'+(tier>2&&!state.camp.deepSurvey?'futureTreasure':'')+'">'+art(tideItem(tier))+'</span>').join('<span>→</span>')+'</span>';
   if(!state.camp.loft)buttons+=`<button class="accent" data-action="buildLoft">Build Loft · ${state.requests.supplies}/${LOFT_COST} ◆</button>`;
   else{
    buttons+=`<button class="accent" data-action="recoverTide">${state.camp.deepSurvey?'Deep Survey · Reef Compass':'Recover treasure'} · ${recoveryCost(state)} ϟ</button>`;
    if(!state.camp.deepSurvey)buttons+=state.stage<4?'<span class="benchRoute">Deep Survey follows the Pearl’s passage through the Vault. Continue the expedition above.</span>':`<button class="benchAction ${pearlDiscovered(state)&&state.requests.supplies>=DEEP_SURVEY_COST?'available':''}" data-action="upgradeLoft">${pearlDiscovered(state)?'Deep Survey · '+state.requests.supplies+'/'+DEEP_SURVEY_COST+' ◆':'Deep Survey · discover a Pearl Astrolabe'}</button>`;
-   if(!state.charges.chart)buttons+='<button data-action="service" data-source="chart">Service Kite · 3 ϟ</button>';
   }
  }
  if(x){title=nameOf(x);
@@ -384,17 +369,11 @@ function renderSelection(){
   }else if(x.type==='source'){
    if(!sourceUnlocked(state,x.id))desc=`Unlock: ${x.id==='chart'?'secure the landing':'open a crossing'}.`;
    else{
-    desc=`${state.charges[x.id]}/7 charges · Next: ${nameOf(nextOutput(state,x.id))}`;
-    if(state.charges[x.id])buttons=`<button class="accent" data-action="produce">Create · ${SOURCES[x.id].cost} ϟ</button>`;
-    else{
-     const canTool=state.board.some(y=>matches(y,{family:'rig',tier:1})),canEnergy=state.energy>=3;
-     desc='Out of charges. Refill this producer to continue your current order.';
-     buttons=`<button class="accent" data-action="service"${canEnergy?'':' disabled'}>Refill · 3 ϟ</button>`+
-      (canTool?'<button data-action="serviceTool">Refill with Grip Tool</button>':'');
-    }
-    if(x.id==='chart'&&state.camp.loft&&state.charges.chart>0)buttons+=`<button class="accent" data-action="recoverTide">${state.camp.deepSurvey?'Deep Survey':'Recover'} ${nameOf(nextTide(state))} · ${recoveryCost(state)} ϟ</button>`;
+    desc=`Next: ${nameOf(nextOutput(state,x.id))} · ${SOURCES[x.id].cost} energy a tap`;
+    buttons=`<button class="accent" data-action="produce">Create · ${SOURCES[x.id].cost} ϟ</button>`;
+    if(x.id==='chart'&&state.camp.loft)buttons+=`<button class="accent" data-action="recoverTide">${state.camp.deepSurvey?'Deep Survey':'Recover'} ${nameOf(nextTide(state))} · ${recoveryCost(state)} ϟ</button>`;
     if(state.journey.engine&&!state.journey.boost&&state.board.some(loopCell))buttons+='<button class="accent" data-action="infuse">Enrich · 1 Loop Cell</button>';
-    if(x.id==='rig'&&state.workshop.repaired&&state.charges.rig)buttons+='<button class="accent toolPress" data-action="press">Press Grip Tool · 2 ϟ</button>';
+    if(x.id==='rig'&&state.workshop.repaired)buttons+='<button class="accent toolPress" data-action="press">Press Grip Tool · 2 ϟ</button>';
    }
   }else if(x.type==='rock'){
    const find=FINDS[x.find];
@@ -483,7 +462,7 @@ function run(a){
  if(a.type==='buildPier'){moment('Supply Pier built','Camp orders now fund useful material cases', {type:'crate',kind:'salvage'});sound.play('milestone');$('.world').classList.add('changed');}
  if(a.type==='packPier'){moment('Supply case delivered','Tap the new case on the board to unpack useful parts', {type:'crate',kind:{rig:'salvage',chart:'survey',flux:'relic'}[a.family]});sound.play('rare');}
  if(a.type==='press'){sound.play('merge',1);board.querySelector(`[data-index="${result.index}"]`)?.classList.add('merge-pop');}
- if(result.event==='restoration'){moment(a.type==='upgradeWorkshop'?'Precision Bench installed':'Workshop restored',a.type==='upgradeWorkshop'?'Spare tool + chart → spanner':'Tap Workshop or Rivet Rover for a Grip tool · 2 energy + 1 charge',item('rig',a.type==='upgradeWorkshop'?2:1));sound.play('milestone');$('.world').classList.add('changed');board.querySelector('.source[data-family="rig"]')?.classList.add('unlocked');}
+ if(result.event==='restoration'){moment(a.type==='upgradeWorkshop'?'Precision Bench installed':'Workshop restored',a.type==='upgradeWorkshop'?'Spare tool + chart → spanner':'Tap Workshop or Rivet Rover for a Grip tool · 2 energy',item('rig',a.type==='upgradeWorkshop'?2:1));sound.play('milestone');$('.world').classList.add('changed');board.querySelector('.source[data-family="rig"]')?.classList.add('unlocked');}
  if(a.type==='produce'||a.type==='press'){
   board.querySelector(`[data-index="${selected}"]`)?.classList.add('react');
   if(from&&!reduced()){const to=board.querySelector(`[data-index="${result.index}"]`)?.getBoundingClientRect();if(to){const el=document.createElement('div');el.className='flight';el.innerHTML=art(state.board[result.index]);el.style.cssText=`left:${from.x}px;top:${from.y}px;--dx:${to.x-from.x}px;--dy:${to.y-from.y}px`;document.body.append(el);setTimeout(()=>el.remove(),460);}}
@@ -504,13 +483,8 @@ function clickTile(i){
  if(selected!==null&&selected!==i&&movable(prev)&&(!x||prev.type==='item'&&x.type==='item'&&sameKind(x,prev)||freesCrust(prev,x))){run({type:'merge',from:selected,to:i});return;}
  selected=i;render();
  if(x?.type==='crate')run({type:'crate',index:i});
- if(x?.type==='source'&&sourceUnlocked(state,x.id)&&state.charges[x.id]>0)run({type:'produce',id:x.id});
+ if(x?.type==='source'&&sourceUnlocked(state,x.id))run({type:'produce',id:x.id});
 }
-$('.boardHeading').addEventListener('click',e=>{
- const button=e.target.closest('#quickRefill');if(!button)return;
- const id=button.dataset.source;
- if(state.board[selected]?.type==='source'&&state.board[selected].id===id&&!state.charges[id]&&state.energy>=3)run({type:'service',id});
-});
 board.addEventListener('click',e=>{const tile=e.target.closest('[data-index]')??document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-index]');if(tile&&board.contains(tile)&&performance.now()>suppressUntil)clickTile(+tile.dataset.index);});
 board.addEventListener('pointerdown',e=>{const tile=e.target.closest('[data-index]');if(!tile||e.button!==0)return;suppressUntil=0;const i=+tile.dataset.index;if(!['item','crate','brace','glyph','prism'].includes(state.board[i]?.type))return;drag={from:i,id:e.pointerId,x:e.clientX,y:e.clientY,moved:false};tile.classList.add('picked');board.setPointerCapture?.(e.pointerId);});
 board.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)return;if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>8)drag.moved=true;if(drag.moved){board.querySelector(`[data-index="${drag.from}"]`)?.classList.add('dragging');board.querySelectorAll('.target').forEach(x=>x.classList.remove('target'));const target=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-index]');const to=target?+target.dataset.index:-1,a=state.board[drag.from],b=state.board[to];if(to>=0&&to!==drag.from&&(!b||(a?.type==='prism'&&movable(b))||b?.type==='prism'||(a?.type==='item'&&b.type==='item'&&sameKind(a,b)&&a.tier<maxTier(a,state))||freesCrust(a,b)||useAction(state,drag.from,to)))target.classList.add('target');}});
@@ -535,7 +509,7 @@ $('#scene').onclick=e=>{
   $('#selection').scrollIntoView({block:'nearest'});return;
  }
  // Anywhere else on the scene opens the coast map.
- if(!e.target.closest('#workshop')){showMap();return;}if(!state.workshop.repaired){const result=run({type:'restoreWorkshop'});if(!result.ok)message.textContent=`Camp requests fund repairs · ${state.requests.supplies}/${WORKSHOP_COST} supplies`;return;}selected=state.board.findIndex(x=>x?.type==='source'&&x.id==='rig');if(!state.charges.rig){render();$('#selection').scrollIntoView({block:'nearest'});return;}run({type:'press',id:'rig'});board.scrollIntoView({block:'center'});};
+ if(!e.target.closest('#workshop')){showMap();return;}if(!state.workshop.repaired){const result=run({type:'restoreWorkshop'});if(!result.ok)message.textContent=`Camp requests fund repairs · ${state.requests.supplies}/${WORKSHOP_COST} supplies`;return;}selected=state.board.findIndex(x=>x?.type==='source'&&x.id==='rig');run({type:'press',id:'rig'});board.scrollIntoView({block:'center'});};
 $('#requests').onclick=e=>{
  if(e.target.closest('#ordersToggle')){postChapterOrdersOpen=!postChapterOrdersOpen;render();return;}
  const camp=e.target.closest('[data-camp-action]');
@@ -636,7 +610,7 @@ $('#returnSave').onclick=()=>{
  }catch{message.textContent='Could not return to the original save. Replay progress remains safe.';}
 };
 
-$('#helpButton').onclick=()=>{$('#journalContent').innerHTML='<h2>The Tideglass Vault</h2><ul><li>MERGE twins to make useful equipment.</li><li>Complete ORDERS to earn restoration supplies. Spend supplies on the Workshop, Pier and Charting Loft to unlock new production and discoveries.</li><li>Make the two route tools, then choose working space or relic supplies. Repair the Stone lift next. Recover buried gear with a spanner, or restore its device with a coil.</li><li>Choose a receiver: Relic finder brings relic supplies; Power bridge recharges sources.</li><li>Merge two Violet Shards from Echo Crucible. Use their Loop Cell on the Stone Lift, then activate your chosen receiver to raise the vault rings.</li><li>DELIVER optional supplies, or keep them for the expedition. ••• shows other optional tasks.</li><li>OPEN rewards when you have room. Use a fragment with a sight lens for richer source drops.</li></ul>';$('#journal').showModal();};
+$('#helpButton').onclick=()=>{$('#journalContent').innerHTML='<h2>The Tideglass Vault</h2><ul><li>MERGE twins to make useful equipment.</li><li>Complete ORDERS to earn restoration supplies. Spend supplies on the Workshop, Pier and Charting Loft to unlock new production and discoveries.</li><li>Make the two route tools, then choose working space or relic supplies. Repair the Stone lift next. Recover buried gear with a spanner, or restore its device with a coil.</li><li>Choose a receiver: Relic finder brings relic supplies; Power bridge gives energy and rich pulls.</li><li>Merge two Violet Shards from Echo Crucible. Use their Loop Cell on the Stone Lift, then activate your chosen receiver to raise the vault rings.</li><li>DELIVER optional supplies, or keep them for the expedition. ••• shows other optional tasks.</li><li>OPEN rewards when you have room. Use a fragment with a sight lens for richer source drops.</li></ul>';$('#journal').showModal();};
 for(const dialog of document.querySelectorAll('dialog')){dialog.querySelector('.close').onclick=()=>dialog.close();dialog.querySelector('.continue')?.addEventListener('click',()=>dialog.close());dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close();});}
 setInterval(()=>{const op=opportunity(state),clock=$('#opClock');if(op&&clock){clock.textContent=op.remaining?(ready(state,op.needs)?'✓ READY · ':'MAKE · ')+Math.ceil(op.remaining/1000)+'s':'PASSED · DISMISS';if(!op.remaining){const card=clock.closest('.contract');card.classList.remove('ready');card.removeAttribute('aria-label');}}},1000);
 render();persist();platform.init();

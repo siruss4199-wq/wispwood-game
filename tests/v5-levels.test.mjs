@@ -51,3 +51,11 @@ test('older saves without a level load at level 1 and keep everything else',()=>
  }
  const s=fresh(0);s.level={version:1,level:4,xp:7};assert.deepEqual(load(JSON.stringify(s),3).level,{version:1,level:4,xp:7});
 });
+
+test('step 4b: older saves with spent charges load with full charges and producers need no service',()=>{
+ const s=fresh(0);s.charges={rig:0,chart:3,flux:7};const back=load(JSON.stringify(s),2);
+ assert.deepEqual(back.charges,{rig:7,chart:7,flux:7});
+ const before=JSON.stringify(back),r=act(back,{type:'service',id:'rig'},3);
+ assert.equal(r.ok,false);assert.match(r.message,/no longer need service/);assert.equal(JSON.stringify(back),before);
+ const e=back.energy;assert.equal(act(back,{type:'produce',id:'rig'},4).ok,true);assert.equal(back.energy,e-1);assert.equal(back.charges.rig,7);
+});

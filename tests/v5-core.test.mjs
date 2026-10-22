@@ -33,8 +33,8 @@ test('merge, movement, max tiers, protected sources and invalid indices',()=>{
  success(s,{type:'merge',from:7,to:1});assert.equal(s.board[7],null);assert.equal(s.board[1].tier,0);
  s.board[1]=item('rig',7);s.board[2]=item('rig',7);failUnchanged(s,{type:'merge',from:1,to:2});
 });
-test('source charges, energy and full-board failures are atomic; deterministic rare survives reload',()=>{
- const s=fresh();failUnchanged(s,{type:'produce',id:'flux'});s.energy=0;failUnchanged(s,{type:'produce',id:'rig'});s.energy=40;s.charges.rig=0;failUnchanged(s,{type:'produce',id:'rig'});success(s,{type:'service',id:'rig',useTool:true});assert.equal(s.charges.rig,7);assert.equal(s.board[13],null);
+test('retired charges never block a pull; energy and full-board failures are atomic; deterministic rare survives reload',()=>{
+ const s=fresh();failUnchanged(s,{type:'produce',id:'flux'});s.energy=0;failUnchanged(s,{type:'produce',id:'rig'});s.energy=40;s.charges.rig=0;failUnchanged(s,{type:'service',id:'rig',useTool:true});assert.deepEqual(s.board[13],item('rig',1));success(s,{type:'produce',id:'rig'});assert.equal(s.energy,39);assert.equal(s.charges.rig,0);
  s.taps.rig=8;assert.equal(nextOutput(load(JSON.stringify(s)),'rig').type,'glyph');success(s,{type:'produce',id:'rig'});assert.equal(s.discovery,true);
  s.board=s.board.map(x=>x??item('rig',0));failUnchanged(s,{type:'produce',id:'rig'});
 });
@@ -90,10 +90,10 @@ test('illustrated objects use distinct materials; art boundary can accept later 
  SPRITE_OVERRIDES['rig-0']='assets/test-sprite.webp';assert.match(art(item('rig',0)),/<img[^>]+test-sprite.webp/);delete SPRITE_OVERRIDES['rig-0'];
 });
 
-test('producer bursts preserve deterministic rare cadence, charge cost and the final free space',()=>{
+test('producer bursts preserve deterministic rare cadence, energy-only cost and the final free space',()=>{
  const s=fresh();for(let i=0;i<36;i++)if(s.board[i]?.type==='item')s.board[i]=null;
  s.taps.rig=8;const occupied=s.board.filter(Boolean).length,energy=s.energy;
- const r=success(s,{type:'produce',id:'rig'});assert.equal(s.board[r.index].type,'glyph');assert.equal(s.board.filter(Boolean).length,occupied+2);assert.equal(s.energy,energy-1);assert.equal(s.charges.rig,6);assert.equal(s.taps.rig,9);
+ const r=success(s,{type:'produce',id:'rig'});assert.equal(s.board[r.index].type,'glyph');assert.equal(s.board.filter(Boolean).length,occupied+2);assert.equal(s.energy,energy-1);assert.equal(s.charges.rig,7);assert.equal(s.taps.rig,9);
  s.board=s.board.map(x=>x??item('chart',0));s.board[1]=null;s.taps.rig=11;
  success(s,{type:'produce',id:'rig'});assert.equal(s.board.filter(Boolean).length,36);assert.equal(s.board[1].tier,1);
  failUnchanged(s,{type:'produce',id:'rig'});
@@ -109,10 +109,10 @@ test('equipment discoveries unpack loose supplies once without producing more bo
  s.board[7]=item('rig',1);s.board[8]=item('rig',1);const before=s.board.filter(Boolean).length;success(s,{type:'merge',from:7,to:8});assert.equal(s.board.filter(Boolean).length,before+2);assert.equal(s.board.filter(x=>x?.type==='crate').length,1);
  const saved=load(JSON.stringify(s));saved.board[7]=item('rig',1);saved.board[8]=item('rig',1);saved.merges=3;const n=saved.board.filter(Boolean).length;success(saved,{type:'merge',from:7,to:8});assert.equal(saved.board.filter(Boolean).length,n-1);
 });
-test('finite caches, sparse-board servicing and deliberate recycling remain usable',()=>{
+test('finite caches, refused legacy service and deliberate recycling remain usable',()=>{
  const s=fresh();for(let i=0;i<36;i++)if(s.board[i]?.type==='item')s.board[i]=null;
  const n=s.board.filter(Boolean).length;success(s,{type:'crate',index:34});assert.equal(s.board[34].type,'item');assert.equal(s.board.filter(Boolean).length,n+2);
- s.charges.rig=0;success(s,{type:'service',id:'rig'});assert.equal(s.charges.rig,7);const index=s.board.findIndex(x=>x?.type==='item'),before=s.board.filter(Boolean).length;success(s,{type:'recycle',index});assert.equal(s.board.filter(Boolean).length,before-1,'recycling does not secretly auto-fill');
+ s.charges.rig=0;failUnchanged(s,{type:'service',id:'rig'});const index=s.board.findIndex(x=>x?.type==='item'),before=s.board.filter(Boolean).length;success(s,{type:'recycle',index});assert.equal(s.board.filter(Boolean).length,before-1,'recycling does not secretly auto-fill');
 });
 test('first-session density stays active across goal-first, contract-first, cache and salvage policies',()=>{
  for(const sideFirst of [true,false])for(const openCaches of [true,false])for(const clearSalvage of [true,false]){
@@ -142,22 +142,22 @@ test('partial opening preserves every remaining reward across save and resumes w
  const r=success(s,{type:'crate',index:34});assert.equal(r.reveal.length,1);assert.equal(s.board[34].left,2);
  const saved=load(JSON.stringify(s));assert.equal(saved.board[34].kind,'survey');saved.board[2]=null;success(saved,{type:'crate',index:34});assert.deepEqual(saved.board[34],item('chart',2));
 });
-test('parts case charge support happens once and old cache saves keep all their remaining mixed gear',()=>{
- const s=fresh();s.charges.rig=2;success(s,{type:'crate',index:34});assert.equal(s.charges.rig,4);failUnchanged(s,{type:'crate',index:34});
+test('parts case opens once without a charge bonus and old cache saves keep all their remaining mixed gear',()=>{
+ const s=fresh();s.charges.rig=2;const energy=s.energy;success(s,{type:'crate',index:34});assert.equal(s.charges.rig,2);assert.equal(s.energy,energy);failUnchanged(s,{type:'crate',index:34});
  s.board[34]={type:'crate',left:2};const migrated=load(JSON.stringify(s));assert.equal(migrated.board[34].kind,'locker');assert.equal(migrated.board[34].left,2);assert.deepEqual(contents(migrated.board[34]),[item('flux',1),item('chart',1)]);
  const bad={...fresh()};bad.board[34]={type:'crate',kind:'invalid',left:3};assert.equal(load(JSON.stringify(bad)).board[34].kind,'salvage');
 });
-test('last-charge producer bonus is useful, finite and preserves ninth-pull rare output',()=>{
+test('seventh-pull producer bonus is useful, finite, ignores charges and preserves ninth-pull rare output',()=>{
  const s=fresh();s.taps.rig=6;s.charges.rig=1;for(let i=0;i<36;i++)if(s.board[i]?.type==='item')s.board[i]=null;
- const r=success(s,{type:'produce',id:'rig'});assert.equal(r.bonus,'rig');assert.equal(r.reveal.length,2);assert.equal(s.board[r.reveal[1]].tier,1);assert.equal(s.charges.rig,0);failUnchanged(s,{type:'produce',id:'rig'});success(s,{type:'service',id:'rig'});s.taps.rig=8;assert.equal(nextOutput(s,'rig').type,'glyph');
+ const r=success(s,{type:'produce',id:'rig'});assert.equal(r.bonus,'rig');assert.equal(r.reveal.length,2);assert.equal(s.board[r.reveal[1]].tier,1);assert.equal(s.charges.rig,1);assert.equal(success(s,{type:'produce',id:'rig'}).bonus,null);failUnchanged(s,{type:'service',id:'rig'});s.taps.rig=8;assert.equal(nextOutput(s,'rig').type,'glyph');
 });
 
 test('shared surge is finite, survives reload, protects rare pulls and failed commands',()=>{
  const s=fresh();s.stage=2;s.surge=3;
  assert.equal(nextOutput(s,'chart').tier,1);success(s,{type:'produce',id:'chart'});assert.equal(s.surge,2);
  const saved=load(JSON.stringify(s));assert.equal(saved.surge,2);success(saved,{type:'produce',id:'flux'});assert.equal(saved.surge,1);
- saved.charges.rig=0;failUnchanged(saved,{type:'produce',id:'rig'});assert.equal(saved.surge,1);
- saved.charges.rig=7;saved.taps.rig=8;success(saved,{type:'produce',id:'rig'});assert.equal(saved.surge,1,'a guaranteed rare does not waste an improved part');
+ const energy=saved.energy;saved.energy=0;failUnchanged(saved,{type:'produce',id:'rig'});assert.equal(saved.surge,1);
+ saved.energy=energy;saved.taps.rig=8;success(saved,{type:'produce',id:'rig'});assert.equal(saved.surge,1,'a guaranteed rare does not waste an improved part');
  success(saved,{type:'produce',id:'rig'});assert.equal(saved.surge,0);assert.equal(nextOutput(saved,'rig').tier,0);
  const old=fresh();delete old.surge;assert.deepEqual(load(JSON.stringify(old)),old);
  const corrupt={...old,surge:999};assert.equal(load(JSON.stringify(corrupt)).surge,undefined);
@@ -165,11 +165,11 @@ test('shared surge is finite, survives reload, protects rare pulls and failed co
 test('honest proximity cues distinguish one merge from a missing item',()=>{
  const s=fresh(),needs=[{family:'rig',tier:2,count:1}];assert.equal(near(s,needs),'1 ITEM LEFT');s.board[7]=item('rig',1);assert.equal(near(s,needs),'1 MERGE AWAY');s.board[7]=item('rig',2);assert.equal(near(s,needs),'READY');
 });
-test('T4 and T6 first crafts reward charges once, without renewable merge farming',()=>{
- const s=fresh();s.charges.rig=1;s.board[7]=item('rig',2);s.board[8]=item('rig',2);
- assert.equal(success(s,{type:'merge',from:7,to:8}).breakthrough,true);assert.equal(s.charges.rig,3);
- s.board[7]=item('rig',2);s.board[8]=item('rig',2);assert.equal(success(s,{type:'merge',from:7,to:8}).breakthrough,false);assert.equal(s.charges.rig,3);
- s.board[7]=item('rig',4);s.board[8]=item('rig',4);const energy=s.energy;success(s,{type:'merge',from:7,to:8});assert.equal(s.charges.rig,5);assert.equal(s.energy,energy+5);
+test('T4 and T6 first crafts reward energy once, without renewable merge farming',()=>{
+ const s=fresh(),charges={...s.charges};s.board[7]=item('rig',2);s.board[8]=item('rig',2);let energy=s.energy;
+ const first=success(s,{type:'merge',from:7,to:8});assert.equal(first.breakthrough,true);assert.equal(s.energy,energy+3);assert.match(first.message,/breakthrough energy/);
+ s.board[7]=item('rig',2);s.board[8]=item('rig',2);energy=s.energy;assert.equal(success(s,{type:'merge',from:7,to:8}).breakthrough,false);assert.equal(s.energy,energy);
+ s.board[7]=item('rig',4);s.board[8]=item('rig',4);energy=s.energy;success(s,{type:'merge',from:7,to:8});assert.equal(s.energy,energy+8,'T6 breakthrough +7 and third-merge +1');assert.deepEqual(s.charges,charges);
 });
 
 test('each Surge item is strictly better than its normal deterministic pull, including decoded sources',()=>{

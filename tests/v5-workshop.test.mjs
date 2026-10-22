@@ -16,9 +16,10 @@ test('old completed saves gain a damaged workshop without losing earned resource
 test('restored press makes usable tools with exact costs; normal source and rare schedule stay intact',()=>{
  const s=fresh(),before=JSON.stringify(s);assert.equal(act(s,{type:'press'}).ok,false);assert.equal(JSON.stringify(s),before);
  s.requests.supplies=8;act(s,{type:'restoreWorkshop'});const energy=s.energy,charge=s.charges.rig,taps=s.taps.rig;
- const result=act(s,{type:'press'});assert.ok(result.ok);assert.deepEqual(s.board[result.index],{type:'item',family:'rig',tier:1});assert.equal(s.energy,energy-2);assert.equal(s.charges.rig,charge-1);assert.equal(s.taps.rig,taps);assert.equal(s.workshop.presses,1);
+ const result=act(s,{type:'press'});assert.ok(result.ok);assert.deepEqual(s.board[result.index],{type:'item',family:'rig',tier:1});assert.equal(s.energy,energy-2);assert.equal(s.charges.rig,charge);assert.equal(result.message,'Grip tool pressed · 2 energy');assert.equal(s.taps.rig,taps);assert.equal(s.workshop.presses,1);
  assert.equal(load(JSON.stringify(s)).workshop.presses,1);assert.ok(act(s,{type:'produce',id:'rig'}).ok);assert.equal(s.taps.rig,taps+1);
 });
-test('press failure is atomic with a full board, no energy or no charge',()=>{
- for(const reason of ['full','energy','charge']){const s=fresh();s.workshop.repaired=true;if(reason==='full')s.board=s.board.map(x=>x??{type:'item',family:'rig',tier:0});if(reason==='energy')s.energy=1;if(reason==='charge')s.charges.rig=0;const before=JSON.stringify(s);assert.equal(act(s,{type:'press'}).ok,false);assert.equal(JSON.stringify(s),before);}
+test('press failure is atomic with a full board or no energy; charges never block it',()=>{
+ for(const reason of ['full','energy']){const s=fresh();s.workshop.repaired=true;if(reason==='full')s.board=s.board.map(x=>x??{type:'item',family:'rig',tier:0});if(reason==='energy')s.energy=1;const before=JSON.stringify(s);assert.equal(act(s,{type:'press'}).ok,false);assert.equal(JSON.stringify(s),before);}
+ const s=fresh();s.workshop.repaired=true;s.charges.rig=0;const energy=s.energy;assert.ok(act(s,{type:'press'}).ok);assert.equal(s.energy,energy-2);assert.equal(s.charges.rig,0);
 });

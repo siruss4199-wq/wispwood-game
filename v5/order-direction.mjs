@@ -35,9 +35,8 @@ export function orderDirection(s,order){
  }
  const index=s.board.findIndex(x=>x?.type==='source'&&x.id===need.family);
  if(index<0)return {kind:'unavailable',orderId:order.id,need,indices:[]};
- const lowCharge=(s.charges?.[need.family]??0)<=0;
  const energyCost=line==='tide'?recoveryCost(s):SOURCES[need.family]?.cost??1;
- if(s.energy<(lowCharge?3:energyCost))return {kind:'energy',orderId:order.id,need,family:need.family,indices:[],index};
- return {kind:lowCharge?'refill':line==='tide'?'recover':'produce',
+ if(s.energy<energyCost)return {kind:'energy',orderId:order.id,need,family:need.family,indices:[],index};
+ return {kind:line==='tide'?'recover':'produce',
   orderId:order.id,need,family:need.family,indices:[index],index};
 }

@@ -31,19 +31,22 @@ function solve(s,options={}){
  return circuit(s);
 }
 test('receivers require a charged repaired lift and grant different, single-use rewards',()=>{
+ const gained={};
  for(const receiver of ['scope','relay']){
-  const s=prepared(receiver);solve(s,{receiver});const path=circuit(s),before=structuredClone(s.board);s.surge=0;s.charges={rig:0,chart:0,flux:0};
+  const s=prepared(receiver);solve(s,{receiver});const path=circuit(s),before=structuredClone(s.board);s.surge=0;s.energy=40;const charges={...s.charges};
   reject(s,{type:'power',index:0});const result=ok(s,{type:'power',index:path.at(-1)});assert.equal(result.reveal.length,1);assert.ok(s.board[result.reveal[0]],'new reward is exposed to the existing reveal feedback');
   assert.ok(allSeals(s));assert.equal(s.stage,3);assert.equal(s.board.some(x=>x?.type==='prism'),false);
   assert.deepEqual(s.seals.link,path);
   for(let i=0;i<36;i++)if(before[i]&&before[i].type!=='prism')assert.deepEqual(s.board[i],before[i],'kept stock is never consumed by the beam');
-  if(receiver==='relay'){assert.equal(s.surge,3);assert.deepEqual(s.charges,{rig:7,chart:7,flux:7});assert.equal(s.board.filter(x=>x?.family==='rig'&&x.tier===3).length,before.filter(x=>x?.family==='rig'&&x.tier===3).length+1,'tangible reward even when charges were already full');}
-  else{assert.equal(s.surge,0);assert.deepEqual(s.charges,{rig:0,chart:0,flux:0});assert.ok(s.board.some(x=>x?.type==='crate'&&x.kind==='relic'&&x.left===5));}
+  assert.deepEqual(s.charges,charges);
+  if(receiver==='relay'){assert.equal(s.surge,3);gained.relay=s.energy-40;assert.equal(s.board.filter(x=>x?.family==='rig'&&x.tier===3).length,before.filter(x=>x?.family==='rig'&&x.tier===3).length+1,'tangible reward on top of the energy');}
+  else{assert.equal(s.surge,0);gained.scope=s.energy-40;assert.ok(gained.scope>=6,'+6 power energy');assert.ok(s.board.some(x=>x?.type==='crate'&&x.kind==='relic'&&x.left===5));}
   // Isolate seal/reward mechanics; the craft-calibration gate has its own tests.
   s.craftMastery={rig:true,chart:true,flux:true};s.workshop.repaired=true;s.camp.pier=true;
   for(const x of [item('rig',2),item('chart',1)]){const i=s.board.indexOf(null);s.board[i]=x;}
   reject(s,{type:'power'});ok(s,{type:'goal'});assert.equal(s.stage,4);
  }
+ assert.equal(gained.relay-gained.scope,10,'relay receiver adds +10 energy where it once refilled charges');
 });
 test('legacy saves retain board, energy and earned progress; migration is idempotent',()=>{
  for(const stage of [0,1,2,3,4]){
@@ -55,8 +58,8 @@ test('legacy saves retain board, energy and earned progress; migration is idempo
   if(stage===3){reject(saved,{type:'goal'});saved.requests.supplies=20;ok(saved,{type:'restoreWorkshop'});ok(saved,{type:'buildPier'});ok(saved,{type:'goal'});assert.equal(saved.stage,4);}
  }
 });
-test('full inventory and depleted sources remain recoverable without deleting a device',()=>{
- const s=prepared();s.board=s.board.map(x=>x??item('rig',0));s.energy=0;s.charges={rig:0,chart:0,flux:0};
+test('full inventory and zero energy remain recoverable without deleting a device',()=>{
+ const s=prepared();s.board=s.board.map(x=>x??item('rig',0));s.energy=0;
  for(let n=0;n<150&&s.stage<4;n++)ok(s,choose(s,{sideFirst:false,openCaches:true}));
  assert.equal(s.stage,4);assert.equal(s.board.filter(x=>x?.type==='source').length,3);assert.equal(s.board.filter(x=>x?.type==='site').length,3);
 });

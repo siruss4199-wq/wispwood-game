@@ -8,7 +8,7 @@ const reject=(s,a)=>{const before=JSON.stringify(s);assert.equal(act(s,a).ok,fal
 const siteIndex=(s,kind)=>s.board.findIndex(x=>x?.type==='site'&&x.kind===kind);
 test('one item use immediately changes the site and yields another family, with no maintenance',()=>{
  for(const kind of Object.keys(ANCHORS)){
-  const s=fresh();s.stage=2;s.charges={rig:0,chart:1,flux:2};s.board[7]=item(ANCHORS[kind].equipment,3);
+  const s=fresh();s.stage=2;s.board[7]=item(ANCHORS[kind].equipment,3);const energy=s.energy,charges={...s.charges};
   const i=siteIndex(s,kind),before=s.board.map(x=>x?structuredClone(x):null),a={type:'deploy',index:i,from:7},crusts=()=>s.board.filter(x=>x?.type==='crust').length,crustsBefore=crusts();
   assert.deepEqual(deliveryItems(s,a).map(x=>x.index),[7]);const result=ok(s,a);
   assert.equal(s.board[i].phase,'done');assert.equal(completedAnchors(s),1);assert.equal(s.stage,2);
@@ -19,7 +19,8 @@ test('one item use immediately changes the site and yields another family, with 
   // Lift and finder each crack two salt-crusted parts free (older saves: open two buried cells).
   if(kind!=='relay')assert.equal(result.opened.length+crustsBefore-crusts(),kind==='winch'?4:2);
   if(kind==='scope'){assert.equal(s.board.some(x=>x?.type==='crate'&&x.kind==='relic'),false);assert.equal(s.surge,3);}
-  if(kind==='relay'){assert.deepEqual(s.charges,{rig:7,chart:7,flux:7});assert.equal(s.surge,3);}
+  if(kind==='relay'){assert.equal(s.energy,Math.min(120,energy+10));assert.equal(s.surge,3);}
+  assert.deepEqual(s.charges,charges);
   assert.notDeepEqual(s.board,before);reject(s,a);reject(s,{type:'feed',index:i});
  }
 });

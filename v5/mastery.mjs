@@ -30,9 +30,9 @@ export function masteryDirection(s,choice){
   }
   return {kind:'full',family,need,indices:[]};
  }
- const charge=s.charges?.[family]??0,cost=charge===0?3:family==='flux'?2:1;
+ const cost=family==='flux'?2:1;
  if(s.energy<cost)return {kind:'energy',family,need,indices:[]};
  const index=s.board.findIndex(x=>x?.type==='source'&&x.id===family);
  if(index<0)return {kind:'unavailable',family,need,indices:[]};
- return {kind:charge?'produce':'refill',family,need,indices:[index]};
+ return {kind:'produce',family,need,indices:[index]};
 }

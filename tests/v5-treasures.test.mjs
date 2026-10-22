@@ -12,8 +12,8 @@ test('permanent Loft costs exactly earned supplies, preserves pending orders, an
 test('recovery has predictable output and exact cost; keeps normal rare, surge and enrichment schedules',()=>{
  const s=camp();ok(s,{type:'buildLoft'});s.board=s.board.map(x=>x?.type==='source'?x:null);const taps={...s.taps};s.surge=3;
  for(let n=0;n<4;n++){const before=s.energy,r=ok(s,{type:'recoverTide'});assert.deepEqual(s.board[r.index],tideItem(n===3?1:0));assert.equal(s.energy,before-2);}
- assert.equal(s.charges.chart,3);assert.deepEqual(s.taps,taps);assert.equal(s.surge,3);assert.equal(s.camp.dives,4);assert.deepEqual(load(JSON.stringify(s)),s);
- s.board=s.board.map(x=>x??item('rig',0));reject(s,{type:'recoverTide'});s.board[7]=null;s.energy=1;reject(s,{type:'recoverTide'});s.energy=5;s.charges.chart=0;reject(s,{type:'recoverTide'});
+ assert.equal(s.charges.chart,7);assert.deepEqual(s.taps,taps);assert.equal(s.surge,3);assert.equal(s.camp.dives,4);assert.deepEqual(load(JSON.stringify(s)),s);
+ s.board=s.board.map(x=>x??item('rig',0));reject(s,{type:'recoverTide'});s.board[7]=null;s.energy=1;reject(s,{type:'recoverTide'});s.energy=2;s.charges.chart=0;ok(s,{type:'recoverTide'});assert.equal(s.energy,0);assert.equal(s.charges.chart,0);
 });
 test('treasure twins merge into all three collectibles without impersonating normal navigation or expedition equipment',()=>{
  const s=camp();ok(s,{type:'buildLoft'});s.board[7]=tideItem(0);s.board[8]=item('chart',0);reject(s,{type:'merge',from:7,to:8});s.board[8]=tideItem(0);ok(s,{type:'merge',from:7,to:8});assert.deepEqual(s.board[8],tideItem(1));

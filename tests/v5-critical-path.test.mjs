@@ -36,7 +36,7 @@ test('both routes and all repair styles complete with depleted stock, full board
  for(const route of ['ridge','conduit'])for(const findStrategy of ['recover','restore','mixed']){
   const s=fresh(0);let stressed=false;
   for(let n=0;n<220&&s.stage<4;n++){
-   if(s.stage===2&&!stressed){s.board=s.board.map(x=>x??item('rig',0));s.energy=0;s.charges={rig:0,chart:0,flux:0};stressed=true;}
+   if(s.stage===2&&!stressed){s.board=s.board.map(x=>x??item('rig',0));s.energy=0;stressed=true;}
    ok(s,choose(s,{route,findStrategy,sideFirst:false,decode:false,openCaches:true}));
    if(n%5===0)Object.assign(s,load(JSON.stringify(s)));
   }

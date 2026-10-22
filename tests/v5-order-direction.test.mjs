@@ -20,14 +20,14 @@ test('recommends a legal merge, not a different treasure line at the same tier',
  assert.equal(d.kind,'merge');assert.deepEqual(d.indices,[3,4]);
  assert.equal(JSON.stringify(s),before,'advice leaves the live board unchanged');
 });
-test('distinguishes a recharge, treasure recovery, and exhausted space',()=>{
+test('distinguishes production, treasure recovery, and exhausted space',()=>{
  const s=fresh(0);act(s,{type:'merge',from:7,to:8});act(s,{type:'goal'});
  const o={id:'survey',needs:[{family:'chart',tier:2,count:1}]};
  s.board=s.board.map(x=>x?.type==='item'&&x.family==='chart'?null:x);
  const chart=s.board.findIndex(x=>x?.type==='source'&&x.id==='chart');
  let d=orderDirection(s,o);
  assert.equal(d.kind,'produce');assert.deepEqual(d.indices,[chart]);
- s.charges.chart=0;d=orderDirection(s,o);assert.equal(d.kind,'refill');
+ s.charges.chart=0;d=orderDirection(s,o);assert.equal(d.kind,'produce','retired charges never redirect to a refill');assert.deepEqual(d.indices,[chart]);
  s.camp.loft=true;s.charges.chart=7;
  const tide={id:'tide',needs:[{family:'chart',line:'tide',tier:2,count:1}]};
  assert.equal(orderDirection(s,tide).kind,'recover');
@@ -52,9 +52,9 @@ test('the director never sends a player to an unaffordable source action',()=>{
  s.energy=0;
  assert.equal(orderDirection(s,o).kind,'energy');
  assert.deepEqual(orderDirection(s,o).indices,[]);
- s.energy=5;s.charges.chart=0;
- assert.equal(orderDirection(s,o).kind,'refill');
- s.energy=2;
+ s.energy=1;s.charges.chart=0;
+ assert.equal(orderDirection(s,o).kind,'produce','one energy pays a Survey Kite pull at any charge value');
+ s.energy=0;
  assert.equal(orderDirection(s,o).kind,'energy');
 });
 test('full-board advice never marks a top-tier duplicate as mergeable',()=>{

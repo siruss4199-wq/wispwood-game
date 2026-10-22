@@ -19,13 +19,14 @@ test('bench consumes spare cross-family inputs, works full-board and preserves n
  const [a,b]=benchInputs(s),before=structuredClone(s),result=go(s,{type:'fitSpanner'});
  assert.equal(result.index,a);assert.deepEqual(s.board[a],{...item('rig',2),spare:true});assert.equal(s.board[b],null);
  for(let i=0;i<36;i++)if(i!==a&&i!==b)assert.deepEqual(s.board[i],before.board[i]);
- assert.equal(s.energy,before.energy-1);assert.equal(s.charges.rig,before.charges.rig-1);assert.deepEqual(s.taps,before.taps);assert.equal(s.workshop.fittings,1);
+ assert.equal(s.energy,before.energy-1);assert.deepEqual(s.charges,before.charges);assert.deepEqual(s.taps,before.taps);assert.equal(s.workshop.fittings,1);
  go(s,{type:'press'});assert.equal(s.workshop.presses,1);
 });
-test('protected landing tools, missing ingredients, energy and charges fail atomically',()=>{
+test('protected landing tools, missing ingredients, energy and a locked bench fail atomically; charges never block fitting',()=>{
  for(const kind of ['protected','missing','energy','charge','locked']){
   const s=fresh();s.workshop.repaired=true;s.workshop.precision=kind!=='locked';if(kind!=='protected')s.landingStep=1;
   if(kind==='missing')s.board=s.board.map(x=>x?.family==='chart'?null:x);if(kind==='energy')s.energy=0;if(kind==='charge')s.charges.rig=0;
+  if(kind==='charge'){const energy=s.energy;go(s,{type:'fitSpanner'});assert.equal(s.energy,energy-1);assert.equal(s.charges.rig,0);continue;}
   const raw=JSON.stringify(s);assert.equal(act(s,{type:'fitSpanner'}).ok,false,kind);assert.equal(JSON.stringify(s),raw);
  }
 });
