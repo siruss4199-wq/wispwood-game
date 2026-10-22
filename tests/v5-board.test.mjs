@@ -1,10 +1,9 @@
-// The 7×7 board: original 6×6 cells keep their places. A fresh board's new column and
-// row start covered (crusts, jars, a chest); 6×6 saves gain sand gates that open with
-// the expedition level.
+// The 7×7 board: original 6×6 cells keep their places; the new column and row are
+// sand gates that open with the expedition level (fresh boards and migrated 6×6 saves).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,readdirSync} from 'node:fs';
-import {fresh,act,load,item,cellPos,openGates,GATE_LEVELS,BOARD_SIZE,CORE_SIZE,sealedJar} from '../v5/core.mjs';
+import {fresh,act,load,item,sand,cellPos,openGates,GATE_LEVELS,BOARD_SIZE,CORE_SIZE,sealedJar} from '../v5/core.mjs';
 import {xpToNext} from '../v5/levels.mjs';
 // A 6×6 save from before the 7×7 board: load() appends the closed gates.
 const migrated=()=>{const s=fresh(0);s.board=s.board.slice(0,CORE_SIZE);return load(JSON.stringify(s),0);};
@@ -15,11 +14,11 @@ test('cell positions: 6×6 core unchanged, new right column and bottom row',()=>
  const seen=new Set(Array.from({length:BOARD_SIZE},(_,i)=>cellPos(i).join(',')));assert.equal(seen.size,49);
 });
 
-test('a fresh board has no gates; a migrated 6×6 save has 13: two open per level from 2 to 7, the corner at 8',()=>{
- const f=fresh(0);assert.equal(f.board.length,BOARD_SIZE);assert.ok(!f.board.some(x=>x?.type==='gate'));
- assert.ok(f.board.slice(CORE_SIZE).every(x=>['crust','jar','cache'].includes(x?.type)),'the new cells start covered');
- const s=migrated();assert.equal(s.board.length,BOARD_SIZE);
- assert.deepEqual(s.board.slice(CORE_SIZE).map(x=>x.type+x.level),GATE_LEVELS.map(l=>'gate'+l));
+test('fresh boards and migrated 6×6 saves have 13 closed gates: two open per level from 2 to 7, the corner at 8',()=>{
+ for(const s of [fresh(0),migrated()]){
+  assert.equal(s.board.length,BOARD_SIZE);assert.deepEqual(s.board.slice(CORE_SIZE).map(x=>x.type+x.level),GATE_LEVELS.map(l=>'gate'+l));
+  assert.ok(!s.board.slice(0,CORE_SIZE).some(x=>x?.type==='gate'),'gates only in the new column and row');
+ }
  for(let l=2;l<=7;l++)assert.equal(GATE_LEVELS.filter(x=>x===l).length,2,'level '+l);
  assert.deepEqual(GATE_LEVELS.filter(x=>x===8),[8]);
 });
@@ -40,11 +39,14 @@ test('gates refuse moves, merges and cases; opened gate cells hold parts like an
  s.level.level=2;openGates(s);assert.equal(act(s,{type:'move',from:7,to:36},2).ok,true);assert.deepEqual(s.board[36],item('rig',0));
 });
 
-test('salt cracks across the new edge: a merge in the new column cracks jars beside it in both parts of the board',()=>{
- const s=fresh(0);assert.deepEqual(s.board[38],sealedJar(10),'the fresh column holds a jar below 37');
+test('salt and sand crack across the new edge: a merge in the opened column digs sand and cracks a jar beside it',()=>{
+ const t=fresh(0);t.level.level=3;openGates(t);assert.deepEqual(t.board[11],sand(item('chart',0)));
+ t.board[36]=item('rig',0);t.board[37]=item('rig',0);// 37 is row 1, column 6: beside 11; 38 is still a level-4 gate
+ assert.deepEqual(act(t,{type:'merge',from:36,to:37},1).cracked,[{index:11,type:'sand',find:item('chart',0)}]);assert.deepEqual(t.board[11],item('chart',0));assert.equal(t.board[38].type,'gate');
+ const s=fresh(0);s.level.level=3;openGates(s);
  s.board[11]=sealedJar(5);s.board[36]=item('rig',0);s.board[37]=item('rig',0);
- const e=s.energy,r=act(s,{type:'merge',from:36,to:37},1);// 37 is row 1, column 6: beside 11 (core) and 38 (column)
- assert.deepEqual(r.cracked,[{index:38,type:'jar',energy:10},{index:11,type:'jar',energy:5}]);assert.ok(s.energy>=e+15);
+ const e=s.energy,r=act(s,{type:'merge',from:36,to:37},1);
+ assert.deepEqual(r.cracked,[{index:11,type:'jar',energy:5}]);assert.ok(s.energy>=e+5);
 });
 
 test('6×6 saves load with the gates appended, opened up to their level; nothing else moves',()=>{
