@@ -1,6 +1,6 @@
 // Coast Camp: the new-loop page (v5/play.html). Same look as Classic V5, one loop:
 // generators → merge → crew orders → ★ stars → restore the coast on the map.
-import {SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,orderProgress,nextTask,currentArea,areaDone,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys,reachable,generatorsMerge,MAX_GENERATOR_LEVEL,GLASS_HITS} from './game.mjs';
+import {SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,orderProgress,nextTask,currentArea,areaDone,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys,reachable,generatorsMerge,MAX_GENERATOR_LEVEL,GLASS_HITS,nextKind,UNLOCK_LEVEL,GENERATOR_ORDER} from './game.mjs';
 import {AREAS} from './areas.mjs';
 import {cellPos} from '../core.mjs';
 import {CHAINS,draw,maxTier,chainsAt,GENERATOR_CHAINS} from './chains.mjs';
@@ -15,7 +15,7 @@ import {sound,reduced,burst,rewardFlight,moment as sharedMoment} from '../feedba
 function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el=document.querySelector('.moment');if(!x||!el)return;const icon=document.createElement('span');icon.style.cssText='float:left;width:42px;height:42px;margin-right:10px';icon.innerHTML=draw(x);icon.firstElementChild.style.cssText='width:100%;height:100%';el.prepend(icon);}
 
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 13 · buried camp';
+export const BUILD='Build 14 · level to unlock';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
@@ -94,7 +94,8 @@ function renderSelection(){
   buttons='<button data-action="recycle">Recycle · +1 ϟ</button>';
  }else if(x.type==='source'){
   const chain=CHAINS[GENERATOR_CHAINS[x.id][0][0]];
-  desc=sourceOpen(state,x.id)?`Level ${producerLevel(x)} · 1 energy a tap · ${chain.names.slice(0,4).join(' → ')} …`+(producerLevel(x)<MAX_GENERATOR_LEVEL?` Merge it with another level-${producerLevel(x)} ${SOURCES[x.id].name} (drag one onto the other) for level ${producerLevel(x)+1}.`:' Top level.'):'Wakes at the Survey Worksite (next area).';
+  const next=nextKind(x.id),waiting=next&&!state.board.some(y=>y?.type==='source'&&y.id===next);
+  desc=(waiting?`Level ${UNLOCK_LEVEL} brings out the ${SOURCES[next].name}. `:'')+(sourceOpen(state,x.id)?`Level ${producerLevel(x)} · 1 energy a tap · ${chain.names.slice(0,4).join(' → ')} …`+(producerLevel(x)<MAX_GENERATOR_LEVEL?` Merge it with another level-${producerLevel(x)} ${SOURCES[x.id].name} (drag one onto the other) for level ${producerLevel(x)+1}.`:' Top level.'):'Wakes at the Survey Worksite (next area).');
   if(sourceOpen(state,x.id))buttons=`<button class="accent" data-action="produce">Make · 1 ϟ</button>`;
  }else if(x.type==='kit'){
   desc=`Tap again for a free part (${chainsOf(state,x.family).map(c=>CHAINS[c].names[0]).join(' or ')} chain) · ${x.left} of ${kitCapacity(x)} left.`+(kitFull(x)&&x.size<MAX_KIT_SIZE?` Or merge with a twin into a ${CRATES[x.size]} (${KIT_DROPS[x.size+1].length} better parts).`:'');
@@ -107,6 +108,7 @@ function renderSelection(){
  else if(x.type==='cog')desc=`Lay it on a generator (tap the cog, then the generator, or drag): +1 level, up to ${MAX_GENERATOR_LEVEL}. Higher levels make better parts.`;
  $('#selection').innerHTML=`<span class="preview">${draw(x)}</span><span class="copy"><b>${title}</b><small>${desc}</small></span><span class="actionGroup">${buttons}</span>`;
 }
+const has=id=>state.board.some(x=>x?.type==='source'&&x.id===id);
 function renderHint(){
  const task=nextTask(state),ready=state.orders.find(o=>orderItems(state,o));let hint;
  if(!state.merges)hint='START · Tap a Copper offcut, then its twin';
@@ -114,7 +116,9 @@ function renderHint(){
  else if(ready)hint='Order ready · tap it to collect ★';
  else if(cargoKeys(state).some(k=>state.board.some(y=>matches(y,k))))hint='Lay a matching part on a crate to open it';
  else if(state.energy<1){const t=refillTimes(state,Date.now());hint='Out of energy · +1 in '+clock(t?.next??0);}
- else hint='Make the parts the crew orders want';
+ else{// Next generator: which one has to reach level 2 to bring it out.
+  const g=GENERATOR_ORDER.find(g=>has(g)&&nextKind(g)&&!has(nextKind(g)));
+  hint=g?`${SOURCES[g].name} level ${UNLOCK_LEVEL} brings out the ${SOURCES[nextKind(g)].name} · merge a copy or lay a cog on it`:'Make the parts the crew orders want';}
  $('#hint').textContent=hint;
 }
 function header(){
@@ -141,6 +145,8 @@ function run(a){
  if(r.event==='deliver'){rewardFlight(orderRect,$('#starPill').getBoundingClientRect(),`+${r.stars} ★`);sound.play('contract');$('#starPill').classList.remove('bump');void $('#starPill').offsetWidth;$('#starPill').classList.add('bump');}
  if(r.event==='producerUp'){const src=state.board[r.index];moment(SOURCES[src.id].name+' · level '+src.level,src.level>=MAX_GENERATOR_LEVEL?'Top level: its parts come out better every time.':'Its parts come out better more often.',src);sound.play('milestone');}
  if(r.event==='restore')showBeat(r.task,r.effects);
+ // A generator reaching level 2 brings out the next kind beside it.
+ for(const n of r.released??[]){const t=board.querySelector(`[data-index="${n.index}"]`);t?.classList.add('unsealed');burst(t?.getBoundingClientRect(),'gold',true);setTimeout(()=>{newGeneratorMoment(n.id);sound.play('milestone');},r.event==='producerUp'?900:0);}
  if(r.event==='unseal'){tile?.classList.add('unsealed');burst(tile?.getBoundingClientRect(),'gold',r.opened.type==='source');sound.play(r.opened.type==='source'?'milestone':'rare');
   if(r.opened.type==='stars')rewardFlight(tile?.getBoundingClientRect(),$('#starPill').getBoundingClientRect(),`+${r.opened.stars} ★`);
   if(r.opened.type==='jar')rewardFlight(tile?.getBoundingClientRect(),$('#energyPill').getBoundingClientRect(),`+${r.opened.energy} ϟ`);

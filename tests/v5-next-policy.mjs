@@ -1,21 +1,25 @@
 // A scripted player for the new loop: restore when affordable, deliver ready orders,
 // open sealed cargo with spare parts (generator cargo first), grow crates, merge toward
 // what orders and cargo need, otherwise tap the generator whose parts are wanted.
-import {count,matches,orderItems,nextTask,sourceOpen,openFamilies,cargoKeys,generatorsMerge} from '../v5/next/game.mjs';
+import {count,matches,orderItems,nextTask,sourceOpen,openFamilies,cargoKeys,generatorsMerge,GENERATOR_ORDER,nextKind,UNLOCK_LEVEL} from '../v5/next/game.mjs';
 import {CHAINS,maxTier} from '../v5/next/chains.mjs';
 import {kitsMerge,kitFull,MAX_KIT_SIZE} from '../v5/kits.mjs';
 
 // How many of each part the live orders still want, plus the key of one cargo to
 // work toward (a generator's cargo first, else the cheapest one we can make).
-// The player works toward the glowing crates: a new kind of generator first, then a
-// copy. The target is the openable crate on the shortest path of cargo to it.
+// The player works toward what levels up the earliest generator still short of level 2 (that
+// brings out the next kind): a glowing copy of it, else a Brass cog. The target is the
+// openable crate on the shortest path of cargo to it.
 const near=i=>{const r=i<36?Math.floor(i/6):i<43?i-36:6,c=i<36?i%6:i<43?6:i-43;return [[r-1,c],[r+1,c],[r,c-1],[r,c+1]].filter(([a,b])=>a>=0&&b>=0&&a<7&&b<7).map(([a,b])=>b===6?36+a:a===6?43+b:a*6+b);};
+const has=(s,id)=>s.board.some(x=>x?.type==='source'&&x.id===id);
+export const upgradeNeeded=s=>GENERATOR_ORDER.find(g=>has(s,g)&&nextKind(g)&&!has(s,nextKind(g))&&!s.board.some(x=>x?.type==='source'&&x.id===g&&(x.level??1)>=UNLOCK_LEVEL))??null;
 function target(s){
  const keys=cargoKeys(s).filter(k=>sourceOpen(s,CHAINS[k.family].gen)),open=new Map(keys.map(k=>[k.index,k]));
- const glowing=s.board.flatMap((x,i)=>x?.type==='cargo'&&x.find?.type==='source'?[[i,sourceOpen(s,x.find.id)?1:0]]:[]).sort((a,b)=>a[1]-b[1]);
- for(const [goal,known] of glowing.filter(([,k])=>!k)){
+ const need=upgradeNeeded(s);
+ const goals=need?[...s.board.flatMap((x,i)=>x?.type==='cargo'&&x.find?.type==='source'&&x.find.id===need?[i]:[]),...s.board.flatMap((x,i)=>x?.type==='cargo'&&x.find?.type==='cog'?[i]:[])]:[];
+ for(const goal of goals){
   const seen=new Set([goal]),queue=[goal];
-  while(queue.length){const i=queue.shift();if(open.has(i))return {...open.get(i),newKind:!known};for(const j of near(i))if(!seen.has(j)&&s.board[j]?.type==='cargo'){seen.add(j);queue.push(j);}}
+  while(queue.length){const i=queue.shift();if(open.has(i))return {...open.get(i),newKind:true};for(const j of near(i))if(!seen.has(j)&&s.board[j]?.type==='cargo'){seen.add(j);queue.push(j);}}
  }
  // Otherwise the cheapest crate, but only while energy is plentiful.
  return s.energy>=30?keys.sort((a,b)=>a.tier-b.tier||a.index-b.index)[0]??null:null;
@@ -47,8 +51,8 @@ export function nextAction(s){
  // Merge two identical generators into a stronger one.
  const gens=b.flatMap((x,i)=>x?.type==='source'?[i]:[]);
  for(const i of gens)for(const j of gens)if(i!==j&&generatorsMerge(b[i],b[j]))return {type:'merge',from:j>i?j:i,to:j>i?i:j};
- // A Brass cog goes on the busiest generator that can still level up.
- {const c=b.findIndex(x=>x?.type==='cog'),g=[...gens].sort((i,j)=>(s.taps[b[j].id]??0)-(s.taps[b[i].id]??0)).find(i=>(b[i].level??1)<5);if(c>=0&&g!==undefined)return {type:'merge',from:c,to:g};}
+ // A Brass cog goes on the generator that will bring out the next kind, else the busiest one.
+ {const c=b.findIndex(x=>x?.type==='cog'),need=upgradeNeeded(s),g=need?b.findIndex(x=>x?.type==='source'&&x.id===need):[...gens].sort((i,j)=>(s.taps[b[j].id]??0)-(s.taps[b[i].id]??0)).find(i=>(b[i].level??1)<5);if(c>=0&&g!==undefined&&g>=0)return {type:'merge',from:c,to:g};}
  const kits=b.flatMap((x,i)=>x?.type==='kit'?[i]:[]);
  for(const i of kits)for(const j of kits)if(i!==j&&kitsMerge(b[i],b[j]))return {type:'merge',from:i,to:j};
  const want=wanted(s),free=b.filter(x=>x===null).length;

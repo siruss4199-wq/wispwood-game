@@ -194,3 +194,19 @@ differently:
 - Scripted players, 4–6 s per action: the curious player finds the Survey Kite at 3–4 min
   (it is reachable once the glass or crate beside it opens) and restores Landing Beach in
   33–49 min with no waiting; an order-only player in 14–21 min.
+
+## Build 14 — level a generator up to bring out the next (user: "Ehleed ehnii generatoroo saijruuldag baiy, ternii daraagaas daraagiin generator garch irdeg baih")
+- **New kinds come from levelling, not from crates.** When a generator reaches level 2
+  (`UNLOCK_LEVEL`), the next kind comes out beside it: Rivet Rover → Survey Kite → Rope
+  Winch → Shell Trap → Lantern Kiln (`release()` in `v5/next/game.mjs`, checked after every
+  action, so a full board only delays it; a moment shows the new chain).
+- **Crates hold what levels generators up:** copies (three Rovers, two Kites, a Rope Winch,
+  two Shell Traps) and four Brass cogs, all behind the highest keys of their ring. The
+  first upgrade is close: a second Rivet Rover in the corner beside the camp (Crawler
+  jack). Later copies and cogs want tier-5 parts. The Workshop still gives a Rover copy.
+- The hint line names the generator to level next; tapping a generator says what its
+  level 2 brings.
+- Saves: no shape change. An older camp whose generator is already level 2 gets the
+  next kind on its next action; generators already found stay.
+- Scripted player, 4–6 s per action: Survey Kite at 3–4.5 min, Rope Winch 9–13, Shell
+  Trap 14–21, Lantern Kiln 17–25; Landing Beach in 27–42 min, no waiting, energy ~23 left.

@@ -25,6 +25,12 @@ export const GENERATOR_ORDER=['rig','chart','rope','shell','lamp'];
 // "generatoriig uuriig ni merge hiij hugjuulj yavdag"). Copies come from cargo and
 // from every second level chest.
 export const MAX_GENERATOR_LEVEL=5;
+// Each generator brings out the next kind when it reaches level 2 (user, 2026-10-22: "ehleed
+// ehnii generatoroo saijruuldag baiy, ternii daraagaas daraagiin generator garch irdeg baih"):
+// Rivet Rover Lv2 → Survey Kite, Kite Lv2 → Rope Winch, Rope Lv2 → Shell Trap, Shell Lv2 →
+// Lantern Kiln. Cargo holds the copies and Brass cogs that level them.
+export const UNLOCK_LEVEL=2;
+export const nextKind=g=>GENERATOR_ORDER[GENERATOR_ORDER.indexOf(g)+1]??null;
 export const generatorsMerge=(x,y)=>x?.type==='source'&&y?.type==='source'&&x.id===y.id&&producerLevel(x)===producerLevel(y)&&producerLevel(x)<MAX_GENERATOR_LEVEL;
 
 export const item=(family,tier)=>({type:'item',family,tier});
@@ -68,21 +74,20 @@ const I=item,K=kit,E=jar,S=stars,G=source,C=cog;
 // [row, column, key chain, key tier, find]
 const CARGO_CELLS=[
  // The more useful the find, the harder the key (user, 2026-10-22: "hairtsagnaas mash heregtei
- // zuiliig hetsuu neey, jishee ni shine generator"): everyday finds open with tier-3 parts next
- // to the camp and tier 3–4 at the edge; Brass cogs and generators with tier 4–5, the highest
- // key of their ring. Energy is rare and small (user: "energytei holbootoi yum garhaar amarhan
- // duusah"): two +5 jars.
+ // zuiliig hetsuu neey"): everyday finds open with tier-3 parts next to the camp and tier 3–4
+ // at the edge; generator copies and Brass cogs (what levels a generator up, and so brings
+ // out the next kind) with tier 4–5. Energy is rare and small: two +5 jars.
  // Ring 2 (next to the camp, between the tideglass): one Split-spanner crate above the Rover
- // to teach it; the Survey Kite in a corner.
- [1,1,'rig',4,G('chart')],[1,3,'rig',2,S(3)],[1,5,'rig',5,G('rig')],
- [2,1,'rig',3,K('rig',1)],[4,1,'chart',3,S(4)],[5,1,'chart',4,G('rope')],
- [2,5,'rig',4,C()],[4,5,'chart',3,I('chart',3)],[5,5,'chart',3,K('chart',1)],
+ // to teach it; a second Rivet Rover in a corner behind a Crawler jack.
+ [1,1,'rig',4,G('rig')],[1,3,'rig',2,S(3)],[1,5,'chart',5,G('chart')],
+ [2,1,'rig',3,K('rig',1)],[4,1,'chart',3,S(4)],[5,1,'rope',5,G('rope')],
+ [2,5,'rig',5,C()],[4,5,'chart',3,I('chart',3)],[5,5,'chart',3,K('chart',1)],
  [5,3,'rig',3,E(5)],
- // Ring 3 (the edge): tier 3–4 keys for everyday finds, tier 4–5 for cogs and generators.
- [0,1,'chart',4,G('chart')],[0,2,'rig',4,E(5)],[0,3,'rig',4,S(10)],[0,4,'chart',4,K('chart',2)],[0,5,'rope',4,G('shell')],
- [1,6,'shell',3,S(6)],[2,6,'rope',3,I('rope',2)],[3,6,'rig',5,G('rope')],[4,6,'shell',4,G('lamp')],
+ // Ring 3 (the edge): tier 3–4 keys for everyday finds, tier 4–5 for copies and cogs.
+ [0,1,'chart',5,G('chart')],[0,2,'rig',4,E(5)],[0,3,'rig',4,S(10)],[0,4,'chart',4,K('chart',2)],[0,5,'shell',4,G('shell')],
+ [1,6,'shell',3,S(6)],[2,6,'rope',3,I('rope',2)],[3,6,'rig',5,G('rig')],[4,6,'rope',5,C()],
  [6,6,'lamp',4,C()],[6,4,'shell',3,K('shell',1)],[6,3,'rope',4,S(10)],[6,1,'rope',3,K('rope',1)],[6,0,'rig',5,G('rig')],
- [4,0,'chart',4,C()],[3,0,'rig',4,K('rig',2)],[2,0,'shell',4,G('shell')]
+ [4,0,'chart',5,C()],[3,0,'rig',4,K('rig',2)],[2,0,'shell',4,G('shell')]
 ];
 export const CARGO=Object.fromEntries(CARGO_CELLS.map(([r,c,f,tier,find])=>[at(r,c),[f,tier,find]]));
 // Tideglass: a part locked in glass near the generator that makes it. Six ring the camp, so a
@@ -168,6 +173,15 @@ function crack(s,i){
   g.cracks=(g.cracks??0)+1;if(g.cracks>=GLASS_HITS){s.board[j]=item(g.family,g.tier);freed.push(j);}else cracked.push(j);}
  return {cracked,freed,bonus:freed.length*XP.unseal};
 }
+// A generator at level 2 brings out the next kind beside it, once there is a free space
+// (checked after every action, so a full board only delays it).
+function release(s){
+ const out=[];
+ for(const g of GENERATOR_ORDER){const n=nextKind(g);if(!n||s.board.some(x=>x?.type==='source'&&x.id===n))continue;
+  const up=s.board.findIndex(x=>x?.type==='source'&&x.id===g&&producerLevel(x)>=UNLOCK_LEVEL);if(up<0)continue;
+  const i=nearestFree(s.board,up,cellPos);if(i<0)continue;s.board[i]=source(n);out.push({index:i,id:n,from:g});}
+ return out;
+}
 const withCracks=(r,c)=>{if(c.cracked.length)r.cracked=c.cracked;if(c.freed.length){r.broken=c.freed;r.xp+=c.bonus;r.message+=' · the tideglass breaks';}else if(c.cracked.length)r.message+=' · the tideglass cracks';return r;};
 
 // ---- levels ----
@@ -195,9 +209,12 @@ export function act(s,a,now=Date.now()){
  if(!r.ok)return r;
  if(wasFull&&s.energy<REFILL_CAP)s.energyAt=now;
  s.moves++;s.lastAt=now;
+ const released=release(s);
  const found=note(s),xp=r.xp??0,levelUp=xp?gainXp(s,xp):[];
  if(levelUp.length)found.push(...note(s));
- return {...r,...(found.length?{found}:{}),...(levelUp.length?{levelUp}:{})};
+ if(levelUp.length)released.push(...release(s));
+ if(released.length)r.message+=released.map(n=>` · the ${SOURCES[n.id].name} comes out`).join('');
+ return {...r,...(released.length?{released}:{}),...(found.length?{found}:{}),...(levelUp.length?{levelUp}:{})};
 }
 export function tick(s,now=Date.now()){return settleEnergy(s,now);}
 
