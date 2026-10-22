@@ -9,14 +9,16 @@ const siteIndex=(s,kind)=>s.board.findIndex(x=>x?.type==='site'&&x.kind===kind);
 test('one item use immediately changes the site and yields another family, with no maintenance',()=>{
  for(const kind of Object.keys(ANCHORS)){
   const s=fresh();s.stage=2;s.charges={rig:0,chart:1,flux:2};s.board[7]=item(ANCHORS[kind].equipment,3);
-  const i=siteIndex(s,kind),before=s.board.map(x=>x?structuredClone(x):null),a={type:'deploy',index:i,from:7};
+  const i=siteIndex(s,kind),before=s.board.map(x=>x?structuredClone(x):null),a={type:'deploy',index:i,from:7},crusts=()=>s.board.filter(x=>x?.type==='crust').length,crustsBefore=crusts();
   assert.deepEqual(deliveryItems(s,a).map(x=>x.index),[7]);const result=ok(s,a);
   assert.equal(s.board[i].phase,'done');assert.equal(completedAnchors(s),1);assert.equal(s.stage,2);
   // The relay powers sources (capability); finder and lift reveal parts of another family.
   if(kind!=='relay'){assert.ok(result.reveal.length>0);assert.ok(result.reveal.some(i=>s.board[i]?.family===ANCHORS[kind].drive||s.board[i]?.family==='flux'));}
   if(kind==='winch'){assert.equal(s.board.filter(x=>x?.type==='rock').length,0);assert.equal(result.opened.length,2);}
   // Before the Vault: raw Resonance shards plus three rich pulls, never a finished part or packed case.
-  if(kind==='scope'){assert.equal(result.opened.length,2);assert.equal(s.board.some(x=>x?.type==='crate'&&x.kind==='relic'),false);assert.equal(s.surge,3);}
+  // Lift and finder each crack two salt-crusted parts free (older saves: open two buried cells).
+  if(kind!=='relay')assert.equal(result.opened.length+crustsBefore-crusts(),kind==='winch'?4:2);
+  if(kind==='scope'){assert.equal(s.board.some(x=>x?.type==='crate'&&x.kind==='relic'),false);assert.equal(s.surge,3);}
   if(kind==='relay'){assert.deepEqual(s.charges,{rig:7,chart:7,flux:7});assert.equal(s.surge,3);}
   assert.notDeepEqual(s.board,before);reject(s,a);reject(s,{type:'feed',index:i});
  }

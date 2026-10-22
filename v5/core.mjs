@@ -30,16 +30,20 @@ export const POST_GOALS=[
  {name:'Chart the next crossing',verb:'Chart crossing',scene:'Vault opened',needs:[req('chart',6),req('rig',5)],energy:35,next:'Archive expedition badge'},
  {name:'Build an aurora beacon',verb:'Light beacon',scene:'Vault opened',needs:[req('flux',7)],energy:50,next:'Aurora collector badge'}
 ];
-export const nameOf=x=>!x?'Empty space':x.type==='prism'?'Ring reflector':x.type==='site'?ANCHORS[x.kind].name:x.type==='route'?ROUTES[x.id].name:x.type==='item'?(isTide(x)?TIDE_NAMES[x.tier]:FAMILIES[x.family].names[x.tier]):x.type==='source'?SOURCES[x.id].name:x.type==='rock'?'Saltstone blocker':x.type==='marker'?'Buried survey marker':x.type==='lock'?'Dormant relic lock':x.type==='crate'?containerInfo(x).name:x.type==='brace'?'Trail brace':x.type==='glyph'?'Echo fragment':'Buried ground';
+export const nameOf=x=>!x?'Empty space':x.type==='prism'?'Ring reflector':x.type==='site'?ANCHORS[x.kind].name:x.type==='route'?ROUTES[x.id].name:x.type==='item'?(isTide(x)?TIDE_NAMES[x.tier]:FAMILIES[x.family].names[x.tier]):x.type==='source'?SOURCES[x.id].name:x.type==='rock'?'Saltstone blocker':x.type==='marker'?'Buried survey marker':x.type==='lock'?'Dormant relic lock':x.type==='crate'?containerInfo(x).name:x.type==='crust'?'Salt-crusted '+FAMILIES[x.family].names[x.tier].toLowerCase():x.type==='brace'?'Trail brace':x.type==='glyph'?'Echo fragment':'Buried ground';
 export const item=(family,tier,line)=>({type:'item',family,tier,...(line?{line}:{})});
 const source=id=>({type:'source',id});
+// Salt-crusted parts stay put and count for nothing until a free twin is merged onto them.
+export const crust=(family,tier)=>({type:'crust',family,tier});
+export const freesCrust=(x,y)=>x?.type==='item'&&!isTide(x)&&y?.type==='crust'&&x.family===y.family&&x.tier===y.tier;
 export function fresh(now=Date.now()){
  const board=Array(36).fill(null);
  board[0]=source('rig');board[5]=source('chart');board[30]=source('flux');
  [[7,'rig',0],[8,'rig',0],[9,'chart',0],[10,'chart',0],[13,'rig',1],[14,'chart',1],[15,'flux',0],[16,'flux',0],[19,'rig',0],[20,'rig',0],[21,'chart',0],[22,'chart',0]].forEach(([i,f,t])=>board[i]=item(f,t));
  // Starter pockets leave nine working spaces; extra saltstone is recoverable salvage.
  for(const [from,to] of [[19,2],[20,18],[21,11],[22,33]]){board[to]=board[from];board[from]=null;}
- for(const i of [24,25,26,27,28,29])board[i]={type:'sealed'};
+ // The old excavation strip and two spare corners hold salt-crusted parts to free.
+ [[25,'rig',0],[26,'chart',0],[28,'rig',1],[29,'flux',0],[17,'rig',0],[35,'chart',1]].forEach(([i,f,t])=>board[i]=crust(f,t));
  for(const i of [19,32])board[i]={type:'rock'};
  ['winch','scope','relay'].forEach((kind,n)=>board[[20,23,31][n]]={type:'site',kind,phase:'idle',progress:0});
  board[24]={type:'route',id:'ridge'};board[27]={type:'route',id:'conduit'};board[34]=container('salvage');
@@ -138,8 +142,10 @@ function remember(s,event,now){s.history.push({event,at:now});s.history=s.histor
 function activate(s,site){
  const opened=[],revealed=[];site.phase='done';site.progress=2;delete site.reclaimed;
  const uncover=type=>{for(let i=0;i<36&&opened.length<2;i++)if(s.board[i]?.type===type&&!s.board[i].find){s.board[i]=null;opened.push(i);}};
- if(site.kind==='winch'){uncover('rock');uncover('sealed');for(let n=0;n<2;n++){const i=put(s,item('chart',1));if(i>=0)revealed.push(i);}}
- else if(site.kind==='scope'){uncover('sealed');surge(s);for(let n=0;n<2;n++){const i=put(s,item('flux',0));if(i>=0)revealed.push(i);}}
+ // The devices crack the salt on up to two crusted parts, freeing them as usable parts.
+ const dissolve=()=>{let n=0;for(let i=0;i<36&&n<2;i++)if(s.board[i]?.type==='crust'){s.board[i]=item(s.board[i].family,s.board[i].tier);revealed.push(i);n++;}};
+ if(site.kind==='winch'){uncover('rock');uncover('sealed');dissolve();for(let n=0;n<2;n++){const i=put(s,item('chart',1));if(i>=0)revealed.push(i);}}
+ else if(site.kind==='scope'){uncover('sealed');dissolve();surge(s);for(let n=0;n<2;n++){const i=put(s,item('flux',0));if(i>=0)revealed.push(i);}}
  else {for(const id of Object.keys(SOURCES))s.charges[id]=7;surge(s);}
  for(let n=0;n<2&&s.board.filter(Boolean).length<24;n++){const i=put(s,item(ANCHORS[site.kind].drive,0));if(i>=0)revealed.push(i);}
  trace(s,'device-used',{kind:site.kind,crossFamily:ANCHORS[site.kind].drive,opened,revealed});
@@ -218,7 +224,8 @@ export function act(s,a,now=Date.now()){
    s.board[a.to]=x;s.board[a.from]=y;trace(s,'reflector-move',{from:a.from,to:a.to,swapped:true});return done('Reflector repositioned.','move',a.to);
   }
   if(!y){s.board[a.to]=x;s.board[a.from]=null;return done('Moved.','move',a.to);}
-  if(!sameKind(x,y)||x.tier>=maxTier(x,s))return fail('Merge two identical objects.');
+  const freed=freesCrust(x,y);
+  if(!freed&&!sameKind(x,y)||x.tier>=maxTier(x,s))return fail('Merge two identical objects.');
   if(!isTide(x)&&x.tier===3&&anchors(s).some(site=>site.phase==='idle'&&ANCHORS[site.kind].equipment===x.family))trace(s,'kept-for-merge',{family:x.family});
   s.board[a.to]=item(x.family,x.tier+1,x.line);s.board[a.from]=null;s.merges++;const bonus=s.merges%3===0?1:0;s.energy=Math.min(120,s.energy+bonus);
   const crafted=s.board[a.to];
@@ -236,7 +243,7 @@ export function act(s,a,now=Date.now()){
   const chainFind=false;
   const breakthrough=firstCraft&&crafted.tier>=3;
   if(breakthrough){s.charges[crafted.family]=Math.min(7,s.charges[crafted.family]+2);if(crafted.tier>=5)s.energy=Math.min(120,s.energy+4);}
-  return {...done(`${nameOf(crafted)}${craftedMilestone?' · crew instrument calibrated':''}${breakthrough?' · source recharged':''}${resupply.length?' · expedition supplies':''}${bonus?' · +1 energy':''}`,'merge',a.to),breakthrough,newDiscovery:firstCraft,discoveryReward,craftedMilestone};
+  return {...done(`${freed?'Freed from the salt · ':''}${nameOf(crafted)}${craftedMilestone?' · crew instrument calibrated':''}${breakthrough?' · source recharged':''}${resupply.length?' · expedition supplies':''}${bonus?' · +1 energy':''}`,'merge',a.to),breakthrough,newDiscovery:firstCraft,discoveryReward,craftedMilestone,freedCrust:freed};
  }
  if(a.type==='produce'){
   const p=SOURCES[a.id];if(!p||!sourceUnlocked(s,a.id))return fail(`Unlock after ${a.id==='chart'?'stabilizing the landing':'opening a breach'}.`);
@@ -414,6 +421,7 @@ export function load(raw,now=Date.now()){
    else if(x.type==='crate'){if(!integer(x.left,1,5)||x.kind!==undefined&&!CONTAINERS[x.kind])return fresh(now);x.kind??='locker';}
    else if(x.type==='site'){if(!ANCHORS[x.kind]||!['idle','active','done'].includes(x.phase)||!integer(x.progress,0,2)||x.phase==='idle'&&x.progress!==0||x.phase==='done'&&x.progress!==2||x.phase==='active'&&x.progress>1||x.reclaimed!==undefined&&typeof x.reclaimed!=='boolean')return fresh(now);}
    else if(x.type==='route'){if(!ROUTES[x.id])return fresh(now);}
+   else if(x.type==='crust'){if(!FAMILIES[x.family]||!integer(x.tier,0,FAMILIES[x.family].names.length-1)||x.line!==undefined)return fresh(now);}
    else if(x.type==='prism'){if(!integer(x.id,0,1)||!integer(x.turn,0,1))return fresh(now);}
    else if(!['glyph','brace','rock','sealed','marker','lock'].includes(x.type))return fresh(now);
    if(x.type==='rock'&&x.find!==undefined&&!FINDS[x.find])delete x.find;

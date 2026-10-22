@@ -73,8 +73,11 @@ test('fresh-player simulation opens vault and continues through two optional dis
   console.log(JSON.stringify({sideFirst,actions,rations:s.rations,milestones}));
  }
 });
-test('staged board starts 75% occupied with rewarding salvage and leaves reachable space around sources',()=>{
- const s=fresh();assert.equal(s.board.filter(x=>x===null).length,9);
+test('staged board starts 80% occupied with rewarding salvage and leaves reachable space around sources',()=>{
+ const s=fresh();assert.equal(s.board.filter(x=>x===null).length,7);
+ // Six salt-crusted parts replace the buried excavation strip and two spare corners.
+ assert.deepEqual(s.board.flatMap((x,i)=>x?.type==='crust'?[i+':'+x.family+x.tier]:[]),['17:rig0','25:rig0','26:chart0','28:rig1','29:flux0','35:chart1']);
+ assert.equal(s.board.some(x=>x?.type==='sealed'),false);
  for(const [f,n] of [['rig',5],['chart',5],['flux',2]])assert.equal(s.board.filter(x=>x?.type==='item'&&x.family===f).length,n);
  assert.equal(s.board[2].family,'rig');assert.equal(s.board[11].family,'chart');assert.equal(s.board[33].family,'chart');
  for(const i of [0,5,30])assert.ok([i-6,i+6,i-1,i+1].some(j=>j>=0&&j<36&&s.board[j]?.type!=='sealed'));

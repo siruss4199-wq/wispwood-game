@@ -14,7 +14,7 @@ import {PIER_COST,PACK_COST} from './camp.mjs';
 import {requestProgress} from './requests.mjs';
 import {WORKSHOP_COST,BENCH_COST,BENCH_NEEDS,benchInputs} from './workshop.mjs';
 import {containerInfo,contents} from './containers.mjs';
-import {SAVE_KEY,FAMILIES,SOURCES,STAGES,fresh,load,act,goal,expeditionGoal,count,ready,matches,nameOf,normalContract,opportunity,nextOutput,burstOutput,item,near,sourceUnlocked} from './core.mjs';
+import {SAVE_KEY,FAMILIES,SOURCES,STAGES,fresh,load,act,goal,expeditionGoal,count,ready,matches,nameOf,normalContract,opportunity,nextOutput,burstOutput,item,near,sourceUnlocked,freesCrust} from './core.mjs';
 import {art,scene as vectorScene,portrait} from './art.mjs';
 import {feedback,sound,reduced,snapshotTask,moment} from './feedback.mjs';
 import {platform} from '../v4/platform.mjs';
@@ -280,7 +280,7 @@ function render(){
   const isSource=x?.type==='source',locked=isSource&&!sourceUnlocked(state,x.id);
   const useful=isSource&&!locked&&(orderProgress?orderProgress.progress.some(r=>r.family===x.id&&r.current<r.count):needed().some(r=>r.family===x.id&&count(state,r)<r.count));
   const expedition=!!g?.needs.some(r=>matches(x,r)),contract=sideVisible&&(!!order||sideChoice()==='contract')&&c.needs.some(r=>matches(x,r));
-  const matching=selectedItem?.type==='item'&&x?.type==='item'&&i!==selected&&sameKind(x,selectedItem)&&x.tier<maxTier(x,state);
+  const matching=selectedItem?.type==='item'&&i!==selected&&(x?.type==='item'&&sameKind(x,selectedItem)||freesCrust(selectedItem,x))&&selectedItem.tier<maxTier(selectedItem,state);
   return `<button class="tile ${x?.type??'empty'} ${locked?'locked':''} ${useful?'useful':''} ${selected===i?'selected':''} ${matching?'match':''} ${needed().some(r=>matches(x,r))?'wanted':''}" data-index="${i}" ${x?.family||isSource||x?.type==='crate'?`data-family="${x.family??(isSource?x.id:containerInfo(x).family)}"`:''} data-variant="${i%3}" data-use="${expedition&&contract?'both':expedition?'expedition':contract?'contract':''}" aria-label="${nameOf(x)}${x?.type==='crate'?' · tap to reveal · '+contents(x).map(nameOf).join(', '):''}${expedition&&contract?' · needed for expedition and contract':expedition?' · needed for expedition':contract?' · useful for contract':''}${locked?' · locked':isSource?' · '+SOURCES[x.id].cost+' energy · '+state.charges[x.id]+' charges':''}. Space ${i+1}" aria-pressed="${selected===i}">${art((x?.type==='site'&&state.stage<2||x?.type==='route'&&state.stage!==1)?{type:'sealed'}:x)}${expedition||contract?`<span class="useBadge" aria-hidden="true">${expedition?'◆':''}${contract?'▰':''}</span>`:''}${isSource?(locked?`<span class="lockedLabel">${x.id==='chart'?'CLEAR PATH':'EXCAVATE'}</span>`:`<span class="energyCue">ϟ${SOURCES[x.id].cost}</span><span class="charge">${Array.from({length:7},(_,n)=>`<i class="${n>=state.charges[x.id]?'used':''}"></i>`).join('')}</span>`):x?.type==='crate'?`<span class="pulls">${x.left}</span>`:''}</button>`;
  }).join('');
  const direction=currentOrderDirection();
@@ -401,11 +401,12 @@ function renderSelection(){
 
   }
   else if(x.type==='sealed')desc='Unchosen excavation ground. Opens when the vault is secured.';
+  else if(x.type==='crust')desc=`Merge a free ${FAMILIES[x.family].names[x.tier]} onto it to free it as a ${FAMILIES[x.family].names[x.tier+1]}.`;
   else if(x.type==='crate'){desc=`${containerInfo(x).purpose} · Tap on board to reveal. Drag to keep.`;}
   else if(x.type==='glyph'){desc='Use with a sight lens for richer source drops.';buttons='<button data-action="recycle">Recycle +5 ϟ</button>';}
   else if(x.type==='brace'){desc='Tap a saltstone blocker to use this brace.';buttons='<button data-action="recycle">Recycle +3 ϟ</button>';}
  }
- const preview=x?.type==='crate'?`<span class="mergePreview" aria-label="Remaining rewards">${contents(x).slice(0,3).map(y=>art(y)).join('')}</span>`:x?.type==='item'&&x.tier<maxTier(x,state)?`<span class="mergePreview" title="Merge further: ${nameOf(item(x.family,x.tier+1,x.line))}"><span>→</span>${art(item(x.family,x.tier+1,x.line))}</span>`:x?.type==='rock'?`<span class="mergePreview" title="Blocker reward: mixed expedition gear"><span>→</span>${art({type:'crate',kind:'locker'})}</span>`:'';
+ const preview=x?.type==='crate'?`<span class="mergePreview" aria-label="Remaining rewards">${contents(x).slice(0,3).map(y=>art(y)).join('')}</span>`:x?.type==='item'&&x.tier<maxTier(x,state)?`<span class="mergePreview" title="Merge further: ${nameOf(item(x.family,x.tier+1,x.line))}"><span>→</span>${art(item(x.family,x.tier+1,x.line))}</span>`:x?.type==='crust'?`<span class="mergePreview" title="Free it: ${nameOf(item(x.family,x.tier+1))}"><span>→</span>${art(item(x.family,x.tier+1))}</span>`:x?.type==='rock'?`<span class="mergePreview" title="Blocker reward: mixed expedition gear"><span>→</span>${art({type:'crate',kind:'locker'})}</span>`:'';
  const rare=x?.type==='source'&&sourceUnlocked(state,x.id)?`<span class="rareTrack" role="progressbar" aria-label="Guaranteed rare in ${9-state.taps[x.id]%9} pulls" aria-valuemin="0" aria-valuemax="9" aria-valuenow="${state.taps[x.id]%9}">${Array.from({length:9},(_,i)=>`<i class="${i<state.taps[x.id]%9?'filled':''}"></i>`).join('')}<b>✦ ${9-state.taps[x.id]%9}</b></span>`:'';
  $('#selection').innerHTML=`${x?`<span class="preview">${art(x)}</span>`:''}<span class="copy"><b>${title}</b><small>${desc}</small>${rare}</span>${preview}<span class="actionGroup">${buttons}</span>`;
 }
@@ -487,7 +488,7 @@ function clickTile(i){
  const link=circuit(state,i);if(x?.type==='site'&&link){run({type:'power',index:i});return;}
  if(selected===i&&['item','glyph','brace'].includes(x?.type)){selected=null;render();return;}
  const use=useAction(state,selected,i)??useAction(state,i,selected);if(use){run(use);return;}
- if(selected!==null&&selected!==i&&movable(prev)&&(!x||prev.type==='item'&&x.type==='item'&&sameKind(x,prev))){run({type:'merge',from:selected,to:i});return;}
+ if(selected!==null&&selected!==i&&movable(prev)&&(!x||prev.type==='item'&&x.type==='item'&&sameKind(x,prev)||freesCrust(prev,x))){run({type:'merge',from:selected,to:i});return;}
  selected=i;render();
  if(x?.type==='crate')run({type:'crate',index:i});
  if(x?.type==='source'&&sourceUnlocked(state,x.id)&&state.charges[x.id]>0)run({type:'produce',id:x.id});
@@ -499,8 +500,8 @@ $('.boardHeading').addEventListener('click',e=>{
 });
 board.addEventListener('click',e=>{const tile=e.target.closest('[data-index]')??document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-index]');if(tile&&board.contains(tile)&&performance.now()>suppressUntil)clickTile(+tile.dataset.index);});
 board.addEventListener('pointerdown',e=>{const tile=e.target.closest('[data-index]');if(!tile||e.button!==0)return;suppressUntil=0;const i=+tile.dataset.index;if(!['item','crate','brace','glyph','prism'].includes(state.board[i]?.type))return;drag={from:i,id:e.pointerId,x:e.clientX,y:e.clientY,moved:false};tile.classList.add('picked');board.setPointerCapture?.(e.pointerId);});
-board.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)return;if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>8)drag.moved=true;if(drag.moved){board.querySelector(`[data-index="${drag.from}"]`)?.classList.add('dragging');board.querySelectorAll('.target').forEach(x=>x.classList.remove('target'));const target=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-index]');const to=target?+target.dataset.index:-1,a=state.board[drag.from],b=state.board[to];if(to>=0&&to!==drag.from&&(!b||(a?.type==='prism'&&movable(b))||b?.type==='prism'||(a?.type==='item'&&b.type==='item'&&sameKind(a,b)&&a.tier<maxTier(a,state))||useAction(state,drag.from,to)))target.classList.add('target');}});
-board.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;const d=drag;drag=null;board.querySelectorAll('.dragging,.target,.picked').forEach(x=>x.classList.remove('dragging','target','picked'));if(!d.moved)return;suppressUntil=performance.now()+300;const tile=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-index]');if(tile){selected=d.from;const index=+tile.dataset.index,x=state.board[index];const use=useAction(state,d.from,index);if(use)run(use);else if(!x||movable(x))run({type:'merge',from:d.from,to:index});else render();}});
+board.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)return;if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>8)drag.moved=true;if(drag.moved){board.querySelector(`[data-index="${drag.from}"]`)?.classList.add('dragging');board.querySelectorAll('.target').forEach(x=>x.classList.remove('target'));const target=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-index]');const to=target?+target.dataset.index:-1,a=state.board[drag.from],b=state.board[to];if(to>=0&&to!==drag.from&&(!b||(a?.type==='prism'&&movable(b))||b?.type==='prism'||(a?.type==='item'&&b.type==='item'&&sameKind(a,b)&&a.tier<maxTier(a,state))||freesCrust(a,b)||useAction(state,drag.from,to)))target.classList.add('target');}});
+board.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;const d=drag;drag=null;board.querySelectorAll('.dragging,.target,.picked').forEach(x=>x.classList.remove('dragging','target','picked'));if(!d.moved)return;suppressUntil=performance.now()+300;const tile=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-index]');if(tile){selected=d.from;const index=+tile.dataset.index,x=state.board[index];const use=useAction(state,d.from,index);if(use)run(use);else if(!x||movable(x)||freesCrust(state.board[d.from],x))run({type:'merge',from:d.from,to:index});else render();}});
 board.addEventListener('pointercancel',()=>{drag=null;board.querySelectorAll('.dragging,.target,.picked').forEach(x=>x.classList.remove('dragging','target','picked'));});
 $('#selection').addEventListener('click',e=>{const button=e.target.closest('[data-action]'),type=button?.dataset.action;if(!type)return;const x=state.board[selected];run({type:type==='serviceTool'?'service':type,index:button.dataset.target!==undefined?+button.dataset.target:selected,from:button.dataset.target!==undefined?selected:undefined,id:button.dataset.source??x?.id,useTool:type==='serviceTool'});});
 $('#goalButton').onclick=()=>{const ending=signalPending();if(ending){showFleet();return;}const g=visibleGoal();if(g?.kind==='camp'){

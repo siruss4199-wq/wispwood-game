@@ -33,6 +33,22 @@ Each step: save migration with a test loading older saves (keys unchanged), full
 suite, 360/390/430px browser check, playtest link. If a step is disliked, only that
 step is reverted. Lesson from the rollback: never change loop and look together.
 
+## Step 2 — salt-crusted parts (approved 2026-10-22, "2-r alhamaas ehle")
+- New cell `{type:'crust',family,tier}` (`v5/core.mjs`: `crust`, `freesCrust`). It never
+  moves, never counts for goals, orders or bench inputs, and cannot be recycled.
+- Merging a free twin onto it gives the next tier in its cell and frees the source cell,
+  exactly like a normal merge (discovery, merge bonus and mastery included).
+- Fresh board: six crusts replace the four buried excavation cells and two spare
+  corners (17 Copper offcut, 25 Copper offcut, 26 Ink scrap, 28 Grip tool, 29 Violet
+  shard, 35 Route fold). Free cells at start: 7 (was 9).
+- The Stone Lift winch and the survey scope crack up to two crusts free each, where
+  they used to open two buried cells.
+- Saves: older saves keep their boards and gain no crusts; saves with crusts round-trip;
+  malformed crusts start fresh. Keys unchanged. Tests: `tests/v5-crust.test.mjs`.
+- Limit: six, not the ~20 cells sketched in the mockup. The rest of the 6×6 board is
+  held by producers, devices, routes and blockers; more crusts would need a larger
+  board or fewer fixtures, which is a separate decision.
+
 ## Sources and limits
 No first-party data was found. Travel Town figures (100 energy, 72-cell board) come
 from fan guides; the "top-grossing" claim for Gossip Harbor is unverified. Level
