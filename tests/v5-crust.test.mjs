@@ -52,3 +52,33 @@ test('older saves load without gaining crusted parts',()=>{
   assert.equal(s.stage,old.stage,f);assert.deepEqual(crustAt(s),[],f);
  }
 });
+
+test('opening a route frees crusted parts beside it and never deletes parts the player keeps there',()=>{
+ for(const route of ['ridge','conduit']){
+  const s=fresh(0),start=route==='ridge'?24:27,family=route==='ridge'?'rig':'chart';
+  s.stage=1;s.landingStep=2;s.routePrepared=true;s.board[1]=item(family,2);
+  s.board[start+1]=item('flux',3);// a part the player freed or moved here earlier
+  const crustCell=start+2,kept=structuredClone(s.board[crustCell]);
+  const r=act(s,{type:'breach',index:start,from:1},1);
+  assert.equal(r.ok,true,r.message);
+  assert.deepEqual(s.board[start+1],item('flux',3),route+': kept part survives');
+  assert.deepEqual(s.board[crustCell],item(kept.family,kept.tier),route+': crusted part comes free');
+  const rewards=route==='ridge'?[item('rig',1)]:[item('flux',2)];
+  for(const x of rewards)assert.ok(s.board.some(y=>JSON.stringify(y)===JSON.stringify(x)),route+': reward placed');
+  if(route==='conduit')assert.ok(s.board.some(y=>y?.type==='crate'&&y.kind==='relic'));
+ }
+});
+
+test('an older save with buried ground beside the route still opens it into space',()=>{
+ const s=fresh(0);s.stage=1;s.landingStep=2;s.routePrepared=true;s.board[1]=item('rig',2);
+ s.board[25]={type:'sealed'};s.board[26]={type:'sealed'};
+ assert.equal(act(s,{type:'breach',index:24,from:1},1).ok,true);
+ assert.deepEqual(s.board[25],item('rig',1));assert.equal(s.board[26],null);
+});
+
+test('a full board asks for space before the conduit breach instead of losing its finds',()=>{
+ const s=fresh(0);s.stage=1;s.landingStep=2;s.routePrepared=true;s.board[1]=item('chart',2);
+ for(let i=0;i<36;i++)if(s.board[i]===null)s.board[i]=item('flux',0);
+ const before=JSON.stringify(s),r=act(s,{type:'breach',index:27,from:1},1);
+ assert.equal(r.ok,false);assert.match(r.message,/free space/);assert.equal(JSON.stringify(s),before);
+});

@@ -43,7 +43,8 @@ const assert=require('node:assert/strict'),fs=require('node:fs');const {chromium
   let s=await read();const workshopCost=await page.evaluate(async()=>{const {WORKSHOP_COST}=await import('/v5/workshop.mjs');return WORKSHOP_COST;});assert.ok(s.requests.supplies>=workshopCost,'earned supplies cover the repair cost');assert.ok(s.requests.completed>=4,'at least four deliveries fund Workshop');assert.ok(Object.values(s.taps).reduce((a,b)=>a+b,0)>0);await shot('02-earned-repair');
   const before=structuredClone(s);await page.locator('#workshop').tap();trace.push({type:'restoreWorkshop'});s=await read();assert.equal(s.requests.supplies,before.requests.supplies-workshopCost,'repair preserves supplies not spent');assert.equal(s.workshop.repaired,true);assert.deepEqual(s.board,before.board);assert.equal(s.stage,before.stage);
   await page.locator('#workshop img').evaluate(img=>img.decode());await page.waitForTimeout(1900);assert.match(await page.locator('#workshop img').getAttribute('src'),/operational/);
-  assert.match(await page.locator('#workshop span').textContent(),/Press Grip/);
+  // One primary action per screen: the restored Workshop carries no scene label; the press glow shows it is usable.
+  assert.equal(await page.locator('#workshop span').textContent(),'');
   assert.ok(await page.locator('#workshop').evaluate(el=>el.classList.contains('pressAvailable')),'press unlock is clearly visible');
   await shot('03-operational');
   const unavailable=await page.evaluate(async()=>{const {requestProgress}=await import('/v5/requests.mjs');const s=JSON.parse(localStorage.getItem('vaultwake-v5'));return requestProgress(s,s.requests.orders[2]).ready;});assert.equal(unavailable,false,'next request genuinely needs more production');

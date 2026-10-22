@@ -17,8 +17,11 @@ test('prepared route choice spends one tool anywhere on a cluttered board, keeps
   assert.deepEqual(deliveryItems(s,{type:'breach',index}).map(x=>x.index),[from]);
   ok(s,{type:'breach',index});assert.equal(s.board[from],null);assert.deepEqual(s.board[kept],stock);
   assert.equal(s.seals.navigation,true);assert.equal(s.expedition.log.find(x=>x.type==='seal').method,'prepared-route');
-  assert.equal(s.board[index].type,'glyph');assert.equal(s.board[index+1].family,id==='ridge'?'rig':'flux');
-  if(id==='ridge')assert.equal(s.board[index+2],null);else assert.equal(s.board[index+2].kind,'relic');
+  assert.equal(s.board[index].type,'glyph');
+  // The breach frees the salt-crusted parts beside it in place; its finds land in free space.
+  for(const i of [index+1,index+2])assert.notEqual(s.board[i]?.type,'crust');
+  assert.ok(s.board.some(x=>x?.type==='item'&&(id==='ridge'?x.family==='rig'&&x.tier===1:x.family==='flux'&&x.tier===2)));
+  if(id==='conduit')assert.ok(s.board.some(x=>x?.type==='crate'&&x.kind==='relic'));
   reject(s,{type:'breach',index:id==='ridge'?27:24});assert.deepEqual(load(JSON.stringify(s)),s);
  }
 });

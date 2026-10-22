@@ -31,7 +31,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
   };
   assert.equal(await page.locator('.contract').count(),0);assert.equal(await page.locator('.openingPair').count(),2);assert.equal(await page.locator('.source').count(),3);assert.equal(await page.locator('.source.locked').count(),2);
   assert.equal(await page.locator('#goalButton').isVisible(),false);assert.match(await page.locator('#goalTitle').textContent(),/landing/);
-  await shot('fresh');assert.equal((await read()).board.filter(Boolean).length,27);
+  await shot('fresh');assert.equal((await read()).board.filter(Boolean).length,29,'27 starting objects plus two salt-crusted corners');
   assert.equal(await page.locator('body').getAttribute('data-art'),'premium');
   assert.ok(await page.locator('#board img[data-art="rig-0"]').count()>0);
   assert.equal(await page.locator('.premiumScene').count(),1);
@@ -133,7 +133,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
     if(check&&!captured.has(name)){if(['route-choice','producer-unlock','powered-site'].includes(name))await page.waitForTimeout(1800);await shot(name);captured.add(name);}
    }
    if(cmd.type==='deploy'){assert.equal(s.board[cmd.index].phase,'done');assert.ok(s.expedition.log.some(x=>x.type==='device-used'));await shot('device-'+s.board[cmd.index].kind);}
-   if(cmd.type==='breach'){assert.equal(await page.locator('.source.locked').count(),0);assert.equal(await page.locator('.tile.sealed').count(),2,'unchosen route remains a real spatial consequence');assert.equal(await page.locator('.objective.ready').count(),0,'inspect is not a fake delivery');}
+   if(cmd.type==='breach'){assert.equal(await page.locator('.source.locked').count(),0);assert.equal(await page.locator('.tile.route').count(),1,'unchosen route remains a real spatial consequence');for(const i of [cmd.index+1,cmd.index+2])assert.notEqual(s.board[i]?.type,'crust','the opened strip frees its salt-crusted parts');assert.equal(await page.locator('.objective.ready').count(),0,'inspect is not a fake delivery');}
   }
   const saved=await read();if(style==='contract')assert.equal(saved.expedition.vaultTrade,true);assert.equal(saved.stage,4);await page.waitForTimeout(1800);await shot('vault-open');assert.ok(saved.discovered.length<18);assert.equal(saved.expedition.log.filter(x=>x.type==='deployment').length,2);
   assert.equal(saved.discoveryDone,true,'discovery cannot silently fall out of the plan');assert.equal(saved.expedition.log.filter(x=>x.type==='device-used').length,2);assert.equal(saved.board.some(x=>x?.type==='site'&&x.phase==='active'),false);

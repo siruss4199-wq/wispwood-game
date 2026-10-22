@@ -9,6 +9,9 @@ const assert=require('node:assert/strict'),fs=require('node:fs');const {chromium
  assert.equal((await read()).landingStep,1);assert.equal(await page.locator('#requests [data-request]').count(),1,'early onboarding displays only one order');await shot('before');
  // Focus one real unfinished order; the existing board, not a helper panel,
  // must identify an actionable source or matching merge pair.
+ // The first crew order is an instant win from the starter offcuts; claim it like a player would.
+ const instant=page.locator('#requests .requestCard.ready').first();
+ let instantClaims=0;if(!await page.locator('#requests .requestCard:not(.ready)').count()&&await instant.count()){await instant.tap();instantClaims=1;await page.waitForTimeout(1200);}
  const unfinished=page.locator('#requests .requestCard:not(.ready)').first();
  assert.ok(await unfinished.count(),'there must be a working order');
  await unfinished.tap();
@@ -52,7 +55,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs');const {chromium
   }
   assert.ok(delivered,'request loop must complete');
  }
- const s=await read();assert.equal(s.requests.completed,6);assert.ok(Object.values(s.taps).reduce((a,b)=>a+b,0)>0);assert.ok(s.merges>1);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+ const s=await read();assert.equal(s.requests.completed,6+instantClaims);assert.ok(Object.values(s.taps).reduce((a,b)=>a+b,0)>0);assert.ok(s.merges>1);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
  for(const card of await page.locator('#requests [data-request]').all()){const box=await card.boundingBox();assert.ok(box.width>=44&&box.height>=44);}
  fs.writeFileSync(`test-artifacts/v5/requests/trace-${width}.json`,JSON.stringify({timeline,completed:s.requests.completed,supplies:s.requests.supplies,merges:s.merges,taps:s.taps},null,2));assert.deepEqual(errors,[]);await page.close();console.log('Requests real production/merge/deliver/reload',width,'passed');
  }}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

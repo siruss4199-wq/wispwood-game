@@ -269,12 +269,17 @@ export function act(s,a,now=Date.now()){
   const x=s.board[a.index],r=ROUTES[x?.id];
   if(s.stage!==1||!s.routePrepared||x?.type!=='route'||!r)return fail('Survey the crossing, then choose one breach.');
   const need=req(r.family,2),from=a.from??s.board.findIndex(x=>matches(x,need));if(!valid(from)||!matches(s.board[from],need))return fail(`Bring a ${FAMILIES[r.family].names[2]}.`);
+  // The breach opens the two cells beside the route: buried ground becomes space,
+  // salt-crusted parts come free, and parts the player already keeps there stay.
+  const strip=[r.start+1,r.start+2],rewards=x.id==='ridge'?[item('rig',1)]:[item('flux',2),container('relic')];
+  const room=1+s.board.filter(y=>y===null).length+strip.filter(i=>s.board[i]?.type==='sealed').length;
+  if(room<rewards.length)return fail(`Make ${rewards.length-room} free space${rewards.length-room>1?'s':''} for the breach finds.`);
   s.board[from]=null;s.expedition.route=x.id;s.stage=2;s.discovery=true;
   s.seals.navigation=true;trace(s,'seal',{seal:'navigation',method:'prepared-route',route:x.id});
-  for(let i=r.start;i<r.start+3;i++)s.board[i]=null;
   s.board[r.start]={type:'glyph'};
-  if(x.id==='ridge')s.board[r.start+1]=item('rig',1);
-  else {s.board[r.start+1]=item('flux',2);s.board[r.start+2]=container('relic');surge(s);}
+  for(const i of strip){const y=s.board[i];if(y?.type==='sealed')s.board[i]=null;else if(y?.type==='crust')s.board[i]=item(y.family,y.tier);}
+  for(const reward of rewards){const i=strip.find(j=>s.board[j]===null);if(i!==undefined)s.board[i]=reward;else put(s,reward);}
+  if(x.id==='conduit')surge(s);
   s.energy=Math.min(120,s.energy+6);trace(s,'breach',{route:x.id});
   return {...done(`${r.name} opened · ${r.benefit} · Echo Crucible unlocked.`,'milestone',a.index),opened:[r.start,r.start+1,r.start+2]};
  }
@@ -337,7 +342,7 @@ export function act(s,a,now=Date.now()){
    return done('Landing secured · Survey Kite online · field parts received. Chart the crossing next.','milestone');
   }
   if(s.stage<4){if(s.stage===0)s.landingStep=2;s.stage++;
-   if(s.stage===4){for(let i=0;i<36;i++)if(['sealed','route'].includes(s.board[i]?.type))s.board[i]=null;const packed=s.board.find(x=>x?.type==='crate'&&x.kind==='relic');if(kit){const family=kit==='field'?'rig':'chart';for(const tier of [2,1,1])put(s,item(family,tier));}else if(packed)packed.left=5;else put(s,container('relic',5));s.marks+=15;trace(s,'vault',{discovered:[...s.discovered]});}
+   if(s.stage===4){for(let i=0;i<36;i++){const y=s.board[i];if(['sealed','route'].includes(y?.type))s.board[i]=null;else if(y?.type==='crust')s.board[i]=item(y.family,y.tier);}const packed=s.board.find(x=>x?.type==='crate'&&x.kind==='relic');if(kit){const family=kit==='field'?'rig':'chart';for(const tier of [2,1,1])put(s,item(family,tier));}else if(packed)packed.left=5;else put(s,container('relic',5));s.marks+=15;trace(s,'vault',{discovered:[...s.discovered]});}
   }else{s.post++;s.marks+=10;}
   // Before the Vault rewards are raw parts and rich pulls, never finished tier-2+ parts.
   supplies(s,6,false,s.stage===2?'relic':null);
