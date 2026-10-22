@@ -139,8 +139,8 @@ function activate(s,site){
  const opened=[],revealed=[];site.phase='done';site.progress=2;delete site.reclaimed;
  const uncover=type=>{for(let i=0;i<36&&opened.length<2;i++)if(s.board[i]?.type===type&&!s.board[i].find){s.board[i]=null;opened.push(i);}};
  if(site.kind==='winch'){uncover('rock');uncover('sealed');for(let n=0;n<2;n++){const i=put(s,item('chart',1));if(i>=0)revealed.push(i);}}
- else if(site.kind==='scope'){uncover('sealed');for(const x of [item('flux',1),container('relic')]){const i=put(s,x);if(i>=0)revealed.push(i);}}
- else {for(const id of Object.keys(SOURCES))s.charges[id]=7;surge(s);const i=put(s,item('rig',2));if(i>=0)revealed.push(i);}
+ else if(site.kind==='scope'){uncover('sealed');surge(s);for(let n=0;n<2;n++){const i=put(s,item('flux',0));if(i>=0)revealed.push(i);}}
+ else {for(const id of Object.keys(SOURCES))s.charges[id]=7;surge(s);}
  for(let n=0;n<2&&s.board.filter(Boolean).length<24;n++){const i=put(s,item(ANCHORS[site.kind].drive,0));if(i>=0)revealed.push(i);}
  trace(s,'device-used',{kind:site.kind,crossFamily:ANCHORS[site.kind].drive,opened,revealed});
  if(site.kind==='winch'&&s.seals&&!s.seals.stabilization){s.seals.stabilization=true;trace(s,'seal',{seal:'stabilization',method:'repair'});}
@@ -229,7 +229,7 @@ export function act(s,a,now=Date.now()){
   // A newly crafted device brings a named, useful cross-family find. Use the
   // merge-freed cell when crowded; never hide rewards in a counter.
   let discoveryReward=null;
-  if(firstCraft&&crafted.tier===3){const kind={rig:'survey',chart:'relic',flux:'salvage'}[crafted.family],family={rig:'chart',chart:'flux',flux:'rig'}[crafted.family];const loose=s.board.filter(x=>x?.type==='crate').length>=2;const i=put(s,loose?item(family,1):container(kind));if(i>=0)discoveryReward={index:i,kind,loose};}
+  if(firstCraft&&crafted.tier===3){const kind={rig:'survey',chart:'relic',flux:'salvage'}[crafted.family],family={rig:'chart',chart:'flux',flux:'rig'}[crafted.family];const loose=s.stage<3||s.board.filter(x=>x?.type==='crate').length>=2;const i=put(s,loose?item(family,1):container(kind));if(i>=0)discoveryReward={index:i,kind,loose};}
   // Large assemblies return reusable offcuts, keeping expensive merges from hollowing the tray.
   const offcuts=!firstCraft&&crafted.tier>=3&&s.board.filter(Boolean).length<23;
   if(offcuts)put(s,item(crafted.family,0));
@@ -332,7 +332,8 @@ export function act(s,a,now=Date.now()){
   if(s.stage<4){if(s.stage===0)s.landingStep=2;s.stage++;
    if(s.stage===4){for(let i=0;i<36;i++)if(['sealed','route'].includes(s.board[i]?.type))s.board[i]=null;const packed=s.board.find(x=>x?.type==='crate'&&x.kind==='relic');if(kit){const family=kit==='field'?'rig':'chart';for(const tier of [2,1,1])put(s,item(family,tier));}else if(packed)packed.left=5;else put(s,container('relic',5));s.marks+=15;trace(s,'vault',{discovered:[...s.discovered]});}
   }else{s.post++;s.marks+=10;}
-  supplies(s,6,false,s.stage===1?'survey':s.stage===2?'relic':null);
+  // Before the Vault rewards are raw parts and rich pulls, never finished tier-2+ parts.
+  supplies(s,6,false,s.stage===2?'relic':null);
   if(s.stage===1||s.stage===2)surge(s);
   return done(s.stage===4&&s.post===0?'The Tideglass Vault is open. The sky inside is moving.':g.next,'milestone');
  }

@@ -55,7 +55,8 @@ export function choose(s,{sideFirst=true,openCaches=false,clearSalvage=false,ses
  // An impulsive merger compacts ALL families, even when a pair could be installed
  // or traded separately. Do not fake this style by targeting one extra story tier.
  if(style==='aggressive'&&s.stage>0&&s.stage<4&&!linkPhase(s)&&!(s.stage===3&&ready(s,goal(s).needs))){
-  for(let tier=6;tier>=0;tier--)for(const family of Object.keys(SOURCES)){
+  // Compulsive, but only up to the instrument (tier 4) the chapter actually uses.
+ for(let tier=3;tier>=0;tier--)for(const family of Object.keys(SOURCES)){
    const pair=s.board.flatMap((x,i)=>x?.type==='item'&&x.family===family&&x.tier===tier?[i]:[]);
    for(let a=0;a<pair.length;a++)for(let b=a+1;b<pair.length;b++)if(sameKind(s.board[pair[a]],s.board[pair[b]]))return {type:'merge',from:pair[a],to:pair[b]};
   }

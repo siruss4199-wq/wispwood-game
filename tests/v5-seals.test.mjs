@@ -41,6 +41,7 @@ test('receivers require a charged repaired lift and grant different, single-use 
   else{assert.equal(s.surge,0);assert.deepEqual(s.charges,{rig:0,chart:0,flux:0});assert.ok(s.board.some(x=>x?.type==='crate'&&x.kind==='relic'&&x.left===5));}
   // Isolate seal/reward mechanics; the craft-calibration gate has its own tests.
   s.craftMastery={rig:true,chart:true,flux:true};s.workshop.repaired=true;s.camp.pier=true;
+  for(const x of [item('rig',2),item('chart',1)]){const i=s.board.indexOf(null);s.board[i]=x;}
   reject(s,{type:'power'});ok(s,{type:'goal'});assert.equal(s.stage,4);
  }
 });

@@ -26,7 +26,8 @@ test('scope restoration cannot refund the spent repair coil',()=>{
  const s=survey();prepareRoute(s,'conduit');ok(s,{type:'breach',index:27});
  const before=s.board.filter(x=>x?.family==='flux'&&x.tier===2).length;
  ok(s,{type:'restore',index:32});assert.equal(s.board.filter(x=>x?.family==='flux'&&x.tier===2).length,before-1);
- assert.ok(s.board.some(x=>x?.family==='flux'&&x.tier===1),'finder yields a useful battery instead of a free next repair');
+ // Before the Vault rewards are raw parts: the finder yields Violet shards to merge, not a ready battery or coil.
+ assert.ok(s.board.filter(x=>x?.family==='flux'&&x.tier===0).length>=2,'finder yields raw shards instead of a free next repair');assert.equal(s.surge,3);
 });
 test('both routes and all repair styles complete with depleted stock, full boards and save reloads',()=>{
  for(const route of ['ridge','conduit'])for(const findStrategy of ['recover','restore','mixed']){

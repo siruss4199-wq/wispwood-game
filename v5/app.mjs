@@ -32,6 +32,17 @@ const $=s=>document.querySelector(s);
 let state,replayActive=false;try{({state,active:replayActive}=loadSlot(localStorage));}catch{state=fresh();}
 let selected=null,focus='goal',drag=null,suppressUntil=0,sideView=null,requestId=null,kitFocus='field',showVaultGoal=false,postChapterOrdersOpen=false;
 let instrumentFocus='rig';
+// Story beats are earned progress: show the new line in play, briefly, never blocking.
+let storyTimer=0;
+const storyKey=()=>{const st=storySnapshot(state);return st.expedition.title+'|'+st.camp.title;};
+function showStory(before){
+ const st=storySnapshot(state),[expedition]=before.split('|');
+ const b=st.expedition.title!==expedition?st.expedition:st.camp;
+ let el=$('#storyLine');
+ if(!el){el=document.createElement('div');el.id='storyLine';el.setAttribute('role','status');el.setAttribute('aria-live','polite');$('.world').append(el);}
+ el.innerHTML=`<span class="storyFace">${portrait(b.voice.startsWith('Neri')?'neri':'ivo')}</span><span class="storyText"><b>${b.voice}</b><span>${b.line}</span><i>${b.question}</i></span>`;
+ el.hidden=false;clearTimeout(storyTimer);storyTimer=setTimeout(()=>{el.hidden=true;},8000);
+}
 function visibleGoal(){return state.stage===4&&showVaultGoal?expeditionGoal(state):coastalObjective(state,expeditionGoal(state));}
 const board=$('#board'),message=$('#message');
 function persist(){try{const raw=JSON.stringify(state);localStorage.setItem(slotKey(replayActive),raw);if(!replayActive)platform.save(raw);}catch{message.textContent='Storage unavailable. This session is playable, but progress cannot be saved.';}}
@@ -389,6 +400,7 @@ function renderSelection(){
  $('#selection').innerHTML=`${x?`<span class="preview">${art(x)}</span>`:''}<span class="copy"><b>${title}</b><small>${desc}</small>${rare}</span>${preview}<span class="actionGroup">${buttons}</span>`;
 }
 function run(a){
+ const storyBefore=storyKey();
  const now=Date.now(),delivery=deliveryItems(state,a,now).map(v=>({...v,rect:board.querySelector(`[data-index="${v.index}"]`)?.getBoundingClientRect()}));
  const beforeBoard=state.board.map(x=>x?JSON.stringify(x):null);
  const objectiveAction=['goal','breach','power','restoreEngine'].includes(a.type);const taskSelector=a.type==='infuse'?`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===a.id)}"]`:a.type==='fitSpanner'?'#workshopBench':['deploy','clear','restore','prime'].includes(a.type)?`[data-index="${a.index??state.board.findIndex(x=>x?.type==='site'&&x.kind==='winch')}"]`:objectiveAction?'.objective':a.type==='request'?`[data-request="${a.id}"]`:`[data-contract="${a.type}"]`;
@@ -400,6 +412,7 @@ function run(a){
  const before=state.stage,landingBefore=state.landingStep,from=['produce','press'].includes(a.type)?board.querySelector(`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===a.id)}"]`)?.getBoundingClientRect():null;
  const knownBefore=new Set(state.discovered);const result=act(state,a,now);message.textContent=result.message;
  if(!result.ok)return result;
+ if(storyKey()!==storyBefore)setTimeout(()=>showStory(storyBefore),900);
  platform.startGameplay();if(result.event==='restoration'){focus='goal';selected=state.board.findIndex(x=>x?.type==='source'&&x.id==='rig');}else if(['milestone','deployment','contract','discovery','clear','turn'].includes(result.event)){focus='goal';selected=null;}if(a.type==='merge'){selected=state.stage===0&&!state.landingStep&&ready(state,STAGES[0].needs)?null:state.board[result.index]?.type==='prism'?null:result.index;if(selected===null)focus='goal';}render();persist();
  if(a.type==='goal'&&before===0&&landingBefore===1){for(const tile of board.querySelectorAll('.tile.item')){const x=state.board[+tile.dataset.index];if(x.tier===2&&['rig','chart'].includes(x.family))tile.classList.add('unlocked');}board.querySelectorAll('.rock.surveyed').forEach(tile=>tile.classList.add('unlocked'));}
  if(result.event==='milestone'&&state.stage<4)message.textContent=result.message;
