@@ -47,9 +47,20 @@ const SHAPES={
   '<path d="M16 80L22 40L36 58L50 24L64 58L78 40L84 80Z" fill="url(#vw-coral)" stroke="#b9473f" stroke-width="3" stroke-linejoin="round"/><rect x="15" y="76" width="70" height="13" rx="5" fill="url(#vw-brass)"/><circle cx="22" cy="38" r="5.5" fill="#fff"/><circle cx="50" cy="22" r="6.5" fill="#fff"/><circle cx="78" cy="38" r="5.5" fill="#fff"/><circle cx="50" cy="82" r="4.5" fill="url(#vw-glass)"/><circle cx="34" cy="82" r="3" fill="#fff"/><circle cx="66" cy="82" r="3" fill="#fff"/>'
  ]
 };
-// Draw any Coast Camp cell: new chains here, everything else with the shared art.
+// Coast Camp's crates (generator boxes by size): driftwood crate, sea chest,
+// captain's trunk, with a tag in the colour of the generator they feed.
+const CRATE_SHAPES=[
+ '<path d="M18 40L50 30L82 40V76L50 88L18 76Z" fill="#b98a5a"/><path d="M18 40L50 50L82 40M50 50V88" fill="none" stroke="#7a5532" stroke-width="3"/><path d="M18 54L50 64L82 54M18 66L50 76L82 66" stroke="#9c7046" stroke-width="2.5" fill="none"/><path d="M18 40L50 30L82 40L50 50Z" fill="#d1a676"/><path d="M30 36L60 46M40 33L70 43" stroke="#b98a5a" stroke-width="2"/><path d="M34 33Q50 22 66 33" fill="none" stroke="#e2c08a" stroke-width="4"/><path d="M23 72q7-9 2-18" stroke="#4f9a6a" stroke-width="3" fill="none"/>',
+ '<rect x="16" y="46" width="68" height="38" rx="5" fill="#a56a3c"/><path d="M16 48Q16 22 50 22Q84 22 84 48Z" fill="#c2834d"/><path d="M28 24V84M72 24V84" stroke="#5b6573" stroke-width="6"/><path d="M16 48H84" stroke="#5b6573" stroke-width="5"/><rect x="43" y="44" width="14" height="16" rx="3" fill="url(#vw-brass)"/><circle cx="50" cy="52" r="2.5" fill="#5b3a1c"/><path d="M22 31Q50 19 78 31" stroke="#e0a86d" stroke-width="3" fill="none"/>',
+ '<circle cx="50" cy="52" r="46" fill="#ffe68a" opacity=".28"/><rect x="10" y="42" width="80" height="44" rx="6" fill="#7b3f2a"/><path d="M10 44Q10 16 50 16Q90 16 90 44Z" fill="#9a5134"/><path d="M10 44H90M10 80H90" stroke="url(#vw-brass)" stroke-width="6"/><path d="M24 18V86M76 18V86" stroke="url(#vw-brass)" stroke-width="6"/><circle cx="50" cy="57" r="12" fill="url(#vw-brass)"/><path d="M50 49l3 6 6 1-4.5 4 1 6-5.5-3-5.5 3 1-6-4.5-4 6-1z" fill="#fff3b0"/><path d="M18 27Q50 11 82 27" stroke="#c97d55" stroke-width="3" fill="none"/>'
+];
+const TAG={rig:'#f27755',chart:'#43bfe7',flux:'#ac83fa'};
+// Draw any Coast Camp cell: new chains and crates here, everything else with the
+// shared art. Water shows what lies on the sea floor beneath it.
 export function draw(x,cls=''){
- if(x?.type==='sand'&&x.find)return draw(x.find,(cls+' buried').trim());
+ if(x?.type==='water')return x.find?draw(x.find,(cls+' submerged').trim()):'';
+ if(x?.type==='jar')return art(x,cls);
+ if(x?.type==='kit')return `<svg class="art crateArt crate${x.size} ${cls}" viewBox="0 0 100 100" aria-hidden="true" data-art="crate-${x.size}-${x.family}">${MATERIALS}<ellipse cx="50" cy="91" rx="34" ry="5" fill="#263957" opacity=".18"/><g stroke-linejoin="round" stroke-linecap="round">${CRATE_SHAPES[x.size-1]}</g><circle cx="82" cy="80" r="9" fill="${TAG[x.family]}" stroke="#fff" stroke-width="3"/></svg>`;
  if(x?.type==='item'&&SHAPES[x.family]){
   const key=x.family+'-'+x.tier;
   if(SPRITE_OVERRIDES[key])return `<img class="art ${cls}" src="${SPRITE_OVERRIDES[key]}" alt="" aria-hidden="true" data-art="${key}">`;

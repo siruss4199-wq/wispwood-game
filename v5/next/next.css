@@ -40,3 +40,17 @@
 .helpList{padding-left:20px;margin:0;display:flex;flex-direction:column;gap:8px;font-size:14px;line-height:1.4;color:#1d3a40}
 /* Crew role under the name on order cards. */
 .nextMode .requestCrew .requestLane{font-size:10px;color:#5f7380}
+/* The tide: water cells, darker the later they dry (--d is the restoration that
+   dries them); what lies on the sea floor shows through. */
+#board .tile.water{--d:1;background:linear-gradient(180deg,hsl(186 60% calc(76% - var(--d)*4%)),hsl(192 55% calc(58% - var(--d)*4%)));box-shadow:inset 0 -3px 0 hsl(195 50% calc(44% - var(--d)*3%)),inset 0 0 0 1px #ffffff40;border-radius:10px;overflow:hidden;cursor:default}
+#board .tile.water::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(172deg,#ffffff3a 0 2px,transparent 2px 13px);background-size:100% 26px;pointer-events:none}
+@media(prefers-reduced-motion:no-preference){#board .tile.water::after{animation:tideRipple 5s linear infinite}}
+@keyframes tideRipple{to{background-position:0 26px}}
+#board .tile.water .art.submerged{opacity:.5;filter:saturate(.45) brightness(1.05) blur(.4px);transform:translateY(4%) scale(.8)}
+#board .tile.water.selected{outline:3px solid #fff;outline-offset:-3px}
+/* Cells the tide has just left. */
+@media(prefers-reduced-motion:no-preference){#board .tile.ashore{animation:ashore 1.1s ease-out both}#board .tile.ashore:nth-child(odd){animation-delay:.12s}}
+@keyframes ashore{from{background:#6fc6d4;box-shadow:inset 0 0 0 40px #8fe0e8aa;transform:scale(.92)}60%{transform:scale(1.04)}to{}}
+/* Crates: the drawing grows with the size. */
+#board .tile.kit .crate1{transform:scale(.82)}
+#board .tile.kit .crate2{transform:scale(.92)}

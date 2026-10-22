@@ -1,6 +1,6 @@
 // Coast Camp: the new-loop page (v5/play.html). Same look as Classic V5, one loop:
 // generators → merge → crew orders → ★ stars → restore the coast on the map.
-import {SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,orderProgress,nextTask,currentArea,areaDone,sourceOpen,SOURCES,chainsOf} from './game.mjs';
+import {SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,orderProgress,nextTask,currentArea,areaDone,sourceOpen,SOURCES,chainsOf,CRATES,tideStepOf} from './game.mjs';
 import {AREAS} from './areas.mjs';
 import {cellPos} from '../core.mjs';
 import {CHAINS,draw,maxTier,chainsAt,GENERATOR_CHAINS} from './chains.mjs';
@@ -15,7 +15,7 @@ import {sound,reduced,burst,rewardFlight,moment as sharedMoment} from '../feedba
 function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el=document.querySelector('.moment');if(!x||!el)return;const icon=document.createElement('span');icon.style.cssText='float:left;width:42px;height:42px;margin-right:10px';icon.innerHTML=draw(x);icon.firstElementChild.style.cssText='width:100%;height:100%';el.prepend(icon);}
 
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 3 · more chains per generator';
+export const BUILD='Build 4 · the tide';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
@@ -75,11 +75,10 @@ function renderBoard(){
   const wanted=x?.type==='item'&&want.has(x.family+x.tier),focused=x?.type==='item'&&focusKeys.has(x.family+x.tier);
   let badge='';
   if(x?.type==='source')badge=locked?`<span class="lockedLabel">${x.id==='chart'?'SIGNAL MAST':'WORKSITE'}</span>`:`<span class="energyCue">ϟ1</span>${producerLevel(x)>1?`<span class="srcLevel">Lv${producerLevel(x)}</span>`:''}`;
-  else if(x?.type==='kit')badge=`<span class="pulls">${x.left}</span><span class="kitSize" aria-hidden="true">${'SML'[x.size-1]}</span>`;
+  else if(x?.type==='kit')badge=`<span class="pulls">${x.left}</span>`;
   else if(x?.type==='jar')badge=`<span class="sealBadge">+${x.energy}ϟ</span>`;
-  else if(x?.type==='gate')badge=`<span class="gateLevel" aria-hidden="true">${x.level}</span>`;
   else if(wanted)badge='<span class="useBadge" aria-hidden="true">★</span>';
-  return `<button class="tile ${x?.type??'empty'} ${locked?'locked':''} ${selected===i?'selected':''} ${twin?'match':''} ${wanted?'wanted':''} ${focused?'nextAction':''}" data-index="${i}" style="grid-row:${r+1};grid-column:${c+1}" ${x?.family||x?.id?`data-family="${x.family??x.id}"`:''} aria-label="${nameOf(x)}${locked?' · locked':''}. Space ${i+1}" aria-pressed="${selected===i}">${draw(x)}${badge}</button>`;
+  return `<button class="tile ${x?.type??'empty'} ${locked?'locked':''} ${selected===i?'selected':''} ${twin?'match':''} ${wanted?'wanted':''} ${focused?'nextAction':''}" data-index="${i}" style="grid-row:${r+1};grid-column:${c+1}${x?.type==='water'?`;--d:${tideStepOf(i)}`:''}" ${x?.family||x?.id?`data-family="${x.family??x.id}"`:''} aria-label="${nameOf(x)}${locked?' · locked':''}. Space ${i+1}" aria-pressed="${selected===i}">${draw(x)}${badge}</button>`;
  }).join('');
  $('#free').textContent=state.board.filter(x=>x===null).length+' spaces';
 }
@@ -93,20 +92,19 @@ function renderSelection(){
   buttons='<button data-action="recycle">Recycle · +1 ϟ</button>';
  }else if(x.type==='source'){
   const makes=GENERATOR_CHAINS[x.id].map(([c,l])=>producerLevel(x)>=l?CHAINS[c].names[0]:`${CHAINS[c].names[0]} at Lv${l}`).join(' · ');
-  desc=sourceOpen(state,x.id)?`Level ${producerLevel(x)} · 1 energy a tap · makes ${makes}.`+(producerLevel(x)<MAX_PRODUCER_LEVEL?' Feed it a Large box of its kind to level it up.':''):x.id==='chart'?'Restore the signal mast on the map to fly the Survey Kite.':'Wakes at the Survey Worksite (next area).';
+  desc=sourceOpen(state,x.id)?`Level ${producerLevel(x)} · 1 energy a tap · makes ${makes}.`+(producerLevel(x)<MAX_PRODUCER_LEVEL?` Feed it a ${CRATES[2]} of its colour to level it up.`:''):x.id==='chart'?'Restore the signal mast on the map to fly the Survey Kite.':'Wakes at the Survey Worksite (next area).';
   if(sourceOpen(state,x.id))buttons=`<button class="accent" data-action="produce">Make · 1 ϟ</button>`;
  }else if(x.type==='kit'){
-  desc=`Tap again for a free part (${chainsOf(state,x.family).map(c=>CHAINS[c].names[0]).join(' or ')} chain) · ${x.left} of ${kitCapacity(x)} left.`+(kitFull(x)&&x.size<MAX_KIT_SIZE?` Or merge with a twin into a ${KIT_SIZES[x.size]} box (${KIT_DROPS[x.size+1].length} better parts).`:kitFull(x)?` Or drag it onto ${SOURCES[x.family].name} to level it up.`:'');
+  desc=`Tap again for a free part (${chainsOf(state,x.family).map(c=>CHAINS[c].names[0]).join(' or ')} chain) · ${x.left} of ${kitCapacity(x)} left.`+(kitFull(x)&&x.size<MAX_KIT_SIZE?` Or merge with a twin into a ${CRATES[x.size]} (${KIT_DROPS[x.size+1].length} better parts).`:kitFull(x)?` Or drag it onto ${SOURCES[x.family].name} to level it up.`:'');
   buttons='<button class="accent" data-action="openKit">Take a part</button>';
- }else if(x.type==='sand')desc=x.find?`Something is buried here. Merge two parts right next to it to dig it out.`:'Sand. Merge two parts right next to it to dig it away.';
- else if(x.type==='gate')desc=`Opens at level ${x.level} (you are level ${state.level.level}).`;
+ }else if(x.type==='water'){const t=AREAS[0].tasks[tideStepOf(selected)-1];desc=(x.find?'This comes ashore':'This space dries')+(t?` when “${t.name}” is done on the map. Each restoration draws the tide back one step.`:' as the tide draws back.');}
  else if(x.type==='jar')desc='Energy, sealed in a jar.';
  $('#selection').innerHTML=`<span class="preview">${draw(x)}</span><span class="copy"><b>${title}</b><small>${desc}</small></span><span class="actionGroup">${buttons}</span>`;
 }
 function renderHint(){
  const task=nextTask(state),ready=state.orders.find(o=>orderItems(state,o));let hint;
  if(!state.merges)hint='START · Tap a Copper offcut, then its twin';
- else if(task&&state.stars>=task.cost)hint=`★ ${task.cost} ready · Restore ${task.name} ↑`;
+ else if(task&&state.stars>=task.cost)hint=`★ ${task.cost} ready · Restore ${task.name}: the tide draws back ↑`;
  else if(ready)hint='Order ready · tap it to collect ★';
  else if(state.energy<1){const t=refillTimes(state,Date.now());hint='Out of energy · +1 in '+clock(t?.next??0);}
  else hint='Make the parts the crew orders want';
@@ -135,7 +133,7 @@ function run(a){
  if(r.event==='producerUp'){const src=state.board[r.index];if(r.newChain)newChainMoment(src.id,r.newChain);else moment(SOURCES[src.id].name+' · level '+src.level,'Its parts come out better more often.',src);sound.play('milestone');}
  if(r.event==='restore')showBeat(r.task,r.effects);
  if(r.found?.length&&r.event!=='restore'){const k=r.found.at(-1),x=item(k.replace(/\d+$/,''),+k.match(/\d+$/)[0]);if(x.tier>=2)setTimeout(()=>moment('New: '+nameOf(x),x.tier<maxTier(x.family)?'Next: '+CHAINS[x.family].names[x.tier+1]:'Top of the chain',x),r.levelUp?1600:0);}
- if(r.levelUp){const u=r.levelUp.at(-1);setTimeout(()=>{moment('Level '+u.level+'!',`Chest: +${r.levelUp.reduce((n,v)=>n+v.energy,0)} ϟ`+(u.family?' · '+nameOf({type:'kit',family:u.family,size:1}):'')+(u.opened.length?` · ${u.opened.length} new spaces`:''),u.family?{type:'kit',family:u.family,size:1,left:3}:null);sound.play('milestone');$('#levelPill').classList.add('levelUp');setTimeout(()=>$('#levelPill').classList.remove('levelUp'),1400);for(const v of r.levelUp)for(const i of v.opened)board.querySelector(`[data-index="${i}"]`)?.classList.add('unlocked');},r.event==='restore'?0:400);}
+ if(r.levelUp){const u=r.levelUp.at(-1);setTimeout(()=>{moment('Level '+u.level+'!',`Chest: +${r.levelUp.reduce((n,v)=>n+v.energy,0)} ϟ`+(u.family?' · '+nameOf({type:'kit',family:u.family,size:1}):'')+'',u.family?{type:'kit',family:u.family,size:1,left:3}:null);sound.play('milestone');$('#levelPill').classList.add('levelUp');setTimeout(()=>$('#levelPill').classList.remove('levelUp'),1400);},r.event==='restore'?0:400);}
  return r;
 }
 function clickTile(i){
@@ -184,8 +182,11 @@ function showBeat(id,effects){
  const area=AREAS.find(a=>a.tasks.some(t=>t.id===id)),t=area.tasks.find(t=>t.id===id);
  const extra=[];if(effects?.source==='chart')extra.push(['neri','Survey Kite unlocked: tap it for Kite parts.']);
  if(effects?.newChain)extra.push([CHAINS[effects.newChain].gen==='rig'?'ivo':'neri',`New chain: ${CHAINS[effects.newChain].names.join(' → ')}.`]);
+ if(effects?.tide?.length)extra.push(['neri',`The tide draws back: ${effects.tide.length} new spaces on the board`+(effects.tide.some(d=>d.type!=='space')?', and what lay under the water is ours now.':'.')]);
  if(effects?.areaDone)extra.push(['bram',`${area.name} fully restored! The Survey Worksite opens in the next update.`]);
- playLines(t.name,t.lines.concat(extra),()=>{const icon=$(`.restoredIcon[data-task="${id}"]`);icon?.classList.add('pop');burst($('.world').getBoundingClientRect(),'gold',true);});
+ playLines(t.name,t.lines.concat(extra),()=>{const icon=$(`.restoredIcon[data-task="${id}"]`);icon?.classList.add('pop');burst($('.world').getBoundingClientRect(),'gold',true);
+  // Show the water drawing back on the board.
+  if(effects?.tide?.length){board.scrollIntoView({block:'nearest',behavior:reduced()?'auto':'smooth'});for(const d of effects.tide)board.querySelector(`[data-index="${d.index}"]`)?.classList.add('ashore');}});
  sound.play('milestone');
 }
 function playLines(title,lines,done){

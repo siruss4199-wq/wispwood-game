@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {SAVE_KEY,fresh,act,load,tick,item,nextTask,orderItems,sourceOpen,STAR_VALUE} from '../v5/next/game.mjs';
+import {SAVE_KEY,fresh,act,load,tick,item,water,jar,nextTask,orderItems,sourceOpen,STAR_VALUE,CAMP,TIDE_STEPS,tideStepOf,tideLevel,FINDS,CRATES,nameOf} from '../v5/next/game.mjs';
 import {AREAS} from '../v5/next/areas.mjs';
 import {kit} from '../v5/kits.mjs';
 import {nextAction} from './v5-next-policy.mjs';
@@ -15,17 +15,20 @@ test('its own save key; the Classic keys are never written',()=>{
  for(const f of ['v5/next/game.mjs','v5/next/app.mjs']){const src=readFileSync(new URL('../'+f,import.meta.url),'utf8');assert.doesNotMatch(src,/setItem\('vaultwake-v5'|vaultwake-v5-replay|vaultwake-v5-active-slot/,f);}
 });
 
-test('a new camp: an open pocket around Rivet Rover, sand with finds, numbered gates, three orders',()=>{
+test('a new camp: the dry camp around Rivet Rover, the tide everywhere else, three orders',()=>{
  const s=fresh(0);
  assert.deepEqual(s.board.flatMap((x,i)=>x===null?[i]:[]),[1,6,12]);
- assert.equal(s.board.filter(x=>x?.type==='sand').length,25);assert.equal(s.board.filter(x=>x?.type==='gate').length,13);
+ assert.deepEqual(CAMP,[0,1,2,6,7,8,12,13,18]);
+ assert.equal(s.board.filter(x=>x?.type==='water').length,38,'49 cells less the camp and the two other generators');
+ assert.ok(!s.board.some(x=>x?.type==='sand'||x?.type==='gate'),'no sand or numbered cells');
+ for(const i of [5,30])assert.equal(s.board[i].type,'source','generators stand above the water');
  assert.deepEqual(s.orders.map(o=>o.needs),[[{family:'rig',tier:1,count:2}],[{family:'rig',tier:2,count:1}],[{family:'rig',tier:1,count:1},{family:'rig',tier:0,count:2}]]);
  assert.equal(s.stars,0);assert.equal(sourceOpen(s,'chart'),false);assert.equal(nextTask(s).id,'beach-path');
 });
 
-test('the first merge digs two finds and completes the first order',()=>{
- const s=fresh(0),r=ok(s,{type:'merge',from:7,to:8});
- assert.deepEqual(r.dug.map(d=>d.index).sort((a,b)=>a-b),[9,14]);assert.equal(r.xp,1);
+test('the first merge completes the first order and opens nothing',()=>{
+ const s=fresh(0),before=s.board.filter(x=>x?.type==='water').length,r=ok(s,{type:'merge',from:7,to:8});
+ assert.equal(r.dug,undefined);assert.equal(s.board.filter(x=>x?.type==='water').length,before,'merges never move the tide');assert.equal(r.xp,1);
  assert.ok(orderItems(s,s.orders[0]));
  const d=ok(s,{type:'deliver',id:'o0'});assert.equal(d.stars,2);assert.equal(s.stars,2);assert.equal(s.orders[0].id,'o3');
  refused(s,{type:'deliver',id:'o0'});
@@ -75,9 +78,9 @@ test('every third order brings a small box of its kind; boxes and generator leve
  ok(t,{type:'openKit',index:6});
 });
 
-test('levels open gates and give a chest with a box of an open family',()=>{
- const s=fresh(0);s.level.xp=19;const e=s.energy,r=ok(s,{type:'merge',from:7,to:8});
- assert.equal(r.levelUp[0].level,2);assert.deepEqual(r.levelUp[0].opened,[36,43]);assert.equal(r.levelUp[0].family,'rig');
+test('levels give a chest with a driftwood crate of an open family and open no cells',()=>{
+ const s=fresh(0);s.level.xp=19;const e=s.energy,w=s.board.filter(x=>x?.type==='water').length,r=ok(s,{type:'merge',from:7,to:8});
+ assert.equal(r.levelUp[0].level,2);assert.equal(r.levelUp[0].opened,undefined);assert.equal(r.levelUp[0].family,'rig');assert.equal(s.board.filter(x=>x?.type==='water').length,w);
  assert.equal(s.energy,e+5);
 });
 
@@ -89,7 +92,7 @@ test('energy refills over time and a low-energy ration helps once an hour',()=>{
 test('saves round-trip; anything malformed starts a new camp',()=>{
  const s=fresh(0);ok(s,{type:'merge',from:7,to:8});s.board[1]=kit('chart',2);s.board[0].level=3;
  const back=load(JSON.stringify(s),5);assert.deepEqual(back.board,s.board);assert.deepEqual(back.orders,s.orders);assert.equal(back.moves,1);
- const bad=[x=>x.version=2,x=>x.board.pop(),x=>x.board[2]={type:'item',family:'gold',tier:0},x=>x.board[2]={type:'crate',kind:'salvage',left:3},x=>x.stars=-1,x=>x.orders.pop(),x=>x.orders[0].who='zed',x=>x.done.push('nowhere'),x=>x.slots=5,x=>x.taps.rig=-1,x=>x.board[0].level=9];
+ const bad=[x=>x.version=3,x=>x.board[20]={type:'sand'},x=>x.board[20]={type:'gate',level:3},x=>x.board[20]=water({type:'item',family:'rig',tier:5}),x=>x.board[20]=water({type:'kit',family:'rope',size:1,left:3}),x=>x.board.pop(),x=>x.board[2]={type:'item',family:'gold',tier:0},x=>x.board[2]={type:'crate',kind:'salvage',left:3},x=>x.stars=-1,x=>x.orders.pop(),x=>x.orders[0].who='zed',x=>x.done.push('nowhere'),x=>x.slots=5,x=>x.taps.rig=-1,x=>x.board[0].level=9];
  for(const f of bad){const t=structuredClone(s);f(t);assert.equal(load(JSON.stringify(t),5).moves,0,f.toString());}
  assert.equal(load('not json',5).moves,0);
  const classic=readFileSync(new URL('./fixtures/stage2/conduit-completed.json',import.meta.url),'utf8');assert.equal(load(classic,5).moves,0,'a Classic save is not a Coast Camp save');
@@ -136,4 +139,51 @@ test('generators make more chains as they level up; orders and boxes follow the 
  // A box from a new-chain order belongs to that chain's generator (a valid, saveable box).
  const x=fresh(0);x.board[0].level=2;x.ordersDone=2;x.orders[0]={id:'oz',who:'ivo',needs:[{family:'rope',tier:1,count:1}],stars:1};x.board[1]=item('rope',1);
  const d=ok(x,{type:'deliver',id:'oz'});assert.deepEqual(x.board[d.box],kit('rig',1));assert.equal(load(JSON.stringify(x),5).moves,x.moves);
+});
+
+test('each restoration draws the tide back one step; what lay under it comes ashore',()=>{
+ assert.deepEqual(TIDE_STEPS.flat(),[3,4,5,6,7,8,9,10,11,12]);
+ const s=fresh(0);s.stars=200;let water=s.board.filter(x=>x?.type==='water').length;
+ for(const [k,t] of AREAS[0].tasks.entries()){
+  const e=s.energy,r=ok(s,{type:'restore',id:t.id});assert.equal(tideLevel(s),k+1);
+  const dried=r.effects.tide.map(d=>d.index);
+  assert.ok(dried.length>=3,t.id+' dries at least three cells');
+  for(const i of dried){assert.equal(tideStepOf(i),k+1);assert.notEqual(s.board[i]?.type,'water');}
+  for(const d of r.effects.tide){const f=FINDS[d.index];
+   if(!f)assert.equal(s.board[d.index],null);
+   else if(f.type==='jar'){assert.equal(d.type,'jar');assert.equal(s.board[d.index],null);}
+   else assert.deepEqual(s.board[d.index],f.type==='kit'?kit(f.family,f.size):item(f.family,f.tier));}
+  const now=s.board.filter(x=>x?.type==='water').length;assert.equal(now,water-dried.length);water=now;
+  assert.ok(s.board.every((x,i)=>x?.type!=='water'||tideStepOf(i)>k+1),'only later steps stay under water');
+ }
+ assert.equal(water,0,'Landing Beach restored: the whole board is dry');
+});
+
+test('the tide is not a place to put things, and says what lies there',()=>{
+ const s=fresh(0);
+ refused(s,{type:'move',from:7,to:3});refused(s,{type:'merge',from:3,to:9});refused(s,{type:'openKit',index:3});refused(s,{type:'recycle',index:3});
+ assert.match(act(s,{type:'move',from:7,to:3},1).message,/under the tide/);
+ assert.equal(nameOf(s.board[3]),'Under the tide: '+CRATES[0]+' · Rivet Rover');assert.equal(nameOf(s.board[19]),'Under the tide');
+ assert.equal(nameOf(s.board[4]),'Under the tide: Tide pool · +5 energy');
+});
+
+test('crates are named for the coast; merges and feeding work as before',()=>{
+ assert.deepEqual(CRATES,['Driftwood crate','Sea chest','Captain\'s trunk']);
+ assert.equal(nameOf(kit('rig',1)),'Driftwood crate · Rivet Rover');assert.equal(nameOf(kit('chart',3)),'Captain\'s trunk · Survey Kite');
+ const s=fresh(0);s.board[1]=kit('rig',3);s.board[6]=kit('rig',3);assert.match(act(s,{type:'merge',from:1,to:6},1).message,/as big as crates get/);
+});
+
+test('a build-3 save (sand and numbered cells) loads with the tide at its restorations',()=>{
+ const v1=fresh(0);v1.version=1;
+ // As build 3 saved it: sand with finds, numbered cells, two places restored and a cell dug out.
+ v1.board=v1.board.map((x,i)=>x?.type==='water'?(i>=36?{type:'gate',level:3}:{type:'sand',...(x.find?{find:x.find}:{})}):x);
+ v1.board[3]={type:'kit',family:'rig',size:1,left:3};// dug out in build 3
+ v1.done=['beach-path','beach-tent'];v1.stars=7;v1.moves=40;
+ const s=load(JSON.stringify(v1),5);
+ assert.equal(s.version,2);assert.equal(s.moves,40,'the camp is kept');assert.equal(s.stars,7);
+ assert.ok(!s.board.some(x=>x?.type==='sand'||x?.type==='gate'));
+ assert.deepEqual(s.board[3],kit('rig',1),'what was already dug out stays');
+ for(let i=0;i<s.board.length;i++)if(s.board[i]?.type==='water')assert.ok(tideStepOf(i)>2,'restored steps are dry');
+ assert.deepEqual(s.board[4],null,'the step-1 tide pool came ashore');
+ assert.equal(s.board[44].type,'water');assert.deepEqual(s.board[44],water(),'numbered cells become empty water');
 });
