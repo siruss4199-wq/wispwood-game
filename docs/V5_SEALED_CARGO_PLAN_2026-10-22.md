@@ -86,3 +86,19 @@ holds +5 energy instead. Scripted player: Kite at ~3.5–4 min after two crates,
 Winch ~11–13, Shell Trap ~16–19, Lantern Kiln ~20–24, Landing Beach 23–28 min, 18
 crates still sealed. A Split-spanner key on the Kite pushed it to 10–13 minutes and
 left the shells and lamps unfound, so the Grip tool stays.
+
+## Build 8 — generators grow by merging (user: "generatoriig uuriig ni merge hiij hugjuulj yavdag")
+- Generators move and merge like parts: two of the same kind and level make the next
+  level (up to 5; `generatorsMerge`). Feeding a Captain's trunk to a generator is gone;
+  crates only give parts.
+- Copies to merge: cargo holds two more Rivet Rovers, two more Survey Kites, a second
+  Rope Winch and a second Shell Trap (glowing like any generator cargo); the Workshop
+  restoration now gives a second Rivet Rover; level chests at 5, 7, 9 … give a copy of
+  a generator you have instead of a crate.
+- Taps choose the generator tapped (`produce` takes an index). Tapping a generator and
+  then an identical one merges them; dragging works too.
+- The Survey Kite cargo moved again, two crates in from the camp (cell 16), since a
+  determined player still opened it within a minute at cell 10.
+- Scripted "curious" player (works toward the glowing crates): second Rover ~3.5 min,
+  Survey Kite ~5 min, Rope Winch ~13, Shell Trap ~20, Lantern Kiln ~23; Landing Beach
+  in 25–30 min, energy ~18 at the end. Level chest +7 energy. Costs 4·6·8·10·13·14·17 ★.

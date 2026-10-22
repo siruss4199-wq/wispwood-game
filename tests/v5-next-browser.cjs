@@ -58,6 +58,13 @@ async function perform(page,a){
    await page.goto(URL+'?new=1');await page.waitForSelector('#board .tile');await closeBeats(page);
    assert.equal((await read(page)).moves,0);assert.equal(new globalThis.URL(page.url()).search,'');
    assert.equal(await page.evaluate(()=>localStorage.getItem('vaultwake-v5')),classic,'Classic save still untouched');
+   // Generators grow by merging: drag a second Rivet Rover onto the first.
+   await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.board[1]={type:'source',id:'rig'};localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
+   await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
+   {const a=await page.locator('#board [data-index="1"]').boundingBox(),b=await page.locator('#board [data-index="0"]').boundingBox();
+    await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:6});await page.mouse.up();}
+   await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).board[0].level===2,null,{timeout:4000});
+   assert.equal((await read(page)).board[1],null);assert.match(await page.locator('#board [data-index="0"]').textContent(),/Lv2/);
    assert.deepEqual(errors,[]);
    console.log(`${engine} ${width} Coast Camp: intro → orders → 2 restorations → reload → map passed`);
    await context.close();

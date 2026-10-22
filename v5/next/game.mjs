@@ -5,7 +5,7 @@
 // Deterministic reducer: act(s,a,now) mutates s and returns {ok,...}; a refused
 // action leaves s untouched. Classic V5 (v5/core.mjs) and its saves are not used.
 import {cellPos,BOARD_SIZE} from '../core.mjs';
-import {kit,kitDrop,kitsMerge,feeds,producerLevel,levelLift,validProducerLevel,nearestFree,MAX_KIT_SIZE,KIT_DROPS} from '../kits.mjs';
+import {kit,kitDrop,kitsMerge,producerLevel,levelLift,validProducerLevel,nearestFree,MAX_KIT_SIZE,KIT_DROPS} from '../kits.mjs';
 import {xpToNext,validLevel,freshLevel} from '../levels.mjs';
 import {settleEnergy,REFILL_CAP,RATION_ENERGY,rationWait} from '../energy.mjs';
 import {AREAS,TASKS} from './areas.mjs';
@@ -14,13 +14,18 @@ import {CHAINS,GENERATOR_CHAINS,GENERATOR_NAMES,maxTier} from './chains.mjs';
 export const SAVE_KEY='vaultwake-v5-coast';
 export const VERSION=3,MAX_TIER=7,MAX_ENERGY=120;// MAX_TIER: the longest chain
 export const SOURCES=Object.fromEntries(Object.entries(GENERATOR_NAMES).map(([id,name])=>[id,{name}]));
-export const XP={merge:1,restore:5,feed:5,unseal:2};// orders pay their stars as XP
+export const XP={merge:1,restore:5,feed:5,unseal:2};// feed: merging two generators// orders pay their stars as XP
 export const STAR_VALUE=[1,1,2,4,7,12];// stars per item by tier
-export const CHEST_ENERGY=10;
+export const CHEST_ENERGY=7;
 // Coast Camp's own crates (the generator boxes of v5/kits.mjs, by size).
 export const CRATES=['Driftwood crate','Sea chest','Captain\'s trunk'];
 // Generators in the order they are found; each is opened with the one before's parts.
 export const GENERATOR_ORDER=['rig','chart','rope','shell','lamp'];
+// Generators grow by merging two of the same kind and level (user, 2026-10-22:
+// "generatoriig uuriig ni merge hiij hugjuulj yavdag"). Copies come from cargo and
+// from every second level chest.
+export const MAX_GENERATOR_LEVEL=5;
+export const generatorsMerge=(x,y)=>x?.type==='source'&&y?.type==='source'&&x.id===y.id&&producerLevel(x)===producerLevel(y)&&producerLevel(x)<MAX_GENERATOR_LEVEL;
 
 export const item=(family,tier)=>({type:'item',family,tier});
 export const jar=energy=>({type:'jar',energy});
@@ -54,12 +59,12 @@ const I=item,K=kit,E=jar,S=stars,G=source;
 export const CARGO={
  3:['rig',1,E(5)],
  4:['rig',1,E(5)],9:['rig',2,I('rig',1)],14:['rig',1,S(2)],19:['rig',2,K('rig',1)],24:['rig',1,E(5)],
- 5:['rig',2,S(2)],10:['rig',1,G('chart')],15:['chart',2,G('rope')],20:['rig',2,K('rig',1)],25:['chart',1,E(5)],30:['rig',2,I('rig',2)],
- 36:['chart',2,S(3)],11:['rig',3,K('chart',1)],16:['chart',1,E(5)],21:['rig',2,S(2)],26:['chart',2,I('chart',2)],31:['rig',3,E(5)],43:['chart',2,K('rig',1)],
+ 5:['rig',2,S(2)],10:['rig',2,S(2)],15:['chart',2,G('rope')],20:['rig',2,G('rig')],25:['chart',1,E(5)],30:['rig',2,I('rig',2)],
+ 36:['chart',2,S(3)],11:['rig',3,K('chart',1)],16:['rig',1,G('chart')],21:['rig',2,S(2)],26:['chart',2,G('chart')],31:['rig',3,G('rig')],43:['chart',2,G('chart')],
  37:['rope',2,S(3)],17:['rope',1,I('rope',1)],22:['rope',2,G('shell')],27:['rig',3,E(5)],32:['rope',2,K('rope',1)],44:['chart',2,S(3)],
  38:['rope',2,E(5)],23:['rope',3,G('lamp')],28:['chart',3,K('chart',2)],33:['rig',3,S(4)],45:['chart',3,I('chart',2)],
- 39:['shell',2,K('shell',1)],29:['rope',3,S(4)],34:['rig',4,K('rig',2)],46:['shell',1,E(5)],
- 40:['shell',3,S(4)],35:['lamp',2,K('lamp',1)],47:['rope',3,E(5)],
+ 39:['shell',2,K('shell',1)],29:['rope',3,S(4)],34:['rig',4,G('rope')],46:['shell',1,E(5)],
+ 40:['shell',3,S(4)],35:['lamp',2,K('lamp',1)],47:['rope',3,G('shell')],
  41:['lamp',3,S(4)],48:['shell',3,K('shell',2)],
  42:['lamp',4,K('rig',3)]
 };
@@ -133,10 +138,12 @@ function gainXp(s,amount){
  s.level=validLevel(s.level);s.level.xp+=amount;const ups=[];
  while(s.level.xp>=xpToNext(s.level.level)){
   s.level.xp-=xpToNext(s.level.level);s.level.level++;
-  const families=openFamilies(s),family=families[(s.level.level-2)%families.length];
-  const index=put(s,kit(family,1));const energy=CHEST_ENERGY+(index<0?5:0);
+  const families=openFamilies(s).filter(g=>g!=='flux'),family=families[(s.level.level-2)%families.length];
+  // Odd levels from 5 bring a copy of a generator you have, to merge with it.
+  const copy=s.level.level>=5&&s.level.level%2===1;
+  const index=put(s,copy?source(family):kit(family,1));const energy=CHEST_ENERGY+(index<0?5:0);
   s.energy=Math.min(MAX_ENERGY,s.energy+energy);
-  ups.push({level:s.level.level,energy,family:index<0?null:family,index});
+  ups.push({level:s.level.level,energy,family:index<0?null:family,index,...(copy&&index>=0?{generator:family}:{})});
  }
  return ups;
 }
@@ -161,7 +168,7 @@ function step(s,a,now){
  const fail=message=>({ok:false,message}),valid=i=>Number.isInteger(i)&&i>=0&&i<s.board.length;
  if(!a||typeof a.type!=='string')return fail('Unknown action.');
  if(a.type==='produce'){
-  const i=s.board.findIndex(x=>x?.type==='source'&&x.id===a.id);
+  const i=valid(a.index)&&s.board[a.index]?.type==='source'&&s.board[a.index].id===a.id?a.index:s.board.findIndex(x=>x?.type==='source'&&x.id===a.id);
   if(i<0||!SOURCES[a.id])return fail('That generator is still sealed in cargo somewhere on the board.');
   if(!sourceOpen(s,a.id))return fail('Echo Crucible wakes at the Survey Worksite.');
   if(s.energy<1)return fail('Out of energy. It refills +1 every 2 minutes.');
@@ -174,7 +181,13 @@ function step(s,a,now){
   const from=a.from,to=a.to??a.index;
   if(!valid(from)||!valid(to)||from===to)return fail('Choose another space.');
   const x=s.board[from],y=s.board[to];
-  if(!['item','kit'].includes(x?.type))return fail('That stays where it is.');
+  if(!['item','kit','source'].includes(x?.type))return fail('That stays where it is.');
+  if(x.type==='source'){
+   if(!y){s.board[to]=x;s.board[from]=null;return {ok:true,event:'move',index:to,message:'Moved.'};}
+   if(!generatorsMerge(x,y))return fail(y?.type==='source'&&y.id===x.id&&producerLevel(y)>=MAX_GENERATOR_LEVEL?`${SOURCES[x.id].name} is at its top level.`:'Merge two generators of the same kind and level.');
+   y.level=producerLevel(y)+1;s.board[from]=null;
+   return {ok:true,event:'producerUp',index:to,xp:XP.feed,message:`${SOURCES[y.id].name} reaches level ${y.level}`};
+  }
   // A part laid on the cargo it opens is used up, and the cargo opens.
   if(y?.type==='cargo'){
    if(!reachable(s,to))return fail('Open the cargo next to your camp first: this one is buried deeper.');
@@ -185,8 +198,8 @@ function step(s,a,now){
   if(a.type==='unseal')return fail('Lay the part on the cargo it opens.');
   if(!y){s.board[to]=x;s.board[from]=null;return {ok:true,event:'move',index:to,message:'Moved.'};}
   if(x.type==='kit'){
-   if(feeds(x,y)){y.level=producerLevel(y)+1;s.board[from]=null;return {ok:true,event:'producerUp',index:to,xp:XP.feed,message:`${SOURCES[y.id].name} reaches level ${y.level}`};}
-   if(!kitsMerge(x,y))return fail(y?.type==='kit'&&x.size===MAX_KIT_SIZE?`A ${CRATES[MAX_KIT_SIZE-1]} is as big as crates get. Open it, or feed it to its generator.`:'Merge two unopened crates of the same kind and size.');
+   if(y?.type==='source')return fail('Crates give parts. To level a generator up, merge it with another of the same kind and level.');
+   if(!kitsMerge(x,y))return fail(y?.type==='kit'&&x.size===MAX_KIT_SIZE?`A ${CRATES[MAX_KIT_SIZE-1]} is as big as crates get. Open it for its parts.`:'Merge two unopened crates of the same kind and size.');
    s.board[to]=kit(x.family,x.size+1);s.board[from]=null;s.merges++;
    return {ok:true,event:'merge',index:to,xp:XP.merge,message:nameOf(s.board[to])};
   }
@@ -219,6 +232,7 @@ function step(s,a,now){
   s.stars-=t.cost;s.done.push(t.id);const e=t.effect??{},effects={};
   if(e.energy){s.energy=Math.min(MAX_ENERGY,s.energy+e.energy);effects.energy=e.energy;}
   if(e.producer){const src=s.board.find(x=>x?.type==='source'&&x.id===e.producer);if(src&&producerLevel(src)<5){src.level=producerLevel(src)+1;effects.producer=e.producer;}}
+  if(e.copy){effects.copy=put(s,source(e.copy));effects.copyId=e.copy;}
   if(e.kit){const family=e.kit[0]==='newest'?newestGenerator(s):e.kit[0];effects.kit=put(s,kit(family,e.kit[1]));effects.kitFamily=family;}
   if(e.slots&&s.slots<e.slots){s.slots=e.slots;while(s.orders.length<s.slots)s.orders.push(makeOrder(s));effects.slots=e.slots;}
   if(e.area)effects.areaDone=AREAS[s.area].id;
