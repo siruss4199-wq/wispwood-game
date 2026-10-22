@@ -154,6 +154,27 @@ open pocket in sand, with buried items peeking out, and numbered level cells aro
 - Scripted players (`tests/v5-crust-policy.mjs`) merge a spare pair beside the sand
   before tapping a producer again, as a person digging out would.
 
+## Generator boxes and producer levels (user, 2026-10-22: "only the board fill changed, not the loop"; chose "generator boxes, generator merging")
+- New cell `{type:'kit',family,size,left}` (`v5/kits.mjs`): a Small, Medium or Large Rover
+  toolbox, Kite map satchel or Crucible shard flask. Tap it once to select, again to take
+  a part: free, no energy. Parts land in the nearest free space; the last one takes the
+  box's own space. Drops per size: Small 3 (offcut, tool, offcut), Medium 5, Large 6 with
+  tier-2 parts. Raw value 4 → 8 → 18, so merging pays a little.
+- Two unopened twin boxes (same kind and size) merge into the next size, digging sand
+  beside them like any merge. A started box no longer merges: open it or keep it whole.
+- A Large unopened box dragged onto its own producer raises the producer's level (max 5).
+  Level lifts pulls a tier: Lv2 every third pull, Lv3 every second, Lv4 every pull, Lv5
+  every pull and every third by two (capped at tier 3). The ninth-pull find is unchanged.
+  The producer shows "Lv2" and its panel says how to raise it. Feeding pays 10 XP.
+- Where boxes come from: two Small Rover toolboxes buried beside the camp (dug by the
+  second merge), the level chest (one Small box, Rover → Kite → Crucible in turn, instead
+  of a parts case), and every third crew order (a Small box of the order's kind).
+- Saves: new cell type and an optional producer `level` (2–5); older saves gain neither;
+  malformed boxes or levels start fresh. Keys unchanged. Tests: `tests/v5-kits.test.mjs`.
+- Scripted players merge twin boxes, feed Large ones, and open a started box before
+  paying energy. In a 500-action run all three producers reach level 5, Rover first at
+  action 17; the energy-free parts mean producers are tapped less often.
+
 ## Sources and limits
 No first-party data was found. Travel Town figures (100 energy, 72-cell board) come
 from fan guides; the "top-grossing" claim for Gossip Harbor is unverified. Level

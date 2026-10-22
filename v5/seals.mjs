@@ -6,7 +6,7 @@ export const sightLens=x=>x?.type==='item'&&!x.line&&x.family==='chart'&&x.tier=
 export const reflector=x=>x?.type==='prism'||sightLens(x);
 export const linkPhase=s=>s.stage===2&&s.seals?.navigation&&s.seals?.stabilization&&!s.seals.resonance;
 // Keep the old serialized charge field: an already-spent Loop Cell stays spent.
-export const movable=x=>!!x&&['item','crate','glyph','brace','prism'].includes(x.type);
+export const movable=x=>!!x&&['item','crate','kit','glyph','brace','prism'].includes(x.type);
 export function optics(s){return s.seals.optics??{version:1,primed:false,direction:0};}
 export function receivers(s){return s.board.flatMap((x,i)=>x?.type==='site'&&x.kind!=='winch'&&x.phase==='done'?[i]:[]);}
 export function circuit(s,index){

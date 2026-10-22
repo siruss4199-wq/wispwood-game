@@ -2,11 +2,14 @@ import {matches} from './core.mjs';
 import {equipment,ROUTES,canRestore} from './expedition.mjs';
 import {linkPhase,optics,loopCell} from './seals.mjs';
 import {routePrepared} from './navigation.mjs';
+import {kitsMerge,feeds} from './kits.mjs';
 
 // Shared by tap, drag and target highlighting: never advertise a locked action.
 export function useAction(s,from,index){
  if(from==null||from===index)return null;
  const tool=s.board[from],target=s.board[index];
+ if(kitsMerge(tool,target))return {type:'mergeKit',from,index};
+ if(feeds(tool,target))return {type:'feedKit',from,index};
  if(s.journey?.engine&&!s.journey.boost&&loopCell(tool)&&target?.type==='source')return {type:'infuse',from,index,id:target.id};
  if(linkPhase(s)&&!optics(s).primed&&loopCell(tool)&&target?.type==='site'&&target.kind==='winch'&&target.phase==='done')return {type:'prime',from,index};
  if(canRestore(s,target)&&matches(tool,{family:'flux',tier:2}))return {type:'restore',from,index};

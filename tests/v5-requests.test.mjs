@@ -34,6 +34,8 @@ test('legacy completed saves keep board and progression; malformed requests repa
 test('replacement variety stays within unlocked producers across 90 deliveries',()=>{
  const s=fresh();s.stage=2;syncRequests(s);let last=null;
  for(let n=0;n<90;n++){
+  // Boxes that orders bring are cleared away: this test is about order variety, not storage.
+  s.board=s.board.map(x=>x?.type==='kit'?null:x);
   const o=s.requests.orders[n%3];for(const r of o.needs){assert.ok(sourceUnlocked(s,r.family));assert.ok(r.tier<=3);}
   // Supply only spare requested inventory; reserved equipment stays intact.
   for(const r of o.needs)while(requestProgress(s,o).progress.find(p=>p.family===r.family&&p.tier===r.tier).current<r.count){const i=s.board.indexOf(null);assert.ok(i>=0);s.board[i]=item(r.family,r.tier);}

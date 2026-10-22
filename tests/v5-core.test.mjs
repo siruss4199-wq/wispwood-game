@@ -81,9 +81,9 @@ test('fresh-player simulation opens vault and continues through two optional dis
 });
 test('dig-out board starts 33 of 36 core cells occupied: a small open camp, rewarding finds in the sand and reachable space around sources',()=>{
  const s=fresh();assert.deepEqual(s.board.flatMap((x,i)=>x===null?[i]:[]),[1,6,12]);
- // Sand covers most of the core; most of it hides parts, two energy jars and a mystery chest.
- const find=x=>!x?'':x.type==='item'?x.family+x.tier:x.type+(x.energy??'');
- assert.deepEqual(s.board.flatMap((x,i)=>x?.type==='sand'?[i+':'+find(x.find)]:[]),['3:cache','4:chart1','9:chart0','10:','11:chart0','14:chart1','15:flux0','16:flux0','17:rig0','21:jar8','22:jar5','25:rig0','26:chart0','28:rig1','29:flux0','33:chart0','35:chart1']);
+ // Sand covers most of the core; it hides parts, two energy jars and two small Rover toolboxes.
+ const find=x=>!x?'':x.type==='item'?x.family+x.tier:x.type+(x.energy??'')+(x.family??'')+(x.size??'');
+ assert.deepEqual(s.board.flatMap((x,i)=>x?.type==='sand'?[i+':'+find(x.find)]:[]),['3:kitrig1','4:chart1','9:chart0','10:kitrig1','11:chart0','14:chart1','15:flux0','16:flux0','17:rig0','21:jar8','22:jar5','25:rig0','26:chart0','28:rig1','29:flux0','33:chart0','35:chart1']);
  assert.equal(s.board.some(x=>['sealed','crust','jar','cache'].includes(x?.type)),false,'nothing salt-sealed lies loose on a new board');
  // The open camp: Rivet Rover's starter parts only.
  assert.deepEqual(s.board.flatMap((x,i)=>x?.type==='item'?[i+':'+x.family+x.tier]:[]),['2:rig0','7:rig0','8:rig0','13:rig1','18:rig0']);

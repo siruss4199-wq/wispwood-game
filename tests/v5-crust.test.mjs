@@ -20,7 +20,7 @@ test('a fresh board starts in sand: no crusts, and buried parts count for nothin
  assert.deepEqual(s.board.flatMap((x,i)=>x?.type==='item'?[i]:[]),[2,7,8,13,18],'only Rivet Rover\'s starter parts lie in the open camp');
  for(const i of sandAt(s)){const x=s.board[i];assert.match(nameOf(x),x.find?/^Buried /:/^Sand$/);if(x.find?.type==='item')assert.equal(matches(x,x.find),false);}
  assert.equal(count(s,{family:'flux',tier:0}),0,'the three buried Violet shards are not counted');
- assert.match(nameOf(s.board[21]),/^Buried energy jar · \+8/);assert.match(nameOf(s.board[3]),/^Buried mystery chest/);
+ assert.match(nameOf(s.board[21]),/^Buried energy jar · \+8/);for(const i of [3,10])assert.equal(nameOf(s.board[i]),'Buried small rover toolbox');
  const old=crusted();for(const i of crustAt(old)){const x=old.board[i];assert.equal(matches(x,{family:x.family,tier:x.tier}),false);assert.match(nameOf(x),/^Salt-crusted /);}
 });
 
@@ -42,9 +42,11 @@ test('a merge digs the orthogonal sand beside it: plain sand opens, buried parts
  assert.deepEqual(s.board[14],item('chart',1));assert.deepEqual(s.board[9],item('chart',0));
  for(const i of [3,15])assert.equal(s.board[i].type,'sand','diagonal sand stays');
  assert.equal(s.board.filter(x=>x===null).length,free+1);
- s.board[1]=item('chart',0);const r2=act(s,{type:'merge',from:1,to:9},2);// 9 borders the buried chest at 3, a buried Violet shard at 15 and plain sand at 10
- assert.deepEqual(r2.cracked,[{index:3,type:'cache',dug:true},{index:15,type:'sand',find:item('flux',0)},{index:10,type:'sand'}]);
- assert.equal(s.board[10],null,'plain sand becomes working space');assert.deepEqual(s.board[3],{type:'crate',kind:'locker',left:3});assert.deepEqual(s.board[15],item('flux',0));
+ s.board[1]=item('chart',0);const r2=act(s,{type:'merge',from:1,to:9},2);// 9 borders the two buried toolboxes at 3 and 10 and a buried Violet shard at 15
+ assert.deepEqual(r2.cracked,[{index:3,type:'kit',find:{type:'kit',family:'rig',size:1,left:3}},{index:15,type:'sand',find:item('flux',0)},{index:10,type:'kit',find:{type:'kit',family:'rig',size:1,left:3}}]);
+ assert.deepEqual(s.board[3],{type:'kit',family:'rig',size:1,left:3});assert.deepEqual(s.board[10],{type:'kit',family:'rig',size:1,left:3});assert.deepEqual(s.board[15],item('flux',0));
+ // Plain sand opens into working space.
+ const p=fresh(0);p.board[10]=sand();p.board[1]=item('chart',0);p.board[9]=item('chart',0);act(p,{type:'merge',from:1,to:9},3);assert.equal(p.board[10],null);
 });
 
 test('crusted parts cannot be moved, merged together, recycled or used as the moving part',()=>{
@@ -145,8 +147,8 @@ test('the mystery chest cracks into a mixed parts case, loose or buried; diagona
  const s=bare();s.board[12]=sealedCache();s.board[6]=item('rig',1);
  const r=act(s,{type:'merge',from:6,to:13},1);// Grip tools merge beside the loose chest at 12 (an older save)
  assert.deepEqual(r.cracked,[{index:12,type:'cache'}]);assert.deepEqual(s.board[12],{type:'crate',kind:'locker',left:3});
- const u=fresh(0);
- const r2=act(u,{type:'merge',from:18,to:2},1);// on a new board the chest is buried at 3, right beside the open camp
+ const u=fresh(0);u.board[3]=sand(sealedCache());
+ const r2=act(u,{type:'merge',from:18,to:2},1);// a chest buried beside the camp is dug into a case
  assert.deepEqual(r2.cracked,[{index:3,type:'cache',dug:true}]);assert.deepEqual(u.board[3],{type:'crate',kind:'locker',left:3});
  const t=bare();t.board[22]=sealedJar(5);t.board[1]=item('flux',0);t.board[15]=item('flux',0);
  const r3=act(t,{type:'merge',from:1,to:15},2);// 15 is diagonal to the jar at 22

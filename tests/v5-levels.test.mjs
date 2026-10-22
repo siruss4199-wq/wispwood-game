@@ -18,24 +18,24 @@ test('a fresh game starts at level 1; merges earn XP',()=>{
  const before=JSON.stringify(s);assert.equal(act(s,{type:'merge',from:0,to:1},2).ok,false);assert.equal(JSON.stringify(s),before,'failed actions earn nothing');
 });
 
-test('reaching a level opens a chest: energy now and a raw-parts case on the board',()=>{
- const s=fresh(0);s.level.xp=19;const energy=s.energy,crates=s.board.filter(x=>x?.type==='crate').length;
+test('reaching a level opens a chest: energy now and a small generator box on the board',()=>{
+ const s=fresh(0);s.level.xp=19;const energy=s.energy;
  const r=act(s,{type:'merge',from:7,to:8},1);
  assert.deepEqual(s.level,{version:1,level:2,xp:0});
- assert.equal(r.levelUp.length,1);assert.equal(r.levelUp[0].level,2);assert.equal(r.levelUp[0].kind,'salvage');
+ assert.equal(r.levelUp.length,1);assert.equal(r.levelUp[0].level,2);assert.equal(r.levelUp[0].family,'rig');
  assert.equal(s.energy,energy+CHEST_ENERGY+(s.merges%3===0?1:0));
- assert.equal(s.board.filter(x=>x?.type==='crate').length,crates+1);
- assert.equal(s.board[r.levelUp[0].index].kind,'salvage');
+ assert.deepEqual(s.board[r.levelUp[0].index],{type:'kit',family:'rig',size:1,left:3});
+ // Boxes cycle Rover → Kite → Crucible with each level.
+ const t=fresh(0);t.level={version:1,level:3,xp:39};const r2=act(t,{type:'merge',from:7,to:8},1);assert.equal(r2.levelUp[0].family,'flux');
 });
 
-test('with two cases already waiting, the chest pays extra energy instead of a third case',async()=>{
- const {container}=await import('../v5/containers.mjs');
- const s=fresh(0);s.level.xp=19;s.board[1]=container('survey');
- assert.equal(s.board.filter(x=>x?.type==='crate').length,2);
- const energy=s.energy,r=act(s,{type:'merge',from:7,to:8},1);
- assert.equal(r.levelUp[0].kind,null);assert.equal(r.levelUp[0].energy,CHEST_ENERGY+5);
- assert.equal(s.board.filter(x=>x?.type==='crate').length,2);
- assert.equal(s.energy,energy+CHEST_ENERGY+5+(s.merges%3===0?1:0));
+test('with no free space, the chest pays extra energy instead of a box',()=>{
+ // Past level 8 no gates are left to open, so a full board has no room for the box.
+ const s=fresh(0);s.level={version:1,level:9,xp:79};s.requests.supplies=8;s.energy=20;
+ for(let i=0;i<s.board.length;i++)if(s.board[i]===null||s.board[i].type==='gate')s.board[i]=item('flux',3);
+ const r=act(s,{type:'restoreWorkshop'},1);assert.equal(r.ok,true,r.message);
+ assert.equal(r.levelUp[0].family,null);assert.equal(r.levelUp[0].index,-1);assert.equal(r.levelUp[0].energy,CHEST_ENERGY+5);
+ assert.equal(s.board.filter(x=>x?.type==='kit').length,0);
 });
 
 test('crew orders and restorations pay more XP than merges',()=>{

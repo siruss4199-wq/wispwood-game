@@ -15,7 +15,8 @@ test('prepared route choice spends one tool anywhere on a cluttered board, keeps
   const from=s.board.findIndex(x=>x?.family===family&&x.tier===2),kept=s.board.findIndex(x=>x?.family===(family==='rig'?'chart':'rig')&&x.tier===2),stock=structuredClone(s.board[kept]);
   assert.ok(routePrepared(s,id));assert.ok(useAction(s,from,index));
   assert.deepEqual(deliveryItems(s,{type:'breach',index}).map(x=>x.index),[from]);
-  ok(s,{type:'breach',index});assert.equal(s.board[from],null);assert.deepEqual(s.board[kept],stock);
+  const breach=ok(s,{type:'breach',index});// the tool is spent; a level chest's box may land in its freed space
+  assert.ok(s.board[from]===null||s.board[from].type==='kit'&&breach.levelUp?.some(u=>u.index===from),JSON.stringify(s.board[from]));assert.deepEqual(s.board[kept],stock);
   assert.equal(s.seals.navigation,true);assert.equal(s.expedition.log.find(x=>x.type==='seal').method,'prepared-route');
   assert.equal(s.board[index].type,'glyph');
   // The breach frees the salt-crusted parts beside it in place; its finds land in free space.

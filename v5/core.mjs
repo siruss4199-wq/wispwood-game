@@ -4,6 +4,7 @@ import {freshLevel,validLevel,xpFor,gainXp} from './levels.mjs';
 import {freshMastery,masteryPending,instrumentReady,recordCraftMastery} from './mastery.mjs';
 import {fleetEarned} from './fleet.mjs';
 import {TIDE_NAMES,isTide,maxTier,sameKind,discoveryKey,tideItem,buildLoft,upgradeLoft,recoverTide} from './treasures.mjs';
+import {kit,kitName,kitDrop,kitsMerge,feeds,producerLevel,levelLift,validKit,validProducerLevel,nearestFree,MAX_KIT_SIZE} from './kits.mjs';
 import {journeyState,KITS,ENGINE_NEEDS} from './journey.mjs';
 import {campState,buildPier,packPier} from './camp.mjs';
 import {syncRequests,deliverRequest} from './requests.mjs';
@@ -32,7 +33,7 @@ export const POST_GOALS=[
  {name:'Chart the next crossing',verb:'Chart crossing',scene:'Vault opened',needs:[req('chart',6),req('rig',5)],energy:35,next:'Archive expedition badge'},
  {name:'Build an aurora beacon',verb:'Light beacon',scene:'Vault opened',needs:[req('flux',7)],energy:50,next:'Aurora collector badge'}
 ];
-export const nameOf=x=>!x?'Empty space':x.type==='prism'?'Ring reflector':x.type==='site'?ANCHORS[x.kind].name:x.type==='route'?ROUTES[x.id].name:x.type==='item'?(isTide(x)?TIDE_NAMES[x.tier]:FAMILIES[x.family].names[x.tier]):x.type==='source'?SOURCES[x.id].name:x.type==='rock'?'Saltstone blocker':x.type==='marker'?'Buried survey marker':x.type==='lock'?'Dormant relic lock':x.type==='crate'?containerInfo(x).name:x.type==='crust'?'Salt-crusted '+FAMILIES[x.family].names[x.tier].toLowerCase():x.type==='gate'?'Sand · opens at level '+x.level:x.type==='sand'?(x.find?'Buried '+nameOf(x.find).replace(/^Salt-sealed /,'').toLowerCase():'Sand'):x.type==='jar'?'Salt-sealed energy jar · +'+x.energy:x.type==='cache'?'Salt-sealed mystery chest':x.type==='brace'?'Trail brace':x.type==='glyph'?'Echo fragment':'Buried ground';
+export const nameOf=x=>!x?'Empty space':x.type==='prism'?'Ring reflector':x.type==='site'?ANCHORS[x.kind].name:x.type==='route'?ROUTES[x.id].name:x.type==='item'?(isTide(x)?TIDE_NAMES[x.tier]:FAMILIES[x.family].names[x.tier]):x.type==='source'?SOURCES[x.id].name:x.type==='rock'?'Saltstone blocker':x.type==='marker'?'Buried survey marker':x.type==='lock'?'Dormant relic lock':x.type==='crate'?containerInfo(x).name:x.type==='crust'?'Salt-crusted '+FAMILIES[x.family].names[x.tier].toLowerCase():x.type==='gate'?'Sand · opens at level '+x.level:x.type==='sand'?(x.find?'Buried '+nameOf(x.find).replace(/^Salt-sealed /,'').toLowerCase():'Sand'):x.type==='kit'?kitName(x):x.type==='jar'?'Salt-sealed energy jar · +'+x.energy:x.type==='cache'?'Salt-sealed mystery chest':x.type==='brace'?'Trail brace':x.type==='glyph'?'Echo fragment':'Buried ground';
 export const item=(family,tier,line)=>({type:'item',family,tier,...(line?{line}:{})});
 const source=id=>({type:'source',id});
 // Salt-crusted parts stay put and count for nothing until a free twin is merged onto them.
@@ -65,6 +66,7 @@ function dig(s,j,out){
  if(!f){s.board[j]=null;out.push({index:j,type:'sand'});return;}
  if(f.type==='jar'){s.board[j]=null;s.energy=Math.min(120,s.energy+f.energy);out.push({index:j,type:'jar',energy:f.energy,dug:true});return;}
  if(f.type==='cache'){s.board[j]=container('locker');out.push({index:j,type:'cache',dug:true});return;}
+ if(f.type==='kit'){s.board[j]=kit(f.family,f.size);out.push({index:j,type:'kit',find:f});return;}
  s.board[j]=item(f.family,f.tier);out.push({index:j,type:'sand',find:f});
 }
 function crackAround(s,index){
@@ -93,7 +95,9 @@ export function fresh(now=Date.now()){
  for(const i of [4,14,35])board[i]=sand(item('chart',1));
  for(const i of [15,16,29])board[i]=sand(item('flux',0));
  for(const i of [17,25])board[i]=sand(item('rig',0));
- board[28]=sand(item('rig',1));board[3]=sand(sealedCache());board[22]=sand(sealedJar(5));board[21]=sand(sealedJar(8));
+ board[28]=sand(item('rig',1));board[22]=sand(sealedJar(5));board[21]=sand(sealedJar(8));
+ // Two small Rover toolboxes lie beside the camp: open them, or merge the twins first.
+ board[3]=sand(kit('rig',1));board[10]=sand(kit('rig',1));
  for(let k=0;k<GATE_LEVELS.length;k++)board[CORE_SIZE+k]=gate(GATE_LEVELS[k]);
  for(const i of [19,32])board[i]={type:'rock'};
  ['winch','scope','relay'].forEach((kind,n)=>board[[20,23,31][n]]={type:'site',kind,phase:'idle',progress:0});
@@ -152,8 +156,8 @@ export function nextOutput(s,id){
   const tier=[3,2,1,0].find(t=>count(s,req(id,t))===1);
   if(tier!==undefined)return item(id,tier);
  }
- const base=s.boost&&n%3===0?2:n%4===0?1:0;
- return item(id,base+(s.surge>0||s.journey?.boost?.family===id&&s.journey.boost.left>0?1:0));
+ const base=s.boost&&n%3===0?2:n%4===0?1:0,lift=levelLift(producerLevel(s.board.find(x=>x?.type==='source'&&x.id===id)),n);
+ return item(id,Math.min(3,base+lift+(s.surge>0||s.journey?.boost?.family===id&&s.journey.boost.left>0?1:0)));
 }
 // Action-limited, shared across sources: spend the improved pulls where they matter.
 // Never stack or expire while the player thinks. Old saves simply have no active surge.
@@ -215,7 +219,7 @@ export function act(s,a,now=Date.now()){
  if(wasFull&&s.energy<REFILL_CAP)s.energyAt=now;
  const xp=xpFor(a,result,order);
  if(!xp)return result;
- const levelUp=gainXp(s,xp,{container,put,openGates});
+ const levelUp=gainXp(s,xp,{kit,put,openGates});
  return levelUp.length?{...result,xp,levelUp}:{...result,xp};
 }
 function step(s,a,now){
@@ -276,7 +280,10 @@ function step(s,a,now){
    fragment=put(s,tideItem(0));
    if(fragment>=0)s.camp.earlyFragments=(s.camp.earlyFragments??0)+1;
   }
-  return {...done(result.message+(fragment>=0?' · Tide Dial Fragment earned! Merge two into a Reef Compass.':''),'contract',fragment>=0?fragment:null),reward:result.reward,...(fragment>=0?{reveal:[fragment],tideFragment:true}:{})};
+  // Every third crew order also brings a small generator box of the order's kind.
+  const boxFamily=result.reward.needs?.[0]?.family,box=s.requests.completed%3===0&&['rig','chart','flux'].includes(boxFamily)?put(s,kit(boxFamily,1)):-1;
+  const reveal=[fragment,box].filter(i=>i>=0);
+  return {...done(result.message+(fragment>=0?' · Tide Dial Fragment earned! Merge two into a Reef Compass.':'')+(box>=0?' · '+nameOf(s.board[box]):''),'contract',fragment>=0?fragment:box>=0?box:null),reward:result.reward,...(reveal.length?{reveal}:{}),...(fragment>=0?{tideFragment:true}:{}),...(box>=0?{box}:{})};
  }
  if(a.type==='merge'||a.type==='move'){
   if(!valid(a.from)||!valid(a.to)||a.from===a.to)return fail('Choose another space.');
@@ -288,6 +295,7 @@ function step(s,a,now){
    s.board[a.to]=x;s.board[a.from]=y;trace(s,'reflector-move',{from:a.from,to:a.to,swapped:true});return done('Reflector repositioned.','move',a.to);
   }
   if(!y){s.board[a.to]=x;s.board[a.from]=null;return done('Moved.','move',a.to);}
+  if(x.type==='kit')return step(s,{type:feeds(x,y)?'feedKit':'mergeKit',from:a.from,index:a.to},now);
   const freed=freesCrust(x,y);
   if(!freed&&!sameKind(x,y)||x.tier>=maxTier(x,s))return fail('Merge two identical objects.');
   if(!isTide(x)&&x.tier===3&&anchors(s).some(site=>site.phase==='idle'&&ANCHORS[site.kind].equipment===x.family))trace(s,'kept-for-merge',{family:x.family});
@@ -456,6 +464,28 @@ function step(s,a,now){
   const revealed=unpack(s,a.index);
   return {...done(`${name} · ${revealed.length} finds${s.board[a.index]?.type==='crate'?' · rest safely packed':''}`,'container',a.index),reveal:revealed,containerKind:kind};
  }
+ // Generator boxes (v5/kits.mjs): tap for a free part; merge unopened twins; feed a
+ // large one to its producer for a level.
+ if(a.type==='openKit'){
+  const box=valid(a.index)?s.board[a.index]:null;if(box?.type!=='kit')return fail('Choose a box.');
+  const x=kitDrop(box),last=box.left===1,i=last?a.index:nearestFree(s.board,a.index,cellPos);
+  if(i<0)return fail('Make space next to the box: merge or deliver a part first.');
+  box.left--;s.board[i]=x;
+  return {...done(`${nameOf(x)}${last?' · the box is empty':` · ${box.left} left`}`,'kit',i),reveal:[i],kitEmpty:last};
+ }
+ if(a.type==='mergeKit'){
+  const x=valid(a.from)?s.board[a.from]:null,y=valid(a.index)?s.board[a.index]:null;
+  if(a.from===a.index||!kitsMerge(x,y))return fail(x?.type==='kit'&&y?.type==='kit'&&x.size===MAX_KIT_SIZE?'Large boxes are as big as boxes get. Open one, or feed it to its producer.':'Merge two unopened boxes of the same kind and size.');
+  s.board[a.index]=kit(x.family,x.size+1);s.board[a.from]=null;s.merges++;
+  const cracked=crackAround(s,a.index);
+  return {...done(`${nameOf(s.board[a.index])} · ${s.board[a.index].left} parts inside`,'kitMerge',a.index),cracked};
+ }
+ if(a.type==='feedKit'){
+  const x=valid(a.from)?s.board[a.from]:null,y=valid(a.index)?s.board[a.index]:null;
+  if(!feeds(x,y))return fail('Feed a large unopened box to the producer of its own kind.');
+  y.level=producerLevel(y)+1;s.board[a.from]=null;trace(s,'producer-level',{id:y.id,level:y.level});
+  return {...done(`${SOURCES[y.id].name} reaches level ${y.level} · better parts from its pulls`,'producerUp',a.index),producerLevel:y.level};
+ }
  if(a.type==='recycle'){
   if(!valid(a.index))return fail('Choose an item.');const x=s.board[a.index];
   if(!x||!['item','glyph','brace'].includes(x.type))return fail('Only loose items can be recycled.');
@@ -483,14 +513,15 @@ export function load(raw,now=Date.now()){
   if(s.stage>0)s.landingStep=2;
   for(const x of s.board){if(x===null)continue;if(!x||typeof x!=='object')return fresh(now);
    if(x.type==='item'){if(!FAMILIES[x.family]||!integer(x.tier,0,maxTier(x))||x.line!==undefined&&(!isTide(x)||x.family!=='chart'))return fresh(now);}
-   else if(x.type==='source'){if(!SOURCES[x.id])return fresh(now);}
+   else if(x.type==='source'){if(!SOURCES[x.id]||!validProducerLevel(x))return fresh(now);}
+   else if(x.type==='kit'){if(!validKit(x))return fresh(now);}
    else if(x.type==='crate'){if(!integer(x.left,1,5)||x.kind!==undefined&&!CONTAINERS[x.kind])return fresh(now);x.kind??='locker';}
    else if(x.type==='site'){if(!ANCHORS[x.kind]||!['idle','active','done'].includes(x.phase)||!integer(x.progress,0,2)||x.phase==='idle'&&x.progress!==0||x.phase==='done'&&x.progress!==2||x.phase==='active'&&x.progress>1||x.reclaimed!==undefined&&typeof x.reclaimed!=='boolean')return fresh(now);}
    else if(x.type==='route'){if(!ROUTES[x.id])return fresh(now);}
    else if(x.type==='jar'){if(!integer(x.energy,1,50))return fresh(now);}
    else if(x.type==='cache'){}
    else if(x.type==='gate'){if(!integer(x.level,2,8))return fresh(now);}
-   else if(x.type==='sand'){const f=x.find;if(f!==undefined&&!(f?.type==='item'&&FAMILIES[f.family]&&integer(f.tier,0,3)&&f.line===undefined||f?.type==='jar'&&integer(f.energy,1,50)||f?.type==='cache'))return fresh(now);}
+   else if(x.type==='sand'){const f=x.find;if(f!==undefined&&!(f?.type==='item'&&FAMILIES[f.family]&&integer(f.tier,0,3)&&f.line===undefined||f?.type==='jar'&&integer(f.energy,1,50)||f?.type==='cache'||f?.type==='kit'&&validKit(f)))return fresh(now);}
    else if(x.type==='crust'){if(!FAMILIES[x.family]||!integer(x.tier,0,FAMILIES[x.family].names.length-1)||x.line!==undefined)return fresh(now);}
    else if(x.type==='prism'){if(!integer(x.id,0,1)||!integer(x.turn,0,1))return fresh(now);}
    else if(!['glyph','brace','rock','sealed','marker','lock'].includes(x.type))return fresh(now);
