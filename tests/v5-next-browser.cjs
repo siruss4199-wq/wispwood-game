@@ -14,7 +14,7 @@ async function perform(page,a){
  else if(a.type==='openKit'){if(!await pressed(a.index))await tile(a.index).tap();await page.locator('#selection [data-action="openKit"]').tap();}
  else if(a.type==='deliver')await page.locator(`[data-order="${a.id}"]`).tap();
  // Upgrades happen on the separate beach screen: go there, upgrade, watch the story, come back.
- else if(a.type==='restore'){await page.locator('#taskButton').tap();await page.locator(`#coastMap [data-restore="${a.id}"]`).tap();await closeBeats(page);await page.locator('#coastMap [data-back]').tap();}
+ else if(a.type==='restore'){await page.locator('#mapButton').tap();await page.locator(`#coastMap [data-restore="${a.id}"]`).tap();await closeBeats(page);await page.locator('#coastMap [data-back]').tap();}
  else if(a.type==='recycle'){if(!await pressed(a.index))await tile(a.index).tap();await page.locator('#selection [data-action="recycle"]').tap();}
  else if(a.type==='ration')await page.locator('#rationButton').tap();
  else if(a.type==='unseal'){if(!await pressed(a.from))await tile(a.from).tap();await tile(a.index).tap();}
@@ -47,13 +47,13 @@ async function perform(page,a){
    }
    assert.ok(restores>=2,'places restored through the UI');
    const s=await read(page);assert.ok(s.built['beach-path']>=1,'the landing path came first');assert.equal(s.stars,undefined);assert.ok(Number.isInteger(s.coins));
-   assert.equal(await page.locator('#scene .restoredIcon').count(),Object.keys(s.built).length,'upgraded places stand on the coast picture');
-   assert.equal(await page.locator('#scene .restoredIcon .pips i.on').count(),Object.values(s.built).reduce((a,b)=>a+b,0),'each shows its stage');
+   assert.equal(await page.locator('.world, #scene, #taskButton').count(),0,'the board screen has no beach picture or upgrade card');
    assert.ok(await page.locator('#board .tile.cargo').count()<27,'cargo was opened by laying parts on it');assert.equal(await page.locator('#board .tile.source[data-family="chart"]').count(),1,'Rivet Rover level 3 brought out the Survey Kite');
    await page.reload();await page.waitForSelector('#board .tile');
    assert.deepEqual((await read(page)).board,s.board,'reload keeps the board');assert.equal(await page.locator('#beat[open]').count(),0,'no intro on a running camp');
    await page.locator('#mapButton').tap();assert.equal(await page.locator('#coastMap .place').count(),7);
    assert.equal(await page.locator('#coastMap .place .pips i.on').count(),Object.values(s.built).reduce((a,b)=>a+b,0),'the beach screen shows every stage');
+   assert.equal(await page.locator('#coastMap .beachScene .restoredIcon').count(),Object.keys(s.built).length,'upgraded places stand on the beach picture');
    {const b=await page.locator('#coastMap').boundingBox();assert.ok(b.width>=width-1,'the beach is a full screen of its own');}
    assert.equal(await page.evaluate(()=>document.querySelector('#coastMap').scrollWidth<=innerWidth),true,'no sideways scroll on the beach');
    await page.locator('#coastMap [data-back]').tap();assert.equal(await page.locator('#coastMap[open]').count(),0,'back to the board');

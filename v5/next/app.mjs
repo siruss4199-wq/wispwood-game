@@ -15,7 +15,7 @@ import {sound,reduced,burst,rewardFlight,moment as sharedMoment} from '../feedba
 function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el=document.querySelector('.moment');if(!x||!el)return;const icon=document.createElement('span');icon.style.cssText='float:left;width:42px;height:42px;margin-right:10px';icon.innerHTML=draw(x);icon.firstElementChild.style.cssText='width:100%;height:100%';el.prepend(icon);}
 
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 16 · coins and the beach';
+export const BUILD='Build 17 · beach on its own';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
@@ -36,36 +36,23 @@ const wantedKeys=()=>new Set(state.orders.flatMap(o=>o.needs.map(r=>r.family+r.t
 
 // ---------- rendering ----------
 function render(){
- const area=currentArea(state),task=nextTask(state),built=area.tasks.filter(t=>stageOf(state,t.id)>0),total=area.tasks.length*STAGES;
+ const area=currentArea(state),total=area.tasks.length*STAGES;
  $('#areaBrand').textContent=area.name.toUpperCase();
  $('#energy').innerHTML=`${state.energy}<span class="energyCap">/${REFILL_CAP}</span>`;
  $('#coins').textContent=state.coins;
  const lv=state.level;$('#levelNum').textContent=lv.level;$('#levelPill').style.setProperty('--p',Math.round(100*lv.xp/xpToNext(lv.level))+'%');$('#levelPill').setAttribute('aria-label',`Level ${lv.level}, ${lv.xp} of ${xpToNext(lv.level)} XP`);
  const ready=upgrades(state).some(u=>state.coins>=u.cost);$('#mapReady').hidden=!ready;
- // The coast picture with each place standing on it at its stage.
- const pic=`assets/premium/${area.picture}-vibrant.webp`;
- if($('#scenePic').dataset.pic!==pic){$('#scenePic').dataset.pic=pic;$('#scenePic').innerHTML=`<img class="premiumScene" src="${pic}" width="1200" height="400" alt="${area.name}" decoding="async" fetchpriority="high">`;}
- $('#scene').style.setProperty('--restored',builtCount(state)/total);
- $('#restored').innerHTML=placeIcons(built);
- $('#areaLabel').textContent=area.name.toUpperCase();$('#areaCount').textContent=`${builtCount(state)} / ${total} upgrades`;
- // Next upgrade card: it points to the beach screen, where the upgrading happens.
- if(task){
-  $('#taskTitle').textContent=task.name;$('#taskCost').innerHTML=`${COIN} ${Math.min(state.coins,task.cost)}/${task.cost}`;
-  $('#taskIcon').innerHTML=`<span class="taskIcon">${iconArt(task.icon)}</span>`;
-  $('#taskButton').innerHTML=ready?'Beach ↑':`${COIN} ${state.coins}/${task.cost}`;$('#taskButton').classList.toggle('ready',ready);
-  $('.nextTask').classList.toggle('ready',ready);
-  const pct=Math.min(100,Math.floor(100*state.coins/task.cost));$('#taskProgress').hidden=false;$('#taskProgress s').style.width=pct+'%';$('#taskProgress b').textContent=pct+'%';$('#taskProgress').classList.toggle('complete',pct>=100);
- }else{
-  $('#taskTitle').textContent=areaDone(state)?area.name+' complete':'All done';$('#taskCost').textContent='';$('#taskIcon').innerHTML='';
-  $('#taskButton').textContent='Beach';$('#taskButton').classList.remove('ready');$('.nextTask').classList.remove('ready');$('#taskProgress').hidden=true;
- }
+ // The beach and its upgrades live on their own screen (user, 2026-10-22: "ene zaaval boardtai
+ // neg delgetsend tsug baimaargui"); the board screen keeps only the BEACH button, whose dot
+ // shows when an upgrade is affordable, and the coin count.
+ $('#mapButton').setAttribute('aria-label',ready?'Go to the beach: an upgrade is ready':`Go to the beach (${builtCount(state)} of ${total} upgrades)`);
  renderOrders();renderBoard();renderSelection();renderHint();
  $('#rationButton').hidden=state.energy>3;
  const wait=rationWait(state,Date.now());$('#rationButton').textContent=wait>0?`Field ration in ${clock(wait)}`:'Field ration · +8 ϟ';$('#rationButton').disabled=wait>0;
  $('#soundButton').textContent=sound.enabled()?'Sound on':'Sound off';
 }
 function renderOrders(){
- $('#requests').innerHTML=`<div class="requestHeading"><span>CREW ORDERS <small>Deliver for coins</small></span><b title="Coins">${COIN} ${state.coins}</b></div><div class="requestShelf">${[...state.orders].sort((a,b)=>Number(!!orderItems(state,b))-Number(!!orderItems(state,a))).map(o=>{
+ $('#requests').innerHTML=`<div class="requestHeading"><span>CREW ORDERS <small>Deliver for coins</small></span></div><div class="requestShelf">${[...state.orders].sort((a,b)=>Number(!!orderItems(state,b))-Number(!!orderItems(state,a))).map(o=>{
   const p=orderProgress(state,o),ready=!!orderItems(state,o),who=CREW[o.who];
   return `<button class="requestCard ${ready?'ready':''} ${focusOrder===o.id?'active':''}" data-order="${o.id}" aria-label="${who.name} asks for ${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier))).join(', ')}. ${ready?'Ready: tap to deliver.':'In progress.'} Reward ${o.coins} coins"><span class="requestCrew">${portrait(o.who)}<b class="requestLane"><em>${who.name}</em>${who.role}</b></span><span class="requestItems">${p.map(r=>`<span>${draw(item(r.family,r.tier))}<b>${r.have}/${r.count}</b></span>`).join('')}</span><span class="requestReward">+${o.coins} ${COIN}</span><strong>${ready?'✓ DELIVER':'MAKE'}</strong></button>`;
  }).join('')}</div>`;
@@ -181,8 +168,7 @@ board.addEventListener('pointercancel',()=>{drag=null;});
 $('#selection').addEventListener('click',e=>{const b=e.target.closest('[data-action]');if(!b)return;const x=state.board[selected];run({type:b.dataset.action,index:selected,id:x?.id});});
 $('#requests').addEventListener('click',e=>{const c=e.target.closest('[data-order]');if(!c)return;const o=state.orders.find(o=>o.id===c.dataset.order);if(!o)return;if(orderItems(state,o)){run({type:'deliver',id:o.id});return;}focusOrder=focusOrder===o.id?null:o.id;render();$('#message').textContent=`${CREW[o.who].name} needs ${o.needs.map(r=>r.count+' × '+nameOf(item(r.family,r.tier))).join(' and ')}. Their parts are marked on the board.`;});
 // The upgrading happens on the beach screen (user: "tusdaa orchinruu ochij upgrade hiih").
-$('#taskButton').onclick=showMap;
-$('#mapButton').onclick=showMap;$('#scene').onclick=showMap;
+$('#mapButton').onclick=showMap;
 $('#rationButton').onclick=()=>run({type:'ration'});
 $('#soundButton').onclick=()=>{sound.toggle();render();};
 $('#helpButton').onclick=()=>$('#help').showModal();
@@ -219,7 +205,7 @@ function showBeat(id,effects,stage=stageOf(state,id)){
  const area=AREAS.find(a=>a.tasks.some(t=>t.id===id)),t=area.tasks.find(t=>t.id===id),st=t.stages[Math.max(0,stage-1)];
  const extra=[];
  if(effects?.areaDone)extra.push(['bram',`${area.name} is complete! The Survey Worksite opens in the next update.`]);
- playLines(st.name,st.lines.concat(extra),()=>{if($('#coastMap').open)showMap();const icon=$(`#coastMap .restoredIcon[data-task="${id}"]`)??$(`.restoredIcon[data-task="${id}"]`);icon?.classList.add('pop');burst($('.world').getBoundingClientRect(),'gold',true);
+ playLines(st.name,st.lines.concat(extra),()=>{if($('#coastMap').open)showMap();const icon=$(`#coastMap .restoredIcon[data-task="${id}"]`)??$(`.restoredIcon[data-task="${id}"]`);icon?.classList.add('pop');burst(($('#coastMap').open?$('#coastMap .beachScene'):board).getBoundingClientRect(),'gold',true);
   for(const i of [effects?.kit,effects?.copy])if(i>=0)board.querySelector(`[data-index="${i}"]`)?.classList.add('unsealed');});
  sound.play('milestone');
 }

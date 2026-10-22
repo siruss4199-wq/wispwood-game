@@ -247,3 +247,9 @@ place upgraded in three stages; orders ask for higher-tier parts.
   saves untouched.
 - Scripted player, 4–6 s per action: first upgrade within a minute, Survey Kite at 10–15
   min, all 21 stages in 41–62 min (590–620 actions), energy 5–12 at the end, no waiting.
+
+## Build 17 — the beach only on its own screen (user, with a screenshot of the picture and upgrade card above the board: "Ene zaaval boardtai neg delgetsend tsug baimaargui baina")
+The coast picture and the next-upgrade card are gone from the board screen: it holds the
+header (energy, coins, level, BEACH, menu), the crew orders and the board. The beach
+picture, its places and every upgrade are on the beach screen only; the BEACH button's
+dot shows when an upgrade is affordable, and the hint line says so too.
