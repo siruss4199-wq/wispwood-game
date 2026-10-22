@@ -88,6 +88,7 @@ jobs:
           node tests/v5-mobile.cjs
           node tests/v5-replay-browser.cjs
           node tests/v5-workshop-browser.cjs
+          node tests/v5-coast-map-browser.cjs
           node tests/v5-requests-browser.cjs
           git fetch --depth=1 origin d16d4921b52f4a93bd929486e9d919228c5192c9
           mkdir -p /tmp/vaultwake-stage2-before

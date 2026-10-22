@@ -8,6 +8,7 @@ import {orderDirection} from './order-direction.mjs';
 import {loadSlot,beginReplay,returnOriginal,slotKey} from './replay.mjs';
 import {fleetEarned,fleetPending,FLEET_LINES} from './fleet.mjs';
 import {storySnapshot,requestBrief} from './story.mjs';
+import {coastPlaces,placeById,doneIds,CAMP_PLACES,readyPlaces} from './coast-map.mjs';
 import {LOFT_COST,DEEP_SURVEY_COST,recoveryCost,pearlDiscovered,TIDE_NAMES,isTide,maxTier,sameKind,discoveryKey,tideItem,nextTide} from './treasures.mjs';
 import {KITS} from './journey.mjs';
 import {PIER_COST,PACK_COST} from './camp.mjs';
@@ -257,6 +258,7 @@ function render(){
  $('.world').classList.toggle('signalPending',ending?.status==='pending');
  $('.world').classList.toggle('campExpanded',postChapterOrdersOpen);
  $('.world').classList.toggle('compassFound',state.stage===0&&state.landingStep===1&&state.discovered.includes('chart:tide:1'));
+ $('#mapReady').hidden=!readyPlaces(state).length;
  $('.destination').textContent=state.stage===4?'VAULT DISCOVERED':'OPEN THE TIDEGLASS VAULT';
  $('#energy').textContent=state.energy;$('#marks').textContent=state.marks;
  const viewStage=state.stage===0&&state.landingStep===1?1:state.stage;
@@ -413,7 +415,7 @@ function renderSelection(){
  $('#selection').innerHTML=`${x?`<span class="preview">${art(x)}</span>`:''}<span class="copy"><b>${title}</b><small>${desc}</small>${rare}</span>${preview}<span class="actionGroup">${buttons}</span>`;
 }
 function run(a){
- const storyBefore=storyKey();
+ const storyBefore=storyKey(),placesBefore=doneIds(state);
  const now=Date.now(),delivery=deliveryItems(state,a,now).map(v=>({...v,rect:board.querySelector(`[data-index="${v.index}"]`)?.getBoundingClientRect()}));
  const beforeBoard=state.board.map(x=>x?JSON.stringify(x):null);
  const objectiveAction=['goal','breach','power','restoreEngine'].includes(a.type);const taskSelector=a.type==='infuse'?`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===a.id)}"]`:a.type==='fitSpanner'?'#workshopBench':['deploy','clear','restore','prime'].includes(a.type)?`[data-index="${a.index??state.board.findIndex(x=>x?.type==='site'&&x.kind==='winch')}"]`:objectiveAction?'.objective':a.type==='request'?`[data-request="${a.id}"]`:`[data-contract="${a.type}"]`;
@@ -425,7 +427,10 @@ function run(a){
  const before=state.stage,landingBefore=state.landingStep,from=['produce','press'].includes(a.type)?board.querySelector(`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===a.id)}"]`)?.getBoundingClientRect():null;
  const knownBefore=new Set(state.discovered);const result=act(state,a,now);message.textContent=result.message;
  if(!result.ok)return result;
- if(storyKey()!==storyBefore)setTimeout(()=>showStory(storyBefore),900);
+ // A camp place restored anywhere gets its story beat; other progress keeps the scene line.
+ const restored=doneIds(state).find(id=>CAMP_PLACES.includes(id)&&!placesBefore.includes(id));
+ if(restored)setTimeout(()=>showBeat(restored),$('#coastMap').open?0:700);
+ else if(storyKey()!==storyBefore)setTimeout(()=>showStory(storyBefore),900);
  platform.startGameplay();if(result.event==='restoration'){focus='goal';selected=state.board.findIndex(x=>x?.type==='source'&&x.id==='rig');}else if(['milestone','deployment','contract','discovery','clear','turn'].includes(result.event)){focus='goal';selected=null;}if(a.type==='merge'){selected=state.stage===0&&!state.landingStep&&ready(state,STAGES[0].needs)?null:state.board[result.index]?.type==='prism'?null:result.index;if(selected===null)focus='goal';}render();persist();
  if(a.type==='goal'&&before===0&&landingBefore===1){for(const tile of board.querySelectorAll('.tile.item')){const x=state.board[+tile.dataset.index];if(x.tier===2&&['rig','chart'].includes(x.family))tile.classList.add('unlocked');}board.querySelectorAll('.rock.surveyed').forEach(tile=>tile.classList.add('unlocked'));}
  if(result.event==='milestone'&&state.stage<4)message.textContent=result.message;
@@ -523,7 +528,8 @@ $('#scene').onclick=e=>{
   selected=null;focus='bench';render();
   $('#selection').scrollIntoView({block:'nearest'});return;
  }
- if(!e.target.closest('#workshop'))return;if(!state.workshop.repaired){const result=run({type:'restoreWorkshop'});if(!result.ok)message.textContent=`Camp requests fund repairs · ${state.requests.supplies}/${WORKSHOP_COST} supplies`;return;}selected=state.board.findIndex(x=>x?.type==='source'&&x.id==='rig');if(!state.charges.rig){render();$('#selection').scrollIntoView({block:'nearest'});return;}run({type:'press',id:'rig'});board.scrollIntoView({block:'center'});};
+ // Anywhere else on the scene opens the coast map.
+ if(!e.target.closest('#workshop')){showMap();return;}if(!state.workshop.repaired){const result=run({type:'restoreWorkshop'});if(!result.ok)message.textContent=`Camp requests fund repairs · ${state.requests.supplies}/${WORKSHOP_COST} supplies`;return;}selected=state.board.findIndex(x=>x?.type==='source'&&x.id==='rig');if(!state.charges.rig){render();$('#selection').scrollIntoView({block:'nearest'});return;}run({type:'press',id:'rig'});board.scrollIntoView({block:'center'});};
 $('#requests').onclick=e=>{
  if(e.target.closest('#ordersToggle')){postChapterOrdersOpen=!postChapterOrdersOpen;render();return;}
  const camp=e.target.closest('[data-camp-action]');
@@ -559,6 +565,35 @@ function showFleet(){
  };
  draw();dialog.showModal();sound.play('milestone');
 }
+// ---------- Coast map ----------
+const placeImage=name=>'assets/premium/'+name;
+function showMap(){
+ const places=coastPlaces(state),dialog=$('#coastMap');
+ $('#coastMapContent').innerHTML=`<div class="mapHead">${scene(Math.min(4,state.stage),state.post)}<div><h2 id="coastMapTitle">The Saltglass coast</h2><b>${state.requests.supplies} ◆</b></div></div><ul class="places">${places.map(p=>`<li class="place" data-status="${p.status}" data-place="${p.id}"><img src="${placeImage(p.image)}" alt="" loading="lazy"><span><strong>${p.name}</strong><small>${p.note}</small></span>${
+  p.status==='ready'?`<button type="button" data-build="${p.id}">Build · ${p.cost} ◆</button>`:
+  p.status==='done'?`<button type="button" data-story="${p.id}" aria-label="Hear the crew at ${p.name}">Story</button>`:
+  p.status==='next'?`<button type="button" data-board="${p.id}">Board</button>`:
+  p.status==='saving'?`<button type="button" data-orders="${p.id}">Orders</button>`:'<span class="tick" aria-hidden="true"></span>'}</li>`).join('')}</ul>`;
+ if(!dialog.open)dialog.showModal();
+}
+function showBeat(id){
+ const p=placeById(id),dialog=$('#coastMap');let step=0;
+ const draw=()=>{
+  const line=p.lines[step],last=step===p.lines.length-1;
+  $('#coastMapContent').innerHTML=`<div class="mapHead">${scene(Math.min(4,state.stage),state.post)}<div><h2 id="coastMapTitle">${p.name}</h2><b>Restored</b></div></div><div class="beat"><small>${line.who==='Neri'?'Neri · navigator':'Ivo · quartermaster'}</small><div class="beatLine">${portrait(line.who==='Neri'?'neri':'ivo')}<p><b>${line.who}</b>${line.text}</p></div><div class="beatDots" aria-hidden="true">${p.lines.map((_,i)=>`<i class="${i<=step?'on':''}"></i>`).join('')}</div><button type="button" class="primary" data-beat-next>${last?'Back to the coast':'Next'}</button></div>`;
+  $('[data-beat-next]').onclick=()=>{if(last)showMap();else{step++;draw();}};
+ };
+ draw();if(!dialog.open)dialog.showModal();sound.play('milestone');
+}
+$('#mapButton').onclick=showMap;
+$('#coastMap .close').onclick=()=>$('#coastMap').close();
+$('#coastMapContent').addEventListener('click',e=>{
+ const b=e.target.closest('button');if(!b)return;
+ if(b.dataset.build){const p=placeById(b.dataset.build),r=run({type:p.action});if(!r.ok){showMap();message.textContent=r.message;}return;}
+ if(b.dataset.story){showBeat(b.dataset.story);return;}
+ if(b.dataset.board){$('#coastMap').close();focus='goal';render();$('.objective').scrollIntoView({block:'nearest'});return;}
+ if(b.dataset.orders){$('#coastMap').close();$('#requests').scrollIntoView({block:'nearest'});}
+});
 function showJournal(){
  const story=storySnapshot(state);
  $('#journalContent').innerHTML=`<small>VAULTWAKE · FIELD JOURNAL</small><h2>The coast that vanished</h2><h3>Expedition report · ${story.expedition.title}</h3><p><b>${story.expedition.voice}:</b> ${story.expedition.line}</p><p><b>Unanswered:</b> ${story.expedition.question}</p><h3>Camp discoveries · ${story.camp.title}</h3><p><b>${story.camp.voice}:</b> ${story.camp.line}</p><p><b>Next clue:</b> ${story.camp.question}</p><h3>Your discoveries · ${state.discovered.length}/29</h3>${Object.entries(FAMILIES).map(([f,d])=>`<h3>${d.name}</h3><div class="collection">${d.names.map((n,t)=>`<div class="${state.discovered.includes(f+':'+t)?'':'unknown'}">${art(item(f,t))}<small>${n}</small></div>`).join('')}</div>`).join('')}<h3>Wayfinding · Tide treasures${state.camp.loft?'':' · build the Charting Loft'}</h3><div class="collection">${TIDE_NAMES.map((n,t)=>`<div class="${state.discovered.includes('chart:tide:'+t)?'':'unknown'}">${art(tideItem(t))}<small>${n}</small></div>`).join('')}</div><p>${state.contracts} contracts · ${state.merges} merges · ${state.marks} expedition merit</p>`;$('#journal').showModal();
