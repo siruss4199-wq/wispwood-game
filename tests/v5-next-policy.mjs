@@ -21,8 +21,8 @@ function target(s){
   const seen=new Set([goal]),queue=[goal];
   while(queue.length){const i=queue.shift();if(open.has(i))return {...open.get(i),newKind:true};for(const j of near(i))if(!seen.has(j)&&s.board[j]?.type==='cargo'){seen.add(j);queue.push(j);}}
  }
- // Otherwise the cheapest crate, but only while energy is plentiful.
- return s.energy>=30?keys.sort((a,b)=>a.tier-b.tier||a.index-b.index)[0]??null:null;
+ // Otherwise the cheapest crate, but only while energy is plentiful (45+).
+ return s.energy>=45?keys.sort((a,b)=>a.tier-b.tier||a.index-b.index)[0]??null:null;
 }
 function wanted(s){
  const want=new Map();
@@ -38,9 +38,9 @@ export function nextAction(s){
  if(t&&s.stars>=t.cost)return {type:'restore',id:t.id};
  // Curious: the crate on the way to a glowing one opens first, even before deliveries.
  {const g=target(s),have=g?b.findIndex(x=>matches(x,g)):-1;if(have>=0)return {type:'unseal',from:have,index:g.index};}
- // After two orders, and while energy lasts (25+), the key on the way (with parts no order needs, unless energy is plentiful: 40+) to a new kind of generator is made first.
+ // After two orders, and while energy lasts (25+), the key on the way (with parts no order needs, unless energy is plentiful: 45+) to a new kind of generator is made first.
  {const g=s.ordersDone>=2&&s.energy>=25?target(s):null,ordered=new Map();for(const o of s.orders)for(const r of o.needs)ordered.set(r.family+r.tier,(ordered.get(r.family+r.tier)??0)+r.count);
-  if(g?.newKind)for(let tier=g.tier-1;tier>=0;tier--){const pair=b.flatMap((x,i)=>matches(x,{family:g.family,tier})?[i]:[]);if(pair.length-(s.energy>=40?0:ordered.get(g.family+tier)??0)>=2)return pairMerge(b,pair[0],pair[1]);}}
+  if(g?.newKind)for(let tier=g.tier-1;tier>=0;tier--){const pair=b.flatMap((x,i)=>matches(x,{family:g.family,tier})?[i]:[]);if(pair.length-(s.energy>=45?0:ordered.get(g.family+tier)??0)>=2)return pairMerge(b,pair[0],pair[1]);}}
  for(const o of s.orders)if(orderItems(s,o))return {type:'deliver',id:o.id};
  // Open cargo with a part no order is waiting for (generator cargo first).
  const orderWant=new Map();for(const o of s.orders)for(const r of o.needs)orderWant.set(r.family+r.tier,(orderWant.get(r.family+r.tier)??0)+r.count);
@@ -56,8 +56,10 @@ export function nextAction(s){
  const kits=b.flatMap((x,i)=>x?.type==='kit'?[i]:[]);
  for(const i of kits)for(const j of kits)if(i!==j&&kitsMerge(b[i],b[j]))return {type:'merge',from:i,to:j};
  const want=wanted(s),free=b.filter(x=>x===null).length;
- // Merge toward a wanted part: the highest tier below a wanted one first.
- const needs=[...want.entries()].map(([k,n])=>({family:k.replace(/\d+$/,''),tier:+k.match(/\d+$/)[0],n})).filter(r=>count(s,r)<r.n).sort((x,y)=>y.tier-x.tier);
+ // Merge toward a wanted part: order parts first, then the highest tier below a wanted one.
+ // Order parts come before the crate key being worked toward.
+ const isOrder=r=>orderWant.has(r.family+r.tier);
+ const needs=[...want.entries()].map(([k,n])=>({family:k.replace(/\d+$/,''),tier:+k.match(/\d+$/)[0],n})).filter(r=>count(s,r)<r.n).sort((x,y)=>Number(isOrder(y))-Number(isOrder(x))||y.tier-x.tier);
  const keep=(i)=>{const x=b[i];const n=want.get(x.family+x.tier)??0;return n>0&&count(s,x)<=n;};
  for(const r of needs)for(let tier=r.tier-1;tier>=0;tier--){
   const pair=b.flatMap((x,i)=>matches(x,{family:r.family,tier})&&!keep(i)?[i]:[]);

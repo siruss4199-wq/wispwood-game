@@ -54,14 +54,14 @@ test('restoring spends stars in order and applies each place\'s effect',()=>{
   if(t.id==='beach-path')assert.deepEqual(s.board[r.effects.kit],kit('rig',1));
   if(t.id==='beach-tent')assert.equal(s.energy,Math.min(120,e+15));
   if(t.id==='beach-mast'){assert.equal(s.slots,4);assert.equal(s.orders.length,4);}
-  if(t.id==='beach-workshop'){assert.deepEqual(s.board[r.effects.copy],source('rig'),'a second Rivet Rover');const m=ok(s,{type:'merge',from:r.effects.copy,to:ROVER});assert.equal(s.board[ROVER].level,2);assert.equal(m.released[0].id,'chart','Rover level 2 brings out the Survey Kite');}
-  if(t.id==='beach-pier')assert.deepEqual(s.board[r.effects.kit],kit('chart',2),'a sea chest for the newest generator (the Kite here)');
-  if(t.id==='beach-beacon')assert.equal(s.energy,Math.min(120,e+25));
+  if(t.id==='beach-workshop'){assert.deepEqual(s.board[r.effects.copy],source('rig'),'a second Rivet Rover');const m=ok(s,{type:'merge',from:r.effects.copy,to:ROVER});assert.equal(s.board[ROVER].level,2);assert.equal(m.released,undefined,'level 2 is not yet enough for the Kite');}
+  if(t.id==='beach-pier')assert.deepEqual(s.board[r.effects.kit],kit('rig',2),'a sea chest for the newest generator (still Rover here)');
+  if(t.id==='beach-beacon')assert.equal(s.energy,Math.min(120,e+20));
   assert.equal(s.board.filter(x=>x?.type==='cargo').length,27,'restorations never open cargo');
   if(t.id==='beach-cliff')assert.equal(r.effects.areaDone,'beach');
  }
  assert.equal(nextTask(s),null);refused(s,{type:'restore'});
- assert.deepEqual(costs,[6,10,14,16,19,20,22]);
+ assert.deepEqual(costs,[6,10,15,20,24,28,32]);
 });
 
 test('orders scale with level, never repeat a live need and pay stars by tier',()=>{
@@ -147,10 +147,10 @@ test('cargo opens only with the part it shows, only at the edge of open ground; 
  assert.equal(s.board.filter(x=>x?.type==='cargo').length,23);
 });
 
-test('one generator, one chain; each generator at level 2 brings out the next kind',async()=>{
+test('one generator, one chain; each generator at level 3 brings out the next kind',async()=>{
  const {GENERATOR_CHAINS,CHAINS}=await import('../v5/next/chains.mjs');
  for(const g of Object.keys(GENERATOR_CHAINS)){assert.equal(GENERATOR_CHAINS[g].length,1);assert.equal(CHAINS[GENERATOR_CHAINS[g][0][0]].gen,g);}
- assert.deepEqual(GENERATOR_ORDER,['rig','chart','rope','shell','lamp']);assert.equal(UNLOCK_LEVEL,2);
+ assert.deepEqual(GENERATOR_ORDER,['rig','chart','rope','shell','lamp']);assert.equal(UNLOCK_LEVEL,3);
  assert.deepEqual(GENERATOR_ORDER.map(nextKind),['chart','rope','shell','lamp',null]);
  // Cargo holds no new kinds, only copies (to level up a generator you have) and cogs.
  const gens=Object.entries(CARGO).filter(([,c])=>c[2].type==='source').map(([i,c])=>({cell:+i,id:c[2].id,key:CHAINS[c[0]].gen}));
@@ -162,17 +162,18 @@ test('one generator, one chain; each generator at level 2 brings out the next ki
  s.board[15]=item('rig',3);ok(s,{type:'unseal',from:15,index:13});assert.ok(cargoKeys(s).some(k=>k.index===7),'opening a crate shows the keys of the crates behind it');
  s.board[15]=item('rig',4);const r=ok(s,{type:'unseal',from:15,index:7});assert.deepEqual(r.opened,{index:7,type:'source',id:'rig'});
  assert.equal(r.released,undefined,'a second Rover alone brings nothing');assert.equal(sourceOpen(s,'chart'),false);
- // Merge the two Rovers: level 2 brings out the Survey Kite beside it.
- const m=ok(s,{type:'merge',from:7,to:ROVER});assert.equal(s.board[ROVER].level,2);
+ // Merge the two Rovers: level 2 is not enough yet; a Brass cog makes level 3 and brings out the Survey Kite beside it.
+ const m2=ok(s,{type:'merge',from:7,to:ROVER});assert.equal(s.board[ROVER].level,2);assert.equal(m2.released,undefined);
+ s.board[7]=cog();const m=ok(s,{type:'merge',from:7,to:ROVER});assert.equal(s.board[ROVER].level,3);
  assert.equal(m.released.length,1);assert.equal(m.released[0].id,'chart');assert.deepEqual(s.board[m.released[0].index],source('chart'));
  for(let n=0;n<8;n++){const p=ok(s,{type:'produce',id:'chart'});assert.equal(s.board[p.index].family,'chart');s.board[p.index]=null;}
  refused(s,{type:'produce',id:'rope'});
- // A Brass cog on the Kite brings out the Rope Winch; a full board only delays it.
- const t=structuredClone(s);for(let i=0;i<t.board.length;i++)if(t.board[i]===null)t.board[i]=item('rig',0);
+ // A Brass cog on a level-2 Kite brings out the Rope Winch; a full board only delays it.
+ const t=structuredClone(s);t.board.find(x=>x?.type==='source'&&x.id==='chart').level=2;for(let i=0;i<t.board.length;i++)if(t.board[i]===null)t.board[i]=item('rig',0);
  const k=t.board.findIndex(x=>x?.type==='source'&&x.id==='chart');t.board[t.board.findIndex(x=>x?.type==='item')]=cog();
  const c=t.board.findIndex(x=>x?.type==='cog'),u=ok(t,{type:'merge',from:c,to:k});assert.equal(u.released?.length,1,'the cog leaves a space for it');
- // An old save whose Rover is already level 2 gets its Kite on the next action.
- const old=fresh(0);old.board[ROVER].level=2;old.moves=5;const back=load(JSON.stringify(old),5);assert.equal(sourceOpen(back,'chart'),false);
+ // An old save whose Rover is already level 3 gets its Kite on the next action.
+ const old=fresh(0);old.board[ROVER].level=3;old.moves=5;const back=load(JSON.stringify(old),5);assert.equal(sourceOpen(back,'chart'),false);
  const e=ok(back,{type:'produce',id:'rig'});assert.equal(e.released[0].id,'chart');
 });
 
@@ -193,9 +194,10 @@ test('cargo keys grow harder away from the camp and every generator is reachable
  // A scripted player finds every generator during Landing Beach.
  const t=fresh(0);let now=0;const found=[];
  while(!t.done.includes('beach-cliff')&&now<90*60*1000){tick(t,now);const a=nextAction(t);if(!a){now+=30000;continue;}const r=ok(t,a,now);now+=6000;for(const n of r.released??[])found.push([n.id,+(now/60000).toFixed(1)]);}
- assert.deepEqual(found.map(f=>f[0]),['chart','rope','shell','lamp'],'every kind comes out during Landing Beach, in order, each when the one before reaches level 2');
- const at=Object.fromEntries(found);assert.ok(at.chart>=3&&at.chart<8,'the Survey Kite after a few minutes, not at once');
- assert.ok(at.rope-at.chart>=4&&at.shell-at.rope>=3,'each next generator takes a few minutes of levelling');
+ assert.equal(found[0][0],'chart','Rivet Rover level 3 brings out the Survey Kite during Landing Beach');
+ assert.ok(found.map(f=>f[0]).every((id,n)=>id===['chart','rope','shell','lamp'][n]),'kinds come out in order');
+ const at=Object.fromEntries(found);assert.ok(at.chart>=8&&at.chart<25,`the Survey Kite after levelling the Rover twice (${at.chart} min)`);
+ assert.ok(!at.rope||at.rope-at.chart>=6,'the Rope Winch takes more levelling (or waits for the next area)');
  assert.ok(t.board.some(x=>x?.type==='cargo'),'some cargo is still sealed when the beach is restored');
  console.log(JSON.stringify({generatorsFoundAt:found,sealedLeft:t.board.filter(x=>x?.type==='cargo').length}));
 });
@@ -216,7 +218,7 @@ test('build-4 (tide) and build-3 (sand) saves load as sealed cargo, keeping ever
  const t=load(JSON.stringify(v1),5);assert.equal(t.version,3);assert.equal(t.moves,33);assert.ok(!t.board.some(x=>['sand','gate','water'].includes(x?.type)));
 });
 
-test('tideglass takes no part: merges beside it crack it, the second breaks it and frees the part as it is',()=>{
+test('tideglass takes no part: merges beside it crack it, the third breaks it and frees the part as it is',()=>{
  const s=fresh(0);
  assert.deepEqual(s.board[8],{type:'glass',family:'rig',tier:2},'a Split spanner in glass beside the camp');
  s.board[15]=item('rig',2);
@@ -229,8 +231,9 @@ test('tideglass takes no part: merges beside it crack it, the second breaks it a
  assert.deepEqual(r.cracked,[8]);assert.equal(r.broken,undefined);assert.equal(s.board[8].cracks,1);assert.match(r.message,/cracks/);
  // A merge elsewhere does nothing to it.
  s.board[22]=item('rig',0);s.board[26]=item('rig',0);ok(s,{type:'merge',from:26,to:22});assert.equal(s.board[8].cracks,1);
- // The second merge beside it breaks it: the Split spanner is free, nothing was used up.
- s.board[20]=item('rig',1);const t=ok(s,{type:'merge',from:20,to:14});
+ s.board[20]=item('rig',1);ok(s,{type:'merge',from:20,to:14});assert.equal(s.board[8].cracks,2);
+ // The third merge beside it breaks it: the Split spanner is free, nothing was used up.
+ s.board[20]=item('rig',2);const t=ok(s,{type:'merge',from:20,to:14});
  assert.deepEqual(t.broken,[8]);assert.deepEqual(s.board[8],item('rig',2));assert.equal(t.xp,3);assert.match(t.message,/breaks/);
  assert.ok(cargoKeys(s).some(k=>k.index===2),'the cargo behind it now shows its key');
  // Glass of every generator's chain lies near where it is found.
@@ -238,7 +241,7 @@ test('tideglass takes no part: merges beside it crack it, the second breaks it a
  // Saves keep glass and its cracks; a build-9 save with uncracked glass still loads; malformed glass starts fresh.
  const u=fresh(0);u.board[0].cracks=1;u.moves=3;assert.deepEqual(load(JSON.stringify(u),5).board[0],{type:'glass',family:'chart',tier:3,cracks:1});
  const old=fresh(0);delete old.board[0].cracks;old.moves=4;assert.equal(load(JSON.stringify(old),5).moves,4);
- for(const f of [x=>x.board[0]={type:'glass',family:'rig',tier:7},x=>x.board[0].cracks=2,x=>x.board[0].cracks=-1]){const v=fresh(0);v.moves=3;f(v);assert.equal(load(JSON.stringify(v),5).moves,0,f.toString());}
+ for(const f of [x=>x.board[0]={type:'glass',family:'rig',tier:7},x=>x.board[0].cracks=3,x=>x.board[0].cracks=-1]){const v=fresh(0);v.moves=3;f(v);assert.equal(load(JSON.stringify(v),5).moves,0,f.toString());}
 });
 
 
@@ -250,7 +253,7 @@ test('a Brass cog from hard cargo raises the generator it is laid on by one leve
  assert.equal(r.opened.type,'cog');assert.deepEqual(s.board[17],cog());assert.match(r.message,/Brass cog/);
  refused(s,{type:'merge',from:17,to:14});refused(s,{type:'recycle',index:17});refused(s,{type:'openKit',index:17});
  ok(s,{type:'move',from:17,to:15});
- const u=ok(s,{type:'merge',from:15,to:ROVER});assert.equal(u.event,'producerUp');assert.equal(u.cog,true);assert.equal(s.board[ROVER].level,2);assert.ok(!s.board.some(x=>x?.type==='cog'),'the cog is used up');assert.equal(u.released[0].id,'chart','and Rover level 2 brings out the Kite');
+ const u=ok(s,{type:'merge',from:15,to:ROVER});assert.equal(u.event,'producerUp');assert.equal(u.cog,true);assert.equal(s.board[ROVER].level,2);assert.ok(!s.board.some(x=>x?.type==='cog'),'the cog is used up');assert.equal(u.released,undefined,'level 2 alone does not bring out the Kite');
  // Not past the top level.
  s.board[15]=cog();s.board[ROVER].level=MAX_GENERATOR_LEVEL;assert.match(refused(s,{type:'merge',from:15,to:ROVER}).message,/top level/);
  // Saves keep a cog on the board and in cargo; a malformed one starts a new camp.

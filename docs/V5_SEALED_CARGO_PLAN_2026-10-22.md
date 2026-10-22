@@ -210,3 +210,17 @@ differently:
   next kind on its next action; generators already found stay.
 - Scripted player, 4–6 s per action: Survey Kite at 3–4.5 min, Rope Winch 9–13, Shell
   Trap 14–21, Lantern Kiln 17–25; Landing Beach in 27–42 min, no waiting, energy ~23 left.
+
+## Build 15 — level 3 to unlock, a slower board (user: "Ehnii generator deer leveliin ahiulaad ternii daraagaas er ni next generator garch irii gesen shd, board bas hurdan neegdeed duusch baina")
+- **Level the generator up more than once:** the next kind now comes out at level 3
+  (`UNLOCK_LEVEL`=3): two Rovers make level 2, and another level-2 Rover or a Brass cog
+  makes level 3, which brings out the Survey Kite. Landing Beach is now a Rover-and-Kite
+  area; the Rope Winch (Kite level 3) and the rest come with the next areas.
+- **Slower board:** tideglass needs three merges beside it (`GLASS_HITS`=3); the scripted
+  player no longer opens everyday crates unless energy is plentiful (45+).
+- Economy: Landing Beach costs 6·10·15·20·24·28·32 ★; tent +15, beacon +20 energy,
+  level chest +15.
+- Scripted player (order parts first, then the copy or cog for the next level), 4–6 s per
+  action: Rover level 2 at 3–5 min, Survey Kite at 11–17 min, Landing Beach in 30–45 min,
+  energy ~21–23 at the end, no waiting. Closed cells (crates and glass) out of 40:
+  ~32 at 5 min, ~29 at 10, ~25 at 20, 22 when the beach is done (build 14: 13).

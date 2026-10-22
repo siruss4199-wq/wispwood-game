@@ -47,7 +47,7 @@ async function perform(page,a){
    assert.ok(restores>=2,'places restored through the UI');
    const s=await read(page);assert.deepEqual(s.done.slice(0,2),['beach-path','beach-tent']);
    assert.equal(await page.locator('.restoredIcon').count(),s.done.length,'restored places stand on the coast picture');
-   assert.ok(await page.locator('#board .tile.cargo').count()<27,'cargo was opened by laying parts on it');assert.equal(await page.locator('#board .tile.source[data-family="chart"]').count(),1,'Rivet Rover level 2 brought out the Survey Kite');
+   assert.ok(await page.locator('#board .tile.cargo').count()<27,'cargo was opened by laying parts on it');assert.equal(await page.locator('#board .tile.source[data-family="chart"]').count(),1,'Rivet Rover level 3 brought out the Survey Kite');
    await page.reload();await page.waitForSelector('#board .tile');
    assert.deepEqual((await read(page)).board,s.board,'reload keeps the board');assert.equal(await page.locator('#beat[open]').count(),0,'no intro on a running camp');
    await page.locator('#mapButton').tap();assert.equal(await page.locator('#coastMap .place').count(),7);assert.equal(await page.locator('#coastMap .place[data-status="done"]').count(),s.done.length);
@@ -69,8 +69,8 @@ async function perform(page,a){
    {const a=await page.locator('#board [data-index="15"]').boundingBox(),b=await page.locator('#board [data-index="21"]').boundingBox();
     await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:6});await page.mouse.up();}
    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).board[21].level===2,null,{timeout:4000});
-   assert.equal((await read(page)).board[15]?.id,'chart','level 2 brings out the Survey Kite beside it');assert.match(await page.locator('#board [data-index="21"]').textContent(),/Lv2/);
-   assert.equal(await page.locator('#board [data-index="15"].source[data-family="chart"]').count(),1,'the Kite stands on the board');
+   assert.equal((await read(page)).board[15],null);assert.match(await page.locator('#board [data-index="21"]').textContent(),/Lv2/);
+   assert.equal(await page.locator('#board .source[data-family="chart"]').count(),0,'level 2 is not yet enough for the Survey Kite');
    // A Brass cog: tap it, then the Rover, and the Rover goes up a level.
    await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.board[15]={type:'cog'};localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
    await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
@@ -79,6 +79,7 @@ async function perform(page,a){
    await page.locator('#board [data-index="21"]').tap();
    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).board[21].level===3,null,{timeout:4000});
    assert.ok(!(await read(page)).board.some(x=>x?.type==='cog'),'the cog is used up');
+   assert.equal(await page.locator('#board .source[data-family="chart"]').count(),1,'Rivet Rover level 3 brought out the Survey Kite');
    assert.deepEqual(errors,[]);
    console.log(`${engine} ${width} Coast Camp: intro → orders → 2 restorations → reload → map passed`);
    await context.close();

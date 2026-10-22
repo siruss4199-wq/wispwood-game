@@ -29,7 +29,7 @@ export const MAX_GENERATOR_LEVEL=5;
 // ehnii generatoroo saijruuldag baiy, ternii daraagaas daraagiin generator garch irdeg baih"):
 // Rivet Rover Lv2 → Survey Kite, Kite Lv2 → Rope Winch, Rope Lv2 → Shell Trap, Shell Lv2 →
 // Lantern Kiln. Cargo holds the copies and Brass cogs that level them.
-export const UNLOCK_LEVEL=2;
+export const UNLOCK_LEVEL=3;
 export const nextKind=g=>GENERATOR_ORDER[GENERATOR_ORDER.indexOf(g)+1]??null;
 export const generatorsMerge=(x,y)=>x?.type==='source'&&y?.type==='source'&&x.id===y.id&&producerLevel(x)===producerLevel(y)&&producerLevel(x)<MAX_GENERATOR_LEVEL;
 
@@ -97,7 +97,7 @@ export const CARGO=Object.fromEntries(CARGO_CELLS.map(([r,c,f,tier,find])=>[at(r
 // key like cargo: merges in the spaces beside it crack it, and the second breaks it and
 // frees the part as it is (user, 2026-10-22: "hairtsag mus 2 neeh yalgaa alga").
 export const GLASS=Object.fromEntries([[1,2,'rig',2],[1,4,'rig',1],[3,1,'rig',2],[3,5,'chart',1],[5,2,'rig',1],[5,4,'rope',1],[0,0,'chart',3],[0,6,'shell',2],[5,6,'lamp',2],[6,5,'lamp',1],[6,2,'rope',3],[5,0,'rope',1],[1,0,'shell',1]].map(([r,c,f,tier])=>[at(r,c),[f,tier]]));
-export const GLASS_HITS=2;
+export const GLASS_HITS=3;
 export const glass=(family,tier)=>({type:'glass',family,tier});
 export const cargoAt=i=>{const c=CARGO[i];return c?cargo({family:c[0],tier:c[1]},structuredClone(c[2])):null;};
 export function fresh(now=Date.now()){
