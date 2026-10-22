@@ -1,4 +1,5 @@
 const assert=require('node:assert/strict');const fs=require('node:fs');const {chromium}=require('playwright');
+const {kitAction,KIT_ACTIONS}=require('./v5-kit-browser.cjs');
 (async()=>{
  const browser=await chromium.launch({headless:true});fs.mkdirSync('test-artifacts/v5',{recursive:true});
  try{for(const [width,style] of [[360,'expedition'],[390,'contract'],[768,'exploration'],[430,'aggressive'],[1440,'expedition']]){
@@ -75,6 +76,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const {ch
     if(await page.locator(`#board [data-index="${index}"]`).getAttribute('aria-pressed')!=='true')await page.locator(`#board [data-index="${index}"]`).tap();
     if((await read()).moves===before.moves)await page.locator(`[data-action="${cmd.type}"]`).tap();
    }else if(cmd.type==='crate')await page.locator(`#board [data-index="${cmd.index}"]`).tap();
+   else if(KIT_ACTIONS.includes(cmd.type))await kitAction(page,cmd);
    else if(cmd.type==='deploy'&&style==='exploration'){
     const family={winch:'rig',scope:'chart',relay:'flux'}[before.board[cmd.index].kind],from=before.board.findIndex(x=>x?.family===family&&x.tier===3);
     const selected=page.locator('#board .selected.item');if(await selected.count())await selected.tap();

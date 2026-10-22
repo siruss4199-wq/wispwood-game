@@ -1,6 +1,7 @@
 // Real mobile controls: earn camp currency, repair, build the Pier, buy a targeted pack.
 // No direct inventory/currency injection in fresh gameplay.
 const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webkit}=require('playwright');
+const {kitAction,KIT_ACTIONS}=require('./v5-kit-browser.cjs');
 (async()=>{
  const dir='test-artifacts/v5/camp-pier';fs.mkdirSync(dir,{recursive:true});
  for(const [engine,browserType] of [['chromium',chromium],['webkit',webkit]]){
@@ -36,6 +37,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
      await page.locator(`#board [data-index="${source}"]`).tap();
      if(action.type==='service')await page.locator('#selection [data-action="service"]').tap();
     }else if(action.type==='recoverTide'){await page.locator('#campPierWorld').tap();await page.locator('#selection [data-action="recoverTide"]').tap();}else if(action.type==='ration'){await page.locator('#rationButton').tap();}
+    else if(KIT_ACTIONS.includes(action.type))await kitAction(page,action);
     else throw Error('Unexpected camp-order policy '+JSON.stringify(action));
     try{await page.waitForFunction(n=>JSON.parse(localStorage.getItem('vaultwake-v5')).moves>n,before.moves,{timeout:4000});}
     catch(error){

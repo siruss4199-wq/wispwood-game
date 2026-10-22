@@ -1,4 +1,5 @@
 const assert=require('node:assert/strict'),fs=require('node:fs');
+const {kitAction,KIT_ACTIONS}=require('./v5-kit-browser.cjs');
 const {chromium}=require('playwright');
 (async()=>{
  const out='test-artifacts/v5/workshop-evolution';fs.mkdirSync(out,{recursive:true});
@@ -29,6 +30,7 @@ const {chromium}=require('playwright');
     assert.equal(after.board[inputs[0]].tier,2);assert.equal(after.board[inputs[1]],null);lineage.add(inputs[0]);
     if(!fittingShots){await page.waitForTimeout(750);await shot('05-fitted-spanner');fittingShots=true;}
    }else if(a.type==='press')await page.locator('#workshop').tap();
+   else if(KIT_ACTIONS.includes(a.type))await kitAction(page,a);
    else{
     const index=before.board.findIndex(x=>x?.type==='source'&&x.id===a.id);await page.locator(`[data-index="${index}"]`).tap();
     if(a.type==='service')await page.locator('[data-action="service"]').tap();

@@ -1,5 +1,6 @@
 // Fresh progression uses only visible controls. Legacy fixtures are isolated contexts.
 const {chromium,webkit}=require('playwright');const assert=require('node:assert/strict');const fs=require('node:fs');
+const {kitAction,KIT_ACTIONS}=require('./v5-kit-browser.cjs');
 (async()=>{
  const dir='test-artifacts/v5/route-clarity';fs.mkdirSync(dir,{recursive:true});
  for(const [engine,type]of [['chromium',chromium],['webkit',webkit]]){
@@ -18,6 +19,7 @@ const {chromium,webkit}=require('playwright');const assert=require('node:assert/
  }else if(a.type==='goal'){if(before.landingStep===1)assert.match(await page.locator('#hint').textContent(),/CROSSING READY/,'ready objective takes priority over suggesting more producer pulls');await page.locator('#goalButton').tap();}
  else if(a.type==='produce'||a.type==='service'){const i=before.board.findIndex(x=>x?.type==='source'&&x.id===a.id);await page.locator(`[data-index="${i}"]`).tap();if(a.type==='service')await page.locator('[data-action="service"]').tap();}
  else if(a.type==='crate')await page.locator(`[data-index="${a.index}"]`).tap();
+ else if(KIT_ACTIONS.includes(a.type))await kitAction(page,a);
  else if(a.type==='ration')await page.locator('#rationButton').tap();
  else if(a.type==='request')await page.locator(`[data-request="${a.id}"]`).tap();
  else if(a.type==='restoreWorkshop')await page.locator('#workshop').tap();

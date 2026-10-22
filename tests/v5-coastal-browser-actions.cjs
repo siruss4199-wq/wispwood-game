@@ -1,4 +1,5 @@
 const assert=require('node:assert/strict');
+const {kitAction,KIT_ACTIONS}=require('./v5-kit-browser.cjs');
 const read=page=>page.evaluate(()=>JSON.parse(localStorage.getItem('vaultwake-v5')));
 async function perform(page,a){
  const s=await read(page);
@@ -18,6 +19,7 @@ async function perform(page,a){
  else if(a.type==='recoverTide'){await page.locator('#campPierWorld').tap();await page.locator('#selection [data-action="recoverTide"]').tap();}
  else if(a.type==='ration')await page.locator('#rationButton').tap();
  else if(a.type==='crate'){await clearSelection();await tile(a.index).tap();}
+ else if(KIT_ACTIONS.includes(a.type))await kitAction(page,a);
  else if(a.type==='recycle'){await clearSelection();await tile(a.index).tap();await page.locator('#selection [data-action="recycle"]').tap();}
  else if(['deploy','prime','power'].includes(a.type)){
   await clearSelection();const index=a.index??s.board.findIndex(x=>x?.type==='site'&&x.kind==='winch');

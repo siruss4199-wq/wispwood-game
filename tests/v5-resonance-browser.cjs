@@ -1,5 +1,6 @@
 // Fresh runs use UI inputs only. Old-save injection is confined to migration cases.
 const {chromium,webkit}=require('playwright');const assert=require('node:assert/strict');const fs=require('node:fs');
+const {kitAction,KIT_ACTIONS}=require('./v5-kit-browser.cjs');
 (async()=>{
  const dir='test-artifacts/v5/stage2-rescue';fs.mkdirSync(dir,{recursive:true});
  for(const [engine,type]of [['chromium',chromium],['webkit',webkit]]){
@@ -29,6 +30,7 @@ const {chromium,webkit}=require('playwright');const assert=require('node:assert/
  else if(a.type==='buildPier')await page.locator('#goalButton').tap();
  else if(a.type==='prepareInstrument')await page.locator(`[data-instrument="${a.family}"]`).tap();
  else if(a.type==='crate')await page.locator(`[data-index="${a.index}"]`).tap();
+ else if(KIT_ACTIONS.includes(a.type))await kitAction(page,a);
  else{
   const index=a.index??20,slot=page.locator(`[data-engine-action="${a.type}"][data-site-index="${index}"]`);
   if(await slot.count())await slot.tap();
