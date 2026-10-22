@@ -15,8 +15,8 @@ export const SAVE_KEY='vaultwake-v5-coast';
 export const VERSION=3,MAX_TIER=7,MAX_ENERGY=120;// MAX_TIER: the longest chain
 export const SOURCES=Object.fromEntries(Object.entries(GENERATOR_NAMES).map(([id,name])=>[id,{name}]));
 export const XP={merge:1,restore:5,feed:5,unseal:2};// feed: merging two generators// orders pay their stars as XP
-export const STAR_VALUE=[1,1,2,4,7,12];// stars per item by tier
-export const CHEST_ENERGY=5;
+export const STAR_VALUE=[1,1,2,5,9,16];// stars per item by tier
+export const CHEST_ENERGY=10;
 // Coast Camp's own crates (the generator boxes of v5/kits.mjs, by size).
 export const CRATES=['Driftwood crate','Sea chest','Captain\'s trunk'];
 // Generators in the order they are found; each is opened with the one before's parts.
@@ -54,30 +54,39 @@ export const chainsOf=(s,gen)=>GENERATOR_CHAINS[gen].map(([c])=>c);
 export const openChains=s=>openFamilies(s).flatMap(g=>chainsOf(s,g));
 
 // ---- the board ----
-// Rivet Rover's camp; everything else is sealed cargo: [key chain, key tier, find].
-export const CAMP=[0,1,2,6,7,8,12,13,18];
+// Rivet Rover stands in the middle of the board with its small camp around it;
+// sealed cargo and tideglass fill the two rings outside (user, 2026-10-22:
+// "generatoroo tuvruugee oruulay"). Keys need well-merged parts.
+export const cellIndex=(r,c)=>c===6?36+r:r===6?43+c:r*6+c;
+const at=(r,c)=>cellIndex(r,c);
+export const CAMP=[at(2,2),at(2,3),at(2,4),at(3,2),at(3,3),at(3,4),at(4,2),at(4,3),at(4,4)];
+export const ROVER=at(3,3);
 const I=item,K=kit,E=jar,S=stars,G=source;
-export const CARGO={
- 3:['rig',1,E(5)],4:['rig',1,E(5)],5:['rig',2,S(2)],36:['chart',2,S(3)],
- 9:['rig',2,I('rig',1)],10:['rig',2,S(2)],37:['rope',2,S(3)],
- 14:['rig',1,S(2)],15:['rig',2,I('rig',2)],16:['rig',1,G('chart')],38:['rope',2,E(5)],
- 19:['rig',2,K('rig',1)],20:['rig',2,G('rig')],21:['rig',2,S(2)],22:['chart',2,K('chart',1)],23:['rope',2,S(3)],39:['rope',3,G('shell')],
- 26:['chart',2,G('chart')],27:['rig',3,E(5)],28:['chart',3,K('chart',2)],
- 30:['chart',3,G('rope')],31:['rig',3,G('rig')],33:['rig',3,S(4)],35:['rope',3,G('rope')],41:['shell',3,G('shell')],
- 43:['chart',2,G('chart')],44:['chart',2,S(3)],45:['chart',3,I('chart',2)],46:['shell',3,G('lamp')],48:['shell',3,K('shell',2)],42:['lamp',4,K('rig',3)]
-};
-// Tideglass: a part locked in glass near the generator that makes it. Merge a free
-// twin onto it and the glass breaks: the part comes free one tier up. Each new
-// generator finds work waiting for it (docs/V5_SEALED_CARGO_PLAN_2026-10-22.md, build 9).
-export const GLASS={24:['rig',1],11:['chart',1],17:['chart',0],25:['rope',0],32:['rope',1],29:['shell',0],40:['shell',1],34:['lamp',0],47:['lamp',1]};
+// [row, column, key chain, key tier, find]
+const CARGO_CELLS=[
+ // Ring 2 (next to the camp): mostly Split spanners (tier 3); one Copper-to-Split crate
+ // above the Rover to teach it; the Survey Kite in a corner behind a Crawler jack.
+ [1,1,'rig',4,G('chart')],[1,2,'rig',3,E(10)],[1,3,'rig',2,S(3)],[1,4,'rig',3,I('rig',3)],[1,5,'rig',4,G('rig')],
+ [3,1,'rig',3,K('rig',1)],[4,1,'chart',3,S(6)],[5,1,'chart',4,G('rope')],
+ [2,5,'rig',3,K('rig',2)],[4,5,'chart',3,E(10)],[5,5,'chart',4,I('chart',3)],
+ [5,2,'rig',3,S(6)],[5,4,'chart',3,K('chart',1)],
+ // Ring 3 (the edge): tier 3–4 keys of every chain; the Shell Trap and Lantern Kiln far out.
+ [0,1,'chart',3,G('chart')],[0,2,'rig',4,E(18)],[0,3,'rig',4,S(10)],[0,4,'chart',4,K('chart',2)],[0,5,'rope',3,G('shell')],
+ [1,6,'shell',3,S(6)],[2,6,'rope',3,E(10)],[3,6,'rig',4,G('rope')],[4,6,'shell',3,G('lamp')],
+ [6,6,'lamp',3,K('rig',3)],[6,4,'shell',3,K('shell',1)],[6,3,'rope',4,S(10)],[6,1,'rope',3,E(10)],[6,0,'rig',4,G('rig')],
+ [4,0,'chart',4,S(10)],[3,0,'rig',4,K('rig',2)],[2,0,'shell',4,G('shell')]
+];
+export const CARGO=Object.fromEntries(CARGO_CELLS.map(([r,c,f,tier,find])=>[at(r,c),[f,tier,find]]));
+// Tideglass: a part locked in glass near the generator that makes it; merge a free twin onto it.
+export const GLASS=Object.fromEntries([[2,1,'rig',2],[3,5,'chart',1],[5,3,'rope',1],[0,0,'chart',2],[0,6,'shell',1],[5,6,'lamp',1],[6,5,'lamp',0],[6,2,'rope',2],[5,0,'rope',0],[1,0,'shell',0]].map(([r,c,f,tier])=>[at(r,c),[f,tier]]));
 export const glass=(family,tier)=>({type:'glass',family,tier});
 export const cargoAt=i=>{const c=CARGO[i];return c?cargo({family:c[0],tier:c[1]},structuredClone(c[2])):null;};
 export function fresh(now=Date.now()){
  const board=Array(BOARD_SIZE).fill(null);
- board[0]=source('rig');
- for(const [i,t] of [[2,0],[7,0],[8,0],[13,1],[18,0]])board[i]=item('rig',t);
+ board[ROVER]=source('rig');
+ for(const [r,c,t] of [[2,2,0],[2,4,0],[3,2,0],[4,3,1],[4,4,0]])board[at(r,c)]=item('rig',t);
  for(let i=0;i<BOARD_SIZE;i++)if(!CAMP.includes(i))board[i]=GLASS[i]?glass(...GLASS[i]):cargoAt(i);
- const s={version:VERSION,board,energy:40,energyAt:now,stars:0,level:freshLevel(),taps:{},
+ const s={version:VERSION,board,energy:50,energyAt:now,stars:0,level:freshLevel(),taps:{},
   orders:[],slots:3,orderSeq:0,ordersDone:0,area:0,done:[],found:[],moves:0,merges:0,lastAt:now};
  for(const g of Object.keys(GENERATOR_CHAINS))s.taps[g]=0;
  for(let i=0;i<s.slots;i++)s.orders.push(makeOrder(s));
@@ -94,12 +103,14 @@ export function makeOrder(s){
  const n=s.orderSeq++;let needs;
  if(n<FIRST.length)needs=FIRST[n].map(([family,tier,count])=>({family,tier,count}));
  else{
-  const families=openChains(s),level=s.level.level,top=Math.min(4,1+Math.floor(level/2));
+  // Harder from build 10 (user: "taskuud het amar baigaad baina"): tier 2 and up from
+  // level 3, the top tier climbs every second level, and pairs and two-part orders are common.
+  const families=openChains(s),level=s.level.level,low=level>=3?2:1,top=2+Math.floor(level/4);
   const live=new Set(s.orders.filter(Boolean).flatMap(o=>o.needs.map(r=>r.family+r.tier)));
   let family,tier,k=0;
-  do{family=families[Math.floor(rand(n*7+k)*families.length)];tier=1+Math.floor(rand(n*11+k)*Math.min(top,maxTier(family)-1));k++;}while(live.has(family+tier)&&k<8);
-  needs=[{family,tier,count:tier===1&&rand(n*13)<.5?2:1}];
-  if(level>=3&&rand(n*17)<.3){const other=families.find(f=>f!==family)??family;if(other!==family||tier>1)needs.push({family:other,tier:1,count:1});}
+  do{family=families[Math.floor(rand(n*7+k)*families.length)];const hi=Math.max(low,Math.min(top,maxTier(family)-1));tier=low+Math.floor(rand(n*11+k)*(hi-low+1));k++;}while(live.has(family+tier)&&k<8);
+  needs=[{family,tier,count:tier<=2&&rand(n*13)<.6?2:1}];
+  if(level>=2&&rand(n*17)<.45){const other=families.find(f=>f!==family)??family,t=Math.max(1,tier-1);if(other!==family||t!==tier)needs.push({family:other,tier:t,count:1});}
  }
  const stars=needs.reduce((v,r)=>v+r.count*STAR_VALUE[r.tier],0);
  return {id:'o'+n,who:crewFor(needs),needs,stars};
@@ -294,7 +305,7 @@ const covered=x=>x?.type==='sand'||x?.type==='gate'||x?.type==='water';
 function upgrade(s){
  const keyOf=i=>{const c=CARGO[i];return c?{family:c[0],tier:c[1]}:{family:'rig',tier:1};};
  s.board=s.board.map((x,i)=>covered(x)?cargo(keyOf(i),x.find):x);
- for(const [g,cell] of [['rope',30],['shell',39],['lamp',46]]){
+ for(const [g,cell] of [['rope',at(5,1)],['shell',at(0,5)],['lamp',at(4,6)]]){
   if(s.board.some(x=>x?.type==='source'&&x.id===g||x?.type==='cargo'&&x.find?.type==='source'&&x.find.id===g))continue;
   const key={family:CARGO[cell][0],tier:CARGO[cell][1]};
   let j=s.board[cell]?.type==='cargo'?cell:s.board.findIndex(x=>x?.type==='cargo'&&x.find?.type!=='source');

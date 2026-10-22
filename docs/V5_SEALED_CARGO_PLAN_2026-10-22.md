@@ -118,3 +118,23 @@ left the shells and lamps unfound, so the Grip tool stays.
 - Scripted player, 5–6 s per action: Survey Kite ~3.5 min, Rope Winch 7–8, Shell Trap
   12–15, the Lantern Kiln left for after Landing Beach; Landing Beach 20–25 min, energy
   ~20 at the end; all nine glass cells broken.
+
+## Build 10 — centre camp, well-merged keys, harder tasks (user: "Hairtsaguudiig nileen merge hiisen level undur itemaar neey, tegeed generatoroo tuvruugee oruulay, taskuud het amar baigaad baina")
+- **Rivet Rover in the middle.** The camp is the 3×3 square at the centre of the 7×7
+  board (cells 14–16, 20–22, 26–28; the Rover on 21). Cargo and tideglass fill the two
+  rings around it: 30 crates and 10 glass cells. Nine crates touch the camp at the start.
+- **Keys need well-merged parts.** Next to the camp: Split spanners (tier 3) and Sight
+  lenses; one crate straight above the Rover opens with a tier-2 part to teach it. The
+  outer ring wants tier 3–4 parts of every chain. The Survey Kite sits in a corner behind
+  a crate (or the Split-spanner glass beside it) and opens with a Crawler jack (tier 4).
+  Crates that cost more pay more: energy +10/+18, star pouches +3 to +10.
+- **Harder tasks.** Orders ask for tier 2 and up from level 3, the top tier climbs every
+  fourth level, pairs and two-part orders are common; tier 3+ pays more (★ 1·1·2·5·9·16).
+  Landing Beach costs 6·10·14·18·21·24·26 ★ (was 4·6·8·10·13·14·17). Level chest +10 energy,
+  start 50 energy.
+- Scripted players, 4–6 s per action: a curious player (goes for each new generator after
+  two orders) finds the Survey Kite at 5–8 min, Rope Winch 14–21, Shell Trap 17–26,
+  Lantern Kiln 22–34, and restores Landing Beach in 35–49 min (442–489 actions, was ~175),
+  energy 0–11 at the end; an order-only player takes 18–27 min with Rivet Rover alone.
+- Saves: no shape change (still version 3). A build-9 camp keeps its own board; only new
+  camps get the centre layout.

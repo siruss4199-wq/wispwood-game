@@ -13,9 +13,9 @@ const near=i=>{const r=i<36?Math.floor(i/6):i<43?i-36:6,c=i<36?i%6:i<43?6:i-43;r
 function target(s){
  const keys=cargoKeys(s).filter(k=>sourceOpen(s,CHAINS[k.family].gen)),open=new Map(keys.map(k=>[k.index,k]));
  const glowing=s.board.flatMap((x,i)=>x?.type==='cargo'&&x.find?.type==='source'?[[i,sourceOpen(s,x.find.id)?1:0]]:[]).sort((a,b)=>a[1]-b[1]);
- for(const [goal] of glowing){
+ for(const [goal,known] of glowing.filter(([,k])=>!k)){
   const seen=new Set([goal]),queue=[goal];
-  while(queue.length){const i=queue.shift();if(open.has(i))return open.get(i);for(const j of near(i))if(!seen.has(j)&&s.board[j]?.type==='cargo'){seen.add(j);queue.push(j);}}
+  while(queue.length){const i=queue.shift();if(open.has(i))return {...open.get(i),newKind:!known};for(const j of near(i))if(!seen.has(j)&&s.board[j]?.type==='cargo'){seen.add(j);queue.push(j);}}
  }
  return keys.sort((a,b)=>a.tier-b.tier||a.index-b.index)[0]??null;
 }
@@ -30,6 +30,8 @@ export function nextAction(s){
  if(t&&s.stars>=t.cost)return {type:'restore',id:t.id};
  // Curious: the crate on the way to a glowing one opens first, even before deliveries.
  {const g=target(s),have=g?b.findIndex(x=>matches(x,g)):-1;if(have>=0)return {type:'unseal',from:have,index:g.index};}
+ // After two orders, the key on the way to a new kind of generator is made first.
+ {const g=s.ordersDone>=2?target(s):null;if(g?.newKind)for(let tier=g.tier-1;tier>=0;tier--){const pair=b.flatMap((x,i)=>matches(x,{family:g.family,tier})?[i]:[]);if(pair.length>=2)return {type:'merge',from:pair[0],to:pair[1]};}}
  for(const o of s.orders)if(orderItems(s,o))return {type:'deliver',id:o.id};
  // Open cargo with a part no order is waiting for (generator cargo first).
  const orderWant=new Map();for(const o of s.orders)for(const r of o.needs)orderWant.set(r.family+r.tier,(orderWant.get(r.family+r.tier)??0)+r.count);
@@ -55,7 +57,7 @@ export function nextAction(s){
  // Any spare pair (keeps the board from clogging and digs the sand).
  for(let i=0;i<b.length;i++){const x=b[i];if(x?.type!=='item'||keep(i))continue;const j=b.findIndex((y,j)=>j>i&&matches(y,x)&&!keep(j));if(j>=0&&x.tier<maxTier(x.family))return {type:'merge',from:i,to:j};}
  // A started box, or one that cannot grow further, before paying energy.
- const open=kits.find(i=>!kitFull(b[i])||b[i].size===MAX_KIT_SIZE||free<=3);
+ const open=kits.find(i=>!kitFull(b[i])||b[i].size===MAX_KIT_SIZE||free<=3||s.energy<4);
  if(open!==undefined&&free>0)return {type:'openKit',index:open};
  // Tap the generator that makes a wanted chain right now.
  const family=needs.map(r=>CHAINS[r.family].gen).find(g=>sourceOpen(s,g))??openFamilies(s)[0];
