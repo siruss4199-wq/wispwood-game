@@ -42,7 +42,7 @@ test('a merge digs the orthogonal sand beside it: plain sand opens, buried parts
  assert.deepEqual(s.board[14],item('chart',1));assert.deepEqual(s.board[9],item('chart',0));
  for(const i of [3,15])assert.equal(s.board[i].type,'sand','diagonal sand stays');
  assert.equal(s.board.filter(x=>x===null).length,free+1);
- s.board[1]=item('chart',0);const r2=act(s,{type:'merge',from:1,to:9},2);// 9 borders plain sand at 10 and the buried Ink scrap at 3? no: 3 is a jar
+ s.board[1]=item('chart',0);const r2=act(s,{type:'merge',from:1,to:9},2);// 9 borders the buried +8 jar at 3, a buried Violet shard at 15 and plain sand at 10
  assert.deepEqual(r2.cracked,[{index:3,type:'jar',energy:8,dug:true},{index:15,type:'sand',find:item('flux',0)},{index:10,type:'sand'}]);
  assert.equal(s.board[10],null,'plain sand becomes working space');assert.equal(s.board[3],null);assert.deepEqual(s.board[15],item('flux',0));
 });
@@ -150,8 +150,9 @@ test('the mystery chest cracks into a mixed parts case, loose or buried; diagona
 });
 
 test('sealed rewards never move, recycle or merge; saves keep them; malformed ones start fresh',()=>{
- const s=fresh(0);s.board[22]=sealedJar(5);s.board[3]=sealedJar(8);s.board[12]=sealedCache();s.board[4]=item('chart',1);
- for(const a of [{type:'move',from:22,to:21},{type:'recycle',index:22},{type:'merge',from:3,to:4},{type:'merge',from:12,to:6}]){
+ const s=fresh(0);// loose sealed rewards, as older saves hold them
+ s.board[22]=sealedJar(5);s.board[3]=sealedJar(8);s.board[12]=sealedCache();s.board[4]=item('chart',1);
+ for(const a of [{type:'move',from:22,to:1},{type:'recycle',index:22},{type:'merge',from:3,to:4},{type:'merge',from:12,to:13}]){
   const before=JSON.stringify(s);assert.equal(act(s,a,1).ok,false,JSON.stringify(a));assert.equal(JSON.stringify(s),before);
  }
  assert.match(nameOf(sealedJar(5)),/energy jar · \+5/);assert.match(nameOf(sealedCache()),/mystery chest/);
