@@ -15,10 +15,7 @@ test('prepared route choice spends one tool anywhere on a cluttered board, keeps
   const from=s.board.findIndex(x=>x?.family===family&&x.tier===2),kept=s.board.findIndex(x=>x?.family===(family==='rig'?'chart':'rig')&&x.tier===2),stock=structuredClone(s.board[kept]);
   assert.ok(routePrepared(s,id));assert.ok(useAction(s,from,index));
   assert.deepEqual(deliveryItems(s,{type:'breach',index}).map(x=>x.index),[from]);
-  const tools=s.board.filter(x=>x?.type==='item'&&x.family===family&&x.tier===2).length;
-  ok(s,{type:'breach',index});assert.equal(s.board.filter(x=>x?.type==='item'&&x.family===family&&x.tier===2).length,tools-1);assert.deepEqual(s.board[kept],stock);
-  // On the covered board the spent tool's cell may be the first free space, where a find lands.
-  assert.ok(s.board[from]===null||s.board[from].type==='crate'&&s.board[from].kind==='relic',JSON.stringify(s.board[from]));
+  ok(s,{type:'breach',index});assert.equal(s.board[from],null);assert.deepEqual(s.board[kept],stock);
   assert.equal(s.seals.navigation,true);assert.equal(s.expedition.log.find(x=>x.type==='seal').method,'prepared-route');
   assert.equal(s.board[index].type,'glyph');
   // The breach frees the salt-crusted parts beside it in place; its finds land in free space.

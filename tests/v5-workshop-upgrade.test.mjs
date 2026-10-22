@@ -15,7 +15,7 @@ test('one upgrade: exact supplies, legacy restored migration, no reroll or repea
  for(const restored of [false,true]){const x=fresh();x.workshop.repaired=restored;x.requests.supplies=11;const raw=JSON.stringify(x);assert.equal(act(x,{type:'upgradeWorkshop'}).ok,false);assert.equal(JSON.stringify(x),raw);}
 });
 test('bench consumes spare cross-family inputs, works full-board and preserves normal output schedule',()=>{
- const s=fresh();s.landingStep=1;s.workshop.repaired=true;s.workshop.precision=true;s.board=s.board.map(x=>x??item('rig',0));
+ const s=fresh();s.landingStep=1;s.workshop.repaired=true;s.workshop.precision=true;s.board[9]=item('chart',0);s.board=s.board.map(x=>x??item('rig',0));// 9: the Ink scrap the opening merge digs out of the sand
  const [a,b]=benchInputs(s),before=structuredClone(s),result=go(s,{type:'fitSpanner'});
  assert.equal(result.index,a);assert.deepEqual(s.board[a],{...item('rig',2),spare:true});assert.equal(s.board[b],null);
  for(let i=0;i<36;i++)if(i!==a&&i!==b)assert.deepEqual(s.board[i],before.board[i]);
@@ -24,7 +24,7 @@ test('bench consumes spare cross-family inputs, works full-board and preserves n
 });
 test('protected landing tools, missing ingredients, energy and a locked bench fail atomically; charges never block fitting',()=>{
  for(const kind of ['protected','missing','energy','charge','locked']){
-  const s=fresh();s.workshop.repaired=true;s.workshop.precision=kind!=='locked';if(kind!=='protected')s.landingStep=1;
+  const s=fresh();s.workshop.repaired=true;s.workshop.precision=kind!=='locked';if(kind!=='protected')s.landingStep=1;s.board[9]=item('chart',0);// the Ink scrap the opening merge digs out
   if(kind==='missing')s.board=s.board.map(x=>x?.family==='chart'?null:x);if(kind==='energy')s.energy=0;if(kind==='charge')s.charges.rig=0;
   if(kind==='charge'){const energy=s.energy;go(s,{type:'fitSpanner'});assert.equal(s.energy,energy-1);assert.equal(s.charges.rig,0);continue;}
   const raw=JSON.stringify(s);assert.equal(act(s,{type:'fitSpanner'}).ok,false,kind);assert.equal(JSON.stringify(s),raw);
@@ -52,7 +52,7 @@ test('a fitted spanner made before the crossing survey is not trapped by the lan
  // delivered to a real request. fitSpanner now marks its output `spare`,
  // and reservedItems skips spare items when picking what to protect, so a
  // lone early spanner stays deliverable.
- const s=fresh();s.landingStep=1;s.workshop.repaired=true;s.workshop.precision=true;s.board=s.board.map(x=>x??item('rig',0));
+ const s=fresh();s.landingStep=1;s.workshop.repaired=true;s.workshop.precision=true;s.board[9]=item('chart',0);s.board=s.board.map(x=>x??item('rig',0));// 9: the Ink scrap the opening merge digs out of the sand
  go(s,{type:'fitSpanner'});
  const spannerIndex=s.board.findIndex(x=>x?.type==='item'&&x.family==='rig'&&x.tier===2);
  assert.ok(spannerIndex>=0);
@@ -71,11 +71,12 @@ test('an earned, non-spare crossing tool stays protected from optional requests'
  // toward "Chart the safe crossing" (no Bench involved) must keep them safe
  // from Requests exactly as before, since that tool is not a spare.
  const s=fresh();
- go(s,{type:'merge',from:7,to:8});// rig0+rig0 -> rig1 @8, spent on the first goal's Grip tool
+ go(s,{type:'merge',from:7,to:8});// rig0+rig0 -> rig1 @8, spent on the first goal's Grip tool; digs chart0 @9 and chart1 @14 out of the sand
  go(s,{type:'goal'});// landingStep 0 -> 1; grants a fresh chart0+rig0
  assert.equal(s.stage,0);assert.equal(s.landingStep,1);
- go(s,{type:'merge',from:9,to:10});// chart0+chart0 -> chart1 @10
- go(s,{type:'merge',from:10,to:14});// chart1+chart1 -> chart2 @14
+ const ink=s.board.findIndex((x,i)=>i!==9&&x?.type==='item'&&x.family==='chart'&&x.tier===0);
+ go(s,{type:'merge',from:ink,to:9});// chart0+chart0 -> chart1 @9
+ go(s,{type:'merge',from:9,to:14});// chart1+chart1 -> chart2 @14
  const p1=go(s,{type:'produce',id:'rig'}),p2=go(s,{type:'produce',id:'rig'});
  go(s,{type:'merge',from:p1.index,to:p2.index});// rig0+rig0 -> rig1
  go(s,{type:'merge',from:p2.index,to:13});// rig1+rig1 -> rig2 @13
@@ -100,7 +101,7 @@ test('an earned, non-spare crossing tool stays protected from optional requests'
 test('the spare marker round-trips through save/load, fresh and legacy',()=>{
  // Fresh save: a fitted spanner's spare marker must survive a reload and
  // stay exempt from the landing reservation afterwards.
- const s=fresh();s.landingStep=1;s.workshop.repaired=true;s.workshop.precision=true;s.board=s.board.map(x=>x??item('rig',0));
+ const s=fresh();s.landingStep=1;s.workshop.repaired=true;s.workshop.precision=true;s.board[9]=item('chart',0);s.board=s.board.map(x=>x??item('rig',0));// 9: the Ink scrap the opening merge digs out of the sand
  go(s,{type:'fitSpanner'});
  const spannerIndex=s.board.findIndex(x=>x?.type==='item'&&x.family==='rig'&&x.tier===2);
  const reloaded=load(JSON.stringify(s));
