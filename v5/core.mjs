@@ -32,11 +32,24 @@ export const POST_GOALS=[
  {name:'Chart the next crossing',verb:'Chart crossing',scene:'Vault opened',needs:[req('chart',6),req('rig',5)],energy:35,next:'Archive expedition badge'},
  {name:'Build an aurora beacon',verb:'Light beacon',scene:'Vault opened',needs:[req('flux',7)],energy:50,next:'Aurora collector badge'}
 ];
-export const nameOf=x=>!x?'Empty space':x.type==='prism'?'Ring reflector':x.type==='site'?ANCHORS[x.kind].name:x.type==='route'?ROUTES[x.id].name:x.type==='item'?(isTide(x)?TIDE_NAMES[x.tier]:FAMILIES[x.family].names[x.tier]):x.type==='source'?SOURCES[x.id].name:x.type==='rock'?'Saltstone blocker':x.type==='marker'?'Buried survey marker':x.type==='lock'?'Dormant relic lock':x.type==='crate'?containerInfo(x).name:x.type==='crust'?'Salt-crusted '+FAMILIES[x.family].names[x.tier].toLowerCase():x.type==='brace'?'Trail brace':x.type==='glyph'?'Echo fragment':'Buried ground';
+export const nameOf=x=>!x?'Empty space':x.type==='prism'?'Ring reflector':x.type==='site'?ANCHORS[x.kind].name:x.type==='route'?ROUTES[x.id].name:x.type==='item'?(isTide(x)?TIDE_NAMES[x.tier]:FAMILIES[x.family].names[x.tier]):x.type==='source'?SOURCES[x.id].name:x.type==='rock'?'Saltstone blocker':x.type==='marker'?'Buried survey marker':x.type==='lock'?'Dormant relic lock':x.type==='crate'?containerInfo(x).name:x.type==='crust'?'Salt-crusted '+FAMILIES[x.family].names[x.tier].toLowerCase():x.type==='jar'?'Salt-sealed energy jar · +'+x.energy:x.type==='cache'?'Salt-sealed mystery chest':x.type==='brace'?'Trail brace':x.type==='glyph'?'Echo fragment':'Buried ground';
 export const item=(family,tier,line)=>({type:'item',family,tier,...(line?{line}:{})});
 const source=id=>({type:'source',id});
 // Salt-crusted parts stay put and count for nothing until a free twin is merged onto them.
 export const crust=(family,tier)=>({type:'crust',family,tier});
+// Salt-sealed rewards: a merge in a neighbouring space cracks them. Jars pay their
+// energy at once and leave the space free; the chest becomes a mixed parts case.
+export const sealedJar=energy=>({type:'jar',energy});
+export const sealedCache=()=>({type:'cache'});
+function crackAround(s,index){
+ const out=[],col=index%6;
+ for(const j of [index-6,index+6,col>0?index-1:-1,col<5?index+1:-1]){
+  const x=j>=0&&j<36?s.board[j]:null;if(!x)continue;
+  if(x.type==='jar'){s.energy=Math.min(120,s.energy+x.energy);s.board[j]=null;out.push({index:j,type:'jar',energy:x.energy});}
+  else if(x.type==='cache'){s.board[j]=container('locker');out.push({index:j,type:'cache'});}
+ }
+ return out;
+}
 export const freesCrust=(x,y)=>x?.type==='item'&&!isTide(x)&&y?.type==='crust'&&x.family===y.family&&x.tier===y.tier;
 export function fresh(now=Date.now()){
  const board=Array(36).fill(null);
@@ -46,6 +59,8 @@ export function fresh(now=Date.now()){
  for(const [from,to] of [[19,2],[20,18],[21,11],[22,33]]){board[to]=board[from];board[from]=null;}
  // The old excavation strip and two spare corners hold salt-crusted parts to free.
  [[25,'rig',0],[26,'chart',0],[28,'rig',1],[29,'flux',0],[17,'rig',0],[35,'chart',1]].forEach(([i,f,t])=>board[i]=crust(f,t));
+ // Two sealed jars and a mystery chest beside starter pairs: early merges crack them.
+ board[22]=sealedJar(5);board[3]=sealedJar(8);board[12]=sealedCache();
  for(const i of [19,32])board[i]={type:'rock'};
  ['winch','scope','relay'].forEach((kind,n)=>board[[20,23,31][n]]={type:'site',kind,phase:'idle',progress:0});
  board[24]={type:'route',id:'ridge'};board[27]={type:'route',id:'conduit'};board[34]=container('salvage');
@@ -243,7 +258,7 @@ function step(s,a,now){
   if(!freed&&!sameKind(x,y)||x.tier>=maxTier(x,s))return fail('Merge two identical objects.');
   if(!isTide(x)&&x.tier===3&&anchors(s).some(site=>site.phase==='idle'&&ANCHORS[site.kind].equipment===x.family))trace(s,'kept-for-merge',{family:x.family});
   s.board[a.to]=item(x.family,x.tier+1,x.line);s.board[a.from]=null;s.merges++;const bonus=s.merges%3===0?1:0;s.energy=Math.min(120,s.energy+bonus);
-  const crafted=s.board[a.to];
+  const crafted=s.board[a.to],cracked=crackAround(s,a.to);
   const craftedMilestone=recordCraftMastery(s,crafted);
   const firstCraft=crafted.tier>=2&&!s.discovered.includes(discoveryKey(crafted));
   if(isTide(crafted)){const tideDiscovery=!s.discovered.includes(discoveryKey(crafted));return {...done(nameOf(crafted)+' · fulfill tide orders or keep your collection.','merge',a.to),tideDiscovery};}
@@ -258,7 +273,7 @@ function step(s,a,now){
   const chainFind=false;
   const breakthrough=firstCraft&&crafted.tier>=3;
   if(breakthrough)s.energy=Math.min(120,s.energy+(crafted.tier>=5?7:3));
-  return {...done(`${freed?'Freed from the salt · ':''}${nameOf(crafted)}${craftedMilestone?' · crew instrument calibrated':''}${breakthrough?' · breakthrough energy':''}${resupply.length?' · expedition supplies':''}${bonus?' · +1 energy':''}`,'merge',a.to),breakthrough,newDiscovery:firstCraft,discoveryReward,craftedMilestone,freedCrust:freed};
+  return {...done(`${freed?'Freed from the salt · ':''}${nameOf(crafted)}${craftedMilestone?' · crew instrument calibrated':''}${breakthrough?' · breakthrough energy':''}${resupply.length?' · expedition supplies':''}${bonus?' · +1 energy':''}`,'merge',a.to),breakthrough,newDiscovery:firstCraft,discoveryReward,craftedMilestone,freedCrust:freed,cracked};
  }
  if(a.type==='produce'){
   const p=SOURCES[a.id];if(!p||!sourceUnlocked(s,a.id))return fail(`Unlock after ${a.id==='chart'?'stabilizing the landing':'opening a breach'}.`);
@@ -350,7 +365,7 @@ function step(s,a,now){
    return done('Landing secured · Survey Kite online · field parts received. Chart the crossing next.','milestone');
   }
   if(s.stage<4){if(s.stage===0)s.landingStep=2;s.stage++;
-   if(s.stage===4){for(let i=0;i<36;i++){const y=s.board[i];if(['sealed','route'].includes(y?.type))s.board[i]=null;else if(y?.type==='crust')s.board[i]=item(y.family,y.tier);}const packed=s.board.find(x=>x?.type==='crate'&&x.kind==='relic');if(kit){const family=kit==='field'?'rig':'chart';for(const tier of [2,1,1])put(s,item(family,tier));}else if(packed)packed.left=5;else put(s,container('relic',5));s.marks+=15;trace(s,'vault',{discovered:[...s.discovered]});}
+   if(s.stage===4){for(let i=0;i<36;i++){const y=s.board[i];if(['sealed','route'].includes(y?.type))s.board[i]=null;else if(y?.type==='crust')s.board[i]=item(y.family,y.tier);else if(y?.type==='jar'){s.energy=Math.min(120,s.energy+y.energy);s.board[i]=null;}else if(y?.type==='cache')s.board[i]=container('locker');}const packed=s.board.find(x=>x?.type==='crate'&&x.kind==='relic');if(kit){const family=kit==='field'?'rig':'chart';for(const tier of [2,1,1])put(s,item(family,tier));}else if(packed)packed.left=5;else put(s,container('relic',5));s.marks+=15;trace(s,'vault',{discovered:[...s.discovered]});}
   }else{s.post++;s.marks+=10;}
   // Before the Vault rewards are raw parts and rich pulls, never finished tier-2+ parts.
   supplies(s,6,false,s.stage===2?'relic':null);
@@ -436,6 +451,8 @@ export function load(raw,now=Date.now()){
    else if(x.type==='crate'){if(!integer(x.left,1,5)||x.kind!==undefined&&!CONTAINERS[x.kind])return fresh(now);x.kind??='locker';}
    else if(x.type==='site'){if(!ANCHORS[x.kind]||!['idle','active','done'].includes(x.phase)||!integer(x.progress,0,2)||x.phase==='idle'&&x.progress!==0||x.phase==='done'&&x.progress!==2||x.phase==='active'&&x.progress>1||x.reclaimed!==undefined&&typeof x.reclaimed!=='boolean')return fresh(now);}
    else if(x.type==='route'){if(!ROUTES[x.id])return fresh(now);}
+   else if(x.type==='jar'){if(!integer(x.energy,1,50))return fresh(now);}
+   else if(x.type==='cache'){}
    else if(x.type==='crust'){if(!FAMILIES[x.family]||!integer(x.tier,0,FAMILIES[x.family].names.length-1)||x.line!==undefined)return fresh(now);}
    else if(x.type==='prism'){if(!integer(x.id,0,1)||!integer(x.turn,0,1))return fresh(now);}
    else if(!['glyph','brace','rock','sealed','marker','lock'].includes(x.type))return fresh(now);

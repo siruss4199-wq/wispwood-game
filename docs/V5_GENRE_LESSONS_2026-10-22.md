@@ -102,6 +102,17 @@ real time in which spent energy refills, as a reason to come back".
   conditions"): at 3 energy or less, +8 (was +12), once per hour. The button shows a
   countdown while it waits. New save field `rationAt`; invalid or future values are dropped.
 
+## Ideas from two reference screenshots (user, 2026-10-22: "1, 3, 6-r sanaag heregjuul")
+- (1) Crew orders: each order card shows who asks (`v5/crew.mjs`): Rover parts → Ivo,
+  Kite parts and tide treasures → Neri, Crucible parts → Tamsin (new portrait),
+  expedition kits → Bram (new portrait). Display only.
+- (3) Salt-sealed rewards on the fresh board: energy jars +8 (cell 3) and +5 (cell 22)
+  and a mystery chest (cell 12). A merge in a neighbouring space (up, down, left,
+  right) cracks them: a jar pays its energy at once and frees the space; the chest
+  becomes a mixed-parts Saltbound Locker. The Vault opening cracks any left. Free
+  cells at start: 4. New save cell types `jar` (energy 1–50) and `cache`.
+- (6) Energy reads against its refill cap, e.g. "36/50".
+
 ## Sources and limits
 No first-party data was found. Travel Town figures (100 energy, 72-cell board) come
 from fan guides; the "top-grossing" claim for Gossip Harbor is unverified. Level

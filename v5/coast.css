@@ -58,3 +58,15 @@ header .merit{display:none}
 .goalProgress.complete b{color:#a5650c}
 .progressUp{position:absolute;right:34px;bottom:8px;font-size:13px;font-weight:900;color:#1f8f78;pointer-events:none}
 @media(prefers-reduced-motion:no-preference){.progressUp{animation:progressUp 1.1s ease-out forwards}@keyframes progressUp{from{opacity:0;transform:translateY(6px)}20%{opacity:1}to{opacity:0;transform:translateY(-10px)}}.goalProgress.done i{animation:progressDone .9s ease-out}@keyframes progressDone{30%{box-shadow:0 0 0 5px #f6c55a88}}}
+/* Energy shown against its refill cap, e.g. 36/50. */
+.energyCap{font-size:.62em;opacity:.65;font-weight:800;margin-left:1px}
+/* Crew orders: the person asking stands at the card's top edge. */
+.requestCrew{display:flex;align-items:center;gap:6px;min-width:0}
+.requestCrew svg{flex:none;width:34px;height:34px;border-radius:11px;box-shadow:0 2px 0 #0000001f}
+.requestCrew .requestLane{display:flex;flex-direction:column;line-height:1.1;min-width:0}
+.requestCrew .requestLane em{font-style:normal;font-size:13px;font-weight:900;color:#1d3a40}
+/* Salt-sealed jar and chest: the crust look, plus a badge naming the prize. */
+#board .tile.jar,#board .tile.cache{background:linear-gradient(160deg,#ffffff 0%,#e8f1f2 45%,#d6e4e6 100%);box-shadow:inset 0 0 0 2px #c4d6d9,0 2px 0 #b9cacd;border-radius:12px}
+#board .tile.jar::before,#board .tile.cache::before{content:'';position:absolute;inset:2px;border-radius:10px;background:repeating-linear-gradient(135deg,#ffffffa6 0 2px,transparent 2px 8px);pointer-events:none;z-index:2}
+#board .tile.jar .art,#board .tile.cache .art{opacity:.88;filter:saturate(.75)}
+.sealBadge{position:absolute;left:50%;bottom:1px;transform:translateX(-50%);z-index:3;font-size:9px;font-weight:900;padding:1px 5px;border-radius:6px;background:#f2b84b;color:#4b2f05;white-space:nowrap;pointer-events:none}

@@ -75,8 +75,10 @@ test('fresh-player simulation opens vault and continues through two optional dis
   console.log(JSON.stringify({sideFirst,actions,rations:s.rations,milestones}));
  }
 });
-test('staged board starts 80% occupied with rewarding salvage and leaves reachable space around sources',()=>{
- const s=fresh();assert.equal(s.board.filter(x=>x===null).length,7);
+test('staged board starts 89% occupied with rewarding salvage and leaves reachable space around sources',()=>{
+ const s=fresh();assert.equal(s.board.filter(x=>x===null).length,4);
+ // Salt-sealed rewards beside starter pairs: two energy jars and a mystery chest.
+ assert.deepEqual(s.board.flatMap((x,i)=>['jar','cache'].includes(x?.type)?[i+':'+x.type+(x.energy??'')]:[]),['3:jar8','12:cache','22:jar5']);
  // Six salt-crusted parts replace the buried excavation strip and two spare corners.
  assert.deepEqual(s.board.flatMap((x,i)=>x?.type==='crust'?[i+':'+x.family+x.tier]:[]),['17:rig0','25:rig0','26:chart0','28:rig1','29:flux0','35:chart1']);
  assert.equal(s.board.some(x=>x?.type==='sealed'),false);

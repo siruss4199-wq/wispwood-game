@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,readdirSync} from 'node:fs';
-import {fresh,act,load,item,crust,count,matches,nameOf,freesCrust} from '../v5/core.mjs';
+import {fresh,act,load,item,crust,count,matches,nameOf,freesCrust,sealedJar,sealedCache} from '../v5/core.mjs';
 
 const crustAt=s=>s.board.flatMap((x,i)=>x?.type==='crust'?[i]:[]);
 function refused(s,a){const before=JSON.stringify(s),r=act(s,a,1);assert.equal(r.ok,false,JSON.stringify(a));assert.equal(JSON.stringify(s),before,'refusal leaves state untouched');return r;}
@@ -81,4 +81,32 @@ test('a full board asks for space before the conduit breach instead of losing it
  for(let i=0;i<36;i++)if(s.board[i]===null)s.board[i]=item('flux',0);
  const before=JSON.stringify(s),r=act(s,{type:'breach',index:27,from:1},1);
  assert.equal(r.ok,false);assert.match(r.message,/free space/);assert.equal(JSON.stringify(s),before);
+});
+
+test('a merge beside a sealed jar cracks it: its energy is paid at once and the space comes free',()=>{
+ const s=fresh(0),energy=s.energy;
+ const r=act(s,{type:'merge',from:15,to:16},1);// Violet shards merge next to the +5 jar at 22
+ assert.equal(r.ok,true);assert.deepEqual(r.cracked,[{index:22,type:'jar',energy:5}]);
+ assert.equal(s.board[22],null);assert.equal(s.energy,energy+5+(s.merges%3===0?1:0));
+ const r2=act(s,{type:'merge',from:10,to:9},2);// Ink scraps merge next to the +8 jar at 3
+ assert.deepEqual(r2.cracked,[{index:3,type:'jar',energy:8}]);
+});
+
+test('the mystery chest cracks into a mixed parts case; diagonal merges crack nothing',()=>{
+ const s=fresh(0);s.board[6]=item('rig',1);
+ const r=act(s,{type:'merge',from:6,to:13},1);// Grip tools merge beside the chest at 12
+ assert.deepEqual(r.cracked,[{index:12,type:'cache'}]);assert.deepEqual(s.board[12],{type:'crate',kind:'locker',left:3});
+ const t=fresh(0);
+ const r3=act(t,{type:'merge',from:16,to:15},2);// 15 is diagonal to the jar at 22
+ assert.equal(r3.ok,true);assert.deepEqual(r3.cracked,[]);assert.deepEqual(t.board[22],sealedJar(5));
+});
+
+test('sealed rewards never move, recycle or merge; saves keep them; malformed ones start fresh',()=>{
+ const s=fresh(0);
+ for(const a of [{type:'move',from:22,to:21},{type:'recycle',index:22},{type:'merge',from:3,to:4},{type:'merge',from:12,to:6}]){
+  const before=JSON.stringify(s);assert.equal(act(s,a,1).ok,false,JSON.stringify(a));assert.equal(JSON.stringify(s),before);
+ }
+ assert.match(nameOf(sealedJar(5)),/energy jar · \+5/);assert.match(nameOf(sealedCache()),/mystery chest/);
+ assert.deepEqual(load(JSON.stringify(s),2).board,s.board);
+ for(const bad of [{type:'jar',energy:0},{type:'jar',energy:99},{type:'jar'}]){const t=fresh(0);t.board[22]=bad;t.moves=4;assert.equal(load(JSON.stringify(t),3).moves,0);}
 });

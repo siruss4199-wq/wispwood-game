@@ -12,6 +12,7 @@ import {coastPlaces,placeById,doneIds,CAMP_PLACES,readyPlaces} from './coast-map
 import {xpToNext} from './levels.mjs';
 import {refillTimes,clock,REFILL_CAP,REFILL_EVERY,rationWait,RATION_ENERGY} from './energy.mjs';
 import {goalProgress} from './progress.mjs';
+import {CREW,crewFor} from './crew.mjs';
 import {LOFT_COST,DEEP_SURVEY_COST,recoveryCost,pearlDiscovered,TIDE_NAMES,isTide,maxTier,sameKind,discoveryKey,tideItem,nextTide} from './treasures.mjs';
 import {KITS} from './journey.mjs';
 import {PIER_COST,PACK_COST} from './camp.mjs';
@@ -20,7 +21,7 @@ import {WORKSHOP_COST,BENCH_COST,BENCH_NEEDS,benchInputs} from './workshop.mjs';
 import {containerInfo,contents} from './containers.mjs';
 import {SAVE_KEY,FAMILIES,SOURCES,STAGES,fresh,load,act,tick,goal,expeditionGoal,count,ready,matches,nameOf,normalContract,opportunity,nextOutput,burstOutput,item,near,sourceUnlocked,freesCrust} from './core.mjs';
 import {art,scene as vectorScene,portrait} from './art.mjs';
-import {feedback,sound,reduced,snapshotTask,moment} from './feedback.mjs';
+import {feedback,sound,reduced,snapshotTask,moment,rewardFlight} from './feedback.mjs';
 import {platform} from '../v4/platform.mjs';
 import {siteSurface,SITE_NAMES,deliveryItems,continuation} from './presentation.mjs';
 import {deliverFeedback} from './feedback.mjs';
@@ -240,7 +241,7 @@ function renderRequests(){
  const purpose=(state.camp.earlyFragments??0)<2?'Next order: Tide Dial Fragment':primary?.cost?primary.name+' · '+Math.min(primary.supplies,primary.cost)+'/'+primary.cost+' ◆'+(primary.supplies>=primary.cost?' · READY':''):primary?.action==='treasure'?'Recover & merge the next treasure':primary?.action==='orders'?'Orders fund Supply Pier cases':(state.camp.earlyFragments??0)<2?'Next order: Tide Dial Fragment':!state.workshop.repaired?'Workshop 8◆':!state.camp.pier?'Unlock useful supply cases':!state.camp.loft?'Charting Loft 20◆':state.camp.deepSurvey?(state.discovered.includes('chart:tide:4')?'Fulfill treasure orders':'Discover the Ocean Crown'):pearlDiscovered(state)?'Deep Survey 18◆':'Discover a Pearl Astrolabe';
  $('#requests').innerHTML=`${ending?`<button id="ordersToggle" type="button" aria-expanded="${postChapterOrdersOpen}" class="ordersToggle">${postChapterOrdersOpen?'Hide optional camp orders':'Optional camp orders'} · ◆${q.supplies} <span aria-hidden="true">${postChapterOrdersOpen?'▴':'▾'}</span></button>`:''}<div class="requestHeading"><span>${ending?'OPTIONAL ORDERS':'CREW DELIVERIES'} <small>${orderPurpose(state)}</small></span><b title="Earn camp supplies by delivering orders">◆ <span id="supplies">${q.supplies}</span></b>${campBuild?'':action}</div><div class="requestShelf" aria-label="Crew orders; swipe for alternatives">${q.orders.filter((o,i)=>o&&(!openingPier||openingPier.visibleLanes.includes(i))).sort((a,b)=>Number(b.id===suggestedRequest)-Number(a.id===suggestedRequest)).map(o=>{
  const p=requestProgress(state,o),active=requestId===o.id&&focus==='request',energy=Math.min(o.energy,120-state.energy);
- return `<button class="requestCard ${p.ready?'ready':''} ${active?'active':''} ${o.id===suggestedRequest?'storySuggested':''}" data-request="${o.id}" aria-pressed="${active}" aria-label="${o.id===suggestedRequest?'Suggested next: ':''}${o.lane} request: ${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier,r.line))).join(', ')}. ${p.ready?active?'Deliver':'Ready. Tap once to collect':'In progress'}. Reward ${o.supplies} camp supplies${energy?` and ${energy} energy`:`, energy full`}"><b class="requestLane">${o.lane==='long'?'Expedition kit':o.lane==='quick'?'Quick':'Standard'}</b><span class="requestItems">${p.progress.map(r=>`<span>${art(item(r.family,r.tier,r.line))}<b>${r.current}/${r.count}</b>${r.protected?'<i title="One copy kept for expedition">◆</i>':''}</span>`).join('')}</span><span class="requestReward">+${o.supplies} ◆${energy?` · +${energy} ϟ`:``}</span><strong>${p.ready?'✓ COLLECT':active&&p.progress.some(r=>r.protected)?'MAKE SPARE':'MAKE'}</strong></button>`;
+ return `<button class="requestCard ${p.ready?'ready':''} ${active?'active':''} ${o.id===suggestedRequest?'storySuggested':''}" data-request="${o.id}" aria-pressed="${active}" aria-label="${o.id===suggestedRequest?'Suggested next: ':''}${CREW[crewFor(o)].name} asks (${o.lane}): ${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier,r.line))).join(', ')}. ${p.ready?active?'Deliver':'Ready. Tap once to collect':'In progress'}. Reward ${o.supplies} camp supplies${energy?` and ${energy} energy`:`, energy full`}"><span class="requestCrew">${portrait(crewFor(o))}<b class="requestLane"><em>${CREW[crewFor(o)].name}</em>${o.lane==='long'?'Expedition kit':o.lane==='quick'?'Quick':'Standard'}</b></span><span class="requestItems">${p.progress.map(r=>`<span>${art(item(r.family,r.tier,r.line))}<b>${r.current}/${r.count}</b>${r.protected?'<i title="One copy kept for expedition">◆</i>':''}</span>`).join('')}</span><span class="requestReward">+${o.supplies} ◆${energy?` · +${energy} ϟ`:``}</span><strong>${p.ready?'✓ COLLECT':active&&p.progress.some(r=>r.protected)?'MAKE SPARE':'MAKE'}</strong></button>`;
  }).join('')}</div>`;
 }
 function renderSide(){
@@ -293,7 +294,7 @@ function render(){
  $('.world').classList.toggle('compassFound',state.stage===0&&state.landingStep===1&&state.discovered.includes('chart:tide:1'));
  $('#mapReady').hidden=!readyPlaces(state).length;
  $('.destination').textContent=state.stage===4?'VAULT DISCOVERED':'OPEN THE TIDEGLASS VAULT';
- $('#energy').textContent=state.energy;renderEnergyClock();$('#marks').textContent=state.marks;
+ $('#energy').innerHTML=state.energy+'<small class="energyCap">/'+REFILL_CAP+'</small>';renderEnergyClock();$('#marks').textContent=state.marks;
  $('#levelNum').textContent=state.level.level;$('#levelPill').style.setProperty('--p',Math.round(100*state.level.xp/xpToNext(state.level.level))+'%');
  $('#levelPill').setAttribute('aria-label',`Expedition level ${state.level.level} · ${state.level.xp}/${xpToNext(state.level.level)} XP`);
  const viewStage=state.stage===0&&state.landingStep===1?1:state.stage;
@@ -320,7 +321,7 @@ function render(){
   const useful=isSource&&!locked&&(orderProgress?orderProgress.progress.some(r=>r.family===x.id&&r.current<r.count):needed().some(r=>r.family===x.id&&count(state,r)<r.count));
   const expedition=!!g?.needs.some(r=>matches(x,r)),contract=sideVisible&&(!!order||sideChoice()==='contract')&&c.needs.some(r=>matches(x,r));
   const matching=selectedItem?.type==='item'&&i!==selected&&(x?.type==='item'&&sameKind(x,selectedItem)||freesCrust(selectedItem,x))&&selectedItem.tier<maxTier(selectedItem,state);
-  return `<button class="tile ${x?.type??'empty'} ${locked?'locked':''} ${useful?'useful':''} ${selected===i?'selected':''} ${matching?'match':''} ${needed().some(r=>matches(x,r))?'wanted':''}" data-index="${i}" ${x?.family||isSource||x?.type==='crate'?`data-family="${x.family??(isSource?x.id:containerInfo(x).family)}"`:''} data-variant="${i%3}" data-use="${expedition&&contract?'both':expedition?'expedition':contract?'contract':''}" aria-label="${nameOf(x)}${x?.type==='crate'?' · tap to reveal · '+contents(x).map(nameOf).join(', '):''}${expedition&&contract?' · needed for expedition and contract':expedition?' · needed for expedition':contract?' · useful for contract':''}${locked?' · locked':isSource?' · '+SOURCES[x.id].cost+' energy':''}. Space ${i+1}" aria-pressed="${selected===i}">${art((x?.type==='site'&&state.stage<2||x?.type==='route'&&state.stage!==1)?{type:'sealed'}:x)}${expedition||contract?`<span class="useBadge" aria-hidden="true">${expedition?'◆':''}${contract?'▰':''}</span>`:''}${isSource?(locked?`<span class="lockedLabel">${x.id==='chart'?'CLEAR PATH':'EXCAVATE'}</span>`:`<span class="energyCue">ϟ${SOURCES[x.id].cost}</span>`):x?.type==='crate'?`<span class="pulls">${x.left}</span>`:''}</button>`;
+  return `<button class="tile ${x?.type??'empty'} ${locked?'locked':''} ${useful?'useful':''} ${selected===i?'selected':''} ${matching?'match':''} ${needed().some(r=>matches(x,r))?'wanted':''}" data-index="${i}" ${x?.family||isSource||x?.type==='crate'?`data-family="${x.family??(isSource?x.id:containerInfo(x).family)}"`:''} data-variant="${i%3}" data-use="${expedition&&contract?'both':expedition?'expedition':contract?'contract':''}" aria-label="${nameOf(x)}${x?.type==='crate'?' · tap to reveal · '+contents(x).map(nameOf).join(', '):''}${expedition&&contract?' · needed for expedition and contract':expedition?' · needed for expedition':contract?' · useful for contract':''}${locked?' · locked':isSource?' · '+SOURCES[x.id].cost+' energy':''}. Space ${i+1}" aria-pressed="${selected===i}">${art((x?.type==='site'&&state.stage<2||x?.type==='route'&&state.stage!==1)?{type:'sealed'}:x)}${expedition||contract?`<span class="useBadge" aria-hidden="true">${expedition?'◆':''}${contract?'▰':''}</span>`:''}${isSource?(locked?`<span class="lockedLabel">${x.id==='chart'?'CLEAR PATH':'EXCAVATE'}</span>`:`<span class="energyCue">ϟ${SOURCES[x.id].cost}</span>`):x?.type==='crate'?`<span class="pulls">${x.left}</span>`:x?.type==='jar'?`<span class="sealBadge">+${x.energy}ϟ</span>`:x?.type==='cache'?'<span class="sealBadge">?</span>':''}</button>`;
  }).join('');
  const direction=currentOrderDirection();
  for(const index of direction?.indices??[]){
@@ -419,6 +420,8 @@ function renderSelection(){
 
   }
   else if(x.type==='sealed')desc='Unchosen excavation ground. Opens when the vault is secured.';
+  else if(x.type==='jar')desc=`Salt-sealed energy. Merge any two parts in a space right next to it to crack it: +${x.energy} energy at once.`;
+  else if(x.type==='cache')desc='A sealed chest of expedition parts. Merge any two parts right next to it to crack it open.';
   else if(x.type==='crust')desc=`Merge a free ${FAMILIES[x.family].names[x.tier]} onto it to free it as a ${FAMILIES[x.family].names[x.tier+1]}.`;
   else if(x.type==='crate'){desc=`${containerInfo(x).purpose} · Tap on board to reveal. Drag to keep.`;}
   else if(x.type==='glyph'){desc='Use with a sight lens for richer source drops.';buttons='<button data-action="recycle">Recycle +5 ϟ</button>';}
@@ -461,6 +464,8 @@ function run(a){
  if(result.event==='milestone'&&(state.stage>before||state.landingStep>landingBefore)){const id=state.landingStep>landingBefore&&state.stage===0?'chart':state.stage===2?'flux':null;if(id)board.querySelector(`[data-index="${state.board.findIndex(x=>x?.type==='source'&&x.id===id)}"]`)?.classList.add('unlocked');}
  if(result.index!==null&&result.event!=='merge')board.querySelector(`[data-index="${result.index}"]`)?.classList.add('pop');
  if(result.discoveryReward){board.querySelector(`[data-index="${result.discoveryReward.index}"]`)?.classList.add('rewardLanded');}
+ // Cracked salt: jars fly their energy to the bar, the chest shows its new case.
+ if(result.cracked?.length){for(const c of result.cracked){const tile=board.querySelector(`[data-index="${c.index}"]`);if(c.type==='jar')rewardFlight(tile?.getBoundingClientRect(),$('.resource').getBoundingClientRect(),'+'+c.energy+' ϟ');else tile?.classList.add('unlocked');}sound.play('rare');if(result.cracked.some(c=>c.type==='cache'))moment('Mystery chest cracked','A mixed parts case · tap it to open',{type:'crate',kind:'locker'});}
  // A new level opens a chest: name what it gave and show the case landing.
  if(result.levelUp){const up=result.levelUp.at(-1);setTimeout(()=>{moment('Level '+up.level+'!','Chest: +'+result.levelUp.reduce((n,u)=>n+u.energy,0)+' ϟ'+result.levelUp.filter(u=>u.kind).map(u=>' · '+containerInfo({kind:u.kind}).name).join(''),up.kind?{type:'crate',kind:up.kind}:null);sound.play('milestone');for(const u of result.levelUp)if(u.index>=0)board.querySelector(`[data-index="${u.index}"]`)?.classList.add('unlocked');$('#levelPill').classList.add('levelUp');setTimeout(()=>$('#levelPill').classList.remove('levelUp'),1400);},500);}
  if(a.type==='restoreEngine'){moment('Star-ocean engine restored','Use a Loop Cell on a producer · three enriched pulls',item('flux',5));}
