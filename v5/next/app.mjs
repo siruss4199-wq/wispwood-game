@@ -15,7 +15,7 @@ import {sound,reduced,burst,rewardFlight,moment as sharedMoment} from '../feedba
 function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el=document.querySelector('.moment');if(!x||!el)return;const icon=document.createElement('span');icon.style.cssText='float:left;width:42px;height:42px;margin-right:10px';icon.innerHTML=draw(x);icon.firstElementChild.style.cssText='width:100%;height:100%';el.prepend(icon);}
 
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 8 · merge generators to grow them';
+export const BUILD='Build 9 · tideglass';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
@@ -71,7 +71,7 @@ function renderBoard(){
  const focusKeys=new Set(focus?.needs.map(r=>r.family+r.tier)??[]);
  board.innerHTML=state.board.map((x,i)=>{
   const [r,c]=cellPos(i),locked=x?.type==='source'&&!sourceOpen(state,x.id);
-  const twin=sel&&i!==selected&&(sel.type==='item'&&(x?.type==='item'&&matches(x,sel)&&sel.tier<maxTier(sel.family)||x?.type==='cargo'&&reachable(state,i)&&matches(sel,x.key))||sel.type==='kit'&&kitsMerge(sel,x)||generatorsMerge(sel,x)||sel.type==='cargo'&&matches(x,sel.key));
+  const twin=sel&&i!==selected&&(sel.type==='item'&&(x?.type==='item'&&matches(x,sel)&&sel.tier<maxTier(sel.family)||x?.type==='glass'&&matches(sel,x)&&sel.tier<maxTier(sel.family)||x?.type==='cargo'&&reachable(state,i)&&matches(sel,x.key))||sel.type==='kit'&&kitsMerge(sel,x)||generatorsMerge(sel,x)||sel.type==='cargo'&&matches(x,sel.key)||sel.type==='glass'&&matches(x,sel));
   const wanted=x?.type==='item'&&want.has(x.family+x.tier),focused=x?.type==='item'&&focusKeys.has(x.family+x.tier);
   let badge='';
   if(x?.type==='source')badge=locked?`<span class="lockedLabel">NEXT AREA</span>`:`<span class="energyCue">ϟ1</span>${producerLevel(x)>1?`<span class="srcLevel">Lv${producerLevel(x)}</span>`:''}`;
@@ -99,7 +99,8 @@ function renderSelection(){
  }else if(x.type==='kit'){
   desc=`Tap again for a free part (${chainsOf(state,x.family).map(c=>CHAINS[c].names[0]).join(' or ')} chain) · ${x.left} of ${kitCapacity(x)} left.`+(kitFull(x)&&x.size<MAX_KIT_SIZE?` Or merge with a twin into a ${CRATES[x.size]} (${KIT_DROPS[x.size+1].length} better parts).`:'');
   buttons='<button class="accent" data-action="openKit">Take a part</button>';
-} else if(x.type==='cargo'&&!reachable(state,selected)){title='Sealed cargo';desc='Buried deeper in the cargo. Open the crates around it first, and this one will show the part that opens it.'+(x.find?.type==='source'?' Something glows inside.':'');
+} else if(x.type==='glass'){const n=CHAINS[x.family].names,gen=CHAINS[x.family].gen,have=state.board.some(y=>matches(y,x));title='Tideglass';desc=`A ${n[x.tier]} locked in tideglass. Merge a free ${n[x.tier]} onto it: the glass breaks and you get a ${n[x.tier+1]}.`+(have?' You have one: tap it, then the glass.':sourceOpen(state,gen)?` ${SOURCES[gen].name} makes them.`:` Its generator is still sealed somewhere on the board.`);
+ } else if(x.type==='cargo'&&!reachable(state,selected)){title='Sealed cargo';desc='Buried deeper in the cargo. Open the crates around it first, and this one will show the part that opens it.'+(x.find?.type==='source'?' Something glows inside.':'');
  }else if(x.type==='cargo'){const k=CHAINS[x.key.family].names[x.key.tier],have=state.board.some(y=>matches(y,x.key)),gen=CHAINS[x.key.family].gen;
   title='Sealed cargo';desc=`Opens with a ${k}: lay one on it. What is inside is a surprise`+(x.find?.type==='source'?' — something glows in there.':'.')+(have?' You have one: tap it, then this cargo.':sourceOpen(state,gen)?` ${SOURCES[gen].name} makes them.`:` Its generator is still sealed somewhere on the board.`);}
  else if(x.type==='jar')desc='Energy, sealed in a jar.';
@@ -132,6 +133,7 @@ function run(a){
  if(r.event==='deliver'){focusOrder=null;selected=null;}
  persist();render();
  const tile=r.index!=null?board.querySelector(`[data-index="${r.index}"]`):null;
+ if(r.event==='merge'&&r.freed===true){tile?.classList.add('glassBreak');sound.play('rare');}
  if(r.event==='merge'){tile?.classList.add('merge-pop');burst(tile?.getBoundingClientRect(),state.board[r.index]?.family);sound.play('merge',state.board[r.index]?.tier??0);for(const d of r.dug??[])board.querySelector(`[data-index="${d.index}"]`)?.classList.add('unlocked');}
  if((r.event==='produce'||r.event==='kit')&&fromRect&&tile&&!reduced()){const to=tile.getBoundingClientRect(),el=document.createElement('div');el.className='flight';el.innerHTML=draw(state.board[r.index]);el.style.cssText=`left:${fromRect.x}px;top:${fromRect.y}px;--dx:${to.x-fromRect.x}px;--dy:${to.y-fromRect.y}px`;document.body.append(el);setTimeout(()=>el.remove(),460);}
  if(r.event==='deliver'){rewardFlight(orderRect,$('#starPill').getBoundingClientRect(),`+${r.stars} ★`);sound.play('contract');$('#starPill').classList.remove('bump');void $('#starPill').offsetWidth;$('#starPill').classList.add('bump');}
@@ -152,9 +154,10 @@ function clickTile(i){
  // A generator: tapping it makes a part; tapping a second identical one right after merges them.
  if(x?.type==='source'){const from=selected;selected=i;if(from!==i&&generatorsMerge(prev,x)){run({type:'merge',from,to:i});return;}if(sourceOpen(state,x.id))run({type:'produce',id:x.id,index:i});render();return;}
  if(selected!==null&&selected!==i&&prev){
-  if(prev.type==='item'&&(x?.type==='item'&&matches(x,prev)||x?.type==='cargo'&&matches(prev,x.key))||prev.type==='kit'&&kitsMerge(prev,x)||['item','kit','source'].includes(prev.type)&&!x){run({type:'merge',from:selected,to:i});return;}
+  if(prev.type==='item'&&(x?.type==='item'&&matches(x,prev)||x?.type==='glass'&&matches(prev,x)||x?.type==='cargo'&&matches(prev,x.key))||prev.type==='kit'&&kitsMerge(prev,x)||['item','kit','source'].includes(prev.type)&&!x){run({type:'merge',from:selected,to:i});return;}
  }
  if(prev?.type==='cargo'&&matches(x,prev.key)){run({type:'unseal',from:i,index:selected});return;}
+ if(prev?.type==='glass'&&matches(x,prev)){run({type:'merge',from:i,to:selected});return;}
  if(x?.type==='kit'&&selected===i){run({type:'openKit',index:i});return;}
  selected=selected===i&&x?.type==='item'?null:x?i:null;render();
 }

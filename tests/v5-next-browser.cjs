@@ -1,7 +1,7 @@
 // Coast Camp in a real browser at 360/390/430 px: the scripted player's choices are
 // made through visible taps only, through two restorations; then reload, the map,
 // the menu, and the Classic save left untouched.
-// Sealed cargo covers the board; crates touching open ground show the part that opens them.
+// Sealed cargo and tideglass cover the board; crates touching open ground show the part that opens them.
 const assert=require('node:assert/strict');const {chromium,webkit}=require('playwright');
 const URL='http://127.0.0.1:8080/v5/play.html';
 const read=page=>page.evaluate(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')));
@@ -32,7 +32,7 @@ async function perform(page,a){
    await page.reload();await page.waitForSelector('#board .tile');
    assert.equal(await page.locator('#beat[open]').count(),1,'the area intro plays on a new camp');await closeBeats(page);
    assert.equal(await page.locator('#board .tile').count(),49);
-   assert.equal(await page.locator('#board .tile.cargo').count(),40,'sealed cargo covers all but the camp');assert.equal(await page.locator('#board .cargoKey').count(),5,'only the crates touching the camp show their keys');assert.equal(await page.locator('#board .tile.cargo.deep').count(),35,'the rest are buried deeper');assert.equal(await page.locator('#board .tile.source').count(),1,'one generator to start');
+   assert.equal(await page.locator('#board .tile.cargo').count(),31,'sealed cargo covers most of the board');assert.equal(await page.locator('#board .tile.glass').count(),9,'tideglass near each generator');assert.equal(await page.locator('#board .cargoKey').count(),4,'only the crates touching the camp show their keys');assert.equal(await page.locator('#board .tile.cargo.deep').count(),27,'the rest are buried deeper');assert.equal(await page.locator('#board .tile.source').count(),1,'one generator to start');
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'no sideways scroll');
    for(const t of await page.locator('#board .tile').all()){const b=await t.boundingBox();assert.ok(b.width>=44&&b.height>=44,'44px touch targets');}
    for(const sel of ['#energyPill','#starPill','#levelPill','#mapButton','#menuButton']){const b=await page.locator(sel).boundingBox();assert.ok(b&&b.x>=0&&b.x+b.width<=width,sel+' fits the header');}
@@ -46,7 +46,7 @@ async function perform(page,a){
    assert.ok(restores>=2,'places restored through the UI');
    const s=await read(page);assert.deepEqual(s.done.slice(0,2),['beach-path','beach-tent']);
    assert.equal(await page.locator('.restoredIcon').count(),s.done.length,'restored places stand on the coast picture');
-   assert.ok(await page.locator('#board .tile.cargo').count()<40,'cargo was opened by laying parts on it');assert.equal(await page.locator('#board .tile.source[data-family="chart"]').count(),1,'the Survey Kite came out of its cargo');
+   assert.ok(await page.locator('#board .tile.cargo').count()<31,'cargo was opened by laying parts on it');assert.equal(await page.locator('#board .tile.source[data-family="chart"]').count(),1,'the Survey Kite came out of its cargo');
    await page.reload();await page.waitForSelector('#board .tile');
    assert.deepEqual((await read(page)).board,s.board,'reload keeps the board');assert.equal(await page.locator('#beat[open]').count(),0,'no intro on a running camp');
    await page.locator('#mapButton').tap();assert.equal(await page.locator('#coastMap .place').count(),7);assert.equal(await page.locator('#coastMap .place[data-status="done"]').count(),s.done.length);

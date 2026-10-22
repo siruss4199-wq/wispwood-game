@@ -16,7 +16,7 @@ export const VERSION=3,MAX_TIER=7,MAX_ENERGY=120;// MAX_TIER: the longest chain
 export const SOURCES=Object.fromEntries(Object.entries(GENERATOR_NAMES).map(([id,name])=>[id,{name}]));
 export const XP={merge:1,restore:5,feed:5,unseal:2};// feed: merging two generators// orders pay their stars as XP
 export const STAR_VALUE=[1,1,2,4,7,12];// stars per item by tier
-export const CHEST_ENERGY=7;
+export const CHEST_ENERGY=5;
 // Coast Camp's own crates (the generator boxes of v5/kits.mjs, by size).
 export const CRATES=['Driftwood crate','Sea chest','Captain\'s trunk'];
 // Generators in the order they are found; each is opened with the one before's parts.
@@ -42,6 +42,7 @@ export function nameOf(x){
  if(x.type==='jar')return 'Energy · +'+x.energy;
  if(x.type==='stars')return 'Star pouch · +'+x.n+' ★';
  if(x.type==='cargo')return 'Sealed cargo · opens with a '+CHAINS[x.key.family].names[x.key.tier];
+ if(x.type==='glass')return 'Tideglass · '+CHAINS[x.family].names[x.tier];
  return '';
 }
 export const matches=(x,r)=>x?.type==='item'&&x.family===r.family&&x.tier===r.tier;
@@ -57,23 +58,25 @@ export const openChains=s=>openFamilies(s).flatMap(g=>chainsOf(s,g));
 export const CAMP=[0,1,2,6,7,8,12,13,18];
 const I=item,K=kit,E=jar,S=stars,G=source;
 export const CARGO={
- 3:['rig',1,E(5)],
- 4:['rig',1,E(5)],9:['rig',2,I('rig',1)],14:['rig',1,S(2)],19:['rig',2,K('rig',1)],24:['rig',1,E(5)],
- 5:['rig',2,S(2)],10:['rig',2,S(2)],15:['chart',2,G('rope')],20:['rig',2,G('rig')],25:['chart',1,E(5)],30:['rig',2,I('rig',2)],
- 36:['chart',2,S(3)],11:['rig',3,K('chart',1)],16:['rig',1,G('chart')],21:['rig',2,S(2)],26:['chart',2,G('chart')],31:['rig',3,G('rig')],43:['chart',2,G('chart')],
- 37:['rope',2,S(3)],17:['rope',1,I('rope',1)],22:['rope',2,G('shell')],27:['rig',3,E(5)],32:['rope',2,K('rope',1)],44:['chart',2,S(3)],
- 38:['rope',2,E(5)],23:['rope',3,G('lamp')],28:['chart',3,K('chart',2)],33:['rig',3,S(4)],45:['chart',3,I('chart',2)],
- 39:['shell',2,K('shell',1)],29:['rope',3,S(4)],34:['rig',4,G('rope')],46:['shell',1,E(5)],
- 40:['shell',3,S(4)],35:['lamp',2,K('lamp',1)],47:['rope',3,G('shell')],
- 41:['lamp',3,S(4)],48:['shell',3,K('shell',2)],
- 42:['lamp',4,K('rig',3)]
+ 3:['rig',1,E(5)],4:['rig',1,E(5)],5:['rig',2,S(2)],36:['chart',2,S(3)],
+ 9:['rig',2,I('rig',1)],10:['rig',2,S(2)],37:['rope',2,S(3)],
+ 14:['rig',1,S(2)],15:['rig',2,I('rig',2)],16:['rig',1,G('chart')],38:['rope',2,E(5)],
+ 19:['rig',2,K('rig',1)],20:['rig',2,G('rig')],21:['rig',2,S(2)],22:['chart',2,K('chart',1)],23:['rope',2,S(3)],39:['rope',3,G('shell')],
+ 26:['chart',2,G('chart')],27:['rig',3,E(5)],28:['chart',3,K('chart',2)],
+ 30:['chart',3,G('rope')],31:['rig',3,G('rig')],33:['rig',3,S(4)],35:['rope',3,G('rope')],41:['shell',3,G('shell')],
+ 43:['chart',2,G('chart')],44:['chart',2,S(3)],45:['chart',3,I('chart',2)],46:['shell',3,G('lamp')],48:['shell',3,K('shell',2)],42:['lamp',4,K('rig',3)]
 };
+// Tideglass: a part locked in glass near the generator that makes it. Merge a free
+// twin onto it and the glass breaks: the part comes free one tier up. Each new
+// generator finds work waiting for it (docs/V5_SEALED_CARGO_PLAN_2026-10-22.md, build 9).
+export const GLASS={24:['rig',1],11:['chart',1],17:['chart',0],25:['rope',0],32:['rope',1],29:['shell',0],40:['shell',1],34:['lamp',0],47:['lamp',1]};
+export const glass=(family,tier)=>({type:'glass',family,tier});
 export const cargoAt=i=>{const c=CARGO[i];return c?cargo({family:c[0],tier:c[1]},structuredClone(c[2])):null;};
 export function fresh(now=Date.now()){
  const board=Array(BOARD_SIZE).fill(null);
  board[0]=source('rig');
  for(const [i,t] of [[2,0],[7,0],[8,0],[13,1],[18,0]])board[i]=item('rig',t);
- for(let i=0;i<BOARD_SIZE;i++)if(!CAMP.includes(i))board[i]=cargoAt(i);
+ for(let i=0;i<BOARD_SIZE;i++)if(!CAMP.includes(i))board[i]=GLASS[i]?glass(...GLASS[i]):cargoAt(i);
  const s={version:VERSION,board,energy:40,energyAt:now,stars:0,level:freshLevel(),taps:{},
   orders:[],slots:3,orderSeq:0,ordersDone:0,area:0,done:[],found:[],moves:0,merges:0,lastAt:now};
  for(const g of Object.keys(GENERATOR_CHAINS))s.taps[g]=0;
@@ -129,7 +132,7 @@ export const newestGenerator=s=>[...GENERATOR_ORDER].reverse().find(g=>sourceOpe
 // opened, so the board opens outward from the camp one ring at a time; cargo
 // further in keeps even its key hidden.
 const neighbours=i=>{const [r,c]=cellPos(i);return [[r-1,c],[r+1,c],[r,c-1],[r,c+1]].map(([rr,cc])=>rr<0||cc<0||rr>6||cc>6?-1:cc===6?36+rr:rr===6?43+cc:rr*6+cc).filter(j=>j>=0);};
-export const reachable=(s,i)=>s.board[i]?.type==='cargo'&&neighbours(i).some(j=>s.board[j]?.type!=='cargo');
+export const reachable=(s,i)=>s.board[i]?.type==='cargo'&&neighbours(i).some(j=>!['cargo','glass'].includes(s.board[j]?.type));
 // Which part each reachable cargo is waiting for.
 export const cargoKeys=s=>s.board.flatMap((x,i)=>reachable(s,i)?[{index:i,...x.key}]:[]);
 
@@ -196,6 +199,13 @@ function step(s,a,now){
    return {ok:true,event:'unseal',index:to,opened,xp:XP.unseal,message:'Cargo opened · '+(opened.type==='source'?'a new generator: '+SOURCES[opened.id].name+'!':opened.type==='jar'?`+${opened.energy} energy`:opened.type==='stars'?`+${opened.stars} ★`:opened.type==='space'?'empty':nameOf(s.board[to]))};
   }
   if(a.type==='unseal')return fail('Lay the part on the cargo it opens.');
+  // A free twin breaks the tideglass: the part comes free one tier up.
+  if(y?.type==='glass'){
+   if(x.type!=='item'||x.family!==y.family||x.tier!==y.tier)return fail(`Merge a free ${CHAINS[y.family].names[y.tier]} onto it to break the glass.`);
+   if(y.tier>=maxTier(y.family))return fail('This is the top of its chain.');
+   s.board[to]=item(y.family,y.tier+1);s.board[from]=null;s.merges++;
+   return {ok:true,event:'merge',freed:true,index:to,xp:XP.merge+1,message:'The tideglass breaks · '+nameOf(s.board[to])};
+  }
   if(!y){s.board[to]=x;s.board[from]=null;return {ok:true,event:'move',index:to,message:'Moved.'};}
   if(x.type==='kit'){
    if(y?.type==='source')return fail('Crates give parts. To level a generator up, merge it with another of the same kind and level.');
@@ -269,6 +279,7 @@ function validCell(x){
  if(x.type==='source')return !!SOURCES[x.id]&&validProducerLevel(x);
  if(x.type==='kit')return validCrate(x);
  if(x.type==='cargo')return !!x.key&&validItem(x.key)&&validFind(x.find);
+ if(x.type==='glass')return validItem(x)&&x.tier<maxTier(x.family);
  return false;
 }
 const validNeed=r=>r&&CHAINS[r.family]&&integer(r.tier,0,maxTier(r.family))&&integer(r.count,1,4);
@@ -283,7 +294,7 @@ const covered=x=>x?.type==='sand'||x?.type==='gate'||x?.type==='water';
 function upgrade(s){
  const keyOf=i=>{const c=CARGO[i];return c?{family:c[0],tier:c[1]}:{family:'rig',tier:1};};
  s.board=s.board.map((x,i)=>covered(x)?cargo(keyOf(i),x.find):x);
- for(const [g,cell] of [['rope',15],['shell',22],['lamp',23]]){
+ for(const [g,cell] of [['rope',30],['shell',39],['lamp',46]]){
   if(s.board.some(x=>x?.type==='source'&&x.id===g||x?.type==='cargo'&&x.find?.type==='source'&&x.find.id===g))continue;
   const key={family:CARGO[cell][0],tier:CARGO[cell][1]};
   let j=s.board[cell]?.type==='cargo'?cell:s.board.findIndex(x=>x?.type==='cargo'&&x.find?.type!=='source');

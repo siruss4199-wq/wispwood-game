@@ -40,6 +40,8 @@ export function nextAction(s){
  // Merge two identical generators into a stronger one.
  const gens=b.flatMap((x,i)=>x?.type==='source'?[i]:[]);
  for(const i of gens)for(const j of gens)if(i!==j&&generatorsMerge(b[i],b[j]))return {type:'merge',from:j>i?j:i,to:j>i?i:j};
+ // Break tideglass with a spare twin (the part comes free one tier up).
+ for(let j=0;j<b.length;j++)if(b[j]?.type==='glass'){const i=b.findIndex(x=>x?.type==='item'&&x.family===b[j].family&&x.tier===b[j].tier);if(i>=0&&count(s,b[j])>(orderWant.get(b[j].family+b[j].tier)??0))return {type:'merge',from:i,to:j};}
  const kits=b.flatMap((x,i)=>x?.type==='kit'?[i]:[]);
  for(const i of kits)for(const j of kits)if(i!==j&&kitsMerge(b[i],b[j]))return {type:'merge',from:i,to:j};
  const want=wanted(s),free=b.filter(x=>x===null).length;

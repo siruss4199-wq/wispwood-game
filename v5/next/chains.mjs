@@ -68,6 +68,8 @@ const CARGO='<path d="M10 30L50 18L90 30V78L50 92L10 78Z" fill="#8a6440"/><path 
 // Draw any Coast Camp cell: new chains and crates here, everything else with the
 // shared art. Water shows what lies on the sea floor beneath it.
 export function draw(x,cls=''){
+ // Tideglass: the part shows through a faceted sea-green shard with cracks.
+ if(x?.type==='glass')return draw({type:'item',family:x.family,tier:x.tier},(cls+' inGlass').trim())+'<svg class="glassShard" viewBox="0 0 100 100" aria-hidden="true"><path d="M14 22L40 8 78 14 92 46 82 86 44 94 10 72Z" fill="#9fe3e0" fill-opacity=".38" stroke="#e9fffd" stroke-width="3"/><path d="M40 8L50 40 92 46M50 40L44 94M50 40L10 72M14 22L50 40" stroke="#ffffff" stroke-opacity=".55" stroke-width="1.5" fill="none"/><path d="M22 30L34 22" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".8"/></svg>';
  // Deep cargo (not yet touching open ground) keeps even its key hidden.
  if(x?.type==='cargo')return `<svg class="art cargoArt ${cls}" viewBox="0 0 100 100" aria-hidden="true" data-art="cargo">${MATERIALS}<g stroke-linejoin="round" stroke-linecap="round">${CARGO}</g></svg>`+(x.deep?'':`<span class="cargoKey" aria-hidden="true">${draw({type:'item',family:x.key.family,tier:x.key.tier})}</span>`);
  if(x?.type==='source'&&GENERATOR_SHAPES[x.id])return `<svg class="art ${cls}" viewBox="0 0 100 100" aria-hidden="true" data-art="source-${x.id}">${MATERIALS}<g stroke-linejoin="round" stroke-linecap="round">${GENERATOR_SHAPES[x.id]}</g></svg>`;

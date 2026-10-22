@@ -102,3 +102,19 @@ left the shells and lamps unfound, so the Grip tool stays.
 - Scripted "curious" player (works toward the glowing crates): second Rover ~3.5 min,
   Survey Kite ~5 min, Rope Winch ~13, Shell Trap ~20, Lantern Kiln ~23; Landing Beach
   in 25–30 min, energy ~18 at the end. Level chest +7 energy. Costs 4·6·8·10·13·14·17 ★.
+
+## Build 9 — tideglass (user, after a reference board: "the second generator, once it can open, goes merging onto half-buried items"; "Ok bulagdsaniig ni arai uur zuiliin designaar orluulay")
+- Half-buried items are done our own way: a part **locked in tideglass** (a faceted
+  sea-green shard over it). Merge a free twin onto it: the glass breaks and the part
+  comes free one tier up. Nine glass cells, near the generator that makes each part:
+  a Grip tool beside the camp (to teach it), Kite parts by the Kite, rope by the Rope
+  Winch, shells by the Shell Trap, lamps by the Lantern Kiln. A new generator has work
+  waiting at once.
+- Glass is not open ground: cargo behind it stays sealed until it breaks.
+- Generators spaced apart so they come one at a time: Survey Kite (cell 16, Grip
+  tool), Rope Winch (30, Survey scope), Shell Trap (39, Pulley block), Lantern Kiln (46,
+  Pearl oyster). Copies: Rovers at 20 and 31, Kites at 26 and 43, a Rope Winch at 35, a
+  Shell Trap at 41. Level chest +5 energy.
+- Scripted player, 5–6 s per action: Survey Kite ~3.5 min, Rope Winch 7–8, Shell Trap
+  12–15, the Lantern Kiln left for after Landing Beach; Landing Beach 20–25 min, energy
+  ~20 at the end; all nine glass cells broken.

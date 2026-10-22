@@ -75,3 +75,11 @@
 #board .tile.cargo.deep .cargoArt{filter:brightness(.82) saturate(.8)}
 @media(prefers-reduced-motion:no-preference){#board .tile.cargo.newKey .cargoKey{animation:newKey .7s cubic-bezier(.2,1.6,.4,1)}}
 @keyframes newKey{from{transform:scale(0)}}
+/* Tideglass: a sea-green shard over the part; a free twin breaks it. */
+#board .tile.glass{background:linear-gradient(160deg,#d8f4f1,#a8dcd8);box-shadow:inset 0 -3px 0 #7fbcb7,inset 0 0 0 1px #effffd;border-radius:10px;overflow:hidden}
+#board .tile.glass .art.inGlass{opacity:.92;filter:saturate(.8) hue-rotate(-6deg);transform:scale(.86)}
+.glassShard{position:absolute;inset:4%;width:92%;height:92%;pointer-events:none}
+#board .tile.glass.match{outline:3px dashed #229a92;outline-offset:-3px}
+@media(prefers-reduced-motion:no-preference){#board .tile.glass .glassShard{animation:glassGlint 3.2s ease-in-out infinite}#board .tile.glassBreak{animation:glassBreak .7s ease-out}}
+@keyframes glassGlint{50%{filter:brightness(1.25)}}
+@keyframes glassBreak{0%{box-shadow:0 0 0 0 #bff7f2;transform:scale(1.12)}100%{box-shadow:0 0 0 14px #bff7f200}}
