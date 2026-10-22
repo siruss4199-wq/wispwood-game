@@ -253,3 +253,20 @@ The coast picture and the next-upgrade card are gone from the board screen: it h
 header (energy, coins, level, BEACH, menu), the crew orders and the board. The beach
 picture, its places and every upgrade are on the beach screen only; the BEACH button's
 dot shows when an upgrade is affordable, and the hint line says so too.
+
+## Build 18 — the story gives generators; crates hold other things (user: "Ter hoorond ni storynd upgrade hiiheer generator ugdug baidlaar yavah uu, hairtsagand arai uur zuil uldeegeed")
+Decisions (asked first): beach stages give generator copies and level 3 still brings out
+the next kind; crates hold a new Tide token plus more coins, parts and crates.
+- **Copies from the beach:** Lay a boardwalk, Restore the Coastal Workshop and Hang the
+  signal flags each give a Rivet Rover (enough for level 3 → Survey Kite); Add a cargo
+  crane, Mirror the beacon and Rope the cliff steps each give a copy of the newest
+  generator (`copy:'newest'`). A line in each stage's story says so.
+- **No generators or Brass cogs in cargo.** In their place: four **Tide tokens** (new,
+  approved: lay one on a part and it becomes a part of the same tier that a crew order is
+  waiting for; refused when no order waits for one), captain's trunks and big coin pouches
+  (60–80 coins), all behind tier 4–5 keys; tokens glow green. Cogs stay valid in saves.
+- Saves: a new cell/find type `{type:'token'}`; version 4 saves load unchanged.
+- Beach costs ×1.22 (1295 coins), since copies no longer cost energy.
+- Scripted player, 4–6 s per action: Survey Kite at 10–15 min, Rope Winch at 25–38 min,
+  all 21 stages in 39–58 min, energy 10–16 at the end, no waiting; 20 of 40 cells still
+  closed at the end.

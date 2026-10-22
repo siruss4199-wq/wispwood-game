@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {cellPos} from '../v5/core.mjs';
-import {SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
+import {SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
 import {AREAS} from '../v5/next/areas.mjs';
 import {kit} from '../v5/kits.mjs';
 import {nextAction} from './v5-next-policy.mjs';
@@ -65,7 +65,7 @@ test('coins upgrade each place in three stages; first stages give their rewards'
  assert.ok(areaDone(s));assert.equal(builtCount(s),21);assert.equal(nextTask(s),null);
  assert.match(refused(s,{type:'restore',id:'beach-path'}).message,/fully upgraded/);refused(s,{type:'restore'});
  assert.deepEqual(AREAS[0].tasks.map(t=>t.stages.length),Array(7).fill(3));
- const total=AREAS[0].tasks.flatMap(t=>t.stages.map(x=>x.cost)).reduce((a,b)=>a+b);assert.equal(total,1060);
+ const total=AREAS[0].tasks.flatMap(t=>t.stages.map(x=>x.cost)).reduce((a,b)=>a+b);assert.equal(total,1295);
  assert.ok(AREAS[0].tasks.every(t=>t.stages[0].cost<t.stages[1].cost&&t.stages[1].cost<t.stages[2].cost),'each stage costs more');
 });
 
@@ -157,18 +157,15 @@ test('one generator, one chain; each generator at level 3 brings out the next ki
  for(const g of Object.keys(GENERATOR_CHAINS)){assert.equal(GENERATOR_CHAINS[g].length,1);assert.equal(CHAINS[GENERATOR_CHAINS[g][0][0]].gen,g);}
  assert.deepEqual(GENERATOR_ORDER,['rig','chart','rope','shell','lamp']);assert.equal(UNLOCK_LEVEL,3);
  assert.deepEqual(GENERATOR_ORDER.map(nextKind),['chart','rope','shell','lamp',null]);
- // Cargo holds no new kinds, only copies (to level up a generator you have) and cogs.
- const gens=Object.entries(CARGO).filter(([,c])=>c[2].type==='source').map(([i,c])=>({cell:+i,id:c[2].id,key:CHAINS[c[0]].gen}));
- const copies={};for(const g of gens)copies[g.id]=(copies[g.id]??0)+1;assert.deepEqual(copies,{rig:3,chart:2,rope:1,shell:2});
- for(const g of gens)assert.ok(GENERATOR_ORDER.indexOf(g.key)<=GENERATOR_ORDER.indexOf(g.id),'a copy never needs a part from a later generator');
+ // Cargo holds no generators or cogs any more: copies come from the beach's stages (build 18).
+ assert.ok(Object.values(CARGO).every(c=>c[2].type!=='source'&&c[2].type!=='cog'),'no generators or cogs in cargo');
  for(const [,c] of Object.entries(CARGO))assert.ok(GENERATOR_ORDER.includes(CHAINS[c[0]].gen));
- // Play it through: the second Rover sits in a corner behind a crate (or tideglass) and opens with a Crawler jack.
- const s=fresh(0);assert.ok(!cargoKeys(s).some(k=>k.index===7),'the copy is not at the camp edge');assert.deepEqual(s.board[7],cargo({family:'rig',tier:4},source('rig')));
- s.board[15]=item('rig',3);ok(s,{type:'unseal',from:15,index:13});assert.ok(cargoKeys(s).some(k=>k.index===7),'opening a crate shows the keys of the crates behind it');
- s.board[15]=item('rig',4);const r=ok(s,{type:'unseal',from:15,index:7});assert.deepEqual(r.opened,{index:7,type:'source',id:'rig'});
- assert.equal(r.released,undefined,'a second Rover alone brings nothing');assert.equal(sourceOpen(s,'chart'),false);
+ const gifts=AREAS[0].tasks.flatMap(t=>t.stages.flatMap((st,k)=>st.effect?.copy?[t.id+(k+1)+':'+st.effect.copy]:[]));
+ assert.deepEqual(gifts,['beach-path2:rig','beach-mast2:rig','beach-workshop1:rig','beach-pier2:newest','beach-beacon2:newest','beach-cliff2:newest'],'the beach gives three Rovers, then copies of the newest generator');
+ // Play it through: two Rovers make level 2.
+ const s=fresh(0);s.board[7]=source('rig');
  // Merge the two Rovers: level 2 is not enough yet; a Brass cog makes level 3 and brings out the Survey Kite beside it.
- const m2=ok(s,{type:'merge',from:7,to:ROVER});assert.equal(s.board[ROVER].level,2);assert.equal(m2.released,undefined);
+ const m2=ok(s,{type:'merge',from:7,to:ROVER});assert.equal(s.board[ROVER].level,2);assert.equal(m2.released,undefined);assert.equal(sourceOpen(s,'chart'),false);
  s.board[7]=cog();const m=ok(s,{type:'merge',from:7,to:ROVER});assert.equal(s.board[ROVER].level,3);
  assert.equal(m.released.length,1);assert.equal(m.released[0].id,'chart');assert.deepEqual(s.board[m.released[0].index],source('chart'));
  for(let n=0;n<8;n++){const p=ok(s,{type:'produce',id:'chart'});assert.equal(s.board[p.index].family,'chart');s.board[p.index]=null;}
@@ -185,17 +182,17 @@ test('one generator, one chain; each generator at level 3 brings out the next ki
 test('cargo keys grow harder away from the camp and every generator is reachable',()=>{
  const s=fresh(0),keys=cargoKeys(s);
  assert.deepEqual(keys.map(k=>k.index),[9,13,17,25,29,33],'only the crates touching the camp show their keys');
- // The more useful the find, the harder the key: in each ring, generators and Brass cogs
- // need a higher part than any energy, coins, part or crate.
- const ring=i=>{const [r,c]=cellPos(i);return Math.max(Math.abs(r-3),Math.abs(c-3));},useful=f=>f.type==='source'||f.type==='cog';
+ // The more useful the find, the harder the key: in each ring, Tide tokens, captain's trunks
+ // and big coin pouches need a higher part than any small pouch, energy, part or small crate.
+ const ring=i=>{const [r,c]=cellPos(i);return Math.max(Math.abs(r-3),Math.abs(c-3));},useful=f=>f.type==='token'||f.type==='kit'&&f.size===3||f.type==='coins'&&f.n>=60;
  for(const n of [2,3]){
   const cells=Object.entries(CARGO).filter(([i])=>ring(+i)===n),hi=Math.min(...cells.filter(([,c])=>useful(c[2])).map(([,c])=>c[1])),lo=Math.max(...cells.filter(([,c])=>!useful(c[2])).map(([,c])=>c[1]));
-  assert.ok(hi>=lo&&hi>=4,`ring ${n}: generators and cogs need tier ${hi}+, everyday finds at most ${lo}`);
+  assert.ok(hi>=lo&&hi>=4,`ring ${n}: tokens, trunks and big pouches need tier ${hi}+, everyday finds at most ${lo}`);
  }
  assert.ok(keys.filter(k=>!useful(s.board[k.index].find)).every(k=>k.tier>=2&&k.tier<=3),'everyday crates next to the camp: well-merged parts (Split spanners, Pocket winches, Survey scopes)');
  assert.equal(keys.filter(k=>k.tier===2).length,1,'one easier crate, straight above the Rover, to teach it');
- assert.equal(Object.values(CARGO).filter(c=>c[2].type==='cog').length,4,'four Brass cogs');
- assert.deepEqual(CARGO[42].slice(0,2),['lamp',4],'the far corner (a Brass cog) needs a Beacon lens');
+ assert.equal(Object.values(CARGO).filter(c=>c[2].type==='token').length,4,'four Tide tokens');
+ assert.deepEqual(CARGO[42].slice(0,2),['lamp',4],'the far corner (a big coin pouch) needs a Beacon lens');
  // A scripted player finds every generator during Landing Beach.
  const t=fresh(0);let now=0;const found=[];
  while(!areaDone(t)&&now<90*60*1000){tick(t,now);const a=nextAction(t);if(!a){now+=30000;continue;}const r=ok(t,a,now);now+=6000;for(const n of r.released??[])found.push([n.id,+(now/60000).toFixed(1)]);}
@@ -250,20 +247,34 @@ test('tideglass takes no part: merges beside it crack it, the third breaks it an
 });
 
 
-test('a Brass cog from hard cargo raises the generator it is laid on by one level',()=>{
- const s=fresh(0);
- // Cell 17, beside the camp, holds a cog behind a Bridge rig (a tier-5 key: cogs are worth it).
- assert.deepEqual(s.board[17],cargo({family:'rig',tier:5},cog()));
- s.board[15]=item('rig',5);const r=ok(s,{type:'unseal',from:15,index:17});
- assert.equal(r.opened.type,'cog');assert.deepEqual(s.board[17],cog());assert.match(r.message,/Brass cog/);
- refused(s,{type:'merge',from:17,to:14});refused(s,{type:'recycle',index:17});refused(s,{type:'openKit',index:17});
- ok(s,{type:'move',from:17,to:15});
- const u=ok(s,{type:'merge',from:15,to:ROVER});assert.equal(u.event,'producerUp');assert.equal(u.cog,true);assert.equal(s.board[ROVER].level,2);assert.ok(!s.board.some(x=>x?.type==='cog'),'the cog is used up');assert.equal(u.released,undefined,'level 2 alone does not bring out the Kite');
- // Not past the top level.
+test('a Brass cog (from older saves) still raises the generator it is laid on by one level',()=>{
+ const s=fresh(0);s.board[15]=cog();
+ refused(s,{type:'merge',from:15,to:14});refused(s,{type:'recycle',index:15});refused(s,{type:'openKit',index:15});
+ ok(s,{type:'move',from:15,to:22});
+ const u=ok(s,{type:'merge',from:22,to:ROVER});assert.equal(u.event,'producerUp');assert.equal(u.cog,true);assert.equal(s.board[ROVER].level,2);assert.ok(!s.board.some(x=>x?.type==='cog'),'the cog is used up');
  s.board[15]=cog();s.board[ROVER].level=MAX_GENERATOR_LEVEL;assert.match(refused(s,{type:'merge',from:15,to:ROVER}).message,/top level/);
- // Saves keep a cog on the board and in cargo; a malformed one starts a new camp.
- const back=load(JSON.stringify(s),5);assert.deepEqual(back.board[15],cog());assert.deepEqual(back.board[40].find,CARGO[40][2]);
+ const back=load(JSON.stringify(s),5);assert.deepEqual(back.board[15],cog());
  for(const f of [x=>x.board[15]={type:'cog',level:2},x=>x.board[2]=cargo({family:'rig',tier:4},{type:'cog',n:1})]){const t=structuredClone(s);f(t);assert.equal(load(JSON.stringify(t),5).moves,0,f.toString());}
+});
+
+test('a Tide token from hard cargo turns a part into one a crew order is waiting for',()=>{
+ const s=fresh(0);
+ // Cell 7, in the corner beside the camp, holds a token behind a Crawler jack.
+ assert.deepEqual(s.board[7],cargo({family:'rig',tier:4},token()));
+ s.board[15]=item('rig',3);ok(s,{type:'unseal',from:15,index:13});
+ s.board[15]=item('rig',4);const r=ok(s,{type:'unseal',from:15,index:7});
+ assert.equal(r.opened.type,'token');assert.deepEqual(s.board[7],token());assert.match(r.message,/Tide token/);
+ refused(s,{type:'recycle',index:7});refused(s,{type:'merge',from:7,to:ROVER});
+ // An order wants a Sight lens (Kite, tier 2); lay the token on a Split spanner (Rover, tier 2).
+ s.orders[0]={id:'o99',who:'neri',needs:[{family:'chart',tier:2,count:1}],coins:10};
+ s.board[22]=item('rig',2);const t=ok(s,{type:'merge',from:7,to:22});
+ assert.equal(t.event,'swap');assert.deepEqual(s.board[22],item('chart',2));assert.ok(!s.board.some(x=>x?.type==='token'),'the token is used up');
+ assert.ok(orderItems(s,s.orders[0]),'the order can be delivered');
+ // No order waits for another part of that tier: refused, nothing changes.
+ s.board[15]=token();s.board[26]=item('rig',5);assert.match(refused(s,{type:'merge',from:15,to:26}).message,/No crew order/);
+ // Saves keep a token; a malformed one starts a new camp.
+ assert.deepEqual(load(JSON.stringify(s),5).board[15],token());
+ const bad=structuredClone(s);bad.board[15]={type:'token',n:2};assert.equal(load(JSON.stringify(bad),5).moves,0);
 });
 
 test('a build-15 save (version 3, stars) loads with coins and its restored places at stage 1',()=>{

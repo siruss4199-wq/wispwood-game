@@ -51,6 +51,9 @@ export function nextAction(s){
  // Merge two identical generators into a stronger one.
  const gens=b.flatMap((x,i)=>x?.type==='source'?[i]:[]);
  for(const i of gens)for(const j of gens)if(i!==j&&generatorsMerge(b[i],b[j]))return {type:'merge',from:j>i?j:i,to:j>i?i:j};
+ // A Tide token turns a part no order needs into one an order is waiting for.
+ {const t=b.findIndex(x=>x?.type==='token');if(t>=0){const om=new Map();for(const o of s.orders)for(const r of o.needs)om.set(r.family+r.tier,(om.get(r.family+r.tier)??0)+r.count);
+  const i=b.findIndex(x=>x?.type==='item'&&count(s,x)>(om.get(x.family+x.tier)??0)&&s.orders.some(o=>o.needs.some(r=>r.tier===x.tier&&r.family!==x.family&&count(s,r)<r.count)));if(i>=0)return {type:'merge',from:t,to:i};}}
  // A Brass cog goes on the generator that will bring out the next kind, else the busiest one.
  {const c=b.findIndex(x=>x?.type==='cog'),need=upgradeNeeded(s),g=need?b.findIndex(x=>x?.type==='source'&&x.id===need):[...gens].sort((i,j)=>(s.taps[b[j].id]??0)-(s.taps[b[i].id]??0)).find(i=>(b[i].level??1)<5);if(c>=0&&g!==undefined&&g>=0)return {type:'merge',from:c,to:g};}
  const kits=b.flatMap((x,i)=>x?.type==='kit'?[i]:[]);

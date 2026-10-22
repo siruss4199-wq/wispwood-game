@@ -41,6 +41,9 @@ export const coins=n=>({type:'coins',n});
 export const source=id=>({type:'source',id});
 // A Brass cog (found in cargo, user: "generator ahiulagch"): drag it onto a generator for +1 level.
 export const cog=()=>({type:'cog'});
+// A Tide token (found in cargo, build 18): lay it on a part and it becomes a part of the same
+// tier that a crew order is waiting for.
+export const token=()=>({type:'token'});
 export const cargo=(key,find)=>({type:'cargo',key,...(find?{find}:{})});
 const integer=(x,a,b)=>Number.isInteger(x)&&x>=a&&x<=b;
 
@@ -54,6 +57,7 @@ export function nameOf(x){
  if(x.type==='cargo')return 'Sealed cargo · opens with a '+CHAINS[x.key.family].names[x.key.tier];
  if(x.type==='glass')return 'Tideglass · '+CHAINS[x.family].names[x.tier];
  if(x.type==='cog')return 'Brass cog · +1 generator level';
+ if(x.type==='token')return 'Tide token · turns a part into one an order wants';
  return '';
 }
 export const matches=(x,r)=>x?.type==='item'&&x.family===r.family&&x.tier===r.tier;
@@ -72,24 +76,25 @@ export const cellIndex=(r,c)=>c===6?36+r:r===6?43+c:r*6+c;
 const at=(r,c)=>cellIndex(r,c);
 export const CAMP=[at(2,2),at(2,3),at(2,4),at(3,2),at(3,3),at(3,4),at(4,2),at(4,3),at(4,4)];
 export const ROVER=at(3,3);
-const I=item,K=kit,E=jar,S=n=>coins(n*COIN_RATE),G=source,C=cog;
+const I=item,K=kit,E=jar,S=n=>coins(n*COIN_RATE),T=token;
 // [row, column, key chain, key tier, find]
 const CARGO_CELLS=[
  // The more useful the find, the harder the key (user, 2026-10-22: "hairtsagnaas mash heregtei
  // zuiliig hetsuu neey"): everyday finds open with tier-3 parts next to the camp and tier 3–4
- // at the edge; generator copies and Brass cogs (what levels a generator up, and so brings
- // out the next kind) with tier 4–5. Energy is rare and small: two +5 jars.
+ // at the edge; Tide tokens, captain's trunks and big coin pouches with tier 4–5. Generators
+ // no longer come from cargo: the beach's stages give the copies (build 18, user: "storynd
+ // upgrade hiiheer generator ugdug, hairtsagand arai uur zuil uldeegeed"). Energy is rare.
  // Ring 2 (next to the camp, between the tideglass): one Split-spanner crate above the Rover
- // to teach it; a second Rivet Rover in a corner behind a Crawler jack.
- [1,1,'rig',4,G('rig')],[1,3,'rig',2,S(3)],[1,5,'chart',5,G('chart')],
- [2,1,'rig',3,K('rig',1)],[4,1,'chart',3,S(4)],[5,1,'rope',5,G('rope')],
- [2,5,'rig',5,C()],[4,5,'chart',3,I('chart',3)],[5,5,'chart',3,K('chart',1)],
+ // to teach it; a Tide token in a corner behind a Crawler jack.
+ [1,1,'rig',4,T()],[1,3,'rig',2,S(3)],[1,5,'chart',5,K('chart',3)],
+ [2,1,'rig',3,K('rig',1)],[4,1,'chart',3,S(4)],[5,1,'rope',5,T()],
+ [2,5,'rig',5,S(12)],[4,5,'chart',3,I('chart',3)],[5,5,'chart',3,K('chart',1)],
  [5,3,'rig',3,E(5)],
- // Ring 3 (the edge): tier 3–4 keys for everyday finds, tier 4–5 for copies and cogs.
- [0,1,'chart',5,G('chart')],[0,2,'rig',4,E(5)],[0,3,'rig',4,S(10)],[0,4,'chart',4,K('chart',2)],[0,5,'shell',4,G('shell')],
- [1,6,'shell',3,S(6)],[2,6,'rope',3,I('rope',2)],[3,6,'rig',5,G('rig')],[4,6,'rope',5,C()],
- [6,6,'lamp',4,C()],[6,4,'shell',3,K('shell',1)],[6,3,'rope',4,S(10)],[6,1,'rope',3,K('rope',1)],[6,0,'rig',5,G('rig')],
- [4,0,'chart',5,C()],[3,0,'rig',4,K('rig',2)],[2,0,'shell',4,G('shell')]
+ // Ring 3 (the edge): tier 3–4 keys for everyday finds, tier 4–5 for tokens, trunks and big pouches.
+ [0,1,'chart',5,K('chart',3)],[0,2,'rig',4,E(5)],[0,3,'rig',4,S(10)],[0,4,'chart',4,K('chart',2)],[0,5,'shell',4,T()],
+ [1,6,'shell',3,S(6)],[2,6,'rope',3,I('rope',2)],[3,6,'rig',5,S(16)],[4,6,'rope',5,K('rope',3)],
+ [6,6,'lamp',4,S(16)],[6,4,'shell',3,K('shell',1)],[6,3,'rope',4,S(10)],[6,1,'rope',3,K('rope',1)],[6,0,'rig',5,K('rig',3)],
+ [4,0,'chart',5,T()],[3,0,'rig',4,K('rig',2)],[2,0,'shell',4,S(12)]
 ];
 export const CARGO=Object.fromEntries(CARGO_CELLS.map(([r,c,f,tier,find])=>[at(r,c),[f,tier,find]]));
 // Tideglass: a part locked in glass near the generator that makes it. Six ring the camp, so a
@@ -157,6 +162,7 @@ function reveal(s,j){
  if(f.type==='source'){s.board[j]=source(f.id);return {index:j,type:'source',id:f.id};}
  if(f.type==='kit'){s.board[j]=kit(f.family,f.size);return {index:j,type:'kit'};}
  if(f.type==='cog'){s.board[j]=cog();return {index:j,type:'cog'};}
+ if(f.type==='token'){s.board[j]=token();return {index:j,type:'token'};}
  s.board[j]=item(f.family,f.tier);return {index:j,type:'item'};
 }
 // Parts seen for the first time (for "New!" moments in the UI).
@@ -249,7 +255,7 @@ function step(s,a,now){
   const from=a.from,to=a.to??a.index;
   if(!valid(from)||!valid(to)||from===to)return fail('Choose another space.');
   const x=s.board[from],y=s.board[to];
-  if(!['item','kit','source','cog'].includes(x?.type))return fail('That stays where it is.');
+  if(!['item','kit','source','cog','token'].includes(x?.type))return fail('That stays where it is.');
   if(x.type==='source'){
    if(!y){s.board[to]=x;s.board[from]=null;return {ok:true,event:'move',index:to,message:'Moved.'};}
    if(!generatorsMerge(x,y))return fail(y?.type==='source'&&y.id===x.id&&producerLevel(y)>=MAX_GENERATOR_LEVEL?`${SOURCES[x.id].name} is at its top level.`:'Merge two generators of the same kind and level.');
@@ -264,12 +270,21 @@ function step(s,a,now){
    y.level=producerLevel(y)+1;s.board[from]=null;
    return {ok:true,event:'producerUp',cog:true,index:to,xp:XP.feed,message:`Brass cog · ${SOURCES[y.id].name} reaches level ${y.level}`};
   }
+  // A Tide token turns the part it is laid on into a part of the same tier an order wants.
+  if(x.type==='token'){
+   if(!y){s.board[to]=x;s.board[from]=null;return {ok:true,event:'move',index:to,message:'Moved.'};}
+   if(y.type!=='item')return fail('Lay the Tide token on a part: it becomes a part a crew order wants.');
+   const want=s.orders.flatMap(o=>o.needs).find(r=>r.tier===y.tier&&r.family!==y.family&&count(s,r)<r.count);
+   if(!want)return fail(`No crew order is waiting for a different ${['first','second','third','fourth','fifth','sixth','seventh','eighth'][y.tier]}-tier part.`);
+   s.board[to]=item(want.family,y.tier);s.board[from]=null;
+   return {ok:true,event:'swap',index:to,xp:XP.unseal,message:'Tide token · '+nameOf(s.board[to])};
+  }
   // A part laid on the cargo it opens is used up, and the cargo opens.
   if(y?.type==='cargo'){
    if(!reachable(s,to))return fail('Open the cargo next to your camp first: this one is buried deeper.');
    if(!matches(x,y.key))return fail(`This cargo opens with a ${CHAINS[y.key.family].names[y.key.tier]}.`);
    s.board[from]=null;const opened=reveal(s,to);
-   return {ok:true,event:'unseal',index:to,opened,xp:XP.unseal,message:'Cargo opened · '+(opened.type==='source'?'a new generator: '+SOURCES[opened.id].name+'!':opened.type==='cog'?'a Brass cog! Lay it on a generator: +1 level':opened.type==='jar'?`+${opened.energy} energy`:opened.type==='stars'?`+${opened.stars} ★`:opened.type==='space'?'empty':nameOf(s.board[to]))};
+   return {ok:true,event:'unseal',index:to,opened,xp:XP.unseal,message:'Cargo opened · '+(opened.type==='source'?'a new generator: '+SOURCES[opened.id].name+'!':opened.type==='cog'?'a Brass cog! Lay it on a generator: +1 level':opened.type==='token'?'a Tide token! Lay it on a part to turn it into one an order wants':opened.type==='jar'?`+${opened.energy} energy`:opened.type==='stars'?`+${opened.stars} ★`:opened.type==='space'?'empty':nameOf(s.board[to]))};
   }
   if(a.type==='unseal')return fail('Lay the part on the cargo it opens.');
   if(y?.type==='glass')return fail(`Tideglass takes no part. Merge in a space beside it: ${GLASS_HITS} merges break it.`);
@@ -309,7 +324,7 @@ function step(s,a,now){
   if(s.coins<t.cost)return fail(`${t.name} needs ${t.cost} coins. Deliver crew orders for coins.`);
   s.coins-=t.cost;s.built[t.id]=t.stage;const e=t.effect??{},effects={};
   if(e.energy){s.energy=Math.min(MAX_ENERGY,s.energy+e.energy);effects.energy=e.energy;}
-  if(e.copy){effects.copy=put(s,source(e.copy));effects.copyId=e.copy;}
+  if(e.copy){const id=e.copy==='newest'?newestGenerator(s):e.copy;effects.copy=put(s,source(id));effects.copyId=id;}
   if(e.kit){const family=e.kit[0]==='newest'?newestGenerator(s):e.kit[0];effects.kit=put(s,kit(family,e.kit[1]));effects.kitFamily=family;}
   if(e.slots&&s.slots<e.slots){s.slots=e.slots;while(s.orders.length<s.slots)s.orders.push(makeOrder(s));effects.slots=e.slots;}
   if(areaDone(s))effects.areaDone=AREAS[s.area].id;
@@ -338,7 +353,7 @@ function validFind(f){
  if(f?.type==='coins')return integer(f.n,1,100);
  if(f?.type==='kit')return validCrate(f);
  if(f?.type==='source')return !!GENERATOR_CHAINS[f.id];
- if(f?.type==='cog')return Object.keys(f).length===1;
+ if(f?.type==='cog'||f?.type==='token')return Object.keys(f).length===1;
  return false;
 }
 function validCell(x){
@@ -347,7 +362,7 @@ function validCell(x){
  if(x.type==='source')return !!SOURCES[x.id]&&validProducerLevel(x);
  if(x.type==='kit')return validCrate(x);
  if(x.type==='cargo')return !!x.key&&validItem(x.key)&&validFind(x.find);
- if(x.type==='cog')return Object.keys(x).length===1;
+ if(x.type==='cog'||x.type==='token')return Object.keys(x).length===1;
  if(x.type==='glass')return validItem(x)&&x.tier<maxTier(x.family)&&(x.cracks===undefined||integer(x.cracks,0,GLASS_HITS-1));
  return false;
 }

@@ -65,6 +65,7 @@
 @keyframes cargoGlow{50%{opacity:.45}}
 .cargoGlow.cogGlow{box-shadow:0 0 12px 4px #9be7c0,inset 0 0 10px #e3fff0}
 #board .tile.cog{background:linear-gradient(160deg,#fff7dc,#f3e2a9)}
+#board .tile.token{background:linear-gradient(160deg,#e8fbf8,#bfeee7)}
 @keyframes keyReady{50%{transform:scale(1.15);box-shadow:0 1px 3px #0004,0 0 0 3px #2c9a78}}
 #board .tile.cargo.match{outline:3px dashed #229a92;outline-offset:-3px}
 @media(prefers-reduced-motion:no-preference){#board .tile.unsealed{animation:unsealed .8s cubic-bezier(.2,1.5,.4,1)}}
