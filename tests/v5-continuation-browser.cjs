@@ -27,7 +27,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium,webki
     });
     assert.equal(await page.locator('#goalButton').textContent(),expected,'camp goal CTA must match the recommended order');
     assert.ok((await page.locator('#goalButton').boundingBox()).height>=44);
-    assert.equal(await page.locator('#board .tile').count(),36);
+    assert.equal(await page.locator('#board .tile').count(),49);
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
    }
    assert.deepEqual(await read(),legacy,'responsive review must not change progress');
