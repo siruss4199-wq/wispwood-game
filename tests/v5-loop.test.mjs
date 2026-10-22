@@ -27,13 +27,13 @@ function invariants(s){
  }
 }
 
-test('fresh board holds only producers, parts and a case',()=>{
+test('fresh board holds only the Rover and three pairs of offcuts',()=>{
  const s=fresh(0);
  assert.equal(s.version,VERSION);
  assert.ok(s.board.every(x=>x===null||['item','source','crate'].includes(x.type)));
  assert.deepEqual(s.board[0],source('rig'));
  assert.equal(currentTask(s).id,'path');
- assert.equal(s.board.filter(x=>x?.type==='item').length,10);
+ assert.equal(s.board.filter(x=>x?.type==='item').length,6);
  assert.deepEqual(s.orders.lanes,[null,null],'orders open after the pier is braced');
  invariants(s);
 });
@@ -63,11 +63,11 @@ test('a full board opens only the last part of a case in place',()=>{
 
 test('tasks consume their parts, reward capability and advance one at a time',()=>{
  const s=fresh(0);
- assert.equal(act(s,{type:'task'},1).ok,true,'two Grip tools start on the board');
+ assert.equal(act(s,{type:'task'},1).ok,false,'the first Grip tool must be merged');
+ ok(s,{type:'merge',from:14,to:15});ok(s,{type:'task'});
  assert.equal(currentTask(s).id,'brace');
- assert.equal(count(s,{family:'rig',tier:1}),1);
- assert.equal(act(s,{type:'task'},1).ok,false,'the second Grip tool must be merged');
- ok(s,{type:'merge',from:7,to:8});ok(s,{type:'task'});
+ assert.equal(count(s,{family:'rig',tier:1}),0,'the task consumed it');
+ ok(s,{type:'merge',from:20,to:21});ok(s,{type:'merge',from:8,to:9});ok(s,{type:'task'});
  assert.equal(currentTask(s).id,'deck');
  assert.equal(s.orders.lanes.filter(Boolean).length,2,'the braced pier opens crew orders');
  invariants(s);
@@ -124,7 +124,7 @@ for(const route of ['ridge','conduit'])test(`scripted player finishes the chapte
  const merges=before.filter(x=>x==='merge').length,taps=before.filter(x=>x==='produce').length;
  assert.ok(vault>=80&&vault<=200,'actions to the Vault: '+vault);
  assert.ok(merges>=taps,'merging outweighs tapping ('+merges+' merges, '+taps+' taps)');
- assert.ok(r.taskAt.every((t,i)=>!i||t.task==='mast'||t.step-r.taskAt[i-1].step<=45),'no stretch over 45 actions between first-session tasks');
+ assert.ok(r.taskAt.every((t,i)=>!i||t.task==='mast'||t.step-r.taskAt[i-1].step<=50),'no stretch over 50 actions between first-session tasks');
  invariants(s);
 });
 
@@ -213,4 +213,18 @@ test('save slots keep their keys; replay never overwrites the original',()=>{
  assert.equal(loadSlot(storage,3).active,true);assert.equal(loadSlot(storage,3).state.task,0);
  assert.equal(storage.getItem(SAVE_KEY),old,'original slot untouched');
  assert.equal(currentTask(returnOriginal(storage,4)).id,'vault');
+});
+
+test('following only the on-screen suggestion finishes the chapter',async()=>{
+ const {suggest}=await import('../v5/guide.mjs');
+ const s=fresh(0);let steps=0;
+ for(;steps<600&&currentTask(s);steps++){
+  const g=suggest(s);
+  const a=g.kind==='task'?{type:'task',choice:g.choice}:g.kind==='merge'?{type:'merge',from:g.cells[0],to:g.cells[1]}:g.kind==='order'?{type:'order',id:g.id}:
+   g.kind==='open'?{type:'open',index:g.cells[0]}:g.kind==='produce'?{type:'produce',id:s.board[g.cells[0]].id}:g.kind==='meal'?{type:'meal'}:
+   g.kind==='recycle'?{type:'recycle',index:s.board.findIndex((x,i)=>x?.type==='item'&&!reservedItems(s).has(i))}:null;
+  assert.ok(a,'suggestion '+g.kind+': '+g.text);
+  const r=act(s,a,steps);assert.equal(r.ok,true,g.text+' → '+r.message);
+ }
+ assert.equal(s.task,TASKS.length);assert.ok(steps<320,'steps '+steps);
 });

@@ -19,7 +19,7 @@ test('Chapter art overrides remain isolated from legacy review modes and game ru
 test('local WebP payload is bounded and both entry points load the isolated visual layer',()=>{
  let total=0;for(const name of [...FIELDWORKS_SPRITES.map(n=>n+'-vibrant'),'landing-vibrant','saltstone-tray']){const b=fs.readFileSync(new URL('../v5/assets/premium/'+name+'.webp',import.meta.url));assert.equal(b.toString('ascii',8,12),'WEBP');total+=b.length;}
  assert.ok(total<400000,'prototype asset payload under 400KB');
- for(const name of ['index.html','crazygames.html'])assert.match(fs.readFileSync(new URL('../v5/'+name,import.meta.url),'utf8'),/premium.css/);
+ for(const name of ['index.html','crazygames.html'])assert.match(fs.readFileSync(new URL('../v5/'+name,import.meta.url),'utf8'),/game.css/);
 });
 
 test('chapter assets have bounded mobile payload and distinct stage files',()=>{

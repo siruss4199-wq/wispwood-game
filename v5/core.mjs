@@ -30,23 +30,23 @@ function freshProducers(){return {rig:{unlocked:true,level:1,rich:0},chart:{unlo
 export function fresh(now=Date.now()){
  const board=Array(36).fill(null);
  board[0]=source('rig');
- // A lively first board: the glowing pair, three more pairs, two Grip tools and a parts case.
- for(const i of [7,8,9,10,14,15,19,20])board[i]=item('rig',0);
- for(const i of [13,21])board[i]=item('rig',1);
- board[28]=container('salvage');
+ // Three pairs of offcuts: one merge clears the path, two more brace the pier,
+ // then the Rover is needed for the deck.
+ for(const i of [14,15,20,21,8,9])board[i]=item('rig',0);
  const s={version:VERSION,board,task:0,choice:null,energy:30,producers:freshProducers(),orders:freshOrders(),
-  taps:{rig:0,chart:0,flux:0},moves:0,merges:0,meals:0,discovered:['rig:0','rig:1'],startedAt:now,lastAt:now};
+  taps:{rig:0,chart:0,flux:0},moves:0,merges:0,meals:0,discovered:['rig:0'],startedAt:now,lastAt:now};
  syncOrders(s);return s;
 }
 
 // Item output of one producer tap: rich pulls give a tier-1 part; an upgraded
-// producer gives one every third tap; a roomy board gets a second raw part.
+// producer gives one every third tap; unless the board is nearly full, a
+// second raw part comes with it.
 function produce(s,id){
  const p=s.producers[id];
  const rich=p.rich>0||(p.level>1&&(s.taps[id]+1)%3===0);
  if(p.rich>0)p.rich--;
  const out=[item(id,rich?1:0)];
- if(free(s)>10)out.push(item(id,0));
+ if(free(s)>6)out.push(item(id,0));
  s.taps[id]++;
  return out.map(x=>put(s,x)).filter(i=>i>=0);
 }

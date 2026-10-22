@@ -56,9 +56,21 @@ parts) and producer upgrades, never finished mid-tier parts.
 | 12 | Signal | Listen to the fleet signal | — (story) | the open question |
 | 13 | Signal mast | Build the signal mast | Crawler jack + Bearing dial + Phase lantern | long goal beyond the first session |
 
-Raw-part estimate through task 11: ~94 tier-0 equivalents (≈60 producer taps,
-≈85 merges, ~15 deliveries) — a design hypothesis of 12–18 human minutes, to be
-validated by human playtest, not by simulation.
+Every task also drops a case of raw parts for the next one; crew orders pay a
+little energy (2–6) and, on every third crew order, a case.
+
+Scripted pacing (`node tests/v5-loop-metrics.mjs`): a player who only follows the
+on-screen suggestion reaches the open Vault in ~115 actions (≈49 producer taps,
+≈109 merges, 13 case openings, ~10 orders) and never runs out of energy. Scripted
+players merge eagerly, so these numbers are a floor for board activity, not a
+prediction of human minutes: human playtest decides.
+
+## Screen
+Header (energy, chapter track, menu) → coast scene for the current site → one task
+card (who, what, why, needed parts, Deliver) → two crew orders → one suggestion
+line → 6×6 board. A finished task stays on the card with its character line until
+Continue, so each story beat is read, not skipped. Tap a producer for parts, tap
+or drag twins to merge, tap a case to open it, select a part to recycle it.
 
 ## Saves
 State `version: 6`. `load()` migrates any `version: 5` save: furthest progress
@@ -66,6 +78,13 @@ maps to completed tasks (sequential), the route choice is kept, producers unlock
 accordingly, board items/sources/cases are kept, fixtures are removed, energy is
 clamped. Original slot `vaultwake-v5`, replay slot `vaultwake-v5-replay` and the
 active pointer are unchanged.
+
+## Tests
+- `tests/v5-loop.test.mjs`: rules, reservation, both crossing routes, scripted,
+  random and suggestion-following playthroughs, v5 migration (synthetic saves and
+  `tests/fixtures/stage2/*`), save slots.
+- `tests/v5-mobile.cjs`: 360/390/430px, tap and drag merges, delivery, reload, a
+  full chapter through the UI, replay, migrated save (`V5_ENGINE=webkit` in CI).
 
 ## Removed from V5 (still in git history)
 Supplies currency, producer charges/service, the seals beam puzzle, rocks/finds,

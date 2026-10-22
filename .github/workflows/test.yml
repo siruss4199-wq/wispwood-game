@@ -11,8 +11,8 @@ permissions:
   contents: read
 
 jobs:
-  coastal-journey:
-    name: Fresh coastal journey (${{ matrix.engine }})
+  v5-mobile:
+    name: V5 mobile smoke (${{ matrix.engine }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -25,12 +25,13 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-save playwright@1.62.1 && npx playwright install --with-deps ${{ matrix.engine }}
-      - name: Play fresh coast and fleet at 360, 390 and 430px
+      - name: Play the V5 chapter at 360, 390 and 430px
         env:
-          COASTAL_ENGINE: ${{ matrix.engine }}
+          V5_ENGINE: ${{ matrix.engine }}
         run: |
-          python3 -m http.server 8080 > /tmp/coastal-http.log 2>&1 &
-          node tests/v5-coastal-browser.cjs
+          python3 -m http.server 8080 > /tmp/v5-http.log 2>&1 &
+          sleep 1
+          node tests/v5-mobile.cjs
   test:
     name: Game rule and markup tests
     runs-on: ubuntu-latest
@@ -62,42 +63,20 @@ jobs:
       - name: Run CrazyGames readiness checks
         run: node --test tests/v4-crazygames.test.mjs
 
-      - name: Run V5 rules and first-session simulation
+      - name: Run V5 rules, save migration and chapter simulations
         run: |
           node --test tests/v5-*.test.mjs
           mkdir -p test-artifacts/v5
-          node tests/v5-seal-metrics.mjs > test-artifacts/v5/seal-policy-metrics.json
-          node tests/v5-resonance-metrics.mjs > test-artifacts/v5/resonance-policy-metrics.json
-          node tests/v5-journey-metrics.mjs > test-artifacts/v5/journey-policy-metrics.json
+          node tests/v5-loop-metrics.mjs > test-artifacts/v5/loop-metrics.json
       - name: Check V5 modules
-        run: node --check v5/app.mjs && node --check v5/core.mjs && node --check v5/art.mjs
+        run: for f in v5/*.mjs; do node --check "$f"; done
       - name: Install browser smoke dependencies
         run: npm install --no-save playwright@1.62.1 && npx playwright install --with-deps chromium webkit
-      - name: Verify mobile render, persistence and board interactions
+      - name: Verify V4 browser smoke
         run: |
           python3 -m http.server 8080 > /tmp/wispwood-http.log 2>&1 &
-          # TT-1I: validate the new Bench/order interaction first; the full
-          # Crown and mobile matrix follows without repeating this walkthrough.
-          node tests/v5-workshop-evolution-browser.cjs
-          TT1H1_VISUAL_EVIDENCE=1 node tests/v5-camp-browser.cjs
-          git fetch --depth=1 origin 847bb89263f27d8763d233ce8ea9f838bdb3a8a7
-          mkdir -p /tmp/vaultwake-before
-          git archive FETCH_HEAD | tar -x -C /tmp/vaultwake-before
-          python3 -m http.server 8081 --directory /tmp/vaultwake-before > /tmp/vaultwake-before-http.log 2>&1 &
-          # Run the stabilization targets first, then the complete remaining suite.
-          node tests/v5-mobile.cjs
-          node tests/v5-replay-browser.cjs
-          node tests/v5-workshop-browser.cjs
-          node tests/v5-requests-browser.cjs
-          git fetch --depth=1 origin d16d4921b52f4a93bd929486e9d919228c5192c9
-          mkdir -p /tmp/vaultwake-stage2-before
-          git archive FETCH_HEAD | tar -x -C /tmp/vaultwake-stage2-before
-          python3 -m http.server 8082 --directory /tmp/vaultwake-stage2-before > /tmp/vaultwake-stage2-before.log 2>&1 &
-          node tests/v5-resonance-browser.cjs
-          node tests/v5-continuation-browser.cjs
-          node tests/v5-route-clarity-browser.cjs
+          sleep 1
           node tests/v45-browser.cjs
-          node tests/v5-browser.cjs
       # Preserve compact debugging evidence only. Playwright videos can be >100 MB
       # per run; keep them local to CI instead of uploading on every PR update.
       - name: Save compact V5 screenshots and traces
