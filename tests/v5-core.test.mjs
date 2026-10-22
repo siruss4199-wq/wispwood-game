@@ -52,8 +52,10 @@ test('opportunity is opt-in, persists deadline, expires without consuming invent
 test('discovery competes for sight lens and permanently enriches sources',()=>{
  const s=fresh();s.board[7]={type:'glyph'};s.board[8]=item('chart',2);success(s,{type:'discovery'});assert.equal(s.boost,true);assert.equal(s.board[7],null);assert.equal(s.board[8],null);s.taps.rig=2;assert.equal(nextOutput(s,'rig').tier,2);failUnchanged(s,{type:'discovery'});
 });
-test('ration and recycling offer an immediate recovery without ads, cash or waiting',()=>{
- const s=fresh();failUnchanged(s,{type:'ration'});s.energy=0;success(s,{type:'ration'});assert.equal(s.energy,12);s.board[7]=item('flux',3);success(s,{type:'recycle',index:7});assert.equal(s.energy,20);failUnchanged(s,{type:'recycle',index:0});
+test('ration (once an hour, small) and recycling offer recovery without ads or cash',()=>{
+ const s=fresh();failUnchanged(s,{type:'ration'});s.energy=0;success(s,{type:'ration'},1000);assert.equal(s.energy,8);assert.equal(s.rationAt,1000);s.board[7]=item('flux',3);success(s,{type:'recycle',index:7});assert.equal(s.energy,16);failUnchanged(s,{type:'recycle',index:0});
+ s.energy=2;const r=act(s,{type:'ration'},1000+59*60000);assert.equal(r.ok,false);assert.match(r.message,/Next field ration in 1 min/);assert.equal(s.energy,2);
+ success(s,{type:'ration'},1000+60*60000);assert.equal(s.energy,10);assert.deepEqual(load(JSON.stringify(s),1000+61*60000).rationAt,1000+60*60000);
 });
 test('corrupt or old saves never break boot and V4 key is untouched',()=>{
  for(const bad of ['',null,'{}','{','{"version":4}',JSON.stringify({...fresh(),energy:-4}),JSON.stringify({...fresh(),board:Array(36).fill({type:'item',family:'bad',tier:2})})])assert.equal(load(bad,100).version,5);

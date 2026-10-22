@@ -1,5 +1,5 @@
 import {campGoal} from './camp-goals.mjs';
-import {settleEnergy} from './energy.mjs';
+import {settleEnergy,rationWait,RATION_ENERGY} from './energy.mjs';
 import {freshLevel,validLevel,xpFor,gainXp} from './levels.mjs';
 import {freshMastery,masteryPending,instrumentReady,recordCraftMastery} from './mastery.mjs';
 import {fleetEarned} from './fleet.mjs';
@@ -412,8 +412,10 @@ function step(s,a,now){
   const gain=x.type==='item'?Math.max(1,2**x.tier):x.type==='glyph'?5:3;s.board[a.index]=null;s.energy=Math.min(120,s.energy+gain);return done(`Recycled · +${gain} energy`,'recycle');
  }
  if(a.type==='ration'){
+  // A small rescue, not a refill: at 3 energy or less, once per hour.
   if(s.energy>3)return fail('Field rations are reserved for low energy.');
-  s.energy+=12;s.rations++;return done('Field ration · +12 energy. No waiting required.','ration');
+  const wait=rationWait(s,now);if(wait>0)return fail(`Next field ration in ${Math.ceil(wait/60000)} min. Energy refills on its own meanwhile.`);
+  s.energy+=RATION_ENERGY;s.rations++;s.rationAt=now;return done(`Field ration · +${RATION_ENERGY} energy. The next one is ready in an hour.`,'ration');
  }
  return fail('Unknown action.');
 }
@@ -465,6 +467,7 @@ export function load(raw,now=Date.now()){
   s.level=validLevel(s.level);
   // Energy refill clock (added 2026-10-22): older saves start counting now, nothing retroactive.
   if(!Number.isFinite(s.energyAt)||s.energyAt<0||s.energyAt>now)s.energyAt=now;
+  if(s.rationAt!==undefined&&(!Number.isFinite(s.rationAt)||s.rationAt<0||s.rationAt>now))delete s.rationAt;
   journeyState(s);syncRequests(s);workshopState(s);return s;
  }catch{return fresh(now);}
 }

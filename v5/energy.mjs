@@ -2,6 +2,9 @@
 // raise energy above 50 (to the usual 120 cap); refilling only works below 50.
 // Pure accounting from timestamps, settled by the UI clock and after loading.
 export const REFILL_EVERY=2*60*1000,REFILL_CAP=50;
+// Field ration: a small rescue at 3 energy or less, once per hour.
+export const RATION_ENERGY=8,RATION_EVERY=60*60*1000;
+export const rationWait=(s,now)=>Number.isFinite(s.rationAt)?Math.max(0,s.rationAt+RATION_EVERY-now):0;
 
 const valid=t=>Number.isFinite(t)&&t>=0;
 // Adds the energy earned since s.energyAt; returns how much was added.

@@ -10,7 +10,7 @@ import {fleetEarned,fleetPending,FLEET_LINES} from './fleet.mjs';
 import {storySnapshot,requestBrief} from './story.mjs';
 import {coastPlaces,placeById,doneIds,CAMP_PLACES,readyPlaces} from './coast-map.mjs';
 import {xpToNext} from './levels.mjs';
-import {refillTimes,clock,REFILL_CAP,REFILL_EVERY} from './energy.mjs';
+import {refillTimes,clock,REFILL_CAP,REFILL_EVERY,rationWait,RATION_ENERGY} from './energy.mjs';
 import {goalProgress} from './progress.mjs';
 import {LOFT_COST,DEEP_SURVEY_COST,recoveryCost,pearlDiscovered,TIDE_NAMES,isTide,maxTier,sameKind,discoveryKey,tideItem,nextTide} from './treasures.mjs';
 import {KITS} from './journey.mjs';
@@ -272,6 +272,12 @@ function renderProgress(g){
  lastGoal=g.name;lastProgress=pct;
 }
 // ---------- Energy refill clock ----------
+// Field ration: shown at 3 energy or less; once an hour it gives a small rescue.
+function renderRation(){
+ const b=$('#rationButton'),wait=rationWait(state,Date.now());
+ b.hidden=state.energy>3;b.disabled=wait>0;
+ b.textContent=wait>0?`Field ration in ${clock(wait)}`:`Field ration · +${RATION_ENERGY} ϟ`;
+}
 function renderEnergyClock(){
  const t=refillTimes(state,Date.now()),el=$('#energyTimer');
  el.textContent=t?'+1 '+clock(t.next):'FULL';
@@ -344,7 +350,7 @@ function render(){
   tile.setAttribute('aria-label',state.stage<2&&x.type==='site'?'Buried device':nameOf(x));
  }
  for(const tile of board.querySelectorAll('.tile.item,.tile.glyph')){const x=state.board[+tile.dataset.index];if((readySignal&&state.opportunity.needs.some(r=>matches(x,r)))||($('.discovery.ready')&&(x.type==='glyph'||matches(x,{family:'chart',tier:2}))))tile.classList.add('deliveryReady');}
- $('#free').textContent=state.board.filter(x=>x===null).length+' spaces';$('#hint').textContent=hint();$('#rationButton').hidden=state.energy>3;renderSelection();
+ $('#free').textContent=state.board.filter(x=>x===null).length+' spaces';$('#hint').textContent=hint();renderRation();renderSelection();
  if(state.surge>0){$('#free').textContent=`ϟ SURGE · ${state.surge} pulls`;$('#free').title='Shared by all producers. Choose which family gets improved parts. No timer.';board.dataset.event='surge';}else{delete board.dataset.event;$('#free').removeAttribute('title');}
  if(state.discovery&&!state.discoveryDone&&!state.opportunity&&state.board.some(x=>x?.type==='glyph')){const label=$('.discovery .reward small');if(label&&state.board.some(x=>x?.type==='glyph')&&!ready(state,[{family:'chart',tier:2,count:1}]))label.textContent='1 LENS LEFT';}
 }
@@ -642,5 +648,5 @@ setInterval(()=>{const op=opportunity(state),clock=$('#opClock');if(op&&clock){c
 const away=tick(state,Date.now());
 render();persist();platform.init();
 if(away>0)setTimeout(()=>moment('Welcome back','+'+away+' energy refilled while you were away'),600);
-setInterval(()=>{const gained=tick(state,Date.now());if(gained){render();persist();}else renderEnergyClock();},1000);
+setInterval(()=>{const gained=tick(state,Date.now());if(gained){render();persist();}else{renderEnergyClock();renderRation();}},1000);
 $('.resource').onclick=()=>{const t=refillTimes(state,Date.now());message.textContent=t?`Energy refills +1 every ${REFILL_EVERY/60000} minutes up to ${REFILL_CAP}. Next in ${clock(t.next)} · full in ${clock(t.full)}.`:`Energy is full. It refills on its own up to ${REFILL_CAP}; orders and recycling add more.`;};

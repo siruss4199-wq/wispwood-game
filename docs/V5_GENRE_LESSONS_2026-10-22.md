@@ -98,8 +98,9 @@ real time in which spent energy refills, as a reason to come back".
   Settled by the UI clock and on open, never inside `act`, so refused actions stay atomic.
 - Saves: new `energyAt` timestamp; older saves start the clock at load (nothing
   retroactive); a future timestamp is reset. Tests: `tests/v5-progress.test.mjs`.
-- Open question for the user: the free field ration (+12 at ≤3 energy) still removes
-  any need to wait. Limit it (e.g. once per hour) or keep it?
+- Field ration (user, 2026-10-22: "a small amount of energy under special
+  conditions"): at 3 energy or less, +8 (was +12), once per hour. The button shows a
+  countdown while it waits. New save field `rationAt`; invalid or future values are dropped.
 
 ## Sources and limits
 No first-party data was found. Travel Town figures (100 energy, 72-cell board) come
