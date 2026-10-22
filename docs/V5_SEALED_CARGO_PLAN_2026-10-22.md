@@ -224,3 +224,26 @@ differently:
   action: Rover level 2 at 3–5 min, Survey Kite at 11–17 min, Landing Beach in 30–45 min,
   energy ~21–23 at the end, no waiting. Closed cells (crates and glass) out of 40:
   ~32 at 5 min, ~29 at 10, ~25 at 20, 22 when the beach is done (build 14: 13).
+
+## Build 16 — coins, a beach screen, places in three stages, harder orders (user: "Taskiig bas arai hard bolgoy, tegeed bielsen taskaas mungu olood undsen storygoo upgrade hiimeer baina, teren tusdaa orchinruu ochij upgrade hiih")
+Decisions (asked first): stars become coins (one currency); a full-screen beach with every
+place upgraded in three stages; orders ask for higher-tier parts.
+- **Coins:** orders pay coins (`COIN_VALUE` 5·5·10·25·45·80 per part by tier, five to an
+  old star); cargo pouches hold coins; XP from an order is a fifth of its coins.
+- **The beach screen** (BEACH button, or the next-upgrade card): a full screen of its own
+  with the area picture, every place standing on it at its stage (it grows and shows
+  stage pips), and the seven places with their next stage and its price. Coins are spent
+  only there; each stage plays its own story lines, then the beach redraws. "Back to the
+  board" returns.
+- **Places in three stages** (`areas.mjs`): e.g. Clear the landing path → Lay a boardwalk →
+  Line the path with lanterns. A place's first stage opens once the place before has its
+  first stage; later stages follow its own, in any order. First stages keep the old
+  rewards (crate, energy, fourth order card, Rover copy, sea chest, energy); the area is
+  complete when all 21 stages are built. Costs 15–95 coins per stage, 1060 in all.
+- **Harder orders:** tier 2 and up from level 2, tier 3 and up from level 7; the top tier
+  starts at 3 and climbs every fourth level.
+- **Saves:** Coast Camp save version 4. A version-3 save converts: stars × 5 → coins,
+  each restored place → stage 1, orders and coin pouches likewise (unit-tested). Classic
+  saves untouched.
+- Scripted player, 4–6 s per action: first upgrade within a minute, Survey Kite at 10–15
+  min, all 21 stages in 41–62 min (590–620 actions), energy 5–12 at the end, no waiting.

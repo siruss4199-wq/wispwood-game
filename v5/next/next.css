@@ -88,3 +88,26 @@
 @keyframes glassCrack{0%,100%{transform:none}25%{transform:translateX(-3px) rotate(-2deg)}60%{transform:translateX(3px) rotate(2deg)}}
 @keyframes glassGlint{50%{filter:brightness(1.25)}}
 @keyframes glassBreak{0%{box-shadow:0 0 0 0 #bff7f2;transform:scale(1.12)}100%{box-shadow:0 0 0 14px #bff7f200}}
+
+/* Coins (build 16): a gold coin with a raised rim. */
+.coinIcon{display:inline-block;width:1.05em;height:1.05em;border-radius:50%;vertical-align:-.15em;background:radial-gradient(circle at 35% 30%,#fff3b8 0 18%,#ffd34d 19% 55%,#e3a514 56% 100%);box-shadow:inset 0 0 0 .1em #c98a0e,0 1px 0 #a8730a}
+.starPill .coinIcon{font-size:17px}
+/* Stage pips and place icons that grow with their stage. */
+.pips{display:inline-flex;gap:3px;vertical-align:middle}
+.pips i{width:8px;height:8px;border-radius:50%;background:#d8d2c2;box-shadow:inset 0 0 0 1px #b9b09a}
+.pips i.on{background:#f0a93b;box-shadow:inset 0 0 0 1px #c47d12}
+.restoredIcon .pips{position:absolute;left:50%;bottom:-7px;transform:translateX(-50%);background:#fffc;border-radius:8px;padding:1px 3px}
+.restoredIcon .pips i{width:6px;height:6px}
+.restoredIcon.stage2{width:50px;height:50px}
+.restoredIcon.stage3{width:58px;height:58px;filter:drop-shadow(0 0 6px #ffe48a) drop-shadow(0 2px 2px #0005)}
+/* The beach screen: a separate full-screen place to spend coins. */
+#coastMap.beachScreen{width:100vw;max-width:none;height:100dvh;max-height:none;margin:0;border-radius:0;background:#f6f0e2;padding-bottom:max(16px,env(safe-area-inset-bottom))}
+.beachTop{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 60px 6px 16px}
+.beachTop .mapTitle{margin:0!important;font-size:20px!important}
+.beachCoins{display:flex;align-items:center;gap:5px;background:#fff1c9;border:1px solid #e8cc7c;border-radius:14px;padding:6px 10px;font-size:15px}
+.beachScene{position:relative;margin:4px 12px 0;border-radius:18px;overflow:hidden;aspect-ratio:3/1.5;box-shadow:0 2px 8px #0002}
+.beachScene>img{width:100%;height:100%;object-fit:cover;display:block}
+.beachScene .restored{position:absolute;inset:0}
+.beachCount{margin:8px 16px 0;font-size:13px;font-weight:800;color:#5f7380;letter-spacing:.04em}
+.place .pips{margin:2px 0}
+.backToBoard{display:block;margin:6px auto 4px;min-height:48px;padding:0 22px;border-radius:14px}

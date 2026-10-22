@@ -1,5 +1,6 @@
 // Vaultwake V5 new loop (docs/V5_NEW_LOOP_PLAN_2026-10-22.md): generators make parts,
-// merges grow them, crew orders pay ★ stars, stars restore the coast. The board
+// merges grow them, crew orders pay coins, coins upgrade the coast's places stage by
+// stage on the beach screen. The board
 // starts as Rivet Rover's small camp among sealed cargo; each cargo opens with the
 // part it shows, and new generators come out of it (docs/V5_SEALED_CARGO_PLAN_2026-10-22.md).
 // Deterministic reducer: act(s,a,now) mutates s and returns {ok,...}; a refused
@@ -8,14 +9,15 @@ import {cellPos,BOARD_SIZE} from '../core.mjs';
 import {kit,kitDrop,kitsMerge,producerLevel,levelLift,validProducerLevel,nearestFree,MAX_KIT_SIZE,KIT_DROPS} from '../kits.mjs';
 import {xpToNext,validLevel,freshLevel} from '../levels.mjs';
 import {settleEnergy,REFILL_CAP,RATION_ENERGY,rationWait} from '../energy.mjs';
-import {AREAS,TASKS} from './areas.mjs';
+import {AREAS,TASKS,STAGES} from './areas.mjs';
 import {CHAINS,GENERATOR_CHAINS,GENERATOR_NAMES,maxTier} from './chains.mjs';
 
 export const SAVE_KEY='vaultwake-v5-coast';
-export const VERSION=3,MAX_TIER=7,MAX_ENERGY=120;// MAX_TIER: the longest chain
+export const VERSION=4,MAX_TIER=7,MAX_ENERGY=120;// MAX_TIER: the longest chain
 export const SOURCES=Object.fromEntries(Object.entries(GENERATOR_NAMES).map(([id,name])=>[id,{name}]));
-export const XP={merge:1,restore:5,feed:5,unseal:2};// feed: merging two generators// orders pay their stars as XP
-export const STAR_VALUE=[1,1,2,5,9,16];// stars per item by tier
+export const XP={merge:1,restore:5,feed:5,unseal:2};// feed: merging two generators; orders pay a fifth of their coins as XP
+// Coins per part by tier (build 16: stars became coins, five to a star).
+export const COIN_VALUE=[5,5,10,25,45,80];export const COIN_RATE=5;
 export const CHEST_ENERGY=15;
 // Coast Camp's own crates (the generator boxes of v5/kits.mjs, by size).
 export const CRATES=['Driftwood crate','Sea chest','Captain\'s trunk'];
@@ -35,7 +37,7 @@ export const generatorsMerge=(x,y)=>x?.type==='source'&&y?.type==='source'&&x.id
 
 export const item=(family,tier)=>({type:'item',family,tier});
 export const jar=energy=>({type:'jar',energy});
-export const stars=n=>({type:'stars',n});
+export const coins=n=>({type:'coins',n});
 export const source=id=>({type:'source',id});
 // A Brass cog (found in cargo, user: "generator ahiulagch"): drag it onto a generator for +1 level.
 export const cog=()=>({type:'cog'});
@@ -48,7 +50,7 @@ export function nameOf(x){
  if(x.type==='source')return SOURCES[x.id].name;
  if(x.type==='kit')return CRATES[x.size-1]+' · '+SOURCES[x.family].name;
  if(x.type==='jar')return 'Energy · +'+x.energy;
- if(x.type==='stars')return 'Star pouch · +'+x.n+' ★';
+ if(x.type==='coins')return 'Coin pouch · +'+x.n+' coins';
  if(x.type==='cargo')return 'Sealed cargo · opens with a '+CHAINS[x.key.family].names[x.key.tier];
  if(x.type==='glass')return 'Tideglass · '+CHAINS[x.family].names[x.tier];
  if(x.type==='cog')return 'Brass cog · +1 generator level';
@@ -70,7 +72,7 @@ export const cellIndex=(r,c)=>c===6?36+r:r===6?43+c:r*6+c;
 const at=(r,c)=>cellIndex(r,c);
 export const CAMP=[at(2,2),at(2,3),at(2,4),at(3,2),at(3,3),at(3,4),at(4,2),at(4,3),at(4,4)];
 export const ROVER=at(3,3);
-const I=item,K=kit,E=jar,S=stars,G=source,C=cog;
+const I=item,K=kit,E=jar,S=n=>coins(n*COIN_RATE),G=source,C=cog;
 // [row, column, key chain, key tier, find]
 const CARGO_CELLS=[
  // The more useful the find, the harder the key (user, 2026-10-22: "hairtsagnaas mash heregtei
@@ -105,8 +107,8 @@ export function fresh(now=Date.now()){
  board[ROVER]=source('rig');
  for(const [r,c,t] of [[2,2,0],[2,4,0],[3,2,0],[4,3,1],[4,4,0]])board[at(r,c)]=item('rig',t);
  for(let i=0;i<BOARD_SIZE;i++)if(!CAMP.includes(i))board[i]=GLASS[i]?glass(...GLASS[i]):cargoAt(i);
- const s={version:VERSION,board,energy:50,energyAt:now,stars:0,level:freshLevel(),taps:{},
-  orders:[],slots:3,orderSeq:0,ordersDone:0,area:0,done:[],found:[],moves:0,merges:0,lastAt:now};
+ const s={version:VERSION,board,energy:50,energyAt:now,coins:0,level:freshLevel(),taps:{},
+  orders:[],slots:3,orderSeq:0,ordersDone:0,area:0,built:{},found:[],moves:0,merges:0,lastAt:now};
  for(const g of Object.keys(GENERATOR_CHAINS))s.taps[g]=0;
  for(let i=0;i<s.slots;i++)s.orders.push(makeOrder(s));
  note(s);return s;
@@ -122,17 +124,19 @@ export function makeOrder(s){
  const n=s.orderSeq++;let needs;
  if(n<FIRST.length)needs=FIRST[n].map(([family,tier,count])=>({family,tier,count}));
  else{
-  // Harder from build 10 (user: "taskuud het amar baigaad baina"): tier 2 and up from
-  // level 3, the top tier climbs every second level, and pairs and two-part orders are common.
-  const families=openChains(s),level=s.level.level,low=level>=3?2:1,top=2+Math.floor(level/4);
+  // Harder from build 10 (user: "taskuud het amar baigaad baina") and again in build 16
+  // ("taskiig bas arai hard bolgoy", higher-tier parts): tier 2 and up from level 2, tier 3
+  // and up from level 7; the top tier starts at 3 and climbs every fourth level. Pairs and
+  // two-part orders are common.
+  const families=openChains(s),level=s.level.level,low=level>=7?3:level>=2?2:1,top=3+Math.floor(level/4);
   const live=new Set(s.orders.filter(Boolean).flatMap(o=>o.needs.map(r=>r.family+r.tier)));
   let family,tier,k=0;
   do{family=families[Math.floor(rand(n*7+k)*families.length)];const hi=Math.max(low,Math.min(top,maxTier(family)-1));tier=low+Math.floor(rand(n*11+k)*(hi-low+1));k++;}while(live.has(family+tier)&&k<8);
   needs=[{family,tier,count:tier<=2&&rand(n*13)<.6?2:1}];
   if(level>=2&&rand(n*17)<.45){const other=families.find(f=>f!==family)??family,t=Math.max(1,tier-1);if(other!==family||t!==tier)needs.push({family:other,tier:t,count:1});}
  }
- const stars=needs.reduce((v,r)=>v+r.count*STAR_VALUE[r.tier],0);
- return {id:'o'+n,who:crewFor(needs),needs,stars};
+ const coins=needs.reduce((v,r)=>v+r.count*COIN_VALUE[r.tier],0);
+ return {id:'o'+n,who:crewFor(needs),needs,coins};
 }
 // Board cells an order would take: exact matches, lowest index first.
 export function orderItems(s,o){
@@ -149,7 +153,7 @@ function reveal(s,j){
  const f=s.board[j].find;
  if(!f){s.board[j]=null;return {index:j,type:'space'};}
  if(f.type==='jar'){s.board[j]=null;s.energy=Math.min(MAX_ENERGY,s.energy+f.energy);return {index:j,type:'jar',energy:f.energy};}
- if(f.type==='stars'){s.board[j]=null;s.stars+=f.n;return {index:j,type:'stars',stars:f.n};}
+ if(f.type==='coins'){s.board[j]=null;s.coins+=f.n;return {index:j,type:'coins',coins:f.n};}
  if(f.type==='source'){s.board[j]=source(f.id);return {index:j,type:'source',id:f.id};}
  if(f.type==='kit'){s.board[j]=kit(f.family,f.size);return {index:j,type:'kit'};}
  if(f.type==='cog'){s.board[j]=cog();return {index:j,type:'cog'};}
@@ -201,8 +205,18 @@ function gainXp(s,amount){
 
 // ---- restoration ----
 export const currentArea=s=>AREAS[s.area];
-export function nextTask(s){const a=currentArea(s);return a?.tasks.find(t=>!s.done.includes(t.id))??null;}
-export const areaDone=(s,a=currentArea(s))=>!!a&&a.tasks.length>0&&a.tasks.every(t=>s.done.includes(t.id));
+// Places are upgraded in three stages; a place's first stage opens once the place before
+// it has its first stage, and its later stages follow its own.
+export const stageOf=(s,id)=>s.built[id]??0;
+export function upgrades(s){
+ const a=currentArea(s);if(!a)return [];
+ return a.tasks.flatMap((t,k)=>{const n=stageOf(s,t.id);if(n>=STAGES||n===0&&k>0&&!stageOf(s,a.tasks[k-1].id))return [];
+  const st=t.stages[n];return [{id:t.id,stage:n+1,name:st.name,cost:st.cost,effect:st.effect,lines:st.lines,icon:t.icon,place:t.name}];}).sort((x,y)=>x.cost-y.cost);
+}
+// The cheapest upgrade open now (the one the main screen points to).
+export const nextTask=s=>upgrades(s)[0]??null;
+export const areaDone=(s,a=currentArea(s))=>!!a&&a.tasks.length>0&&a.tasks.every(t=>stageOf(s,t.id)>=STAGES);
+export const builtCount=(s,a=currentArea(s))=>a?a.tasks.reduce((n,t)=>n+stageOf(s,t.id),0):0;
 
 export function act(s,a,now=Date.now()){
  const wasFull=s.energy>=REFILL_CAP,r=step(s,a,now);
@@ -283,23 +297,23 @@ function step(s,a,now){
   if(!o)return fail('That order has already changed.');
   const take=orderItems(s,o);if(!take)return fail('Make the parts this order needs first.');
   for(const i of take)s.board[i]=null;
-  s.stars+=o.stars;s.ordersDone++;s.orders[lane]=makeOrder(s);
+  s.coins+=o.coins;s.ordersDone++;s.orders[lane]=makeOrder(s);
   // Every third order also brings a driftwood crate of its kind.
   const box=s.ordersDone%3===0?put(s,kit(CHAINS[o.needs[0].family].gen,1),take[0]):-1;
-  return {ok:true,event:'deliver',index:box>=0?box:null,xp:o.stars,stars:o.stars,box,freed:take,message:`+${o.stars} ★`+(box>=0?' · '+nameOf(s.board[box]):'')};
+  return {ok:true,event:'deliver',index:box>=0?box:null,xp:Math.max(1,Math.round(o.coins/COIN_RATE)),coins:o.coins,box,freed:take,message:`+${o.coins} coins`+(box>=0?' · '+nameOf(s.board[box]):'')};
  }
+ // Upgrade a place on the beach one stage (the action keeps its old name, 'restore').
  if(a.type==='restore'){
-  const t=nextTask(s);
-  if(!t||a.id!==undefined&&a.id!==t.id)return fail(t?'Restore '+t.name+' first.':'Everything here is restored.');
-  if(s.stars<t.cost)return fail(`${t.name} needs ${t.cost} ★. Deliver crew orders for stars.`);
-  s.stars-=t.cost;s.done.push(t.id);const e=t.effect??{},effects={};
+  const up=upgrades(s),t=a.id===undefined?up[0]:up.find(u=>u.id===a.id);
+  if(!t)return fail(TASKS[a.id]&&stageOf(s,a.id)>=STAGES?`${TASKS[a.id].name} is fully upgraded.`:TASKS[a.id]?'Upgrade the place before it first.':'Everything here is upgraded.');
+  if(s.coins<t.cost)return fail(`${t.name} needs ${t.cost} coins. Deliver crew orders for coins.`);
+  s.coins-=t.cost;s.built[t.id]=t.stage;const e=t.effect??{},effects={};
   if(e.energy){s.energy=Math.min(MAX_ENERGY,s.energy+e.energy);effects.energy=e.energy;}
-  if(e.producer){const src=s.board.find(x=>x?.type==='source'&&x.id===e.producer);if(src&&producerLevel(src)<5){src.level=producerLevel(src)+1;effects.producer=e.producer;}}
   if(e.copy){effects.copy=put(s,source(e.copy));effects.copyId=e.copy;}
   if(e.kit){const family=e.kit[0]==='newest'?newestGenerator(s):e.kit[0];effects.kit=put(s,kit(family,e.kit[1]));effects.kitFamily=family;}
   if(e.slots&&s.slots<e.slots){s.slots=e.slots;while(s.orders.length<s.slots)s.orders.push(makeOrder(s));effects.slots=e.slots;}
-  if(e.area)effects.areaDone=AREAS[s.area].id;
-  return {ok:true,event:'restore',task:t.id,effects,xp:XP.restore,message:t.name+' · restored'};
+  if(areaDone(s))effects.areaDone=AREAS[s.area].id;
+  return {ok:true,event:'restore',task:t.id,stage:t.stage,effects,xp:XP.restore,message:t.name+(t.stage===1?' · restored':` · stage ${t.stage}`)};
  }
  if(a.type==='recycle'){
   const x=valid(a.index)?s.board[a.index]:null;if(x?.type!=='item')return fail('Only loose parts can be recycled.');
@@ -321,7 +335,7 @@ function validFind(f){
  if(f===undefined)return true;
  if(f?.type==='item')return validItem(f)&&f.tier<=3;
  if(f?.type==='jar')return integer(f.energy,1,50);
- if(f?.type==='stars')return integer(f.n,1,20);
+ if(f?.type==='coins')return integer(f.n,1,100);
  if(f?.type==='kit')return validCrate(f);
  if(f?.type==='source')return !!GENERATOR_CHAINS[f.id];
  if(f?.type==='cog')return Object.keys(f).length===1;
@@ -338,7 +352,7 @@ function validCell(x){
  return false;
 }
 const validNeed=r=>r&&CHAINS[r.family]&&integer(r.tier,0,maxTier(r.family))&&integer(r.count,1,4);
-const validOrder=o=>o&&typeof o.id==='string'&&Array.isArray(o.needs)&&o.needs.length>=1&&o.needs.length<=2&&o.needs.every(validNeed)&&integer(o.stars,1,99)&&['ivo','neri','tamsin','bram'].includes(o.who);
+const validOrder=o=>o&&typeof o.id==='string'&&Array.isArray(o.needs)&&o.needs.length>=1&&o.needs.length<=2&&o.needs.every(validNeed)&&integer(o.coins,1,999)&&['ivo','neri','tamsin','bram'].includes(o.who);
 
 // Build 3 (version 1) had sand and numbered cells; build 4 (version 2) had the tide.
 // Both become sealed cargo: each covered cell gets the key this layout gives it and
@@ -358,16 +372,27 @@ function upgrade(s){
   if(j>=0)s.board[j]=cargo(key,source(g));
  }
  for(const g of Object.keys(GENERATOR_CHAINS))s.taps[g]??=0;
+ s.version=3;
+}
+// Build 16 (version 4): stars became coins (five to a star) and each restored place is
+// a place at stage 1 of 3. Orders and star pouches in cargo convert the same way.
+function toV4(s){
+ if(!integer(s.stars,0,99999)||!Array.isArray(s.done)||!Array.isArray(s.orders)||!Array.isArray(s.board))return;
+ s.coins=s.stars*COIN_RATE;delete s.stars;
+ s.built=Object.fromEntries(s.done.filter(id=>TASKS[id]).map(id=>[id,1]));delete s.done;
+ for(const o of s.orders)if(o&&integer(o.stars,1,99)){o.coins=o.stars*COIN_RATE;delete o.stars;}
+ for(const x of s.board)if(x?.type==='cargo'&&x.find?.type==='stars'&&integer(x.find.n,1,20))x.find={type:'coins',n:x.find.n*COIN_RATE};
  s.version=VERSION;
 }
 export function load(raw,now=Date.now()){
  try{
   const s=JSON.parse(raw);
   if((s?.version===1||s?.version===2)&&Array.isArray(s.board)&&s.taps&&typeof s.taps==='object')upgrade(s);
+  if(s?.version===3)toV4(s);
   if(s?.version!==VERSION||!Array.isArray(s.board)||s.board.length!==BOARD_SIZE||!s.board.every(validCell))return fresh(now);
-  if(!integer(s.energy,0,MAX_ENERGY)||!integer(s.stars,0,99999)||!integer(s.area,0,AREAS.length-1)||!integer(s.slots,3,4))return fresh(now);
+  if(!integer(s.energy,0,MAX_ENERGY)||!integer(s.coins,0,999999)||!integer(s.area,0,AREAS.length-1)||!integer(s.slots,3,4))return fresh(now);
   if(!Array.isArray(s.orders)||s.orders.length!==s.slots||!s.orders.every(validOrder))return fresh(now);
-  if(!Array.isArray(s.done)||!s.done.every(id=>TASKS[id])||!Array.isArray(s.found))return fresh(now);
+  if(!s.built||typeof s.built!=='object'||Array.isArray(s.built)||!Object.entries(s.built).every(([id,n])=>TASKS[id]&&integer(n,1,STAGES))||!Array.isArray(s.found))return fresh(now);
   for(const k of ['orderSeq','ordersDone','moves','merges'])if(!integer(s[k],0,1e9))return fresh(now);
   if(!s.taps||!Object.keys(GENERATOR_CHAINS).every(k=>integer(s.taps[k],0,1e9)))return fresh(now);
   s.level=validLevel(s.level);

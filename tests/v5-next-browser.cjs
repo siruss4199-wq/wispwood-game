@@ -13,7 +13,8 @@ async function perform(page,a){
  else if(a.type==='merge'){if(!await pressed(a.from))await tile(a.from).tap();await tile(a.to).tap();}
  else if(a.type==='openKit'){if(!await pressed(a.index))await tile(a.index).tap();await page.locator('#selection [data-action="openKit"]').tap();}
  else if(a.type==='deliver')await page.locator(`[data-order="${a.id}"]`).tap();
- else if(a.type==='restore'){await page.locator('#taskButton').tap();await closeBeats(page);}
+ // Upgrades happen on the separate beach screen: go there, upgrade, watch the story, come back.
+ else if(a.type==='restore'){await page.locator('#taskButton').tap();await page.locator(`#coastMap [data-restore="${a.id}"]`).tap();await closeBeats(page);await page.locator('#coastMap [data-back]').tap();}
  else if(a.type==='recycle'){if(!await pressed(a.index))await tile(a.index).tap();await page.locator('#selection [data-action="recycle"]').tap();}
  else if(a.type==='ration')await page.locator('#rationButton').tap();
  else if(a.type==='unseal'){if(!await pressed(a.from))await tile(a.from).tap();await tile(a.index).tap();}
@@ -36,7 +37,7 @@ async function perform(page,a){
    assert.equal(await page.locator('#board .tile.cargo').count(),27,'sealed cargo covers most of the board');assert.equal(await page.locator('#board .tile.glass').count(),13,'half-buried parts ring the camp, more near each generator');assert.equal(await page.locator('#board .cargoKey').count(),6,'only the crates touching the camp show their keys');assert.equal(await page.locator('#board .tile.cargo.deep').count(),21,'the rest are buried deeper');assert.equal(await page.locator('#board .tile.source').count(),1,'one generator to start');assert.equal(await page.locator('#board [data-index="21"]').getAttribute('data-family'),'rig','Rivet Rover stands in the middle');
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'no sideways scroll');
    for(const t of await page.locator('#board .tile').all()){const b=await t.boundingBox();assert.ok(b.width>=44&&b.height>=44,'44px touch targets');}
-   for(const sel of ['#energyPill','#starPill','#levelPill','#mapButton','#menuButton']){const b=await page.locator(sel).boundingBox();assert.ok(b&&b.x>=0&&b.x+b.width<=width,sel+' fits the header');}
+   for(const sel of ['#energyPill','#coinPill','#levelPill','#mapButton','#menuButton']){const b=await page.locator(sel).boundingBox();assert.ok(b&&b.x>=0&&b.x+b.width<=width,sel+' fits the header');}
    let restores=0;
    // Play on until two places are restored and the Survey Kite has come out of its cargo.
    for(let n=0;n<400&&(restores<2||!(await read(page)).board.some(x=>x?.type==='source'&&x.id==='chart'));n++){
@@ -45,13 +46,17 @@ async function perform(page,a){
     await perform(page,a);if(a.type==='restore')restores++;
    }
    assert.ok(restores>=2,'places restored through the UI');
-   const s=await read(page);assert.deepEqual(s.done.slice(0,2),['beach-path','beach-tent']);
-   assert.equal(await page.locator('.restoredIcon').count(),s.done.length,'restored places stand on the coast picture');
+   const s=await read(page);assert.ok(s.built['beach-path']>=1,'the landing path came first');assert.equal(s.stars,undefined);assert.ok(Number.isInteger(s.coins));
+   assert.equal(await page.locator('#scene .restoredIcon').count(),Object.keys(s.built).length,'upgraded places stand on the coast picture');
+   assert.equal(await page.locator('#scene .restoredIcon .pips i.on').count(),Object.values(s.built).reduce((a,b)=>a+b,0),'each shows its stage');
    assert.ok(await page.locator('#board .tile.cargo').count()<27,'cargo was opened by laying parts on it');assert.equal(await page.locator('#board .tile.source[data-family="chart"]').count(),1,'Rivet Rover level 3 brought out the Survey Kite');
    await page.reload();await page.waitForSelector('#board .tile');
    assert.deepEqual((await read(page)).board,s.board,'reload keeps the board');assert.equal(await page.locator('#beat[open]').count(),0,'no intro on a running camp');
-   await page.locator('#mapButton').tap();assert.equal(await page.locator('#coastMap .place').count(),7);assert.equal(await page.locator('#coastMap .place[data-status="done"]').count(),s.done.length);
-   await page.locator('#coastMap .close').tap();
+   await page.locator('#mapButton').tap();assert.equal(await page.locator('#coastMap .place').count(),7);
+   assert.equal(await page.locator('#coastMap .place .pips i.on').count(),Object.values(s.built).reduce((a,b)=>a+b,0),'the beach screen shows every stage');
+   {const b=await page.locator('#coastMap').boundingBox();assert.ok(b.width>=width-1,'the beach is a full screen of its own');}
+   assert.equal(await page.evaluate(()=>document.querySelector('#coastMap').scrollWidth<=innerWidth),true,'no sideways scroll on the beach');
+   await page.locator('#coastMap [data-back]').tap();assert.equal(await page.locator('#coastMap[open]').count(),0,'back to the board');
    await page.locator('#menuButton').tap();assert.equal(await page.locator('#classicLink').getAttribute('href'),'index.html');await page.locator('#menu .close').tap();
    assert.equal(await page.evaluate(()=>localStorage.getItem('vaultwake-v5')),classic,'Classic save untouched');
    assert.match(await page.locator('#build').textContent(),/BUILD \d/,'the footer names the build');

@@ -1,7 +1,7 @@
 // Coast Camp: the new-loop page (v5/play.html). Same look as Classic V5, one loop:
-// generators → merge → crew orders → ★ stars → restore the coast on the map.
-import {SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,orderProgress,nextTask,currentArea,areaDone,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys,reachable,generatorsMerge,MAX_GENERATOR_LEVEL,GLASS_HITS,nextKind,UNLOCK_LEVEL,GENERATOR_ORDER} from './game.mjs';
-import {AREAS} from './areas.mjs';
+// generators → merge → crew orders → coins → upgrade the coast's places on the beach screen.
+import {SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,orderProgress,nextTask,currentArea,areaDone,upgrades,stageOf,builtCount,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys,reachable,generatorsMerge,MAX_GENERATOR_LEVEL,GLASS_HITS,nextKind,UNLOCK_LEVEL,GENERATOR_ORDER} from './game.mjs';
+import {AREAS,STAGES} from './areas.mjs';
 import {cellPos} from '../core.mjs';
 import {CHAINS,draw,maxTier,chainsAt,GENERATOR_CHAINS} from './chains.mjs';
 import {art,portrait} from '../art.mjs';
@@ -15,7 +15,7 @@ import {sound,reduced,burst,rewardFlight,moment as sharedMoment} from '../feedba
 function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el=document.querySelector('.moment');if(!x||!el)return;const icon=document.createElement('span');icon.style.cssText='float:left;width:42px;height:42px;margin-right:10px';icon.innerHTML=draw(x);icon.firstElementChild.style.cssText='width:100%;height:100%';el.prepend(icon);}
 
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 15 · level 3 to unlock';
+export const BUILD='Build 16 · coins and the beach';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
@@ -27,33 +27,37 @@ const persist=()=>storage.set(SAVE_KEY,JSON.stringify(state));
 persist();
 
 const ICONS={rock:{type:'rock'},'crate-salvage':{type:'crate',kind:'salvage'},'crate-survey':{type:'crate',kind:'survey'},'source-chart':{type:'source',id:'chart'},'flux-3':item('flux',3),'chart-1':item('chart',1)};
+// A gold coin (orders pay coins; coins upgrade the beach).
+const COIN='<i class="coinIcon" aria-hidden="true"></i>';
+const pips=n=>`<span class="pips" aria-label="stage ${n} of ${STAGES}">${Array.from({length:STAGES},(_,k)=>`<i class="${k<n?'on':''}"></i>`).join('')}</span>`;
+const placeIcons=list=>list.map(t=>{const n=stageOf(state,t.id);return `<span class="restoredIcon stage${n}" data-task="${t.id}" data-stage="${n}" style="left:${t.at[0]}%;top:${t.at[1]}%">${iconArt(t.icon)}${pips(n)}</span>`;}).join('');
 const iconArt=k=>k==='workshop'?'<img class="art" src="assets/premium/workshop-operational.webp" alt="">':art(ICONS[k]);
 const wantedKeys=()=>new Set(state.orders.flatMap(o=>o.needs.map(r=>r.family+r.tier)));
 
 // ---------- rendering ----------
 function render(){
- const area=currentArea(state),task=nextTask(state),done=area.tasks.filter(t=>state.done.includes(t.id));
+ const area=currentArea(state),task=nextTask(state),built=area.tasks.filter(t=>stageOf(state,t.id)>0),total=area.tasks.length*STAGES;
  $('#areaBrand').textContent=area.name.toUpperCase();
  $('#energy').innerHTML=`${state.energy}<span class="energyCap">/${REFILL_CAP}</span>`;
- $('#stars').textContent=state.stars;
+ $('#coins').textContent=state.coins;
  const lv=state.level;$('#levelNum').textContent=lv.level;$('#levelPill').style.setProperty('--p',Math.round(100*lv.xp/xpToNext(lv.level))+'%');$('#levelPill').setAttribute('aria-label',`Level ${lv.level}, ${lv.xp} of ${xpToNext(lv.level)} XP`);
- $('#mapReady').hidden=!(task&&state.stars>=task.cost);
- // The coast picture with what has been restored standing on it.
+ const ready=upgrades(state).some(u=>state.coins>=u.cost);$('#mapReady').hidden=!ready;
+ // The coast picture with each place standing on it at its stage.
  const pic=`assets/premium/${area.picture}-vibrant.webp`;
  if($('#scenePic').dataset.pic!==pic){$('#scenePic').dataset.pic=pic;$('#scenePic').innerHTML=`<img class="premiumScene" src="${pic}" width="1200" height="400" alt="${area.name}" decoding="async" fetchpriority="high">`;}
- $('#scene').style.setProperty('--restored',area.tasks.length?done.length/area.tasks.length:1);
- $('#restored').innerHTML=done.map(t=>`<span class="restoredIcon" data-task="${t.id}" style="left:${t.at[0]}%;top:${t.at[1]}%">${iconArt(t.icon)}</span>`).join('');
- $('#areaLabel').textContent=area.name.toUpperCase();$('#areaCount').textContent=`${done.length} / ${area.tasks.length} restored`;
- // Next restoration card.
+ $('#scene').style.setProperty('--restored',builtCount(state)/total);
+ $('#restored').innerHTML=placeIcons(built);
+ $('#areaLabel').textContent=area.name.toUpperCase();$('#areaCount').textContent=`${builtCount(state)} / ${total} upgrades`;
+ // Next upgrade card: it points to the beach screen, where the upgrading happens.
  if(task){
-  $('#taskTitle').textContent=task.name;$('#taskCost').textContent=`★ ${Math.min(state.stars,task.cost)}/${task.cost}`;
+  $('#taskTitle').textContent=task.name;$('#taskCost').innerHTML=`${COIN} ${Math.min(state.coins,task.cost)}/${task.cost}`;
   $('#taskIcon').innerHTML=`<span class="taskIcon">${iconArt(task.icon)}</span>`;
-  const ready=state.stars>=task.cost;$('#taskButton').textContent=ready?`Restore · ★${task.cost}`:`★ ${state.stars}/${task.cost}`;$('#taskButton').classList.toggle('ready',ready);
+  $('#taskButton').innerHTML=ready?'Beach ↑':`${COIN} ${state.coins}/${task.cost}`;$('#taskButton').classList.toggle('ready',ready);
   $('.nextTask').classList.toggle('ready',ready);
-  const pct=Math.min(100,Math.floor(100*state.stars/task.cost));$('#taskProgress').hidden=false;$('#taskProgress s').style.width=pct+'%';$('#taskProgress b').textContent=pct+'%';$('#taskProgress').classList.toggle('complete',pct>=100);
+  const pct=Math.min(100,Math.floor(100*state.coins/task.cost));$('#taskProgress').hidden=false;$('#taskProgress s').style.width=pct+'%';$('#taskProgress b').textContent=pct+'%';$('#taskProgress').classList.toggle('complete',pct>=100);
  }else{
-  $('#taskTitle').textContent=areaDone(state)?area.name+' restored':'All done';$('#taskCost').textContent='';$('#taskIcon').innerHTML='';
-  $('#taskButton').textContent='Map';$('#taskButton').classList.remove('ready');$('.nextTask').classList.remove('ready');$('#taskProgress').hidden=true;
+  $('#taskTitle').textContent=areaDone(state)?area.name+' complete':'All done';$('#taskCost').textContent='';$('#taskIcon').innerHTML='';
+  $('#taskButton').textContent='Beach';$('#taskButton').classList.remove('ready');$('.nextTask').classList.remove('ready');$('#taskProgress').hidden=true;
  }
  renderOrders();renderBoard();renderSelection();renderHint();
  $('#rationButton').hidden=state.energy>3;
@@ -61,9 +65,9 @@ function render(){
  $('#soundButton').textContent=sound.enabled()?'Sound on':'Sound off';
 }
 function renderOrders(){
- $('#requests').innerHTML=`<div class="requestHeading"><span>CREW ORDERS <small>Deliver for ★ stars</small></span><b title="Stars">★ ${state.stars}</b></div><div class="requestShelf">${[...state.orders].sort((a,b)=>Number(!!orderItems(state,b))-Number(!!orderItems(state,a))).map(o=>{
+ $('#requests').innerHTML=`<div class="requestHeading"><span>CREW ORDERS <small>Deliver for coins</small></span><b title="Coins">${COIN} ${state.coins}</b></div><div class="requestShelf">${[...state.orders].sort((a,b)=>Number(!!orderItems(state,b))-Number(!!orderItems(state,a))).map(o=>{
   const p=orderProgress(state,o),ready=!!orderItems(state,o),who=CREW[o.who];
-  return `<button class="requestCard ${ready?'ready':''} ${focusOrder===o.id?'active':''}" data-order="${o.id}" aria-label="${who.name} asks for ${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier))).join(', ')}. ${ready?'Ready: tap to deliver.':'In progress.'} Reward ${o.stars} stars"><span class="requestCrew">${portrait(o.who)}<b class="requestLane"><em>${who.name}</em>${who.role}</b></span><span class="requestItems">${p.map(r=>`<span>${draw(item(r.family,r.tier))}<b>${r.have}/${r.count}</b></span>`).join('')}</span><span class="requestReward">+${o.stars} ★</span><strong>${ready?'✓ DELIVER':'MAKE'}</strong></button>`;
+  return `<button class="requestCard ${ready?'ready':''} ${focusOrder===o.id?'active':''}" data-order="${o.id}" aria-label="${who.name} asks for ${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier))).join(', ')}. ${ready?'Ready: tap to deliver.':'In progress.'} Reward ${o.coins} coins"><span class="requestCrew">${portrait(o.who)}<b class="requestLane"><em>${who.name}</em>${who.role}</b></span><span class="requestItems">${p.map(r=>`<span>${draw(item(r.family,r.tier))}<b>${r.have}/${r.count}</b></span>`).join('')}</span><span class="requestReward">+${o.coins} ${COIN}</span><strong>${ready?'✓ DELIVER':'MAKE'}</strong></button>`;
  }).join('')}</div>`;
 }
 function renderBoard(){
@@ -112,8 +116,8 @@ const has=id=>state.board.some(x=>x?.type==='source'&&x.id===id);
 function renderHint(){
  const task=nextTask(state),ready=state.orders.find(o=>orderItems(state,o));let hint;
  if(!state.merges)hint='START · Tap a Copper offcut, then its twin';
- else if(task&&state.stars>=task.cost)hint=`★ ${task.cost} ready · ${task.name} ↑`;
- else if(ready)hint='Order ready · tap it to collect ★';
+ else if(task&&state.coins>=task.cost)hint=`${task.cost} coins ready · upgrade on the beach ↑`;
+ else if(ready)hint='Order ready · tap it to collect coins';
  else if(cargoKeys(state).some(k=>state.board.some(y=>matches(y,k))))hint='Lay a matching part on a crate to open it';
  else if(state.energy<1){const t=refillTimes(state,Date.now());hint='Out of energy · +1 in '+clock(t?.next??0);}
  else{// Next generator: which one has to reach level 2 to bring it out.
@@ -129,7 +133,7 @@ function header(){
 
 // ---------- actions ----------
 function run(a){
- const before={stars:state.stars,energy:state.energy},fromRect=a.type==='produce'?board.querySelector(`[data-index="${a.index??state.board.findIndex(x=>x?.type==='source'&&x.id===a.id)}"]`)?.getBoundingClientRect():a.type==='openKit'?board.querySelector(`[data-index="${a.index}"]`)?.getBoundingClientRect():null;
+ const before={coins:state.coins,energy:state.energy},fromRect=a.type==='produce'?board.querySelector(`[data-index="${a.index??state.board.findIndex(x=>x?.type==='source'&&x.id===a.id)}"]`)?.getBoundingClientRect():a.type==='openKit'?board.querySelector(`[data-index="${a.index}"]`)?.getBoundingClientRect():null;
  const orderRect=a.type==='deliver'?$(`[data-order="${a.id}"]`)?.getBoundingClientRect():null;
  const reachBefore=new Set(cargoKeys(state).map(k=>k.index)),r=act(state,a,Date.now());
  if(!r.ok){$('#message').textContent=r.message;sound.play('tap');return r;}
@@ -142,13 +146,13 @@ function run(a){
  if(r.broken?.length){for(const j of r.broken)board.querySelector(`[data-index="${j}"]`)?.classList.add('glassBreak');sound.play('rare');}
  if(r.event==='merge'){tile?.classList.add('merge-pop');burst(tile?.getBoundingClientRect(),state.board[r.index]?.family);sound.play('merge',state.board[r.index]?.tier??0);for(const d of r.dug??[])board.querySelector(`[data-index="${d.index}"]`)?.classList.add('unlocked');}
  if((r.event==='produce'||r.event==='kit')&&fromRect&&tile&&!reduced()){const to=tile.getBoundingClientRect(),el=document.createElement('div');el.className='flight';el.innerHTML=draw(state.board[r.index]);el.style.cssText=`left:${fromRect.x}px;top:${fromRect.y}px;--dx:${to.x-fromRect.x}px;--dy:${to.y-fromRect.y}px`;document.body.append(el);setTimeout(()=>el.remove(),460);}
- if(r.event==='deliver'){rewardFlight(orderRect,$('#starPill').getBoundingClientRect(),`+${r.stars} ★`);sound.play('contract');$('#starPill').classList.remove('bump');void $('#starPill').offsetWidth;$('#starPill').classList.add('bump');}
+ if(r.event==='deliver'){rewardFlight(orderRect,$('#coinPill').getBoundingClientRect(),`+${r.coins} coins`);sound.play('contract');$('#coinPill').classList.remove('bump');void $('#coinPill').offsetWidth;$('#coinPill').classList.add('bump');}
  if(r.event==='producerUp'){const src=state.board[r.index];moment(SOURCES[src.id].name+' · level '+src.level,src.level>=MAX_GENERATOR_LEVEL?'Top level: its parts come out better every time.':'Its parts come out better more often.',src);sound.play('milestone');}
  if(r.event==='restore')showBeat(r.task,r.effects);
  // A generator reaching level 2 brings out the next kind beside it.
  for(const n of r.released??[]){const t=board.querySelector(`[data-index="${n.index}"]`);t?.classList.add('unsealed');burst(t?.getBoundingClientRect(),'gold',true);setTimeout(()=>{newGeneratorMoment(n.id);sound.play('milestone');},r.event==='producerUp'?900:0);}
  if(r.event==='unseal'){tile?.classList.add('unsealed');burst(tile?.getBoundingClientRect(),'gold',r.opened.type==='source');sound.play(r.opened.type==='source'?'milestone':'rare');
-  if(r.opened.type==='stars')rewardFlight(tile?.getBoundingClientRect(),$('#starPill').getBoundingClientRect(),`+${r.opened.stars} ★`);
+  if(r.opened.type==='coins')rewardFlight(tile?.getBoundingClientRect(),$('#coinPill').getBoundingClientRect(),`+${r.opened.coins} coins`);
   if(r.opened.type==='jar')rewardFlight(tile?.getBoundingClientRect(),$('#energyPill').getBoundingClientRect(),`+${r.opened.energy} ϟ`);
   if(r.opened.type==='cog')moment('A Brass cog!','Lay it on a generator: it goes up one level and makes better parts.',{type:'cog'});
   if(r.opened.type==='source'){const copies=state.board.filter(y=>y?.type==='source'&&y.id===r.opened.id).length;if(copies>1)moment(`A second ${SOURCES[r.opened.id].name}!`,`Drag it onto the other one of the same level: they merge into a stronger generator.`,{type:'source',id:r.opened.id});else newGeneratorMoment(r.opened.id);}
@@ -176,7 +180,8 @@ board.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;co
 board.addEventListener('pointercancel',()=>{drag=null;});
 $('#selection').addEventListener('click',e=>{const b=e.target.closest('[data-action]');if(!b)return;const x=state.board[selected];run({type:b.dataset.action,index:selected,id:x?.id});});
 $('#requests').addEventListener('click',e=>{const c=e.target.closest('[data-order]');if(!c)return;const o=state.orders.find(o=>o.id===c.dataset.order);if(!o)return;if(orderItems(state,o)){run({type:'deliver',id:o.id});return;}focusOrder=focusOrder===o.id?null:o.id;render();$('#message').textContent=`${CREW[o.who].name} needs ${o.needs.map(r=>r.count+' × '+nameOf(item(r.family,r.tier))).join(' and ')}. Their parts are marked on the board.`;});
-$('#taskButton').onclick=()=>{const t=nextTask(state);if(t&&state.stars>=t.cost)run({type:'restore',id:t.id});else showMap();};
+// The upgrading happens on the beach screen (user: "tusdaa orchinruu ochij upgrade hiih").
+$('#taskButton').onclick=showMap;
 $('#mapButton').onclick=showMap;$('#scene').onclick=showMap;
 $('#rationButton').onclick=()=>run({type:'ration'});
 $('#soundButton').onclick=()=>{sound.toggle();render();};
@@ -185,28 +190,36 @@ $('#menuButton').onclick=()=>{$('#classicNote').textContent=storage.get('vaultwa
 $('#newGame').onclick=()=>{if(!confirm('Start the Coast Camp from the beginning? Your Classic save is not affected.'))return;state=fresh(Date.now());selected=null;focusOrder=null;persist();$('#menu').close();render();showIntro();};
 for(const d of document.querySelectorAll('dialog'))d.querySelector('.close')?.addEventListener('click',()=>d.close());
 
-// ---------- map and story ----------
+// ---------- the beach screen and story ----------
+// A full-screen view of the area: the picture with every place at its stage, and the list
+// of places with their next stage and its price. Coins are spent here only.
 function showMap(){
- const html=AREAS.map((a,k)=>{
-  const here=k===state.area,done=a.tasks.filter(t=>state.done.includes(t.id)).length,next=k===state.area?nextTask(state):null;
-  const tasks=here?`<ol class="places">${a.tasks.map(t=>{
-   const isDone=state.done.includes(t.id),isNext=next?.id===t.id,afford=isNext&&state.stars>=t.cost;
-   const status=isDone?'done':afford?'ready':isNext?'next':'locked';
-   return `<li class="place" data-status="${status}"><span class="placeIcon">${iconArt(t.icon)}</span><span><strong>${t.name}</strong><small>${isDone?t.lines[0][1]:isNext?(afford?'Ready to restore':`★ ${state.stars}/${t.cost} · deliver crew orders for stars`):'Restore the places before it first'}</small></span>${isDone?`<button data-replay="${t.id}" aria-label="Replay ${t.name}">✓</button>`:`<button data-restore="${t.id}" ${afford?'':'disabled'}>★ ${t.cost}</button>`}</li>`;}).join('')}</ol>`:'';
-  return `<section class="mapArea ${here?'here':''} ${a.coming?'coming':''}"><div class="mapHead"><img src="assets/premium/${a.picture}-vibrant.webp" alt=""><div><h2>${a.name}</h2><b>${a.coming?'Next update':`${done}/${a.tasks.length}`}</b></div></div>${tasks}</section>`;
+ const area=currentArea(state),open=new Map(upgrades(state).map(u=>[u.id,u]));
+ const places=area.tasks.map(t=>{
+  const n=stageOf(state,t.id),u=open.get(t.id),afford=u&&state.coins>=u.cost;
+  const status=n>=STAGES?'done':afford?'ready':u?'next':'locked';
+  const now=n?t.stages[n-1].name:t.name;
+  const next=n>=STAGES?'Complete':!u?'Restore the place before it first':n?`Next: ${u.name}`:'Not restored yet';
+  return `<li class="place" data-status="${status}" data-place="${t.id}"><span class="placeIcon">${iconArt(t.icon)}</span><span><strong>${now}</strong>${pips(n)}<small>${next}</small></span>${n>=STAGES?`<button data-replay="${t.id}" aria-label="Replay ${t.name}">✓</button>`:u?`<button data-restore="${t.id}" ${afford?'':'disabled'}>${COIN} ${u.cost}</button>`:'<button disabled aria-label="Locked">🔒</button>'}</li>`;
  }).join('');
- $('#mapContent').innerHTML=`<h2 id="mapTitle" class="mapTitle">The coast · ★ ${state.stars}</h2>${html}`;
+ const later=AREAS.slice(state.area+1).map(a=>`<section class="mapArea coming"><div class="mapHead"><img src="assets/premium/${a.picture}-vibrant.webp" alt=""><div><h2>${a.name}</h2><b>Next update</b></div></div></section>`).join('');
+ $('#mapContent').innerHTML=`<div class="beachTop"><h2 id="mapTitle" class="mapTitle">${area.name}</h2><b class="beachCoins">${COIN} ${state.coins}</b></div>
+  <div class="beachScene"><img src="assets/premium/${area.picture}-vibrant.webp" alt="${area.name}"><div class="restored">${placeIcons(area.tasks.filter(t=>stageOf(state,t.id)>0))}</div></div>
+  <p class="beachCount">${builtCount(state)} / ${area.tasks.length*STAGES} upgrades${areaDone(state)?' · complete!':''}</p>
+  <ol class="places">${places}</ol>${later}
+  <button class="primary backToBoard" type="button" data-back>Back to the board</button>`;
  if(!$('#coastMap').open)$('#coastMap').showModal();
 }
 $('#mapContent').addEventListener('click',e=>{
- const r=e.target.closest('[data-restore]');if(r){const res=run({type:'restore',id:r.dataset.restore});if(res.ok)$('#coastMap').close();else showMap();return;}
- const p=e.target.closest('[data-replay]');if(p){$('#coastMap').close();showBeat(p.dataset.replay,{});}
+ const r=e.target.closest('[data-restore]');if(r){const res=run({type:'restore',id:r.dataset.restore});showMap();return;}
+ const p=e.target.closest('[data-replay]');if(p){showBeat(p.dataset.replay,{},STAGES);return;}
+ if(e.target.closest('[data-back]'))$('#coastMap').close();
 });
-function showBeat(id,effects){
- const area=AREAS.find(a=>a.tasks.some(t=>t.id===id)),t=area.tasks.find(t=>t.id===id);
+function showBeat(id,effects,stage=stageOf(state,id)){
+ const area=AREAS.find(a=>a.tasks.some(t=>t.id===id)),t=area.tasks.find(t=>t.id===id),st=t.stages[Math.max(0,stage-1)];
  const extra=[];
- if(effects?.areaDone)extra.push(['bram',`${area.name} fully restored! The Survey Worksite opens in the next update.`]);
- playLines(t.name,t.lines.concat(extra),()=>{const icon=$(`.restoredIcon[data-task="${id}"]`);icon?.classList.add('pop');burst($('.world').getBoundingClientRect(),'gold',true);
+ if(effects?.areaDone)extra.push(['bram',`${area.name} is complete! The Survey Worksite opens in the next update.`]);
+ playLines(st.name,st.lines.concat(extra),()=>{if($('#coastMap').open)showMap();const icon=$(`#coastMap .restoredIcon[data-task="${id}"]`)??$(`.restoredIcon[data-task="${id}"]`);icon?.classList.add('pop');burst($('.world').getBoundingClientRect(),'gold',true);
   for(const i of [effects?.kit,effects?.copy])if(i>=0)board.querySelector(`[data-index="${i}"]`)?.classList.add('unsealed');});
  sound.play('milestone');
 }

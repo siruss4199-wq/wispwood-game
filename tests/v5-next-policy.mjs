@@ -1,4 +1,4 @@
-// A scripted player for the new loop: restore when affordable, deliver ready orders,
+// A scripted player for the new loop: upgrade the cheapest open place when affordable, deliver ready orders,
 // open sealed cargo with spare parts (generator cargo first), grow crates, merge toward
 // what orders and cargo need, otherwise tap the generator whose parts are wanted.
 import {count,matches,orderItems,nextTask,sourceOpen,openFamilies,cargoKeys,generatorsMerge,GENERATOR_ORDER,nextKind,UNLOCK_LEVEL} from '../v5/next/game.mjs';
@@ -35,7 +35,7 @@ const glassBeside=(b,i)=>near(i).filter(j=>b[j]?.type==='glass').length;
 const pairMerge=(b,i,j)=>glassBeside(b,i)>glassBeside(b,j)?{type:'merge',from:j,to:i}:{type:'merge',from:i,to:j};
 export function nextAction(s){
  const b=s.board,t=nextTask(s);
- if(t&&s.stars>=t.cost)return {type:'restore',id:t.id};
+ if(t&&s.coins>=t.cost)return {type:'restore',id:t.id};
  // Curious: the crate on the way to a glowing one opens first, even before deliveries.
  {const g=target(s),have=g?b.findIndex(x=>matches(x,g)):-1;if(have>=0)return {type:'unseal',from:have,index:g.index};}
  // After two orders, and while energy lasts (25+), the key on the way (with parts no order needs, unless energy is plentiful: 45+) to a new kind of generator is made first.
