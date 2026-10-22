@@ -134,8 +134,8 @@ test('cargo opens only with the part it shows, only at the edge of open ground; 
  assert.equal(r.event,'unseal');assert.equal(s.board[13],null,'the key is used');assert.equal(s.board[14],null,'a star pouch leaves the space free');assert.equal(s.stars,stars+2);assert.equal(r.xp,2);
  // 4 is buried deeper: it opens only once a crate beside it is open.
  s.board[1]=item('rig',1);assert.match(refused(s,{type:'unseal',from:1,index:4}).message,/deeper/);
- const k=ok(s,{type:'unseal',from:1,index:3});assert.equal(k.opened.type,'source');
- s.board[1]=item('rig',1);const e=s.energy;ok(s,{type:'unseal',from:1,index:4});assert.equal(s.energy,e+5);assert.equal(s.board[4],null);
+ let e=s.energy;const k=ok(s,{type:'unseal',from:1,index:3});assert.equal(k.opened.type,'jar');assert.equal(s.energy,e+5);
+ s.board[1]=item('rig',1);e=s.energy;ok(s,{type:'unseal',from:1,index:4});assert.equal(s.energy,e+5);assert.equal(s.board[4],null);
  s.board[1]=item('rig',2);ok(s,{type:'unseal',from:1,index:9});assert.deepEqual(s.board[9],item('rig',1));
  s.board[1]=item('rig',2);ok(s,{type:'unseal',from:1,index:19});assert.deepEqual(s.board[19],kit('rig',1));
  assert.equal(s.board.filter(x=>x?.type==='cargo').length,35);
@@ -150,8 +150,11 @@ test('one generator, one chain; each new generator comes out of cargo opened wit
  // Every cargo key comes from a generator that is on the board or sealed in cargo.
  for(const [,c] of Object.entries(CARGO))assert.ok(GENERATOR_ORDER.includes(CHAINS[c[0]].gen));
  // Play it through: open the Kite cargo, tap the Kite, its single chain comes out.
- const s=fresh(0);s.board[1]=item('rig',1);const r=ok(s,{type:'unseal',from:1,index:3});
- assert.deepEqual(r.opened,{index:3,type:'source',id:'chart'});assert.ok(cargoKeys(s).some(k=>k.index===4),'opening a crate shows the keys of the crates behind it');assert.equal(sourceOpen(s,'chart'),true);
+ // The Survey Kite is one crate in from the camp: open a crate beside the camp first.
+ const s=fresh(0);assert.ok(!cargoKeys(s).some(k=>k.index===10),'the Kite cargo is not at the camp edge');
+ s.board[1]=item('rig',2);ok(s,{type:'unseal',from:1,index:9});assert.ok(cargoKeys(s).some(k=>k.index===10),'opening a crate shows the keys of the crates behind it');
+ s.board[1]=item('rig',1);const r=ok(s,{type:'unseal',from:1,index:10});
+ assert.deepEqual(r.opened,{index:10,type:'source',id:'chart'});assert.equal(sourceOpen(s,'chart'),true);
  for(let n=0;n<8;n++){const p=ok(s,{type:'produce',id:'chart'});assert.equal(s.board[p.index].family,'chart');s.board[p.index]=null;}
  refused(s,{type:'produce',id:'rope'});
 });

@@ -52,9 +52,9 @@ export const openChains=s=>openFamilies(s).flatMap(g=>chainsOf(s,g));
 export const CAMP=[0,1,2,6,7,8,12,13,18];
 const I=item,K=kit,E=jar,S=stars,G=source;
 export const CARGO={
- 3:['rig',1,G('chart')],
+ 3:['rig',1,E(5)],
  4:['rig',1,E(5)],9:['rig',2,I('rig',1)],14:['rig',1,S(2)],19:['rig',2,K('rig',1)],24:['rig',1,E(5)],
- 5:['rig',2,S(2)],10:['chart',1,I('chart',1)],15:['chart',2,G('rope')],20:['rig',2,K('rig',1)],25:['chart',1,E(5)],30:['rig',2,I('rig',2)],
+ 5:['rig',2,S(2)],10:['rig',1,G('chart')],15:['chart',2,G('rope')],20:['rig',2,K('rig',1)],25:['chart',1,E(5)],30:['rig',2,I('rig',2)],
  36:['chart',2,S(3)],11:['rig',3,K('chart',1)],16:['chart',1,E(5)],21:['rig',2,S(2)],26:['chart',2,I('chart',2)],31:['rig',3,E(5)],43:['chart',2,K('rig',1)],
  37:['rope',2,S(3)],17:['rope',1,I('rope',1)],22:['rope',2,G('shell')],27:['rig',3,E(5)],32:['rope',2,K('rope',1)],44:['chart',2,S(3)],
  38:['rope',2,E(5)],23:['rope',3,G('lamp')],28:['chart',3,K('chart',2)],33:['rig',3,S(4)],45:['chart',3,I('chart',2)],

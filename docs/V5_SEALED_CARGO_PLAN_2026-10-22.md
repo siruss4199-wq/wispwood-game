@@ -77,3 +77,12 @@ to the camp were Copper offcuts and Grip tools, and any crate could be opened an
   Kite ~3 min, Rope Winch ~11–13, Shell Trap ~13–16, Lantern Kiln ~20–24, Landing Beach
   in 23–28 min, 22 of 40 crates still sealed at the end, energy ~15, no waiting.
 - Also fixed: the hint read "Restore Restore the Coastal Workshop".
+
+## Build 7 (user: "2dahi generator shuud garaad irlee")
+The Survey Kite's cargo sat at the camp edge (cell 3) and opened with the first Grip
+tool. It now sits one crate in (cell 10, still a Grip tool): open a crate beside the
+camp first (cell 9 with a Split spanner, or cells 3 then 4 with Grip tools). Cell 3
+holds +5 energy instead. Scripted player: Kite at ~3.5–4 min after two crates, Rope
+Winch ~11–13, Shell Trap ~16–19, Lantern Kiln ~20–24, Landing Beach 23–28 min, 18
+crates still sealed. A Split-spanner key on the Kite pushed it to 10–13 minutes and
+left the shells and lamps unfound, so the Grip tool stays.
