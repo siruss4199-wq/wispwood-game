@@ -72,3 +72,10 @@ faces, rim highlights, gloss and a soft contact shadow. Redrawn: the four cargo 
 (wooden crate, canvas bundle, barrel, wicker basket), the three crates (open driftwood
 crate with parts, teal sea chest, red captain's trunk with glowing seam), the Tide token
 and the Brass cog. Painted WebP files named as in the tables above can replace any of them.
+
+## Build 27 — real 3D renders (user: "hangalttai saijraagui l baina, iimerhuu bailgaj chadahgui yu", showing the painted Grip tool)
+The shaded SVGs of build 26 were not close enough. Coast Camp's own objects are now rendered
+in 3D here: a ray-marched WebGL scene (`v5/assets/premium/coast/render.html`) with the
+painted parts' camera and light, exported as 192 px WebP: four cargo looks, the three
+crates, the Tide token and the Brass cog. The "?" and the crate's colour tag are overlays.
+The build-26 SVGs (`v5/next/coast-art.mjs`) and the old flat cargo/crate shapes are removed.

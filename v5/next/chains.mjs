@@ -5,7 +5,12 @@
 import {FAMILIES} from '../core.mjs';
 import {art,SPRITE_OVERRIDES} from '../art.mjs';
 import {MATERIALS} from '../objects.mjs';
-import {COAST_DEFS,CARGO_CRATE,CARGO_BUNDLE,CARGO_BARREL,CARGO_BASKET,KITS,TOKEN,COG} from './coast-art.mjs';
+// Rendered 3D art (build 27): ray-marched in v5/assets/premium/coast/render.html, light from
+// the upper left like the painted parts, exported as 192 px WebP.
+const RENDER=f=>`assets/premium/coast/${f}.webp`;
+const img=(f,cls,art)=>`<img class="art ${cls}" src="${RENDER(f)}" alt="" aria-hidden="true" draggable="false" data-art="${art}">`;
+const CARGO_FILE={crate:'cargo-crate',bundle:'cargo-bundle',barrel:'cargo-barrel',basket:'cargo-basket'};
+const KIT_FILE=['driftwood-crate','sea-chest','captains-trunk'];
 
 export const CHAINS={
  rig:{gen:'rig',names:FAMILIES.rig.names},
@@ -57,22 +62,12 @@ const SHAPES={
 };
 // Coast Camp's crates (generator boxes by size): driftwood crate, sea chest,
 // captain's trunk, with a tag in the colour of the generator they feed.
-const CRATE_SHAPES=[
- '<path d="M18 40L50 30L82 40V76L50 88L18 76Z" fill="#b98a5a"/><path d="M18 40L50 50L82 40M50 50V88" fill="none" stroke="#7a5532" stroke-width="3"/><path d="M18 54L50 64L82 54M18 66L50 76L82 66" stroke="#9c7046" stroke-width="2.5" fill="none"/><path d="M18 40L50 30L82 40L50 50Z" fill="#d1a676"/><path d="M30 36L60 46M40 33L70 43" stroke="#b98a5a" stroke-width="2"/><path d="M34 33Q50 22 66 33" fill="none" stroke="#e2c08a" stroke-width="4"/><path d="M23 72q7-9 2-18" stroke="#4f9a6a" stroke-width="3" fill="none"/>',
- '<rect x="16" y="46" width="68" height="38" rx="5" fill="#a56a3c"/><path d="M16 48Q16 22 50 22Q84 22 84 48Z" fill="#c2834d"/><path d="M28 24V84M72 24V84" stroke="#5b6573" stroke-width="6"/><path d="M16 48H84" stroke="#5b6573" stroke-width="5"/><rect x="43" y="44" width="14" height="16" rx="3" fill="url(#vw-brass)"/><circle cx="50" cy="52" r="2.5" fill="#5b3a1c"/><path d="M22 31Q50 19 78 31" stroke="#e0a86d" stroke-width="3" fill="none"/>',
- '<circle cx="50" cy="52" r="46" fill="#ffe68a" opacity=".28"/><rect x="10" y="42" width="80" height="44" rx="6" fill="#7b3f2a"/><path d="M10 44Q10 16 50 16Q90 16 90 44Z" fill="#9a5134"/><path d="M10 44H90M10 80H90" stroke="url(#vw-brass)" stroke-width="6"/><path d="M24 18V86M76 18V86" stroke="url(#vw-brass)" stroke-width="6"/><circle cx="50" cy="57" r="12" fill="url(#vw-brass)"/><path d="M50 49l3 6 6 1-4.5 4 1 6-5.5-3-5.5 3 1-6-4.5-4 6-1z" fill="#fff3b0"/><path d="M18 27Q50 11 82 27" stroke="#c97d55" stroke-width="3" fill="none"/>'
-];
 const TAG={rig:'#f27755',chart:'#43bfe7',flux:'#ac83fa',rope:'#c9a36a',shell:'#ff9f8a',lamp:'#ffc93c'};
-// Sealed cargo: a crate stencilled "?" with the part that opens it pinned to its
-// corner; cargo holding a generator glows.
-// Sealed cargo looks like who packed it (build 25, user: "uitgartai haragdaj baina"): Rover
+// Sealed cargo shows a "?" with the part that opens it pinned to its corner, and looks
+// like who packed it (build 25, user: "uitgartai haragdaj baina"): Rover
 // parts open wooden crates, Kite parts canvas bundles, Rope Winch parts barrels, the rest
-// wicker baskets. The colour tells the player which generator's part will be wanted.
-const BUNDLE='<path d="M12 40Q12 26 26 24H74Q88 26 88 40V72Q88 86 74 86H26Q12 86 12 72Z" fill="#3f8fa3"/><path d="M12 42Q50 32 88 42M12 60Q50 52 88 60" fill="none" stroke="#2b6f80" stroke-width="2.6" opacity=".8"/><path d="M36 24V86M64 24V86" stroke="#c9a36a" stroke-width="5"/><path d="M36 24V86M64 24V86" stroke="#9c7a45" stroke-width="1.4" stroke-dasharray="3 4"/><circle cx="50" cy="30" r="5.5" fill="#c9a36a" stroke="#9c7a45" stroke-width="1.5"/><path d="M20 34Q30 28 44 28" stroke="#a8dde6" stroke-width="3" fill="none" opacity=".8"/><text x="40" y="76" font-size="26" font-weight="900" fill="#e3f4f7" font-family="system-ui,sans-serif" opacity=".85">?</text>';
-const BARREL='<path d="M20 22Q13 54 20 86H80Q87 54 80 22Z" fill="#8c4f2e"/><path d="M35 24Q31 54 35 86M50 25V86M65 24Q69 54 65 86" stroke="#6e3b20" stroke-width="2.5" fill="none"/><path d="M17 38Q50 46 83 38M16 72Q50 80 84 72" stroke="#5b6573" stroke-width="5" fill="none"/><ellipse cx="50" cy="22" rx="30" ry="9" fill="#a8683f" stroke="#5b6573" stroke-width="4"/><path d="M30 21H70M34 25H66" stroke="#7a4527" stroke-width="1.8"/><path d="M24 30Q22 50 25 64" stroke="#c98a5c" stroke-width="3" fill="none" opacity=".7"/><text x="40" y="68" font-size="26" font-weight="900" fill="#f6dcc6" font-family="system-ui,sans-serif" opacity=".85">?</text>';
-const BASKET='<path d="M12 36H88L79 86H21Z" fill="#c99a52"/><path d="M14 48H86M16 60H84M18 72H82" stroke="#9c7234" stroke-width="2.4"/><path d="M28 36L34 86M44 36L46 86M56 36L54 86M72 36L66 86" stroke="#a87c3c" stroke-width="2"/><rect x="9" y="30" width="82" height="10" rx="5" fill="#d9ad66" stroke="#9c7234" stroke-width="2.5"/><text x="40" y="76" font-size="26" font-weight="900" fill="#fff1d6" font-family="system-ui,sans-serif" opacity=".85">?</text>';
+// wicker baskets. The look tells the player which generator's part will be wanted.
 const CARGO_LOOK={rig:'crate',chart:'bundle',rope:'barrel'};
-const CARGO='<path d="M10 30L50 18L90 30V78L50 92L10 78Z" fill="#8a6440"/><path d="M10 30L50 42L90 30L50 18Z" fill="#b48a5c"/><path d="M50 42V92" stroke="#5f4226" stroke-width="3"/><path d="M10 48L50 60L90 48M10 64L50 76L90 64" stroke="#6f4f30" stroke-width="2.5" fill="none"/><path d="M10 30L50 42L90 30" fill="none" stroke="#5f4226" stroke-width="3"/><path d="M14 34L14 76M86 34V76" stroke="#5b6573" stroke-width="5"/><text x="30" y="74" font-size="26" font-weight="900" fill="#f3dcb3" font-family="system-ui,sans-serif" opacity=".85">?</text>';
 // Draw any Coast Camp cell: new chains and crates here, everything else with the
 // shared art. Water shows what lies on the sea floor beneath it.
 // A generator's level shows on it (build 22, user: "generator level ahihaar yah bile, bas
@@ -91,15 +86,15 @@ export function draw(x,cls=''){
  // Tideglass: the part shows through a faceted sea-green shard; a merge beside it cracks it.
  if(x?.type==='glass')return draw({type:'item',family:x.family,tier:x.tier},(cls+' inGlass').trim())+'<svg class="glassShard" viewBox="0 0 100 100" aria-hidden="true"><path d="M14 22L40 8 78 14 92 46 82 86 44 94 10 72Z" fill="#9fe3e0" fill-opacity=".38" stroke="#e9fffd" stroke-width="3"/><path d="M40 8L50 40 92 46M50 40L44 94M50 40L10 72M14 22L50 40" stroke="#ffffff" stroke-opacity=".55" stroke-width="1.5" fill="none"/><path d="M22 30L34 22" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".8"/>'+(x.cracks?'<g class="crackLines" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M50 40L70 26 86 30M50 40L74 58 90 62M74 58L66 84M50 40L28 52 16 50M28 52L30 74" stroke="#1f5f5b" stroke-width="7"/><path d="M50 40L70 26 86 30M50 40L74 58 90 62M74 58L66 84M50 40L28 52 16 50M28 52L30 74" stroke="#ffffff" stroke-width="3"/></g>':'')+'</svg>';
  // Deep cargo (not yet touching open ground) keeps even its key hidden.
- if(x?.type==='cargo'){const look=CARGO_LOOK[x.key.family]??'basket';return `<svg class="art cargoArt ${cls}" viewBox="0 0 100 100" aria-hidden="true" data-art="cargo-${look}">${COAST_DEFS}<g stroke-linejoin="round" stroke-linecap="round">${{crate:CARGO_CRATE,bundle:CARGO_BUNDLE,barrel:CARGO_BARREL,basket:CARGO_BASKET}[look]}</g></svg>`+(x.deep?'':`<span class="cargoKey" aria-hidden="true">${draw({type:'item',family:x.key.family,tier:x.key.tier})}</span>`);}
+ if(x?.type==='cargo'){const look=CARGO_LOOK[x.key.family]??'basket';return img(CARGO_FILE[look],('cargoArt '+cls).trim(),'cargo-'+look)+'<span class="cargoQ" aria-hidden="true">?</span>'+(x.deep?'':`<span class="cargoKey" aria-hidden="true">${draw({type:'item',family:x.key.family,tier:x.key.tier})}</span>`);}
  if(x?.type==='source'&&GENERATOR_SHAPES[x.id])return `<svg class="art ${cls}" viewBox="0 0 100 100" aria-hidden="true" data-art="source-${x.id}">${MATERIALS}<g stroke-linejoin="round" stroke-linecap="round">${GENERATOR_SHAPES[x.id]}</g></svg>`;
  if(x?.type==='water')return x.find?draw(x.find,(cls+' submerged').trim()):'';
  // Tide token: a sea-glass coin with two curved arrows (it turns a part into another).
- if(x?.type==='token')return `<svg class="art tokenArt ${cls}" viewBox="0 0 100 100" aria-hidden="true" data-art="token">${COAST_DEFS}${TOKEN}</svg>`;
+ if(x?.type==='token')return img('tide-token',('tokenArt '+cls).trim(),'token');
  // Brass cog: a gear with an arrow up (+1 generator level).
- if(x?.type==='cog')return `<svg class="art cogArt ${cls}" viewBox="0 0 100 100" aria-hidden="true" data-art="cog">${COAST_DEFS}${COG}</svg>`;
+ if(x?.type==='cog')return img('brass-cog',('cogArt '+cls).trim(),'cog');
  if(x?.type==='jar')return art(x,cls);
- if(x?.type==='kit')return `<svg class="art crateArt crate${x.size} ${cls}" viewBox="0 0 100 100" aria-hidden="true" data-art="crate-${x.size}-${x.family}">${COAST_DEFS}<g stroke-linejoin="round" stroke-linecap="round">${KITS[x.size-1]}</g><circle cx="83" cy="80" r="9" fill="${TAG[x.family]}" stroke="#fff" stroke-width="3"/><circle cx="80" cy="77" r="3" fill="#fff" opacity=".55"/></svg>`;
+ if(x?.type==='kit')return img(KIT_FILE[x.size-1],`crateArt crate${x.size} ${cls}`.trim(),`crate-${x.size}-${x.family}`)+`<span class="kitTag" style="background:${TAG[x.family]}" aria-hidden="true"></span>`;
  if(x?.type==='item'&&SHAPES[x.family]){
   const key=x.family+'-'+x.tier;
   if(SPRITE_OVERRIDES[key])return `<img class="art ${cls}" src="${SPRITE_OVERRIDES[key]}" alt="" aria-hidden="true" data-art="${key}">`;

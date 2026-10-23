@@ -145,3 +145,10 @@
 }
 @keyframes genBreathe{50%{transform:translateY(-2px) scale(1.03)}}
 @keyframes cargoNudge{0%,86%,100%{transform:none}90%{transform:rotate(-4deg)}94%{transform:rotate(4deg)}}
+
+/* Rendered 3D art (build 27): the "?" on sealed cargo and the crate's colour tag sit on top. */
+.cargoQ{position:absolute;left:50%;top:56%;transform:translate(-50%,-50%);font:900 clamp(13px,4.2vw,20px)/1 system-ui,sans-serif;color:#fff8e8;text-shadow:0 1px 0 #5a3a1f,0 0 4px #0007;pointer-events:none}
+#board .tile.cargo.deep .cargoArt{filter:brightness(.72) saturate(.75)}
+#board .tile.cargo.deep .cargoQ{opacity:.6}
+.kitTag{position:absolute;right:9%;bottom:10%;width:22%;height:22%;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 2px #0004,inset 0 -2px 0 #0002;pointer-events:none}
+img.art{-webkit-user-drag:none;user-select:none}
