@@ -308,3 +308,12 @@ selected part stay marked as drag targets. Texts say "drag" (start hint, help, c
 and token descriptions). The click a drag ends with is ignored, but only that one (it used
 to block every tap for 300 ms after a drag). Browser test: tapping twins does not merge;
 every merge and cargo opening in the walkthrough is a drag.
+
+## Build 25 — a livelier board (user, with a screenshot: "Uitgartai haragdaj baina")
+The board was 27 identical brown crates around a pale camp. No rule changes:
+- Cargo looks like who packed it: Rover-part crates stay wooden crates, Survey Kite-part
+  cargo is a teal canvas bundle with rope straps, Rope Winch-part cargo a barrel with iron
+  hoops (wicker baskets for later chains); each tile takes a matching tint, deeper ones
+  darker. The look tells the player which generator the cargo will want.
+- The camp floor is warm sand; generators breathe gently; crates whose key you hold give a
+  small nudge now and then (reduced-motion turns these off).
