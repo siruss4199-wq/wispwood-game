@@ -112,3 +112,15 @@
 .beachCount{margin:8px 16px 0;font-size:13px;font-weight:800;color:#5f7380;letter-spacing:.04em}
 .place .pips{margin:2px 0}
 .backToBoard{display:block;margin:6px auto 4px;min-height:48px;padding:0 22px;border-radius:14px}
+
+/* Generator levels (build 22): brass plate, gold ring, sparkles, crown. */
+.genDeco{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+#board .tile.source{position:relative}
+@media(prefers-reduced-motion:no-preference){.genDeco .spark{animation:genSpark 1.8s ease-in-out infinite;transform-origin:center;transform-box:fill-box}.genDeco .spark.s2{animation-delay:.9s}}
+@keyframes genSpark{50%{opacity:.25;transform:scale(.6)}}
+/* Beach stages (build 22): stage 2 flies a pennant, stage 3 glows gold and sparkles. */
+.restoredIcon.stage2::before,.restoredIcon.stage3::before{content:"";position:absolute;right:-4px;top:-10px;width:16px;height:20px;background:linear-gradient(#5c4630,#5c4630) left/2px 100% no-repeat,linear-gradient(135deg,#e0567a 50%,transparent 50%) 2px 0/14px 10px no-repeat}
+.restoredIcon.stage3::after{content:"";position:absolute;inset:-8px;border-radius:50%;background:radial-gradient(circle,#ffe48a66 0 45%,transparent 70%);z-index:-1}
+@media(prefers-reduced-motion:no-preference){.restoredIcon.stage3::after{animation:stageGlow 2.4s ease-in-out infinite}}
+@keyframes stageGlow{50%{opacity:.4}}
+.restoredIcon.upgraded{animation:restoredPop .9s cubic-bezier(.2,1.6,.4,1)}

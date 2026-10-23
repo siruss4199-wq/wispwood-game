@@ -270,3 +270,20 @@ the next kind; crates hold a new Tide token plus more coins, parts and crates.
 - Scripted player, 4–6 s per action: Survey Kite at 10–15 min, Rope Winch at 25–38 min,
   all 21 stages in 39–58 min, energy 10–16 at the end, no waiting; 20 of 40 cells still
   closed at the end.
+
+## Build 22 — generator levels show, every beach stage rewards (user: "Generator level ahihaar yah bile, bas icon uurchlugduhgui yu, story upgrade hiij baigaa medremj reward sul baina")
+- **Generator levels show on the generator:** level 2 stands on a brass plate, level 3 adds
+  a gold ring, level 4 sparkles, level 5 wears a crown (`genDeco` in `v5/next/chains.mjs`),
+  on the board, in the selection and in moments. Levelling up pops the generator and says
+  what it does: Lv2 every third part a tier higher, Lv3 every second, Lv4 every part, Lv5
+  every part and every third two tiers; at Lv2 it also says level 3 brings the next kind.
+- **Every beach stage gives a reward** (was: first stages and the six copy stages):
+  crates of the newest generator (driftwood, sea chest or captain's trunk), Tide tokens or
+  a little energy; +8 XP per stage (was 5). After the story lines a moment lists the
+  rewards ("Lay a boardwalk · stage 2 of 3 · Rewards: a Rivet Rover to merge · +8 XP").
+  Moments now show above the beach screen (they were hidden behind it).
+- **Stages look different on the beach picture:** stage 2 flies a red pennant, stage 3
+  glows gold; the upgraded place pops.
+- Economy: level chest +10 energy (was 15); beach costs 1295 coins. Scripted player, 4–6 s
+  per action: Survey Kite 10–16 min, Landing Beach 47–60 min, ~19 of 40 cells still closed
+  at the end, energy 3–6 left.

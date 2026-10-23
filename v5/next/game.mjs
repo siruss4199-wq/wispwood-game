@@ -15,10 +15,10 @@ import {CHAINS,GENERATOR_CHAINS,GENERATOR_NAMES,maxTier} from './chains.mjs';
 export const SAVE_KEY='vaultwake-v5-coast';
 export const VERSION=4,MAX_TIER=7,MAX_ENERGY=120;// MAX_TIER: the longest chain
 export const SOURCES=Object.fromEntries(Object.entries(GENERATOR_NAMES).map(([id,name])=>[id,{name}]));
-export const XP={merge:1,restore:5,feed:5,unseal:2};// feed: merging two generators; orders pay a fifth of their coins as XP
+export const XP={merge:1,restore:8,feed:5,unseal:2};// feed: merging two generators; orders pay a fifth of their coins as XP
 // Coins per part by tier (build 16: stars became coins, five to a star).
 export const COIN_VALUE=[5,5,10,25,45,80];export const COIN_RATE=5;
-export const CHEST_ENERGY=15;
+export const CHEST_ENERGY=10;
 // Coast Camp's own crates (the generator boxes of v5/kits.mjs, by size).
 export const CRATES=['Driftwood crate','Sea chest','Captain\'s trunk'];
 // Generators in the order they are found; each is opened with the one before's parts.
@@ -331,6 +331,7 @@ function step(s,a,now){
   if(e.energy){s.energy=Math.min(MAX_ENERGY,s.energy+e.energy);effects.energy=e.energy;}
   if(e.copy){const id=e.copy==='newest'?newestGenerator(s):e.copy;effects.copy=put(s,source(id));effects.copyId=id;}
   if(e.kit){const family=e.kit[0]==='newest'?newestGenerator(s):e.kit[0];effects.kit=put(s,kit(family,e.kit[1]));effects.kitFamily=family;}
+  if(e.token){effects.token=put(s,token());}
   if(e.slots&&s.slots<e.slots){s.slots=e.slots;while(s.orders.length<s.slots)s.orders.push(makeOrder(s));effects.slots=e.slots;}
   if(areaDone(s))effects.areaDone=AREAS[s.area].id;
   return {ok:true,event:'restore',task:t.id,stage:t.stage,effects,xp:XP.restore,message:t.name+(t.stage===1?' · restored':` · stage ${t.stage}`)};

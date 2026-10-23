@@ -67,7 +67,19 @@ const TAG={rig:'#f27755',chart:'#43bfe7',flux:'#ac83fa',rope:'#c9a36a',shell:'#f
 const CARGO='<path d="M10 30L50 18L90 30V78L50 92L10 78Z" fill="#8a6440"/><path d="M10 30L50 42L90 30L50 18Z" fill="#b48a5c"/><path d="M50 42V92" stroke="#5f4226" stroke-width="3"/><path d="M10 48L50 60L90 48M10 64L50 76L90 64" stroke="#6f4f30" stroke-width="2.5" fill="none"/><path d="M10 30L50 42L90 30" fill="none" stroke="#5f4226" stroke-width="3"/><path d="M14 34L14 76M86 34V76" stroke="#5b6573" stroke-width="5"/><text x="30" y="74" font-size="26" font-weight="900" fill="#f3dcb3" font-family="system-ui,sans-serif" opacity=".85">?</text>';
 // Draw any Coast Camp cell: new chains and crates here, everything else with the
 // shared art. Water shows what lies on the sea floor beneath it.
+// A generator's level shows on it (build 22, user: "generator level ahihaar yah bile, bas
+// icon uurchlugduhgui yu"): level 2 stands on a brass plate, level 3 adds a gold ring, level 4
+// sparkles, level 5 wears a crown.
+function genDeco(L){
+ let g='';
+ if(L>=2)g+='<ellipse cx="50" cy="90" rx="34" ry="7" fill="#d9a441" stroke="#9a6a1c" stroke-width="2.5" opacity=".95"/><ellipse cx="50" cy="88.5" rx="26" ry="4" fill="#ffe08a" opacity=".8"/>';
+ if(L>=3)g+='<circle cx="50" cy="52" r="45" fill="none" stroke="#ffcf4a" stroke-width="3.5" opacity=".85"/><circle cx="50" cy="52" r="45" fill="none" stroke="#fff6c8" stroke-width="1.2" opacity=".9" stroke-dasharray="6 10"/>';
+ if(L>=4)g+='<path class="spark" d="M14 18l2.5 6 6 2.5-6 2.5-2.5 6-2.5-6-6-2.5 6-2.5z" fill="#fff3a6" stroke="#e0a520" stroke-width="1"/><path class="spark s2" d="M86 30l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" fill="#fff3a6" stroke="#e0a520" stroke-width="1"/>';
+ if(L>=5)g+='<path d="M34 14L38 2L46 10L50 0L54 10L62 2L66 14Z" fill="#ffd34d" stroke="#a8730a" stroke-width="2" stroke-linejoin="round"/><circle cx="50" cy="8" r="2.5" fill="#e0567a"/>';
+ return `<svg class="genDeco lv${L}" viewBox="0 0 100 100" aria-hidden="true">${g}</svg>`;
+}
 export function draw(x,cls=''){
+ if(x?.type==='source'&&(x.level??1)>1){const {level,...base}=x;return draw(base,cls)+genDeco(level);}
  // Tideglass: the part shows through a faceted sea-green shard; a merge beside it cracks it.
  if(x?.type==='glass')return draw({type:'item',family:x.family,tier:x.tier},(cls+' inGlass').trim())+'<svg class="glassShard" viewBox="0 0 100 100" aria-hidden="true"><path d="M14 22L40 8 78 14 92 46 82 86 44 94 10 72Z" fill="#9fe3e0" fill-opacity=".38" stroke="#e9fffd" stroke-width="3"/><path d="M40 8L50 40 92 46M50 40L44 94M50 40L10 72M14 22L50 40" stroke="#ffffff" stroke-opacity=".55" stroke-width="1.5" fill="none"/><path d="M22 30L34 22" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".8"/>'+(x.cracks?'<g class="crackLines" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M50 40L70 26 86 30M50 40L74 58 90 62M74 58L66 84M50 40L28 52 16 50M28 52L30 74" stroke="#1f5f5b" stroke-width="7"/><path d="M50 40L70 26 86 30M50 40L74 58 90 62M74 58L66 84M50 40L28 52 16 50M28 52L30 74" stroke="#ffffff" stroke-width="3"/></g>':'')+'</svg>';
  // Deep cargo (not yet touching open ground) keeps even its key hidden.

@@ -12,10 +12,11 @@ import {refillTimes,clock,REFILL_CAP,rationWait} from '../energy.mjs';
 import {CREW} from '../crew.mjs';
 import {sound,reduced,burst,rewardFlight,moment as sharedMoment} from '../feedback.mjs';
 // The shared moment draws its icon with the Classic art; new chains need draw().
-function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el=document.querySelector('.moment');if(!x||!el)return;const icon=document.createElement('span');icon.style.cssText='float:left;width:42px;height:42px;margin-right:10px';icon.innerHTML=draw(x);icon.firstElementChild.style.cssText='width:100%;height:100%';el.prepend(icon);}
+// Moments show above an open screen (the beach) too: a modal dialog covers the page.
+function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el=document.querySelector('.moment');const top=[...document.querySelectorAll('dialog[open]')].pop();if(el&&top)top.append(el);if(!x||!el)return;const icon=document.createElement('span');icon.style.cssText='float:left;width:42px;height:42px;margin-right:10px';icon.innerHTML=draw(x);icon.firstElementChild.style.cssText='width:100%;height:100%';el.prepend(icon);}
 
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 21 · outer crates';
+export const BUILD='Build 22 · rewards and levels';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
@@ -34,6 +35,8 @@ const placeIcons=list=>list.map(t=>{const n=stageOf(state,t.id);return `<span cl
 const iconArt=k=>k==='workshop'?'<img class="art" src="assets/premium/workshop-operational.webp" alt="">':art(ICONS[k]);
 // A part a Tide token can turn into one an order wants.
 const swappable=x=>state.orders.some(o=>o.needs.some(r=>r.tier===x.tier&&r.family!==x.family&&count(state,r)<r.count));
+// What each generator level does (v5/kits.mjs levelLift), said when it is reached.
+const LEVEL_GAIN={2:'Every third part comes out one tier higher.',3:'Every second part comes out one tier higher.',4:'Every part comes out one tier higher.',5:'Top level: every part one tier higher, every third two tiers.'};
 const wantedKeys=()=>new Set(state.orders.flatMap(o=>o.needs.map(r=>r.family+r.tier)));
 
 // ---------- rendering ----------
@@ -138,7 +141,8 @@ function run(a){
  if(r.event==='merge'){tile?.classList.add('merge-pop');burst(tile?.getBoundingClientRect(),state.board[r.index]?.family);sound.play('merge',state.board[r.index]?.tier??0);for(const d of r.dug??[])board.querySelector(`[data-index="${d.index}"]`)?.classList.add('unlocked');}
  if((r.event==='produce'||r.event==='kit')&&fromRect&&tile&&!reduced()){const to=tile.getBoundingClientRect(),el=document.createElement('div');el.className='flight';el.innerHTML=draw(state.board[r.index]);el.style.cssText=`left:${fromRect.x}px;top:${fromRect.y}px;--dx:${to.x-fromRect.x}px;--dy:${to.y-fromRect.y}px`;document.body.append(el);setTimeout(()=>el.remove(),460);}
  if(r.event==='deliver'){rewardFlight(orderRect,$('#coinPill').getBoundingClientRect(),`+${r.coins} coins`);sound.play('contract');$('#coinPill').classList.remove('bump');void $('#coinPill').offsetWidth;$('#coinPill').classList.add('bump');}
- if(r.event==='producerUp'){const src=state.board[r.index];moment(SOURCES[src.id].name+' · level '+src.level,src.level>=MAX_GENERATOR_LEVEL?'Top level: its parts come out better every time.':'Its parts come out better more often.',src);sound.play('milestone');}
+ if(r.event==='producerUp'){const src=state.board[r.index],next=nextKind(src.id),waiting=next&&src.level<UNLOCK_LEVEL&&!state.board.some(y=>y?.type==='source'&&y.id===next);
+  moment(SOURCES[src.id].name+' · level '+src.level,LEVEL_GAIN[src.level]+(waiting?` Level ${UNLOCK_LEVEL} brings out the ${SOURCES[next].name}.`:''),src);tile?.classList.add('merge-pop');burst(tile?.getBoundingClientRect(),'gold',true);sound.play('milestone');}
  if(r.event==='restore')showBeat(r.task,r.effects);
  // A generator reaching level 2 brings out the next kind beside it.
  for(const n of r.released??[]){const t=board.querySelector(`[data-index="${n.index}"]`);t?.classList.add('unsealed');burst(t?.getBoundingClientRect(),'gold',true);setTimeout(()=>{newGeneratorMoment(n.id);sound.play('milestone');},r.event==='producerUp'?900:0);}
@@ -206,11 +210,23 @@ $('#mapContent').addEventListener('click',e=>{
  const p=e.target.closest('[data-replay]');if(p){showBeat(p.dataset.replay,{},STAGES);return;}
  if(e.target.closest('[data-back]'))$('#coastMap').close();
 });
+function rewardText(e={}){
+ const out=[];
+ if(e.energy)out.push(`+${e.energy} energy`);
+ if(e.copy>=0&&e.copyId)out.push(`a ${SOURCES[e.copyId].name} to merge`);
+ if(e.kit>=0&&state.board[e.kit]?.type==='kit')out.push(nameOf(state.board[e.kit]).replace(' · ',' for '));
+ if(e.token>=0)out.push('a Tide token');
+ if(e.slots)out.push('a fourth order card');
+ out.push('+8 XP');
+ return 'Rewards: '+out.join(' · ');
+}
 function showBeat(id,effects,stage=stageOf(state,id)){
  const area=AREAS.find(a=>a.tasks.some(t=>t.id===id)),t=area.tasks.find(t=>t.id===id),st=t.stages[Math.max(0,stage-1)];
  const extra=[];
  if(effects?.areaDone)extra.push(['bram',`${area.name} is complete! The Survey Worksite opens in the next update.`]);
- playLines(st.name,st.lines.concat(extra),()=>{if($('#coastMap').open)showMap();const icon=$(`#coastMap .restoredIcon[data-task="${id}"]`)??$(`.restoredIcon[data-task="${id}"]`);icon?.classList.add('pop');burst(($('#coastMap').open?$('#coastMap .beachScene'):board).getBoundingClientRect(),'gold',true);
+ playLines(st.name,st.lines.concat(extra),()=>{if($('#coastMap').open)showMap();const icon=$(`#coastMap .restoredIcon[data-task="${id}"]`)??$(`.restoredIcon[data-task="${id}"]`);icon?.classList.add('upgraded');
+  // The stage's rewards, said once the story has been told (build 22: every stage gives one).
+  if(effects&&Object.keys(effects).length)moment(`${st.name} · stage ${stage} of ${STAGES}`,rewardText(effects),null);burst(($('#coastMap').open?$('#coastMap .beachScene'):board).getBoundingClientRect(),'gold',true);
   for(const i of [effects?.kit,effects?.copy])if(i>=0)board.querySelector(`[data-index="${i}"]`)?.classList.add('unsealed');});
  sound.play('milestone');
 }

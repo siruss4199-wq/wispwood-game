@@ -45,7 +45,7 @@ test('generators cost energy, place near themselves and refuse when locked, empt
  const u=fresh(0);for(let i=0;i<u.board.length;i++)if(u.board[i]===null)u.board[i]=item('rig',5);refused(u,{type:'produce',id:'rig'});
 });
 
-test('coins upgrade each place in three stages; first stages give their rewards',()=>{
+test('coins upgrade each place in three stages; every stage gives a reward',()=>{
  const s=fresh(0);
  refused(s,{type:'restore',id:'beach-path'});
  s.coins=5000;assert.match(refused(s,{type:'restore',id:'beach-tent'}).message,/before it/,'a place opens once the place before it has its first stage');
@@ -53,20 +53,21 @@ test('coins upgrade each place in three stages; first stages give their rewards'
  for(const t of AREAS[0].tasks){if(t.id==='beach-pier')for(const i of [15,22,26])if(s.board[i]?.type!=='source')s.board[i]=null;// room for the sea chest
   const e=s.energy,r=ok(s,{type:'restore',id:t.id});spent+=t.stages[0].cost;assert.equal(s.coins,5000-spent);assert.equal(stageOf(s,t.id),1);assert.equal(r.stage,1);
   if(t.id==='beach-path')assert.deepEqual(s.board[r.effects.kit],kit('rig',1));
-  if(t.id==='beach-tent')assert.equal(s.energy,Math.min(120,e+15));
+  const chest=(r.levelUp??[]).reduce((n,u)=>n+u.energy,0);
+  if(t.id==='beach-tent')assert.equal(s.energy,Math.min(120,e+15+chest));
   if(t.id==='beach-mast'){assert.equal(s.slots,4);assert.equal(s.orders.length,4);}
   if(t.id==='beach-workshop'){assert.deepEqual(s.board[r.effects.copy],source('rig'),'a second Rivet Rover');const m=ok(s,{type:'merge',from:r.effects.copy,to:ROVER});assert.equal(s.board[ROVER].level,2);assert.equal(m.released,undefined,'level 2 is not yet enough for the Kite');}
   if(t.id==='beach-pier')assert.deepEqual(s.board[r.effects.kit],kit('rig',2),'a sea chest for the newest generator (still Rover here)');
-  if(t.id==='beach-beacon')assert.equal(s.energy,Math.min(120,e+20));
+  if(t.id==='beach-beacon')assert.equal(s.energy,Math.min(120,e+20+chest));
   assert.equal(s.board.filter(x=>x?.type==='cargo').length,27,'upgrades never open cargo');
  }
  // Later stages follow, in any order; the cheapest open one is the next.
  assert.equal(upgrades(s).length,7);assert.ok(upgrades(s).every(u=>u.stage===2));assert.equal(nextTask(s).id,'beach-path');
- for(let k=0;k<14;k++){const u=nextTask(s),r=ok(s,{type:'restore',id:u.id});assert.equal(r.effects.energy,undefined,'later stages are story and picture');if(k<13)assert.equal(r.effects.areaDone,undefined);else assert.equal(r.effects.areaDone,'beach');}
+ for(let k=0;k<14;k++){const u=nextTask(s),r=ok(s,{type:'restore',id:u.id});assert.ok(Object.keys(r.effects).filter(k=>k!=='areaDone').length>=1,'every stage gives a reward');if(k<13)assert.equal(r.effects.areaDone,undefined);else assert.equal(r.effects.areaDone,'beach');}
  assert.ok(areaDone(s));assert.equal(builtCount(s),21);assert.equal(nextTask(s),null);
  assert.match(refused(s,{type:'restore',id:'beach-path'}).message,/fully upgraded/);refused(s,{type:'restore'});
  assert.deepEqual(AREAS[0].tasks.map(t=>t.stages.length),Array(7).fill(3));
- const total=AREAS[0].tasks.flatMap(t=>t.stages.map(x=>x.cost)).reduce((a,b)=>a+b);assert.equal(total,1175);
+ const total=AREAS[0].tasks.flatMap(t=>t.stages.map(x=>x.cost)).reduce((a,b)=>a+b);assert.equal(total,1295);
  assert.ok(AREAS[0].tasks.every(t=>t.stages[0].cost<t.stages[1].cost&&t.stages[1].cost<t.stages[2].cost),'each stage costs more');
 });
 
@@ -93,7 +94,7 @@ test('every third order brings a small box of its kind; boxes and generator leve
 test('levels give a chest with a driftwood crate of a generator you have',()=>{
  const s=fresh(0);s.level.xp=19;const e=s.energy,r=ok(s,{type:'merge',from:14,to:16});
  assert.equal(r.levelUp[0].level,2);assert.equal(r.levelUp[0].family,'rig');assert.equal(s.board.filter(x=>x?.type==='cargo').length,27);
- assert.equal(CHEST_ENERGY,15);assert.equal(s.energy,e+15);
+ assert.equal(CHEST_ENERGY,10);assert.equal(s.energy,e+10);
 });
 
 test('energy refills over time and a low-energy ration helps once an hour',()=>{
@@ -308,3 +309,10 @@ test('the edge of the board wants Kite and Rope Winch parts; generators come onl
  assert.equal(t.board.filter(x=>x?.type==='source').length,before,'no generator from a level chest');assert.equal(t.board[r.levelUp[0].index].type,'kit');
 });
 
+
+test('a generator looks different at each level',async()=>{
+ const {draw}=await import('../v5/next/chains.mjs');
+ assert.doesNotMatch(draw(source('rig')),/genDeco/,'level 1 is plain');
+ for(const L of [2,3,4,5]){const svg=draw({type:'source',id:'rig',level:L});assert.match(svg,new RegExp(`genDeco lv${L}`));}
+ assert.ok(draw({type:'source',id:'rig',level:5}).length>draw({type:'source',id:'rig',level:2}).length,'higher levels add more: plate, ring, sparkles, crown');
+});
