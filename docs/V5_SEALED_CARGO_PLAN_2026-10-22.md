@@ -317,3 +317,11 @@ The board was 27 identical brown crates around a pale camp. No rule changes:
   darker. The look tells the player which generator the cargo will want.
 - The camp floor is warm sand; generators breathe gently; crates whose key you hold give a
   small nudge now and then (reduced-motion turns these off).
+
+## Build 28 — compact orders (user, with a screenshot of the header and one wide order card: "Ene heseg bas heterhii sul baina")
+The order shelf showed one wide card at a time (scrolling sideways) under a two-line
+heading. On the Coast Camp page only (`.nextMode`; Classic V5's shared `mobile.css` is
+untouched): no heading; all orders side by side in one row (3 or 4 columns); each card is a
+small portrait, its coin reward, the parts with their counts and, only when ready, a green
+DELIVER bar. Two-part orders use slightly smaller parts. Checked at 360 px with four orders:
+no sideways scroll.
