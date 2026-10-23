@@ -245,3 +245,10 @@ body.nextMode[data-art] #board .tile.item .art{width:104%;height:104%;filter:dro
 .nextMode .beachScenery{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;filter:drop-shadow(0 3px 2px #233e5a50)}
 .nextMode .beachScene .restoredIcon[data-task="beach-path"],.nextMode .beachScene .restoredIcon[data-task="beach-tent"],.nextMode .beachScene .restoredIcon[data-task="beach-mast"],.nextMode .beachScene .restoredIcon[data-task="beach-pier"]{width:30px;height:30px}
 .nextMode .beachScene .restoredIcon:is([data-task="beach-path"],[data-task="beach-tent"],[data-task="beach-mast"],[data-task="beach-pier"])>.art{visibility:hidden}
+/* The tide (build 19): the outer ring stays under water until the beach has enough upgrades. */
+.nextMode #board .tile.tide::after{content:"";position:absolute;inset:0;width:auto;height:auto;border:0;border-radius:inherit;background:linear-gradient(180deg,#5fb6d677,#146b99aa);pointer-events:none;animation:none;opacity:1;transform:none}
+#board .tile.tide .art{filter:saturate(.6) brightness(.85)}
+.tideBadge{position:absolute;z-index:2;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:2px;padding:2px 6px;border-radius:10px;background:#0f4f6bdd;color:#e8fbff;font-size:13px;font-weight:900;line-height:1}
+.tideBadge .wave{width:16px;height:9px}
+.nextMode .tideProgress{font-size:12px;line-height:1.4;color:#245e79;margin:10px 0 0}
+.nextMode #board .tile.tide.selected{outline:3px solid #ffb447;outline-offset:-2px}
