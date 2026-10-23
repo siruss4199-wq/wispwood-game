@@ -347,3 +347,31 @@ its first taps and merges: a Grip tool, a Split spanner, two Grip tools. The sta
 says "Tap Rivet Rover for a Copper offcut", then "Drag a Copper offcut onto its twin". A
 unit test checks no order can be delivered before building something. Existing camps keep
 their board. Scripted player: first upgrade within a minute, Landing Beach 40–60 min.
+
+## Build 31 — a tighter economy and the Survey Worksite (user, after the build-30 review: "zuvhsuurnu, ehleed ediin zasgiig changalaad 2-r busiig nem")
+**Economy.** A new camp starts with 40 energy (was 50) and each level chest gives +6
+(was +10). The build-30 review measured energy at 40–83 for the whole beach; now it falls
+from ~57 at 5 min to ~7 by the beach's end, without waits at 5–8 s per action.
+**Bug fixed:** late on the beach a story order could ask a sixth-tier part (a Star chart)
+and price it `NaN` coins (`COIN_VALUE` stopped at tier 5). The order could never pay, the
+scripted player stalled on it, and the save held `coins:null`, which `load()` rejected —
+a reload would have started a new camp. Now `COIN_VALUE` covers tiers 0–7, orders ask
+tier 5 at most (`ORDER_TOP`), and `load()` prices a saved `null` order again
+(test: "a saved NaN-priced order is priced again").
+
+**Survey Worksite (area 2).** The same shape as the beach: seven places, three stages
+each, every stage one reward (energy, a crate, a Tide token or a generator copy) and a line
+or two of story; 1500 coins in all (40 → 110 per stage). Places: survey camp, theodolite,
+hauling ropes, rock steps, tide pool, rope hoist, vault door.
+- It opens when the beach's last stage is bought (`s.area` 0 → 1): Bram says the beach is
+  complete, the worksite's intro plays and its screen opens. The finished beach stays
+  listed; the header button reads SITE.
+- Half of its everyday orders want Rope Winch parts (`focus:'rope'`); order difficulty
+  counts every area's stages, so the worksite starts at tier 3. Stage copies go to the
+  newest generator, so the Rope Winch reaches level 3 there and brings out the Shell Trap.
+- Saves: no new fields. A save that finished the beach before this build goes up the cliff
+  on load (test: "a save that finished the beach … goes up the cliff").
+- Scripted player: beach 34–45 min; worksite 32–42 min at 4–6 s per action. A quick
+  player (4 s) runs out of energy at the worksite and waits ~13 min in all; slower players
+  barely wait. Costs were swept 0.5–0.8× of a first draft: above ~0.68× the worksite falls
+  off an energy cliff (waits of 1–2 h), so it stays at 0.65×.

@@ -8,7 +8,7 @@
 // Pure data. Effects are applied by game.mjs.
 const place=(id,icon,at,stages)=>({id,icon,at,name:stages[0].name,stages});
 export const AREAS=[
- {id:'beach',name:'Landing Beach',picture:'landing',
+ {id:'beach',name:'Landing Beach',short:'BEACH',picture:'landing',
   intro:[['neri','The storm left us one beach and a lot of sand. Somewhere under the cliff is the Tideglass Vault.'],['ivo','First we make this beach a camp. Bring me parts and I will put them to work.']],
   tasks:[
    place('beach-path','rock',[18,78],[
@@ -40,10 +40,45 @@ export const AREAS=[
     {name:'Rope the cliff steps',cost:100,effect:{copy:'newest'},lines:[['ivo','Ropes and pegs on every step. Even the carts can climb now.'],['neri','Halfway up we found an old cache: a copy of our newest generator.']]},
     {name:'Open the cliff gate',cost:115,effect:{kit:['newest',3]},lines:[['neri','The cliff gate is open. Up there, the survey worksite and the Vault beyond it.'],['ivo','The beach is a camp now. Good work, everyone.']]}])
   ]},
- {id:'worksite',name:'Survey Worksite',picture:'worksite',coming:true,tasks:[]},
+ // Area 2 (build 31, user: "ehleed ediin zasgiig changalaad 2-r busiig nem"): the same shape as the
+ // beach, seven places in three stages, built around the Rope Winch. It opens when the beach's
+ // last stage is bought; half of its everyday orders want Rope Winch parts (focus).
+ {id:'worksite',name:'Survey Worksite',short:'SITE',picture:'worksite',focus:'rope',
+  intro:[['neri','Up the cliff at last: the Survey Worksite. Old instruments half-buried in sand, and a door in the rock.'],['ivo','Everything up here is hauled, hoisted or lowered. The Rope Winch will be busy.']],
+  tasks:[
+   place('ws-camp','crate-survey',[8,60],[
+    {name:'Pitch the survey camp',cost:40,effect:{energy:15},lines:[['bram','Tents up on the cliff top. The crew can sleep where it works.'],['ivo','+15 energy for the crew.']]},
+    {name:'Stack the instrument crates',cost:50,effect:{kit:['newest',2]},lines:[['neri','Every crate labelled and stacked. One of them was still full: a sea chest for our newest generator.']]},
+    {name:'Raise a drafting table',cost:60,effect:{token:1},lines:[['neri','A table for the maps. Now we can plan the whole cliff on paper first.']]}]),
+   place('ws-scope','chart-3',[21,62],[
+    {name:'Set up the theodolite',cost:45,effect:{copy:'newest'},lines:[['neri','The old theodolite still turns. It points straight at the door in the rock.'],['ivo','Packed beside it: a copy of our newest generator. Merge it in.']]},
+    {name:'Mark the survey lines',cost:55,effect:{energy:10},lines:[['neri','White lines across the whole worksite. Nobody digs in the wrong place again.']]},
+    {name:'Chart the whole cliff',cost:65,effect:{kit:['newest',2]},lines:[['neri','The cliff is charted, every ledge and crack. The door sits in the middle of an old quarry.']]}]),
+   place('ws-ropes','rope-1',[12,86],[
+    {name:'Coil the hauling ropes',cost:50,effect:{copy:'newest'},lines:[['ivo','Rope everywhere, tangled by the storm. Coiled, it is worth more than gold up here.'],['ivo','Under the last coil: a copy of our newest generator.']]},
+    {name:'Splice the long lines',cost:60,effect:{token:1},lines:[['ivo','Spliced lines long enough to reach the beach. Loads can come straight up.']]},
+    {name:'Rig the rope store',cost:70,effect:{kit:['rope',3]},lines:[['ivo','A proper rope store, dry and ordered. The Rope Winch never runs short.'],['bram','The store keeper left us a captain\'s trunk for the winch.']]}]),
+   place('ws-steps','rock',[52,64],[
+    {name:'Cut steps through the rocks',cost:60,effect:{energy:20},lines:[['ivo','Steps cut through the boulders. The carts reach the door now.'],['bram','The crew is proud of the work: +20 energy.']]},
+    {name:'Fit hand ropes',cost:70,effect:{copy:'newest'},lines:[['ivo','Hand ropes on every step. Safe in the wind, safe in the rain.'],['neri','Wedged under a step: a copy of our newest generator.']]},
+    {name:'Pave the quarry floor',cost:80,effect:{kit:['newest',2]},lines:[['bram','A level floor in front of the door. Room for the whole crew and all the tools.']]}]),
+   place('ws-pool','shell-2',[64,84],[
+    {name:'Drain the tide pool',cost:65,effect:{kit:['newest',2]},lines:[['tamsin','The pool below the door drains with the tide. Shells everywhere, and something glinting.']]},
+    {name:'Sieve the pool bed',cost:80,effect:{token:1},lines:[['tamsin','Sieved sand, sorted shells. One of them hums like the beacon did.']]},
+    {name:'Wall in the pool',cost:90,effect:{copy:'newest'},lines:[['tamsin','A stone wall keeps the sea out. The pool is a workshop now.'],['tamsin','At the bottom: a copy of our newest generator.']]}]),
+   place('ws-hoist','source-rope',[95,66],[
+    {name:'Raise the rope hoist',cost:75,effect:{energy:20},lines:[['ivo','A hoist on the cliff edge. One pull and the beach sends up anything we need.'],['bram','Supplies came up with the first load: +20 energy.']]},
+    {name:'Gear the hoist',cost:90,effect:{copy:'newest'},lines:[['ivo','Brass gears from the Workshop. The hoist lifts twice the load.'],['ivo','The first geared load: a copy of our newest generator.']]},
+    {name:'Run the hoist to the door',cost:100,effect:{kit:['newest',3]},lines:[['ivo','A line from the hoist straight to the door. Whatever is behind it, we can move it.']]}]),
+   place('ws-door','lamp-2',[86,40],[
+    {name:'Survey the vault door',cost:85,effect:{energy:10},lines:[['neri','The door is a dial, as tall as three of us. Every ring turns.']]},
+    {name:'Light the door',cost:100,effect:{token:1},lines:[['tamsin','Lanterns all around the dial. The tideglass in it glows back at us.']]},
+    {name:'Map the dial',cost:110,effect:{kit:['newest',3]},lines:[['neri','Every ring of the dial is mapped. Now we know how it opens.'],['bram','The worksite is done. Next: the Vault Entrance itself.']]}])
+  ]},
  {id:'entrance',name:'Vault Entrance',picture:'entrance',coming:true,tasks:[]},
  {id:'vault',name:'The Vault',picture:'vault-open',coming:true,tasks:[]}
 ];
+// The next area opens when this one's last stage is bought (game.mjs restore and load).
 export const TASKS=Object.fromEntries(AREAS.flatMap(a=>a.tasks.map(t=>[t.id,{...t,area:a.id}])));
 export const STAGES=3;
 export const areaOf=id=>AREAS.find(a=>a.id===id);

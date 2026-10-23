@@ -16,9 +16,12 @@ export const SAVE_KEY='vaultwake-v5-coast';
 export const VERSION=4,MAX_TIER=7,MAX_ENERGY=120;// MAX_TIER: the longest chain
 export const SOURCES=Object.fromEntries(Object.entries(GENERATOR_NAMES).map(([id,name])=>[id,{name}]));
 export const XP={merge:1,restore:8,feed:5,unseal:2};// feed: merging two generators; orders pay a fifth of their coins as XP
-// Coins per part by tier (build 16: stars became coins, five to a star).
-export const COIN_VALUE=[5,5,10,25,45,80];export const COIN_RATE=5;
-export const CHEST_ENERGY=10;
+// Coins per part by tier (build 16: stars became coins, five to a star; build 31: every tier
+// a chain has, so no order is ever worth NaN).
+export const COIN_VALUE=[5,5,10,25,45,80,140,240];
+// Orders ask for tier 5 at most (build 31: a sixth-tier story order stalled the beach's end).
+export const ORDER_TOP=5;export const COIN_RATE=5;
+export const CHEST_ENERGY=6;
 // Coast Camp's own crates (the generator boxes of v5/kits.mjs, by size).
 export const CRATES=['Driftwood crate','Sea chest','Captain\'s trunk'];
 // Generators in the order they are found; each is opened with the one before's parts.
@@ -114,7 +117,7 @@ export function fresh(now=Date.now()){
  const board=Array(BOARD_SIZE).fill(null);
  board[ROVER]=source('rig');
  for(let i=0;i<BOARD_SIZE;i++)if(!CAMP.includes(i))board[i]=GLASS[i]?glass(...GLASS[i]):cargoAt(i);
- const s={version:VERSION,board,energy:50,energyAt:now,coins:0,level:freshLevel(),taps:{},
+ const s={version:VERSION,board,energy:40,energyAt:now,coins:0,level:freshLevel(),taps:{},
   orders:[],slots:3,orderSeq:0,ordersDone:0,area:0,built:{},found:[],moves:0,merges:0,lastAt:now};
  for(const g of Object.keys(GENERATOR_CHAINS))s.taps[g]=0;
  for(let i=0;i<s.slots;i++)s.orders.push(makeOrder(s));
@@ -130,6 +133,8 @@ const FIRST=[[['rig',1,1]],[['rig',2,1]],[['rig',1,2]]];
 function rand(n){let t=(n*2654435761+0x6D2B79F5)>>>0;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296;}
 const CREW_OF={rig:'ivo',rope:'ivo',chart:'neri',shell:'neri',flux:'tamsin',lamp:'tamsin'};
 const crewFor=needs=>needs.length>1?'bram':CREW_OF[needs[0].family];
+// Coins an order pays: its parts' worth, half as much again for the story's (rounded to 5).
+export const priceOf=(needs,story=false)=>{const v=needs.reduce((v,r)=>v+r.count*COIN_VALUE[r.tier],0);return story?Math.round(v*1.5/5)*5:v;};
 export function makeOrder(s){
  const n=s.orderSeq++;let needs;
  if(n<FIRST.length)needs=FIRST[n].map(([family,tier,count])=>({family,tier,count}));
@@ -139,22 +144,25 @@ export function makeOrder(s){
   // tier rises with beach upgrades (2 from 3 upgrades, 3 from 12), the top tier climbs every
   // six upgrades and one more once a generator reaches level 3, and two-part orders grow
   // more common as the beach is built.
-  const families=openChains(s),built=builtCount(s),best=Math.max(1,...s.board.filter(x=>x?.type==='source').map(producerLevel));
-  const low=built>=12?3:built>=3?2:1,top=2+Math.floor(built/6)+(best>=3?1:0);
+  // Built counts every area's stages, so the Survey Worksite starts where the beach ended.
+  const families=openChains(s),built=totalBuilt(s),best=Math.max(1,...s.board.filter(x=>x?.type==='source').map(producerLevel));
+  const low=built>=12?3:built>=3?2:1,top=Math.min(ORDER_TOP,2+Math.floor(built/6)+(best>=3?1:0));
   // One order at a time is the story's: the newest generator's best part, for the next beach
   // stage, paying half as much again.
   const story=!s.orders.some(o=>o?.story)&&nextTask(s);
   const live=new Set(s.orders.filter(Boolean).flatMap(o=>o.needs.map(r=>r.family+r.tier)));
   let family,tier,k=0;
   if(story){family=GENERATOR_CHAINS[newestGenerator(s)][0][0];tier=Math.max(low,Math.min(top,maxTier(family)-1));}
-  else do{family=families[Math.floor(rand(n*7+k)*families.length)];const hi=Math.max(low,Math.min(top,maxTier(family)-1));tier=low+Math.floor(rand(n*11+k)*(hi-low+1));k++;}while(live.has(family+tier)&&k<8);
+  // Half of an area's everyday orders want its focus chain once its generator is out (the
+  // Survey Worksite's Rope Winch).
+  const focus=currentArea(s)?.focus,pool=focus&&families.includes(focus)&&rand(n*19)<.5?[focus]:families;
+  if(!story)do{family=pool[Math.floor(rand(n*7+k)*pool.length)];const hi=Math.max(low,Math.min(top,maxTier(family)-1));tier=low+Math.floor(rand(n*11+k)*(hi-low+1));k++;}while(live.has(family+tier)&&k<8);
   if(story){needs=[{family,tier,count:1}];const other=families.find(f=>f!==family);needs.push({family:other??family,tier:other?Math.max(1,low):Math.max(1,tier-1),count:1});if(needs[1].family===family&&needs[1].tier===tier)needs.pop();
-   const coins=Math.round(needs.reduce((v,r)=>v+r.count*COIN_VALUE[r.tier],0)*1.5/5)*5;return {id:'o'+n,who:crewFor(needs),needs,coins,story:story.id};}
+   return {id:'o'+n,who:crewFor(needs),needs,coins:priceOf(needs,true),story:story.id};}
   needs=[{family,tier,count:tier<=2&&rand(n*13)<.6?2:1}];
-  if(rand(n*17)<.2+built*.02){const other=families.find(f=>f!==family)??family,t=Math.max(1,tier-1);if(other!==family||t!==tier)needs.push({family:other,tier:t,count:1});}
+  if(rand(n*17)<Math.min(.6,.2+built*.02)){const other=families.find(f=>f!==family)??family,t=Math.max(1,tier-1);if(other!==family||t!==tier)needs.push({family:other,tier:t,count:1});}
  }
- const coins=needs.reduce((v,r)=>v+r.count*COIN_VALUE[r.tier],0);
- return {id:'o'+n,who:crewFor(needs),needs,coins};
+ return {id:'o'+n,who:crewFor(needs),needs,coins:priceOf(needs)};
 }
 // Board cells an order would take: exact matches, lowest index first.
 export function orderItems(s,o){
@@ -238,6 +246,10 @@ export function upgrades(s){
 export const nextTask=s=>upgrades(s)[0]??null;
 export const areaDone=(s,a=currentArea(s))=>!!a&&a.tasks.length>0&&a.tasks.every(t=>stageOf(s,t.id)>=STAGES);
 export const builtCount=(s,a=currentArea(s))=>a?a.tasks.reduce((n,t)=>n+stageOf(s,t.id),0):0;
+// Stages bought in every area (orders grow harder with it).
+export const totalBuilt=s=>Object.values(s.built).reduce((n,k)=>n+k,0);
+// When an area is complete the next one with places opens (build 31: the Survey Worksite).
+function advance(s){let next=null;while(areaDone(s)&&AREAS[s.area+1]?.tasks.length){s.area++;next=AREAS[s.area].id;}return next;}
 
 export function act(s,a,now=Date.now()){
  const wasFull=s.energy>=REFILL_CAP,r=step(s,a,now);
@@ -344,7 +356,7 @@ function step(s,a,now){
   if(e.kit){const family=e.kit[0]==='newest'?newestGenerator(s):e.kit[0];effects.kit=put(s,kit(family,e.kit[1]));effects.kitFamily=family;}
   if(e.token){effects.token=put(s,token());}
   if(e.slots&&s.slots<e.slots){s.slots=e.slots;while(s.orders.length<s.slots)s.orders.push(makeOrder(s));effects.slots=e.slots;}
-  if(areaDone(s))effects.areaDone=AREAS[s.area].id;
+  if(areaDone(s)){effects.areaDone=AREAS[s.area].id;const next=advance(s);if(next)effects.nextArea=next;}
   return {ok:true,event:'restore',task:t.id,stage:t.stage,effects,xp:XP.restore,message:t.name+(t.stage===1?' · restored':` · stage ${t.stage}`)};
  }
  if(a.type==='recycle'){
@@ -423,11 +435,15 @@ export function load(raw,now=Date.now()){
   if(s?.version===3)toV4(s);
   if(s?.version!==VERSION||!Array.isArray(s.board)||s.board.length!==BOARD_SIZE||!s.board.every(validCell))return fresh(now);
   if(!integer(s.energy,0,MAX_ENERGY)||!integer(s.coins,0,999999)||!integer(s.area,0,AREAS.length-1)||!integer(s.slots,3,4))return fresh(now);
+  // Build 30 could price a sixth-tier story order at NaN coins (saved as null): it is priced again.
+  if(Array.isArray(s.orders))for(const o of s.orders)if(o&&o.coins===null&&Array.isArray(o.needs)&&o.needs.every(validNeed))o.coins=priceOf(o.needs,!!o.story);
   if(!Array.isArray(s.orders)||s.orders.length!==s.slots||!s.orders.every(validOrder))return fresh(now);
   if(!s.built||typeof s.built!=='object'||Array.isArray(s.built)||!Object.entries(s.built).every(([id,n])=>TASKS[id]&&integer(n,1,STAGES))||!Array.isArray(s.found))return fresh(now);
   for(const k of ['orderSeq','ordersDone','moves','merges'])if(!integer(s[k],0,1e9))return fresh(now);
   if(!s.taps||!Object.keys(GENERATOR_CHAINS).every(k=>integer(s.taps[k],0,1e9)))return fresh(now);
   s.level=validLevel(s.level);
+  // Saves that finished the beach before the Survey Worksite existed go up the cliff.
+  advance(s);
   if(s.rationAt!==undefined&&!(Number.isFinite(s.rationAt)&&s.rationAt<=now))delete s.rationAt;
   if(!Number.isFinite(s.energyAt)||s.energyAt>now)s.energyAt=now;
   settleEnergy(s,now);

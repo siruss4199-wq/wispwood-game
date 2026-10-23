@@ -16,7 +16,7 @@ import {sound,reduced,burst,rewardFlight,moment as sharedMoment} from '../feedba
 function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el=document.querySelector('.moment');const top=[...document.querySelectorAll('dialog[open]')].pop();if(el&&top)top.append(el);if(!x||!el)return;const icon=document.createElement('span');icon.style.cssText='float:left;width:42px;height:42px;margin-right:10px';icon.innerHTML=draw(x);icon.firstElementChild.style.cssText='width:100%;height:100%';el.prepend(icon);}
 
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 30 · build from scratch';
+export const BUILD='Build 31 · the Survey Worksite';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
@@ -32,7 +32,8 @@ const ICONS={rock:{type:'rock'},'crate-salvage':{type:'crate',kind:'salvage'},'c
 const COIN='<i class="coinIcon" aria-hidden="true"></i>';
 const pips=n=>`<span class="pips" aria-label="stage ${n} of ${STAGES}">${Array.from({length:STAGES},(_,k)=>`<i class="${k<n?'on':''}"></i>`).join('')}</span>`;
 const placeIcons=list=>list.map(t=>{const n=stageOf(state,t.id);return `<span class="restoredIcon stage${n}" data-task="${t.id}" data-stage="${n}" style="left:${t.at[0]}%;top:${t.at[1]}%">${iconArt(t.icon)}${pips(n)}</span>`;}).join('');
-const iconArt=k=>k==='workshop'?'<img class="art" src="assets/premium/workshop-operational.webp" alt="">':art(ICONS[k]);
+// Worksite icons are Coast Camp parts ('rope-2') and generators ('source-rope'), drawn by draw().
+const iconArt=k=>{if(k==='workshop')return '<img class="art" src="assets/premium/workshop-operational.webp" alt="">';if(ICONS[k])return art(ICONS[k]);const g=k.match(/^source-(\w+)$/),p=k.match(/^(\w+)-(\d)$/);return draw(g?{type:'source',id:g[1]}:item(p[1],+p[2]));};
 // A part a Tide token can turn into one an order wants.
 const swappable=x=>state.orders.some(o=>o.needs.some(r=>r.tier===x.tier&&r.family!==x.family&&count(state,r)<r.count));
 // What each generator level does (v5/kits.mjs levelLift), said when it is reached.
@@ -50,7 +51,8 @@ function render(){
  // The beach and its upgrades live on their own screen (user, 2026-10-22: "ene zaaval boardtai
  // neg delgetsend tsug baimaargui"); the board screen keeps only the BEACH button, whose dot
  // shows when an upgrade is affordable, and the coin count.
- $('#mapButton').setAttribute('aria-label',ready?'Go to the beach: an upgrade is ready':`Go to the beach (${builtCount(state)} of ${total} upgrades)`);
+ $('#mapButton').setAttribute('aria-label',ready?`Go to the ${area.name}: an upgrade is ready`:`Go to the ${area.name} (${builtCount(state)} of ${total} upgrades)`);
+ $('#mapButton span').textContent=area.short??'MAP';
  renderOrders();renderBoard();renderSelection();renderHint();
  $('#rationButton').hidden=state.energy>3;
  const wait=rationWait(state,Date.now());$('#rationButton').textContent=wait>0?`Field ration in ${clock(wait)}`:'Field ration · +8 ϟ';$('#rationButton').disabled=wait>0;
@@ -61,7 +63,7 @@ function renderOrders(){
  $('#requests').innerHTML=`<div class="requestHeading"><span>CREW ORDERS <small>Deliver for coins</small></span></div><div class="requestShelf">${[...state.orders].sort((a,b)=>Number(!!orderItems(state,b))-Number(!!orderItems(state,a))).map(o=>{
   const p=orderProgress(state,o),ready=!!orderItems(state,o),who=CREW[o.who];
   const place=o.story&&AREAS[state.area]?.tasks.find(t=>t.id===o.story);
-  return `<button class="requestCard ${ready?'ready':''} ${place?'storyOrder':''} ${focusOrder===o.id?'active':''}" data-order="${o.id}" aria-label="${place?`For the beach (${place.name}): `:''}${who.name} asks for ${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier))).join(', ')}. ${ready?'Ready: tap to deliver.':'In progress.'} Reward ${o.coins} coins"><span class="requestCrew">${place?`<span class="storyBadge" aria-hidden="true">${iconArt(place.icon)}</span>`:portrait(o.who)}<b class="requestLane"><em>${who.name}</em>${who.role}</b></span><span class="requestItems">${p.map(r=>`<span>${draw(item(r.family,r.tier))}<b>${r.have}/${r.count}</b></span>`).join('')}</span><span class="requestReward">+${o.coins} ${COIN}</span><strong>${ready?'✓ DELIVER':'MAKE'}</strong></button>`;
+  return `<button class="requestCard ${ready?'ready':''} ${place?'storyOrder':''} ${focusOrder===o.id?'active':''}" data-order="${o.id}" aria-label="${place?`For the ${AREAS[state.area].name} (${place.name}): `:''}${who.name} asks for ${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier))).join(', ')}. ${ready?'Ready: tap to deliver.':'In progress.'} Reward ${o.coins} coins"><span class="requestCrew">${place?`<span class="storyBadge" aria-hidden="true">${iconArt(place.icon)}</span>`:portrait(o.who)}<b class="requestLane"><em>${who.name}</em>${who.role}</b></span><span class="requestItems">${p.map(r=>`<span>${draw(item(r.family,r.tier))}<b>${r.have}/${r.count}</b></span>`).join('')}</span><span class="requestReward">+${o.coins} ${COIN}</span><strong>${ready?'✓ DELIVER':'MAKE'}</strong></button>`;
  }).join('')}</div>`;
 }
 function renderBoard(){
@@ -111,13 +113,13 @@ const has=id=>state.board.some(x=>x?.type==='source'&&x.id===id);
 function renderHint(){
  const task=nextTask(state),ready=state.orders.find(o=>orderItems(state,o));let hint;
  if(!state.merges)hint=state.board.filter(x=>x?.type==='item').length<2?'START · Tap Rivet Rover for a Copper offcut':'START · Drag a Copper offcut onto its twin';
- else if(task&&state.coins>=task.cost)hint=`${task.cost} coins ready · upgrade on the beach ↑`;
+ else if(task&&state.coins>=task.cost)hint=`${task.cost} coins ready · upgrade the ${currentArea(state).name} ↑`;
  else if(ready)hint='Order ready · tap it to collect coins';
  else if(cargoKeys(state).some(k=>state.board.some(y=>matches(y,k))))hint='Lay a matching part on a crate to open it';
  else if(state.energy<1){const t=refillTimes(state,Date.now());hint='Out of energy · +1 in '+clock(t?.next??0);}
  else{// Next generator: which one has to reach level 2 to bring it out.
   const g=GENERATOR_ORDER.find(g=>has(g)&&nextKind(g)&&!has(nextKind(g)));
-  hint=g?`${SOURCES[g].name} Lv${UNLOCK_LEVEL} → ${SOURCES[nextKind(g)].name} · merge copies from the beach`:'Make the parts the crew orders want';}
+  hint=g?`${SOURCES[g].name} Lv${UNLOCK_LEVEL} → ${SOURCES[nextKind(g)].name} · merge copies from upgrades`:'Make the parts the crew orders want';}
  $('#hint').textContent=hint;
 }
 function header(){
@@ -212,11 +214,13 @@ function showMap(){
   const next=n>=STAGES?'Complete':!u?'Restore the place before it first':n?`Next: ${u.name}`:'Not restored yet';
   return `<li class="place" data-status="${status}" data-place="${t.id}"><span class="placeIcon">${iconArt(t.icon)}</span><span><strong>${now}</strong>${pips(n)}<small>${next}</small></span>${n>=STAGES?`<button data-replay="${t.id}" aria-label="Replay ${t.name}">✓</button>`:u?`<button data-restore="${t.id}" ${afford?'':'disabled'}>${COIN} ${u.cost}</button>`:'<button disabled aria-label="Locked">🔒</button>'}</li>`;
  }).join('');
+ // Finished areas stay listed above the current one, the ones still to come below it.
+ const before=AREAS.slice(0,state.area).map(a=>`<section class="mapArea done"><div class="mapHead"><img src="assets/premium/${a.picture}-vibrant.webp" alt=""><div><h2>${a.name}</h2><b>Complete ✓</b></div></div></section>`).join('');
  const later=AREAS.slice(state.area+1).map(a=>`<section class="mapArea coming"><div class="mapHead"><img src="assets/premium/${a.picture}-vibrant.webp" alt=""><div><h2>${a.name}</h2><b>Next update</b></div></div></section>`).join('');
  $('#mapContent').innerHTML=`<div class="beachTop"><h2 id="mapTitle" class="mapTitle">${area.name}</h2><b class="beachCoins">${COIN} ${state.coins}</b></div>
   <div class="beachScene"><img src="assets/premium/${area.picture}-vibrant.webp" alt="${area.name}"><div class="restored">${placeIcons(area.tasks.filter(t=>stageOf(state,t.id)>0))}</div></div>
   <p class="beachCount">${builtCount(state)} / ${area.tasks.length*STAGES} upgrades${areaDone(state)?' · complete!':''}</p>
-  <ol class="places">${places}</ol>${later}
+  <ol class="places">${places}</ol>${before}${later}
   <button class="primary backToBoard" type="button" data-back>Back to the board</button>`;
  if(!$('#coastMap').open)$('#coastMap').showModal();
 }
@@ -238,8 +242,10 @@ function rewardText(e={}){
 function showBeat(id,effects,stage=stageOf(state,id)){
  const area=AREAS.find(a=>a.tasks.some(t=>t.id===id)),t=area.tasks.find(t=>t.id===id),st=t.stages[Math.max(0,stage-1)];
  const extra=[];
- if(effects?.areaDone)extra.push(['bram',`${area.name} is complete! The Survey Worksite opens in the next update.`]);
- playLines(st.name,st.lines.concat(extra),()=>{if($('#coastMap').open)showMap();const icon=$(`#coastMap .restoredIcon[data-task="${id}"]`)??$(`.restoredIcon[data-task="${id}"]`);icon?.classList.add('upgraded');
+ const next=AREAS[AREAS.indexOf(area)+1];
+ if(effects?.nextArea)extra.push(['bram',`${area.name} is complete! Up the cliff: the ${next.name} is open.`]);
+ else if(effects?.areaDone)extra.push(['bram',`${area.name} is complete! ${next?`The ${next.name} opens in the next update.`:''}`]);
+ playLines(st.name,st.lines.concat(extra),()=>{if(effects?.nextArea){render();showMap();showIntro();}else if($('#coastMap').open)showMap();const icon=$(`#coastMap .restoredIcon[data-task="${id}"]`)??$(`.restoredIcon[data-task="${id}"]`);icon?.classList.add('upgraded');
   // The stage's rewards, said once the story has been told (build 22: every stage gives one).
   if(effects&&Object.keys(effects).length)moment(`${st.name} · stage ${stage} of ${STAGES}`,rewardText(effects),null);burst(($('#coastMap').open?$('#coastMap .beachScene'):board).getBoundingClientRect(),'gold',true);
   for(const i of [effects?.kit,effects?.copy])if(i>=0)board.querySelector(`[data-index="${i}"]`)?.classList.add('unsealed');});

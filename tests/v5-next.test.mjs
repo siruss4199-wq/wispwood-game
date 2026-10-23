@@ -4,8 +4,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {cellPos} from '../v5/core.mjs';
 import {xpToNext} from '../v5/levels.mjs';
-import {SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,makeOrder,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
-import {AREAS} from '../v5/next/areas.mjs';
+import {priceOf,totalBuilt,ORDER_TOP,SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,makeOrder,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
+import {AREAS,TASKS} from '../v5/next/areas.mjs';
 import {kit} from '../v5/kits.mjs';
 import {nextAction} from './v5-next-policy.mjs';
 
@@ -70,9 +70,10 @@ test('coins upgrade each place in three stages; every stage gives a reward',()=>
  }
  // Later stages follow, in any order; the cheapest open one is the next.
  assert.equal(upgrades(s).length,7);assert.ok(upgrades(s).every(u=>u.stage===2));assert.equal(nextTask(s).id,'beach-path');
- for(let k=0;k<14;k++){const u=nextTask(s),r=ok(s,{type:'restore',id:u.id});assert.ok(Object.keys(r.effects).filter(k=>k!=='areaDone').length>=1,'every stage gives a reward');if(k<13)assert.equal(r.effects.areaDone,undefined);else assert.equal(r.effects.areaDone,'beach');}
- assert.ok(areaDone(s));assert.equal(builtCount(s),21);assert.equal(nextTask(s),null);
- assert.match(refused(s,{type:'restore',id:'beach-path'}).message,/fully upgraded/);refused(s,{type:'restore'});
+ for(let k=0;k<14;k++){const u=nextTask(s),r=ok(s,{type:'restore',id:u.id});assert.ok(Object.keys(r.effects).filter(k=>k!=='areaDone').length>=1,'every stage gives a reward');if(k<13)assert.equal(r.effects.areaDone,undefined);else{assert.equal(r.effects.areaDone,'beach');assert.equal(r.effects.nextArea,'worksite');}}
+ // The last stage opens the Survey Worksite (build 31).
+ assert.ok(areaDone(s,AREAS[0]));assert.equal(builtCount(s,AREAS[0]),21);assert.equal(s.area,1);assert.equal(builtCount(s),0);assert.equal(nextTask(s).id,'ws-camp');
+ assert.match(refused(s,{type:'restore',id:'beach-path'}).message,/fully upgraded/);assert.match(refused(s,{type:'restore',id:'ws-ropes'}).message,/before it/);
  assert.deepEqual(AREAS[0].tasks.map(t=>t.stages.length),Array(7).fill(3));
  const total=AREAS[0].tasks.flatMap(t=>t.stages.map(x=>x.cost)).reduce((a,b)=>a+b);assert.equal(total,1295);
  assert.ok(AREAS[0].tasks.every(t=>t.stages[0].cost<t.stages[1].cost&&t.stages[1].cost<t.stages[2].cost),'each stage costs more');
@@ -120,7 +121,7 @@ test('every third order brings a small box of its kind; boxes and generator leve
 test('levels give a chest with a driftwood crate of a generator you have',()=>{
  const s=camp();s.level.xp=19;const e=s.energy,r=ok(s,{type:'merge',from:14,to:16});
  assert.equal(r.levelUp[0].level,2);assert.equal(r.levelUp[0].family,'rig');assert.equal(s.board.filter(x=>x?.type==='cargo').length,27);
- assert.equal(CHEST_ENERGY,10);assert.equal(s.energy,e+10);
+ assert.equal(CHEST_ENERGY,6);assert.equal(s.energy,e+6);
 });
 
 test('energy refills over time and a low-energy ration helps once an hour',()=>{
@@ -137,18 +138,18 @@ test('saves round-trip; anything malformed starts a new camp',()=>{
  const classic=readFileSync(new URL('./fixtures/stage2/conduit-completed.json',import.meta.url),'utf8');assert.equal(load(classic,5).moves,0,'a Classic save is not a Coast Camp save');
 });
 
-test('a scripted player upgrades Landing Beach (21 stages) in 35–65 minutes and feels energy by the end',()=>{
+test('a scripted player upgrades Landing Beach (21 stages) in 30–60 minutes and feels energy by the end',()=>{
  for(const step of [5000,6000]){
   const s=fresh(0);let now=0,firstRestore=null,actions=0,waited=0;const levels=[];
-  while(!areaDone(s)&&now<90*60*1000){
+  while(s.area<1&&now<90*60*1000){
    tick(s,now);const a=nextAction(s);if(!a){now+=30000;waited+=30000;continue;}
    const r=ok(s,a,now);actions++;now+=step;
    if(r.event==='restore'&&firstRestore===null)firstRestore=now;
    for(const u of r.levelUp??[])levels.push(now);
   }
-  assert.ok(areaDone(s),'area complete');
+  assert.ok(areaDone(s,AREAS[0]),'area complete');
   assert.ok(firstRestore<3*60*1000,'first upgrade within 3 minutes');
-  assert.ok(now>=35*60*1000&&now<=65*60*1000,`area 1 took ${(now/60000).toFixed(1)} min`);
+  assert.ok(now>=30*60*1000&&now<=60*60*1000,`area 1 took ${(now/60000).toFixed(1)} min`);
   assert.ok(levels.length>=4,'several level-ups');
   assert.ok(s.energy<25,'energy runs low by the end of the area');
   console.log(JSON.stringify({step,minutes:+(now/60000).toFixed(1),firstRestore:+(firstRestore/60000).toFixed(1),actions,levels:levels.length,energy:s.energy,waited}));
@@ -224,7 +225,7 @@ test('cargo keys grow harder away from the camp and every generator is reachable
  assert.deepEqual(CARGO[42].slice(0,2),['rope',4],'the far corner (a big coin pouch) needs a Rope ladder');
  // A scripted player finds every generator during Landing Beach.
  const t=fresh(0);let now=0;const found=[];
- while(!areaDone(t)&&now<90*60*1000){tick(t,now);const a=nextAction(t);if(!a){now+=30000;continue;}const r=ok(t,a,now);now+=6000;for(const n of r.released??[])found.push([n.id,+(now/60000).toFixed(1)]);}
+ while(t.area<1&&now<90*60*1000){tick(t,now);const a=nextAction(t);if(!a){now+=30000;continue;}const r=ok(t,a,now);now+=6000;for(const n of r.released??[])found.push([n.id,+(now/60000).toFixed(1)]);}
  assert.equal(found[0][0],'chart','Rivet Rover level 3 brings out the Survey Kite during Landing Beach');
  assert.ok(found.map(f=>f[0]).every((id,n)=>id===['chart','rope','shell','lamp'][n]),'kinds come out in order');
  const at=Object.fromEntries(found);assert.ok(at.chart>=8&&at.chart<25,`the Survey Kite after levelling the Rover twice (${at.chart} min)`);
@@ -341,4 +342,68 @@ test('a generator looks different at each level',async()=>{
  assert.doesNotMatch(draw(source('rig')),/genDeco/,'level 1 is plain');
  for(const L of [2,3,4,5]){const svg=draw({type:'source',id:'rig',level:L});assert.match(svg,new RegExp(`genDeco lv${L}`));}
  assert.ok(draw({type:'source',id:'rig',level:5}).length>draw({type:'source',id:'rig',level:2}).length,'higher levels add more: plate, ring, sparkles, crown');
+});
+
+// Build 31: a tighter economy and the second area, the Survey Worksite.
+const beachDone=()=>Object.fromEntries(AREAS[0].tasks.map(t=>[t.id,3]));
+test('the Survey Worksite: seven places in three stages, every stage a reward, the Rope Winch its focus',()=>{
+ const w=AREAS[1];assert.equal(w.id,'worksite');assert.equal(w.focus,'rope');assert.ok(!w.coming);assert.ok(w.intro.length>=1);
+ assert.deepEqual(w.tasks.map(t=>t.stages.length),Array(7).fill(3));
+ assert.ok(w.tasks.every(t=>t.stages[0].cost<t.stages[1].cost&&t.stages[1].cost<t.stages[2].cost),'each stage costs more');
+ assert.ok(w.tasks.every(t=>t.stages.every(x=>Object.keys(x.effect).length===1&&x.lines.length>=1)),'every stage gives one reward and a line');
+ assert.equal(w.tasks.flatMap(t=>t.stages.map(x=>x.cost)).reduce((a,b)=>a+b),1500);
+ assert.equal(Object.keys(TASKS).length,14,'place ids are unique across areas');
+ assert.ok(AREAS.slice(2).every(a=>a.coming&&!a.tasks.length),'later areas are still to come');
+ // Its stages are bought like the beach's and keep the beach's stages.
+ const s=fresh(0);s.area=1;s.built=beachDone();s.coins=5000;
+ assert.equal(nextTask(s).id,'ws-camp');const r=ok(s,{type:'restore'});assert.equal(r.task,'ws-camp');assert.equal(r.effects.energy,15);
+ assert.equal(stageOf(s,'beach-cliff'),3);assert.equal(builtCount(s),1);assert.equal(totalBuilt(s),22);
+});
+
+test('worksite orders lean on the Rope Winch, ask tier 3–5 and pay whole coins',()=>{
+ const s=fresh(0);s.area=1;s.built=beachDone();s.board[15]=source('chart');s.board[16]=source('rope');s.board[ROVER].level=3;s.orderSeq=10;
+ const main=[];for(let k=0;k<80;k++){const o=makeOrder(s);if(o.story){s.orders.push(o);continue;}main.push(o);}
+ const rope=main.filter(o=>o.needs[0].family==='rope').length;
+ assert.ok(rope/main.length>=.45,`rope orders ${rope}/${main.length}`);
+ for(const o of main){assert.ok(o.needs.every(r=>r.tier>=1&&r.tier<=ORDER_TOP),JSON.stringify(o.needs));assert.ok(o.needs[0].tier>=3);assert.ok(Number.isInteger(o.coins)&&o.coins>0);assert.equal(o.coins,priceOf(o.needs));}
+ // The beach alone has no focus: Rope Winch parts are one chain among the others there.
+ const b=fresh(0);b.built=beachDone();b.board[15]=source('chart');b.board[16]=source('rope');b.orderSeq=10;
+ const bm=[];for(let k=0;k<80;k++){const o=makeOrder(b);if(o.story)b.orders.push(o);else bm.push(o);}
+ assert.ok(bm.filter(o=>o.needs[0].family==='rope').length<rope);
+});
+
+test('no order asks past tier 5 or is worth NaN; a saved NaN-priced order is priced again',()=>{
+ // Build 30 could ask a sixth-tier Star chart for the beach's last stage and price it NaN.
+ const s=fresh(0);s.built={...beachDone(),'beach-cliff':2};s.board[15]=source('chart');s.board[15].level=3;s.board[ROVER].level=3;s.orders=[];
+ const so=makeOrder(s);assert.equal(so.story,'beach-cliff');assert.ok(so.needs[0].tier<=ORDER_TOP);assert.ok(Number.isInteger(so.coins));
+ for(let k=0;k<100;k++){const o=makeOrder(s);assert.ok(Number.isInteger(o.coins)&&o.needs.every(r=>r.tier<=ORDER_TOP),JSON.stringify(o));}
+ assert.equal(COIN_VALUE.length,8,'every tier a chain has is priced');
+ const t=fresh(0);t.moves=7;t.orders[0]={id:'o99',who:'neri',needs:[{family:'chart',tier:6,count:1},{family:'rig',tier:3,count:1}],coins:NaN,story:'beach-cliff'};
+ const back=load(JSON.stringify(t),5);assert.equal(back.moves,7,'the save is kept');assert.equal(back.orders[0].coins,priceOf(t.orders[0].needs,true));assert.ok(Number.isInteger(back.orders[0].coins));
+});
+
+test('a save that finished the beach before the worksite existed goes up the cliff; one in progress stays',()=>{
+ const s=fresh(0);s.built=beachDone();s.coins=40;s.moves=900;s.board[16]=source('rope');
+ const back=load(JSON.stringify(s),5);assert.equal(back.area,1);assert.equal(back.moves,900);assert.equal(back.coins,40);assert.deepEqual(back.built,s.built);assert.equal(nextTask(back).id,'ws-camp');
+ const t=fresh(0);t.built={...beachDone(),'beach-cliff':2};t.moves=500;const u=load(JSON.stringify(t),5);assert.equal(u.area,0);assert.equal(u.moves,500);
+ // An area out of range still starts a new camp.
+ const v=fresh(0);v.area=4;v.moves=3;assert.equal(load(JSON.stringify(v),5).moves,0);
+});
+
+test('the economy is tight: energy runs low through the worksite without long waits',()=>{
+ // A quick player (an action every 4 s) runs short of energy here; slower ones barely wait.
+ const s=fresh(0);let now=0,waited=0,lowest=99,beach=null,shell=null;const STEP=4000;
+ assert.equal(s.energy,40,'a new camp starts with 40 energy');
+ while(!(s.area===1&&areaDone(s))&&now<3*3600e3){
+  tick(s,now);const a=nextAction(s);if(!a){now+=30000;waited+=30000;continue;}
+  const r=ok(s,a,now);now+=STEP;if(r.effects?.nextArea)beach=now;if(r.released?.some(n=>n.id==='shell'))shell=now;
+  if(beach&&now>beach+5*60000)lowest=Math.min(lowest,s.energy);
+ }
+ assert.ok(areaDone(s,AREAS[1]),'the worksite is finished');
+ assert.ok(beach>=25*60000&&beach<=60*60000,`the beach took ${(beach/60000).toFixed(1)} min`);
+ assert.ok(now-beach>=20*60000&&now-beach<=60*60000,`the worksite took ${((now-beach)/60000).toFixed(1)} min`);
+ assert.ok(shell>beach,'the Shell Trap comes out at the worksite');
+ assert.ok(lowest<5,'energy runs low at the worksite');
+ assert.ok(waited<=20*60000,`waited ${(waited/60000).toFixed(1)} min`);
+ console.log(JSON.stringify({beach:+(beach/60000).toFixed(1),worksite:+((now-beach)/60000).toFixed(1),waited:waited/60000,shell:+(shell/60000).toFixed(1)}));
 });

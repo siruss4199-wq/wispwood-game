@@ -106,8 +106,20 @@ async function perform(page,a){
    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).board[21].level===3,null,{timeout:4000});
    assert.ok(!(await read(page)).board.some(x=>x?.type==='cog'),'the cog is used up');
    assert.equal(await page.locator('#board .source[data-family="chart"]').count(),1,'Rivet Rover level 3 brought out the Survey Kite');
+   // Build 31: the beach's last stage opens the Survey Worksite, its intro and its screen.
+   await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.built={'beach-path':3,'beach-tent':3,'beach-mast':3,'beach-workshop':3,'beach-pier':3,'beach-beacon':3,'beach-cliff':2};s.coins=200;localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
+   await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
+   assert.equal(await page.locator('#mapButton span').textContent(),'BEACH');
+   await page.locator('#mapButton').tap();await page.locator('#coastMap [data-restore="beach-cliff"]').tap();await closeBeats(page);
+   assert.equal((await read(page)).area,1,'the worksite is open');
+   assert.equal(await page.locator('#coastMap #mapTitle').textContent(),'Survey Worksite');assert.equal(await page.locator('#coastMap .place').count(),7);
+   assert.equal(await page.locator('#coastMap .mapArea.done').count(),1,'the finished beach stays listed');assert.equal(await page.locator('#coastMap [data-restore="ws-camp"]').count(),1);
+   assert.equal(await page.evaluate(()=>document.querySelector('#coastMap').scrollWidth<=innerWidth),true,'no sideways scroll at the worksite');
+   await page.locator('#coastMap [data-back]').tap();
+   assert.equal(await page.locator('#mapButton span').textContent(),'SITE');assert.equal(await page.locator('#areaBrand').textContent(),'SURVEY WORKSITE');
+   {const b=await page.locator('#mapButton').boundingBox();assert.ok(b.x+b.width<=width,'the SITE button fits the header');}
    assert.deepEqual(errors,[]);
-   console.log(`${engine} ${width} Coast Camp: intro → orders → 2 restorations → reload → map passed`);
+   console.log(`${engine} ${width} Coast Camp: intro → orders → 2 restorations → reload → map → worksite passed`);
    await context.close();
   }}finally{await browser.close();}
  }
