@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {cellPos} from '../v5/core.mjs';
 import {xpToNext} from '../v5/levels.mjs';
-import {priceOf,totalBuilt,ORDER_TOP,SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,makeOrder,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
+import {SHED_SLOTS,DAILY,priceOf,totalBuilt,ORDER_TOP,SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,makeOrder,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
 import {AREAS,TASKS} from '../v5/next/areas.mjs';
 import {kit} from '../v5/kits.mjs';
 import {nextAction} from './v5-next-policy.mjs';
@@ -406,4 +406,48 @@ test('the economy is tight: energy runs low through the worksite without long wa
  assert.ok(lowest<5,'energy runs low at the worksite');
  assert.ok(waited<=20*60000,`waited ${(waited/60000).toFixed(1)} min`);
  console.log(JSON.stringify({beach:+(beach/60000).toFixed(1),worksite:+((now-beach)/60000).toFixed(1),waited:waited/60000,shell:+(shell/60000).toFixed(1)}));
+});
+
+// Build 32: the camp shed and the daily gift.
+test('the shed holds four parts, crates, cogs or tokens off the board; they do not count for orders',()=>{
+ const s=camp();assert.deepEqual(s.shed,Array(SHED_SLOTS).fill(null));assert.equal(SHED_SLOTS,4);
+ s.orders[0]={id:'oX',who:'ivo',needs:[{family:'rig',tier:1,count:1}],coins:5};
+ assert.ok(orderItems(s,s.orders[0]));
+ const r=ok(s,{type:'store',index:27});assert.equal(r.slot,0);assert.deepEqual(s.shed[0],item('rig',1));assert.equal(s.board[27],null);
+ assert.equal(orderItems(s,s.orders[0]),null,'a part in the shed does not fill an order');
+ s.board[15]=kit('rig',1);s.board[22]=cog();s.board[26]=token();
+ ok(s,{type:'store',index:15,slot:3});assert.deepEqual(s.shed[3],kit('rig',1));ok(s,{type:'store',index:22});ok(s,{type:'store',index:26});
+ assert.deepEqual(s.shed.map(x=>x.type),['item','cog','token','kit']);
+ assert.match(refused(s,{type:'store',index:14}).message,/full/);
+ refused(s,{type:'store',index:ROVER});refused(s,{type:'store',index:0});refused(s,{type:'store',index:9});// generators, glass and cargo stay
+ // Out again: to the space asked for, else the nearest free one to the Rover.
+ const o=ok(s,{type:'unstore',slot:0,to:27});assert.equal(o.index,27);assert.deepEqual(s.board[27],item('rig',1));assert.equal(s.shed[0],null);
+ const p=ok(s,{type:'unstore',slot:1,to:14});assert.notEqual(p.index,14,'an occupied space sends it to a free one');assert.equal(s.board[p.index].type,'cog');
+ refused(s,{type:'unstore',slot:0});
+ const full=fresh(0);full.shed[2]=item('chart',2);for(let i=0;i<full.board.length;i++)if(full.board[i]===null)full.board[i]=item('rig',0);refused(full,{type:'unstore',slot:2});
+ // Saves keep the shed.
+ assert.deepEqual(load(JSON.stringify(s),5).shed,s.shed);
+});
+
+test('a daily gift each new day, seven in a cycle; a missed day does not reset it',()=>{
+ assert.equal(DAILY.length,7);
+ const s=fresh(0);s.board[16]=source('chart');assert.deepEqual(s.daily,{day:-1,count:0});
+ const e=s.energy,a=ok(s,{type:'daily',day:20000});assert.equal(a.gift.day,1);assert.equal(s.energy,e+10);
+ assert.match(refused(s,{type:'daily',day:20000}).message,/tomorrow/);refused(s,{type:'daily',day:19999});refused(s,{type:'daily'});
+ const c=s.coins;ok(s,{type:'daily',day:20003});assert.equal(s.coins,c+25,'day 2 after a gap of three days');
+ const k=ok(s,{type:'daily',day:20004});assert.deepEqual(s.board[k.index],kit('chart',1),'a driftwood crate of the newest generator');
+ ok(s,{type:'daily',day:20005});const t=ok(s,{type:'daily',day:20006});assert.equal(s.board[t.index].type,'token');
+ ok(s,{type:'daily',day:20007});const g=ok(s,{type:'daily',day:20008});assert.equal(g.gift.day,7);assert.equal(s.board[g.index].type,'cog');
+ const again=ok(s,{type:'daily',day:20009});assert.equal(again.gift.day,1,'round again');assert.equal(s.daily.count,8);
+ // A gift that needs a space goes to the shed when the board is full, and waits when both are.
+ const f=fresh(0);f.daily={day:5,count:2};for(let i=0;i<f.board.length;i++)if(f.board[i]===null)f.board[i]=item('rig',0);
+ const r=ok(f,{type:'daily',day:6});assert.equal(r.gift.slot,0);assert.equal(f.shed[0].type,'kit');
+ f.daily.count=4;f.shed=f.shed.map(()=>item('rig',1));assert.match(refused(f,{type:'daily',day:7}).message,/space/);
+});
+
+test('saves from before the shed and the daily gift load with an empty shed and a gift waiting',()=>{
+ const s=camp();ok(s,{type:'merge',from:14,to:16});s.moves=40;delete s.shed;delete s.daily;
+ const back=load(JSON.stringify(s),5);assert.equal(back.moves,40);assert.deepEqual(back.shed,Array(SHED_SLOTS).fill(null));assert.deepEqual(back.daily,{day:-1,count:0});
+ assert.equal(act(back,{type:'daily',day:100},5).ok,true,'the first gift is ready');
+ for(const f of [x=>x.shed=[null],x=>x.shed[0]={type:'source',id:'rig'},x=>x.shed[1]=item('gold',1),x=>x.daily={day:'x',count:0},x=>x.daily.count=-1]){const t=fresh(0);t.moves=3;f(t);assert.equal(load(JSON.stringify(t),5).moves,0,f.toString());}
 });

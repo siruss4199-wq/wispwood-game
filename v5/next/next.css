@@ -176,3 +176,23 @@ img.art{-webkit-user-drag:none;user-select:none}
 .storyBadge{display:grid;place-items:center;width:28px;height:28px;border-radius:9px;background:#fff;box-shadow:0 0 0 2px #e0a83e}
 .storyBadge .art,.storyBadge img{width:24px;height:24px;object-fit:contain}
 .nextMode #requests .requestCard.storyOrder .requestReward{background:#ffe08a}
+/* Build 32: the camp shed under the board and the daily gift. */
+.shed{display:flex;align-items:center;gap:6px;margin:10px 2px 0;padding:6px 8px;border-radius:16px;background:#efe4cf;box-shadow:inset 0 0 0 1px #dcc9a6}
+.shedLabel{font-size:10px;font-weight:900;letter-spacing:.12em;color:#7a5f36;flex:none;width:38px;text-align:center}
+.shedSlot{flex:1;min-width:44px;max-width:64px;aspect-ratio:1;border-radius:12px;border:2px dashed #cdb48a;background:#f8f1e3;padding:4px;display:flex;align-items:center;justify-content:center;touch-action:none}
+.shedSlot.full{border-style:solid;border-color:#d8bd8e;background:#fffaf0;box-shadow:0 2px 0 #c9ad7c}
+.shedSlot .art,.shedSlot img{width:100%;height:100%;object-fit:contain}
+.shedSlot.target{outline:3px solid #168a80;outline-offset:-2px;background:#beffed66}
+#dailyButton{background:#ffe6b0;color:#76511d;border-radius:8px;padding:6px 8px;font-weight:800}
+#daily{padding:22px 16px}
+.dailyRow{list-style:none;padding:0;margin:12px 0 4px;display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.dailyDay{position:relative;background:#fff;border-radius:14px;padding:6px 4px 7px;text-align:center;box-shadow:0 2px 0 #d9dfeb;display:flex;flex-direction:column;align-items:center;gap:2px}
+.dailyDay small{font-size:10px!important;line-height:1.2!important;color:#7a879c;font-weight:800}
+.dailyDay b{font-size:12px;color:#2b3d5a}
+.dailyIcon{width:44px;height:44px;display:flex;align-items:center;justify-content:center}
+.dailyIcon .art,.dailyIcon img{width:100%;height:100%;object-fit:contain}
+.dailyIcon .bolt{font-size:30px;color:#d98a1f}.coinIcon.big{width:30px;height:30px}
+.dailyDay.done{opacity:.55}.dailyDay .tick{position:absolute;top:4px;right:6px;color:#1f8a6d;font-style:normal;font-weight:900}
+.dailyDay.today{background:#fff4d6;box-shadow:0 0 0 3px #f2b94b,0 3px 0 #d79a2b;animation:pop .5s}
+.dailyDay:last-child{grid-column:span 2}
+.dailyClaim{width:100%;margin-top:12px;min-height:46px;font-size:15px}

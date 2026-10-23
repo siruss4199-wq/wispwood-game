@@ -1,6 +1,6 @@
 // Coast Camp: the new-loop page (v5/play.html). Same look as Classic V5, one loop:
 // generators → merge → crew orders → coins → upgrade the coast's places on the beach screen.
-import {SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,orderProgress,nextTask,currentArea,areaDone,upgrades,stageOf,builtCount,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys,reachable,generatorsMerge,MAX_GENERATOR_LEVEL,GLASS_HITS,nextKind,UNLOCK_LEVEL,GENERATOR_ORDER} from './game.mjs';
+import {SHED_SLOTS,DAILY,newestGenerator,cog,token,SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,orderProgress,nextTask,currentArea,areaDone,upgrades,stageOf,builtCount,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys,reachable,generatorsMerge,MAX_GENERATOR_LEVEL,GLASS_HITS,nextKind,UNLOCK_LEVEL,GENERATOR_ORDER} from './game.mjs';
 import {AREAS,STAGES} from './areas.mjs';
 import {cellPos} from '../core.mjs';
 import {CHAINS,draw,maxTier,chainsAt,GENERATOR_CHAINS} from './chains.mjs';
@@ -16,7 +16,7 @@ import {sound,reduced,burst,rewardFlight,moment as sharedMoment} from '../feedba
 function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el=document.querySelector('.moment');const top=[...document.querySelectorAll('dialog[open]')].pop();if(el&&top)top.append(el);if(!x||!el)return;const icon=document.createElement('span');icon.style.cssText='float:left;width:42px;height:42px;margin-right:10px';icon.innerHTML=draw(x);icon.firstElementChild.style.cssText='width:100%;height:100%';el.prepend(icon);}
 
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 31 · the Survey Worksite';
+export const BUILD='Build 32 · shed and daily gift';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
@@ -53,7 +53,8 @@ function render(){
  // shows when an upgrade is affordable, and the coin count.
  $('#mapButton').setAttribute('aria-label',ready?`Go to the ${area.name}: an upgrade is ready`:`Go to the ${area.name} (${builtCount(state)} of ${total} upgrades)`);
  $('#mapButton span').textContent=area.short??'MAP';
- renderOrders();renderBoard();renderSelection();renderHint();
+ renderOrders();renderBoard();renderShed();renderSelection();renderHint();
+ $('#dailyButton').hidden=!giftReady();
  $('#rationButton').hidden=state.energy>3;
  const wait=rationWait(state,Date.now());$('#rationButton').textContent=wait>0?`Field ration in ${clock(wait)}`:'Field ration · +8 ϟ';$('#rationButton').disabled=wait>0;
  $('#soundButton').textContent=sound.enabled()?'Sound on':'Sound off';
@@ -84,6 +85,10 @@ function renderBoard(){
  }).join('');
  $('#free').textContent=state.board.filter(x=>x===null).length+' spaces';
 }
+// The shed (build 32): four spaces under the board; drag onto one to store, tap it to take out.
+function renderShed(){
+ $('#shed').innerHTML=`<span class="shedLabel">SHED</span>`+state.shed.map((x,k)=>`<button class="shedSlot ${x?'full':''}" data-slot="${k}" aria-label="${x?nameOf(x)+' · tap to put it back on the board':'Empty shed space'}">${x?draw(x):''}</button>`).join('');
+}
 function renderSelection(){
  const x=state.board[selected];let title='',desc='',buttons='';
  if(!x){$('#selection').innerHTML='';return;}
@@ -107,8 +112,10 @@ function renderSelection(){
  else if(x.type==='jar')desc='Energy, sealed in a jar.';
  else if(x.type==='token')desc='Drag it onto a part: the part becomes one of the same tier that a crew order is waiting for.';
  else if(x.type==='cog')desc=`Drag it onto a generator: +1 level, up to ${MAX_GENERATOR_LEVEL}. Higher levels make better parts.`;
+ if(SHED_TYPES_UI.includes(x.type))buttons+='<button data-action="store">Shed</button>';
  $('#selection').innerHTML=`<span class="preview">${draw(x)}</span><span class="copy"><b>${title}</b><small>${desc}</small></span><span class="actionGroup">${buttons}</span>`;
 }
+const SHED_TYPES_UI=['item','kit','cog','token'];
 const has=id=>state.board.some(x=>x?.type==='source'&&x.id===id);
 function renderHint(){
  const task=nextTask(state),ready=state.orders.find(o=>orderItems(state,o));let hint;
@@ -119,7 +126,7 @@ function renderHint(){
  else if(state.energy<1){const t=refillTimes(state,Date.now());hint='Out of energy · +1 in '+clock(t?.next??0);}
  else{// Next generator: which one has to reach level 2 to bring it out.
   const g=GENERATOR_ORDER.find(g=>has(g)&&nextKind(g)&&!has(nextKind(g)));
-  hint=g?`${SOURCES[g].name} Lv${UNLOCK_LEVEL} → ${SOURCES[nextKind(g)].name} · merge copies from upgrades`:'Make the parts the crew orders want';}
+  hint=g?`${SOURCES[g].name} Lv${UNLOCK_LEVEL} → ${SOURCES[nextKind(g)].name} · merge copies`:'Make the parts the crew orders want';}
  $('#hint').textContent=hint;
 }
 function header(){
@@ -136,7 +143,7 @@ function run(a){
  if(!r.ok){$('#message').textContent=r.message;sound.play('tap');return r;}
  $('#message').textContent=r.message;
  if(r.event==='merge'||r.event==='move'||r.event==='producerUp'||r.event==='unseal')selected=r.event==='producerUp'||r.event==='unseal'?null:r.index;
- if(r.event==='deliver'){focusOrder=null;selected=null;}
+ if(r.event==='deliver'||r.event==='store'){focusOrder=null;selected=null;}
  persist();render();
  const tile=r.index!=null?board.querySelector(`[data-index="${r.index}"]`):null;
  for(const j of r.cracked??[])board.querySelector(`[data-index="${j}"]`)?.classList.add('glassCrack');
@@ -148,6 +155,9 @@ function run(a){
  if(r.event==='producerUp'){const src=state.board[r.index],next=nextKind(src.id),waiting=next&&src.level<UNLOCK_LEVEL&&!state.board.some(y=>y?.type==='source'&&y.id===next);
   moment(SOURCES[src.id].name+' · level '+src.level,LEVEL_GAIN[src.level]+(waiting?` Level ${UNLOCK_LEVEL} brings out the ${SOURCES[next].name}.`:''),src);tile?.classList.add('merge-pop');burst(tile?.getBoundingClientRect(),'gold',true);sound.play('milestone');}
  if(r.event==='restore')showBeat(r.task,r.effects);
+ if(r.event==='store'){$(`#shed [data-slot="${r.slot}"]`)?.classList.add('merge-pop');sound.play('tap');}
+ if(r.event==='unstore'){tile?.classList.add('merge-pop');sound.play('tap');}
+ if(r.event==='daily'){const g=r.gift;if(g.coins)rewardFlight($('#dailyButton').getBoundingClientRect(),$('#coinPill').getBoundingClientRect(),`+${g.coins} coins`);if(g.energy)rewardFlight($('#dailyButton').getBoundingClientRect(),$('#energyPill').getBoundingClientRect(),`+${g.energy} ϟ`);tile?.classList.add('unsealed');sound.play('milestone');moment(`Daily gift · day ${g.day} of ${DAILY.length}`,giftText(DAILY[g.day-1])+(g.slot!=null?' · in the shed (the board is full)':''),g.thing??null);}
  // A generator reaching level 2 brings out the next kind beside it.
  for(const n of r.released??[]){const t=board.querySelector(`[data-index="${n.index}"]`);t?.classList.add('unsealed');burst(t?.getBoundingClientRect(),'gold',true);setTimeout(()=>{newGeneratorMoment(n.id);sound.play('milestone');},r.event==='producerUp'?900:0);}
  if(r.event==='unseal'){tile?.classList.add('unsealed');burst(tile?.getBoundingClientRect(),'gold',r.opened.type==='source');sound.play(r.opened.type==='source'?'milestone':'rare');
@@ -176,19 +186,20 @@ board.addEventListener('click',e=>{if(suppressClick){suppressClick=false;return;
 // movable thing owns its touch gesture (no page scroll), a copy follows the finger, and the
 // space under it is marked; letting go there merges or moves.
 const DRAGGABLE=['item','kit','source','cog','token'];
-function endDrag(){board.querySelectorAll('.dragging,.target').forEach(x=>x.classList.remove('dragging','target'));drag?.ghost?.remove();drag=null;}
+function endDrag(){document.querySelectorAll('#board .dragging,#board .target,#shed .target').forEach(x=>x.classList.remove('dragging','target'));drag?.ghost?.remove();drag=null;}
 board.addEventListener('pointerdown',e=>{suppressClick=false;const t=e.target.closest('[data-index]');if(!t||e.button!==0)return;const i=+t.dataset.index;if(!DRAGGABLE.includes(state.board[i]?.type))return;drag={from:i,id:e.pointerId,x:e.clientX,y:e.clientY,moved:false,over:null};});
-board.addEventListener('pointermove',e=>{
+// Move and drop are heard on the whole page: a drag can end on the shed under the board.
+document.addEventListener('pointermove',e=>{
  if(!drag||drag.id!==e.pointerId)return;
  if(!drag.moved){if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)<=8)return;drag.moved=true;
   const from=board.querySelector(`[data-index="${drag.from}"]`),r=from.getBoundingClientRect();from.classList.add('dragging');
   drag.ghost=document.createElement('div');drag.ghost.className='dragGhost';drag.ghost.style.cssText=`width:${r.width}px;height:${r.height}px`;drag.ghost.innerHTML=draw(state.board[drag.from]);document.body.append(drag.ghost);}
  drag.ghost.style.transform=`translate(${e.clientX-drag.ghost.offsetWidth/2}px,${e.clientY-drag.ghost.offsetHeight*.7}px)`;
- const t=document.elementFromPoint(e.clientX,e.clientY)?.closest('#board [data-index]'),i=t?+t.dataset.index:null;
- if(i!==drag.over){board.querySelector('.target')?.classList.remove('target');drag.over=i;if(t&&i!==drag.from)t.classList.add('target');}
+ const t=document.elementFromPoint(e.clientX,e.clientY)?.closest('#board [data-index], #shed [data-slot]'),i=t?(t.dataset.slot!=null?'s'+t.dataset.slot:+t.dataset.index):null;
+ if(i!==drag.over){document.querySelector('#board .target, #shed .target')?.classList.remove('target');drag.over=i;if(t&&i!==drag.from)t.classList.add('target');}
 });
-board.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;const d=drag;endDrag();if(!d.moved)return;suppressClick=true;const t=document.elementFromPoint(e.clientX,e.clientY)?.closest('#board [data-index]');if(t&&+t.dataset.index!==d.from){selected=d.from;run({type:'merge',from:d.from,to:+t.dataset.index});}});
-board.addEventListener('pointercancel',endDrag);
+document.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;const d=drag;endDrag();if(!d.moved)return;suppressClick=true;const el=document.elementFromPoint(e.clientX,e.clientY),slot=el?.closest('#shed [data-slot]');if(slot){run({type:'store',index:d.from,slot:+slot.dataset.slot});return;}const t=el?.closest('#board [data-index]');if(t&&+t.dataset.index!==d.from){selected=d.from;run({type:'merge',from:d.from,to:+t.dataset.index});}});
+document.addEventListener('pointercancel',endDrag);
 // iOS Safari can still start a scroll from a button; while dragging, the finger is ours.
 board.addEventListener('touchmove',e=>{if(drag?.moved)e.preventDefault();},{passive:false});
 $('#selection').addEventListener('click',e=>{const b=e.target.closest('[data-action]');if(!b)return;const x=state.board[selected];run({type:b.dataset.action,index:selected,id:x?.id});});
@@ -196,6 +207,23 @@ $('#requests').addEventListener('click',e=>{const c=e.target.closest('[data-orde
 // The upgrading happens on the beach screen (user: "tusdaa orchinruu ochij upgrade hiih").
 $('#mapButton').onclick=showMap;
 $('#rationButton').onclick=()=>run({type:'ration'});
+$('#shed').addEventListener('click',e=>{const b=e.target.closest('[data-slot]');if(!b)return;if(state.shed[+b.dataset.slot])run({type:'unstore',slot:+b.dataset.slot});else $('#message').textContent='Drag a part, crate, cog or token here to keep it off the board.';});
+// ---------- the daily gift ----------
+// Today's local day number (the reducer only checks it is a new one).
+const today=()=>{const n=Date.now();return Math.floor((n-new Date(n).getTimezoneOffset()*60000)/86400000);};
+const giftReady=()=>today()>state.daily.day;
+const giftThing=g=>g.kit?{type:'kit',family:newestGenerator(state),size:1,left:3}:g.token?token():g.cog?cog():null;
+const giftText=g=>g.energy?`+${g.energy} energy`:g.coins?`+${g.coins} coins`:g.kit?'a Driftwood crate':g.token?'a Tide token':'a Brass cog: +1 generator level';
+let giftShown=-1;
+function showDaily(){
+ giftShown=today();const next=state.daily.count%DAILY.length,ready=giftReady();
+ $('#dailyContent').innerHTML=`<h2 id="dailyTitle">Daily gift</h2><p>${ready?'A gift from the crew for coming back. One each day; a missed day does not reset the row.':'Today\'s gift is open. The next one comes tomorrow.'}</p><ol class="dailyRow">${DAILY.map((g,k)=>{const done=k<next||(!ready&&k===next-1),now=ready&&k===next,x=giftThing(g);return `<li class="dailyDay ${done?'done':''} ${now?'today':''}"><small>Day ${k+1}</small><span class="dailyIcon">${x?draw(x):g.coins?'<i class="coinIcon big"></i>':'<b class="bolt">ϟ</b>'}</span><b>${g.energy?'+'+g.energy+' ϟ':g.coins?'+'+g.coins:g.kit?'Crate':g.token?'Token':'Cog'}</b>${done?'<i class="tick">✓</i>':''}</li>`;}).join('')}</ol>${ready?'<button class="primary dailyClaim" data-claim>Open the gift</button>':''}`;
+ if(!$('#daily').open)$('#daily').showModal();
+}
+$('#dailyContent').addEventListener('click',e=>{if(!e.target.closest('[data-claim]'))return;const r=run({type:'daily',day:today()});if(r.ok)$('#daily').close();else showDaily();});
+$('#dailyButton').onclick=showDaily;
+// The gift opens by itself once a session is under way, never over another screen or a drag.
+function offerGift(){if(giftReady()&&giftShown!==today()&&state.moves>=3&&!drag&&!document.querySelector('dialog[open]'))showDaily();}
 $('#soundButton').onclick=()=>{sound.toggle();render();};
 $('#helpButton').onclick=()=>$('#help').showModal();
 $('#menuButton').onclick=()=>{$('#classicNote').textContent=storage.get('vaultwake-v5')?'Your Classic save is kept and continues where you left it.':'';$('#menu').showModal();};
@@ -263,5 +291,5 @@ function newGeneratorMoment(gen){const c=CHAINS[GENERATOR_CHAINS[gen][0][0]];mom
 function showIntro(){const a=currentArea(state);if(a.intro)playLines(a.name,a.intro);}
 
 $('#build').textContent='COAST CAMP · '+BUILD.toUpperCase();
-render();header();setInterval(()=>{header();if(state.energy<1)renderHint();},1000);
+render();header();setInterval(()=>{header();if(state.energy<1)renderHint();offerGift();$('#dailyButton').hidden=!giftReady();},1000);
 if(!state.moves)showIntro();

@@ -375,3 +375,26 @@ hauling ropes, rock steps, tide pool, rope hoist, vault door.
   player (4 s) runs out of energy at the worksite and waits ~13 min in all; slower players
   barely wait. Costs were swept 0.5–0.8× of a first draft: above ~0.68× the worksite falls
   off an energy cliff (waits of 1–2 h), so it stays at 0.65×.
+
+## Build 32 — the camp shed and the daily gift (user: "aguulah bolon udur tutmiin shagnaliig nem", proposals 2 and 3 of the build-30 review)
+**The shed.** Four spaces under the board (`s.shed`, `SHED_SLOTS=4`) for parts, crates,
+Brass cogs and Tide tokens; generators, cargo and tideglass stay on the board.
+- Drag a thing onto a shed space, or tap it and choose **Shed**; tap a shed space to bring
+  it back to the nearest free space to the Rover (`store` / `unstore` actions).
+- What is in the shed does not count for orders or open cargo, so it frees room without
+  becoming a second board. Drag move/drop listeners moved from the board to the page so a
+  drag can end on the shed.
+
+**The daily gift.** One gift per new local day, seven in a row and round again
+(`DAILY`): +10 energy, +25 coins, a driftwood crate of the newest generator, +15 energy,
+a Tide token, +50 coins, a Brass cog. A missed day does not reset the row (a reset would
+punish a casual player; kept gentle on purpose, easy to change). The app passes today's
+local day number (`daily` action, `s.daily={day,count}`); the reducer only accepts a day
+after the last one. The gift opens by itself once the session is under way (3+ moves, no
+other screen open) and a 🎁 button stays in the footer until it is opened. A gift that
+needs a space goes to the shed if the board is full; with both full it waits.
+
+**Saves.** No version bump: saves from before this build load with an empty shed and a
+gift waiting (test: "saves from before the shed and the daily gift…"); a malformed shed or
+daily record starts a new camp like any other malformed field. The scripted player does not
+use either, so pacing numbers are unchanged from build 31.

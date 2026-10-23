@@ -41,6 +41,9 @@ async function perform(page,a){
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'no sideways scroll');
    for(const t of await page.locator('#board .tile').all()){const b=await t.boundingBox();assert.ok(b.width>=44&&b.height>=44,'44px touch targets');}
    for(const sel of ['#energyPill','#coinPill','#levelPill','#mapButton','#menuButton']){const b=await page.locator(sel).boundingBox();assert.ok(b&&b.x>=0&&b.x+b.width<=width,sel+' fits the header');}
+   // The daily gift is checked on its own below; here it is already open today so it never covers a tap.
+   await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.daily={day:9e6,count:1};localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
+   await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
    let restores=0;
    // Play on until two places are restored and the Survey Kite has come out of its cargo.
    for(let n=0;n<400&&(restores<2||!(await read(page)).board.some(x=>x?.type==='source'&&x.id==='chart'));n++){
@@ -67,6 +70,13 @@ async function perform(page,a){
    await page.goto(URL+'?new=1');await page.waitForSelector('#board .tile');await closeBeats(page);
    assert.equal((await read(page)).moves,0);assert.equal(new globalThis.URL(page.url()).search,'');
    assert.equal(await page.evaluate(()=>localStorage.getItem('vaultwake-v5')),classic,'Classic save still untouched');
+   // Build 32: the daily gift opens by itself once the session is under way.
+   await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.moves=5;localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
+   await page.reload();await page.waitForSelector('#board .tile');
+   await page.waitForSelector('#daily[open]',{timeout:4000});assert.equal(await page.locator('#daily .dailyDay').count(),7);assert.equal(await page.locator('#daily .dailyDay.today').count(),1);
+   {const e=(await read(page)).energy;await page.locator('#daily [data-claim]').tap();await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).daily.count===1,null,{timeout:4000});
+    assert.equal((await read(page)).energy,e+10,'day 1: +10 energy');assert.equal(await page.locator('#daily[open]').count(),0);assert.equal(await page.locator('#dailyButton').isHidden(),true,'no gift button until tomorrow');}
+   await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.daily={day:9e6,count:1};localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
    // Tideglass takes no part: a strong enough merge in the camp space beside it (14) cracks it.
    await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.board[14]={type:'item',family:'rig',tier:1};s.board[16]={type:'item',family:'rig',tier:1};localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
    await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
@@ -106,6 +116,18 @@ async function perform(page,a){
    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).board[21].level===3,null,{timeout:4000});
    assert.ok(!(await read(page)).board.some(x=>x?.type==='cog'),'the cog is used up');
    assert.equal(await page.locator('#board .source[data-family="chart"]').count(),1,'Rivet Rover level 3 brought out the Survey Kite');
+   // Build 32: the shed. Drag a part from the board onto a shed space; tap the space to bring it back.
+   await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.board[14]={type:'item',family:'rig',tier:1};localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
+   await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
+   assert.equal(await page.locator('#shed .shedSlot').count(),4);
+   {const a=await page.locator('#board [data-index="14"]').boundingBox(),b=await page.locator('#shed [data-slot="2"]').boundingBox();
+    await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:8});await page.mouse.up();}
+   await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).shed[2]?.tier===1,null,{timeout:4000});
+   assert.equal((await read(page)).board[14],null);assert.equal(await page.locator('#shed .shedSlot.full').count(),1);
+   {const b=await page.locator('#shed [data-slot="2"]').boundingBox();assert.ok(b.width>=44&&b.height>=44,'44px shed spaces');}
+   await page.locator('#shed [data-slot="2"]').tap();
+   await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).shed[2]===null,null,{timeout:4000});
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'no sideways scroll with the shed');
    // Build 31: the beach's last stage opens the Survey Worksite, its intro and its screen.
    await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.built={'beach-path':3,'beach-tent':3,'beach-mast':3,'beach-workshop':3,'beach-pier':3,'beach-beacon':3,'beach-cliff':2};s.coins=200;localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
    await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
@@ -119,7 +141,7 @@ async function perform(page,a){
    assert.equal(await page.locator('#mapButton span').textContent(),'SITE');assert.equal(await page.locator('#areaBrand').textContent(),'SURVEY WORKSITE');
    {const b=await page.locator('#mapButton').boundingBox();assert.ok(b.x+b.width<=width,'the SITE button fits the header');}
    assert.deepEqual(errors,[]);
-   console.log(`${engine} ${width} Coast Camp: intro → orders → 2 restorations → reload → map → worksite passed`);
+   console.log(`${engine} ${width} Coast Camp: intro → orders → 2 restorations → reload → map → worksite → daily gift → shed passed`);
    await context.close();
   }}finally{await browser.close();}
  }

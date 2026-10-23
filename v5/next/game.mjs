@@ -22,6 +22,12 @@ export const COIN_VALUE=[5,5,10,25,45,80,140,240];
 // Orders ask for tier 5 at most (build 31: a sixth-tier story order stalled the beach's end).
 export const ORDER_TOP=5;export const COIN_RATE=5;
 export const CHEST_ENERGY=6;
+// The camp shed (build 32, user: "aguulah bolon udur tutmiin shagnaliig nem"): four spaces off
+// the board for parts, crates, cogs and tokens. What is in the shed does not count for orders
+// or cargo; tap it to bring it back to the board.
+export const SHED_SLOTS=4,SHED_TYPES=['item','kit','cog','token'];
+// The daily gift: one a day, seven in a row then round again. A missed day does not reset it.
+export const DAILY=[{energy:10},{coins:25},{kit:1},{energy:15},{token:1},{coins:50},{cog:1}];
 // Coast Camp's own crates (the generator boxes of v5/kits.mjs, by size).
 export const CRATES=['Driftwood crate','Sea chest','Captain\'s trunk'];
 // Generators in the order they are found; each is opened with the one before's parts.
@@ -118,7 +124,8 @@ export function fresh(now=Date.now()){
  board[ROVER]=source('rig');
  for(let i=0;i<BOARD_SIZE;i++)if(!CAMP.includes(i))board[i]=GLASS[i]?glass(...GLASS[i]):cargoAt(i);
  const s={version:VERSION,board,energy:40,energyAt:now,coins:0,level:freshLevel(),taps:{},
-  orders:[],slots:3,orderSeq:0,ordersDone:0,area:0,built:{},found:[],moves:0,merges:0,lastAt:now};
+  orders:[],slots:3,orderSeq:0,ordersDone:0,area:0,built:{},found:[],moves:0,merges:0,lastAt:now,
+  shed:Array(SHED_SLOTS).fill(null),daily:{day:-1,count:0}};
  for(const g of Object.keys(GENERATOR_CHAINS))s.taps[g]=0;
  for(let i=0;i<s.slots;i++)s.orders.push(makeOrder(s));
  note(s);return s;
@@ -359,6 +366,31 @@ function step(s,a,now){
   if(areaDone(s)){effects.areaDone=AREAS[s.area].id;const next=advance(s);if(next)effects.nextArea=next;}
   return {ok:true,event:'restore',task:t.id,stage:t.stage,effects,xp:XP.restore,message:t.name+(t.stage===1?' · restored':` · stage ${t.stage}`)};
  }
+ // The shed: a part, crate, cog or token goes in the first free shed space, and back out to
+ // the space asked for (or the nearest free one to the Rover).
+ if(a.type==='store'){
+  const x=valid(a.index)?s.board[a.index]:null;if(!SHED_TYPES.includes(x?.type))return fail('Only parts, crates, cogs and tokens go in the shed.');
+  const k=Number.isInteger(a.slot)&&s.shed[a.slot]===null?a.slot:s.shed.indexOf(null);if(k<0)return fail('The shed is full. Take something out first.');
+  s.shed[k]=x;s.board[a.index]=null;return {ok:true,event:'store',slot:k,message:nameOf(x)+' · in the shed'};
+ }
+ if(a.type==='unstore'){
+  const x=Number.isInteger(a.slot)?s.shed[a.slot]:null;if(!x)return fail('That shed space is empty.');
+  const i=valid(a.to)&&s.board[a.to]===null?a.to:nearestFree(s.board,ROVER,cellPos);if(i<0)return fail('The board is full. Make space first.');
+  s.board[i]=x;s.shed[a.slot]=null;return {ok:true,event:'unstore',index:i,message:nameOf(x)+' · back on the board'};
+ }
+ // The daily gift: the app passes today's local day number; one gift per new day.
+ if(a.type==='daily'){
+  if(!Number.isInteger(a.day)||a.day<0)return fail('Unknown day.');
+  if(a.day<=s.daily.day)return fail('Today\'s gift is already open. Come back tomorrow.');
+  const n=s.daily.count%DAILY.length,g=DAILY[n],gift={day:n+1};
+  if(g.kit||g.token||g.cog){const x=g.kit?kit(newestGenerator(s),g.kit):g.token?token():cog(),i=nearestFree(s.board,ROVER,cellPos),k=s.shed.indexOf(null);
+   if(i<0&&k<0)return fail('Make space on the board or in the shed for today\'s gift.');
+   if(i>=0){s.board[i]=x;gift.index=i;}else{s.shed[k]=x;gift.slot=k;}gift.thing=x;}
+  if(g.energy){s.energy=Math.min(MAX_ENERGY,s.energy+g.energy);gift.energy=g.energy;}
+  if(g.coins){s.coins+=g.coins;gift.coins=g.coins;}
+  s.daily={day:a.day,count:s.daily.count+1};
+  return {ok:true,event:'daily',gift,index:gift.index??null,message:`Daily gift · day ${n+1} of ${DAILY.length}`};
+ }
  if(a.type==='recycle'){
   const x=valid(a.index)?s.board[a.index]:null;if(x?.type!=='item')return fail('Only loose parts can be recycled.');
   s.board[a.index]=null;s.energy=Math.min(MAX_ENERGY,s.energy+1);
@@ -441,6 +473,10 @@ export function load(raw,now=Date.now()){
   if(!s.built||typeof s.built!=='object'||Array.isArray(s.built)||!Object.entries(s.built).every(([id,n])=>TASKS[id]&&integer(n,1,STAGES))||!Array.isArray(s.found))return fresh(now);
   for(const k of ['orderSeq','ordersDone','moves','merges'])if(!integer(s[k],0,1e9))return fresh(now);
   if(!s.taps||!Object.keys(GENERATOR_CHAINS).every(k=>integer(s.taps[k],0,1e9)))return fresh(now);
+  // Build 32 added the shed and the daily gift; older saves get an empty shed and a gift today.
+  s.shed??=Array(SHED_SLOTS).fill(null);s.daily??={day:-1,count:0};
+  if(!Array.isArray(s.shed)||s.shed.length!==SHED_SLOTS||!s.shed.every(x=>x===null||SHED_TYPES.includes(x?.type)&&validCell(x)))return fresh(now);
+  if(!s.daily||!integer(s.daily.day,-1,1e7)||!integer(s.daily.count,0,1e7))return fresh(now);
   s.level=validLevel(s.level);
   // Saves that finished the beach before the Survey Worksite existed go up the cliff.
   advance(s);
