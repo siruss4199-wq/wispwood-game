@@ -21,7 +21,7 @@ export const XP={merge:1,restore:8,feed:5,unseal:2};// feed: merging two generat
 export const COIN_VALUE=[5,5,10,25,45,80,140,240];
 // Orders ask for tier 5 at most (build 31: a sixth-tier story order stalled the beach's end).
 export const ORDER_TOP=5;export const COIN_RATE=5;
-export const CHEST_ENERGY=12;
+export const CHEST_ENERGY=15;
 // The camp shed (build 32, user: "aguulah bolon udur tutmiin shagnaliig nem"): four spaces off
 // the board for parts, crates, cogs and tokens. What is in the shed does not count for orders
 // or cargo; tap it to bring it back to the board.
@@ -198,7 +198,7 @@ export function makeOrder(s){
   // stage, paying half as much again.
   const story=!s.orders.some(o=>o?.story)&&storyTarget(s);
   const live=new Set(s.orders.filter(Boolean).flatMap(o=>o.needs.map(r=>r.family+r.tier)));
-  let family,tier,k=0;
+  let family,tier;
   // The gold order holds back the stage, so it asks what the newest generator can reach: one
   // tier above its level (Build 41; it asked its chain's second-best part, a Star chart from a
   // new Survey Kite).
@@ -206,11 +206,21 @@ export function makeOrder(s){
   // Half of an area's everyday orders want its focus chain once its generator is out (the
   // Survey Worksite's Rope Winch).
   const focus=currentArea(s)?.focus,pool=focus&&families.includes(focus)&&rand(n*19)<.5?[focus]:families;
-  if(!story)do{family=pool[Math.floor(rand(n*7+k)*pool.length)];const hi=Math.max(low,Math.min(top,maxTier(family)-1));tier=low+Math.floor(rand(n*11+k)*(hi-low+1));k++;}while(live.has(family+tier)&&k<8);
+  // Everyday orders take turns being easy, middling and hard (Build 41g, user: "1-2 turliin
+  // oiroltsoo tuvshinii itemiin task tasraltgui garch ireed baina"): the parts not already
+  // asked for are sorted by tier and each turn draws from its third; an easy turn may ask one
+  // tier under the area's floor; none asks more than one tier past what its generator makes easily.
+  const role=n%3,lo=role===0?Math.max(1,low-1):low;
+  // A hard turn may go one tier over the area's top (still within reach). When every part is
+  // already asked for, the least-asked one repeats, paired with a second part so the card differs.
+  const uses=k=>s.orders.filter(o=>o&&!o.story&&o.needs.some(r=>r.family+r.tier===k)).length;
+  const range=fresh=>pool.flatMap(f=>{const hi=Math.max(lo,Math.min(role===2?top+1:top,reach(s,f)+1,maxTier(f)-1)),out=[];for(let t=lo;t<=hi;t++)if(!fresh||!live.has(f+t))out.push([f,t]);return out;}).sort((a,b)=>a[1]-b[1]);
+  let cands=range(true),repeat=false;if(!cands.length){repeat=true;const all=range(false),least=Math.min(...all.map(([f,t])=>uses(f+t)));cands=all.filter(([f,t])=>uses(f+t)===least);}
+  if(!story){const third=Math.ceil(cands.length/3),part=repeat?cands:role===0?cands.slice(0,third):role===2?cands.slice(-third):cands.slice(third,2*third);const pick=part.length?part:cands;[family,tier]=pick[Math.floor(rand(n*7)*pick.length)];}
   if(story){needs=[{family,tier,count:1}];const other=secondChain(families,family,Math.max(1,low),n*29+3);needs.push({family:other??family,tier:other?Math.max(1,Math.min(low,reach(s,other))):Math.max(1,tier-1),count:1});if(needs[1].family===family&&needs[1].tier===tier)needs.pop();
    return {id:'o'+n,who:crewFor(needs),needs,coins:priceOf(needs,true),story:story.id};}
   needs=[{family,tier,count:tier<=2&&rand(n*13)<.6?2:1}];
-  if(rand(n*17)<Math.min(.6,.2+built*.02)){const other=secondChain(families,family,Math.max(1,tier-1),n*23+5)??family,t=Math.max(1,other===family?tier-1:Math.min(tier-1,reach(s,other)));if(other!==family||t!==tier)needs.push({family:other,tier:t,count:1});}
+  if(repeat||rand(n*17)<Math.min(.6,.2+built*.02)){const other=secondChain(families,family,Math.max(1,tier-1),n*23+5)??family,t=Math.max(1,other===family?tier-1:Math.min(tier-1,reach(s,other)));if(other!==family||t!==tier)needs.push({family:other,tier:t,count:1});}
  }
  return {id:'o'+n,who:crewFor(needs),needs,coins:priceOf(needs)};
 }
@@ -228,7 +238,7 @@ const put=(s,x,near=0)=>{const i=nearestFree(s.board,near,cellPos);if(i>=0)s.boa
 function reveal(s,j){
  const f=s.board[j].find;
  if(!f){s.board[j]=null;return {index:j,type:'space'};}
- if(f.type==='jar'){s.board[j]=null;s.energy=Math.min(MAX_ENERGY,s.energy+f.energy);return {index:j,type:'jar',energy:f.energy};}
+ if(f.type==='jar'){s.board[j]=null;return {index:j,type:'jar',energy:bonus(s,f.energy)};}
  if(f.type==='coins'){s.board[j]=null;s.coins+=f.n;return {index:j,type:'coins',coins:f.n};}
  if(f.type==='source'){s.board[j]=source(f.id);return {index:j,type:'source',id:f.id};}
  if(f.type==='kit'){s.board[j]=kit(f.family,f.size);return {index:j,type:'kit'};}
@@ -267,6 +277,9 @@ function release(s){
 }
 const withCracks=(r,c)=>{if(c.cracked.length)r.cracked=c.cracked;if(c.freed.length){r.broken=c.freed;r.xp+=c.bonus;r.message+=' · the tideglass breaks';}else if(c.cracked.length)r.message+=' · the tideglass cracks';return r;};
 
+// Energy from levels, stages and cargo jars tops energy up to the refill cap and no further
+// (Build 41g, user: "energy er ni duusah shinj alga"); bought, daily and ad energy can go over.
+function bonus(s,n){const before=s.energy;s.energy=Math.max(s.energy,Math.min(REFILL_CAP,s.energy+n));return s.energy-before;}
 // ---- levels ----
 function gainXp(s,amount){
  s.level=validLevel(s.level);s.level.xp+=amount;const ups=[];
@@ -274,7 +287,7 @@ function gainXp(s,amount){
   s.level.xp-=xpToNext(s.level.level);s.level.level++;
   // Energy only (Build 41, user: "ene hairtsagiig amarhan uguud baina"): level chests no longer
   // add a driftwood crate.
-  const energy=CHEST_ENERGY;s.energy=Math.min(MAX_ENERGY,s.energy+energy);
+  const energy=bonus(s,CHEST_ENERGY);
   ups.push({level:s.level.level,energy,family:null,index:-1});
  }
  return ups;
@@ -408,7 +421,7 @@ function step(s,a,now){
   if(!t.materials)return fail(`${t.name} needs its materials: deliver the gold order for it.`);
   if(s.coins<t.cost)return fail(`${t.name} needs ${t.cost} coins. Deliver crew orders for coins.`);
   s.coins-=t.cost;s.built[t.id]=t.stage;const e=t.effect??{},effects={};
-  if(e.energy){s.energy=Math.min(MAX_ENERGY,s.energy+e.energy);effects.energy=e.energy;}
+  if(e.energy){effects.energy=bonus(s,e.energy);}
   if(e.copy){const id=e.copy==='newest'?newestGenerator(s):e.copy;effects.copy=put(s,source(id));effects.copyId=id;}
   if(e.kit){const family=e.kit[0]==='newest'?newestGenerator(s):e.kit[0];effects.kit=put(s,kit(family,e.kit[1]));effects.kitFamily=family;}
   if(e.token){effects.token=put(s,token());}

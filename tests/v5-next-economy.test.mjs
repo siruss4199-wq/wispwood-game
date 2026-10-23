@@ -11,7 +11,10 @@ import {primaryAction} from '../v5/next/guide.mjs';
 const MIN=60000;
 // Build 40 with this harness: mean session minutes and producer taps per speed.
 const B40={total:[62.59,71.93,80.6,94,107.73,123.12,138.16,153.07],taps:[308,315,314,314,317,317,315.6,314],orders:40,lowFree:[.67,1,1,1,1,1,1,1]};
-const runs=SPEEDS.flatMap(sp=>SEEDS.map(sd=>simulate(game,nextAction,sp,sd)));
+// Build 41g (user: "energy er ni duusah shinj alga"): energy is meant to run out for quick
+// players, so the scripted player buys the shop's Energy pack with coins when it does, as a
+// player would; waiting alone is checked separately below.
+const runs=SPEEDS.flatMap(sp=>SEEDS.map(sd=>simulate(game,nextAction,sp,sd,{shop:true})));
 const rows=summary(runs);
 
 test('no forced boredom: idle, energy starvation and a free move while energy is low',()=>{
@@ -27,6 +30,15 @@ test('no forced boredom: idle, energy starvation and a free move while energy is
   assert.ok(share>=B40.lowFree[k]-.05,`${r.speed} s seed ${r.seed}: ${(share*100).toFixed(0)}% of ${r.lowStates} low-energy moments have a free move`);}
 });
 
+test('energy runs out for quick players, not for slow ones, and is never hoarded',()=>{
+ for(const r of rows){const at=`${r.speed} s/action`;
+  if(r.speed<=5)assert.ok(r.minEnergy<1,`${at}: energy ran out (lowest ${r.minEnergy})`);
+  if(r.speed>=8)assert.ok(r.starveEpisodesMean<=1,`${at}: ${r.starveEpisodesMean} times out of energy`);}
+ // Waiting alone, without the shop: still finished, never a wait over two minutes at a time.
+ for(const sp of [4,5,10]){const w=summary(SEEDS.map(sd=>simulate(game,nextAction,sp,sd)))[0];
+  assert.ok(w.finished,`${sp} s: finished by waiting`);assert.ok(w.longestIdleMax<=3,`${sp} s: longest wait ${w.longestIdleMax} min`);assert.ok(w.totalMean<=B40.total[SPEEDS.indexOf(sp)]*1.6,`${sp} s: ${w.totalMean.toFixed(0)} min by waiting`);}
+});
+
 test('orders and restorations keep coming',()=>{
  for(const r of rows){const at=`${r.speed} s/action`;
   // 5 minutes up to 9 s/action; at 10 s an order's 36 actions take 6 (Build 41: orders now mix two
@@ -38,10 +50,10 @@ test('orders and restorations keep coming',()=>{
  for(const r of runs)assert.ok(r.orderAges.length>=B40.orders*.95,`${r.speed} s seed ${r.seed}: ${r.orderAges.length} orders delivered`);
 });
 
-// Build 41 (user: "umnu story upgrade shuud hurdan hiigdej baina"): stages wait for their gold
-// orders, so the Kite's Rover copies come later than Build 40's (2.1 min per s/action there).
+// Build 41g (user: "1-2 turliin oiroltsoo tuvshinii itemiin task tasraltgui"): four early Rover
+// copies bring the Survey Kite out at about 1.5 min per s/action (Build 40: 2.1; 41c: 3.1).
 test('generators arrive on time and the Lantern Kiln before the worksite ends',()=>{
- for(const r of rows){assert.ok(r.kiteMax<=r.speed*3.3,`${r.speed} s: Survey Kite at ${r.kiteMax.toFixed(1)} min`);assert.ok(r.kilnBeforeEnd,`${r.speed} s: Lantern Kiln before the end`);}
+ for(const r of rows){assert.ok(r.kiteMax<=r.speed*1.6,`${r.speed} s: Survey Kite at ${r.kiteMax.toFixed(1)} min`);assert.ok(r.kilnBeforeEnd,`${r.speed} s: Lantern Kiln before the end`);}
 });
 
 // Taps: Build 41 took away the crates every third order and every level brought (user: "ene

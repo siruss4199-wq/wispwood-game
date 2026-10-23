@@ -687,3 +687,18 @@ Answer chosen: the camp's four corners start in tideglass.
 - Effects on this screen are drawn inside the dialog (`mapFx`): before, bursts went to the page body and were hidden behind the modal coast screen.
 - After a place's last stage the card moves on to the next best place.
 - Everything moving is under `prefers-reduced-motion: no-preference`; with Reduce Motion on (iPhone Settings → Accessibility → Motion) the screen stays still and the story opens at once. The browser tests run with reduced motion.
+
+### Build 41g · varied orders, an earlier Kite, energy that runs out (user: "1-2 turliin oiroltsoo tuvshinii itemiin task tasraltgui garch ireed baina energy er ni duusah shinj alga")
+Answers chosen: "Kite early + no repeats"; "cut the bonuses". Measured before: the first ~16 min asked only Rivet Rover tiers 2–3 (the Kite came at ~15 min); mean energy 44, 42 % of the time at 45+, peaks of 67.
+
+**Orders** (`makeOrder`): everyday orders take turns being easy, middling and hard. The parts not already asked for are sorted by tier and each turn draws from its third: an easy turn may go one tier under the area's floor, a hard one one tier over its top; none asks more than one tier past what its generator makes easily (`reach+1`, as the gold order). When every part is already asked for (one generator), the least-asked one repeats and gets a second part so the card differs.
+
+**Survey Kite earlier**: two more Rover copies early — *Add bunks and a stove* (was +5 energy) and *Raise the signal mast* (with its fourth order card) — and the Workshop's copy is now the newest generator's. The Kite comes out at 6–8 min at 5 s/action (was ~15).
+
+**Energy**:
+- Level, stage and cargo-jar energy now tops up to the refill cap (50) and no further; bought, daily-gift and ad energy can still go over.
+- Stage energy halved (tent 15→8, beacon 20→10, cliff 5→3; worksite 15/10/20/20/10 → 8/5/10/10/5).
+- Level energy stays near where it was (12 → 15): the "+4" that was offered was measured first and made the session unfinishable (waits of 100+ min, the scripted player stuck with no energy and no deliveries); 6–14 were unstable (some seeds fell into the same trap); 15 and up were stable. The cap is what removes the piling up.
+- Result (scripted player, 5 seeds): mean energy 22–31 (was 44–52), at 45+ 5–13 % of the time (was 44–69 %), under 10 for 4–20 %; quick players (4–5 s/action) run out 1–2 times a session and buy an Energy pack with coins; slow players (8 s+) do not run out. Waiting alone (no shop) still finishes, never more than two minutes at a time.
+
+**Harness**: `simulate(..., {shop:true})` buys the shop's Energy pack with coins when energy is out; the guard now uses it, checks that energy does run out at 4–5 s/action and not at 8 s+, and checks the no-shop player still finishes. The Kite guard is ≤1.6 min per s/action. Totals stay within ±15 % of Build 40 (62–153 min).

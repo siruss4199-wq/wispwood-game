@@ -76,11 +76,12 @@ test('coins upgrade each place in three stages; every stage gives a reward',()=>
   const e=s.energy,r=ok(s,{type:'restore',id:t.id});spent+=t.stages[0].cost;assert.equal(s.coins,5000-spent);assert.equal(stageOf(s,t.id),1);assert.equal(r.stage,1);
   if(t.id==='beach-path')assert.deepEqual(s.board[r.effects.kit],kit('rig',1));
   const chest=(r.levelUp??[]).reduce((n,u)=>n+u.energy,0);
-  if(t.id==='beach-tent')assert.equal(s.energy,Math.min(120,e+15+chest));
-  if(t.id==='beach-mast'){assert.equal(s.slots,4);assert.equal(s.orders.length,4);}
+  // Build 41g: stage and level energy top up to the refill cap (50) and no further.
+  if(t.id==='beach-tent'){assert.ok(r.effects.energy<=8);assert.equal(s.energy,Math.max(e,Math.min(50,e+8+chest)));}
+  if(t.id==='beach-mast'){assert.equal(s.slots,4);assert.equal(s.orders.length,4);assert.deepEqual(s.board[r.effects.copy],source('rig'),'and a Rover from the first crew to answer');}
   if(t.id==='beach-workshop'){assert.deepEqual(s.board[r.effects.copy],source('rig'),'a second Rivet Rover');const m=ok(s,{type:'merge',from:r.effects.copy,to:ROVER});assert.equal(s.board[ROVER].level,2);assert.equal(m.released,undefined,'level 2 is not yet enough for the Kite');}
   if(t.id==='beach-pier')assert.deepEqual(s.board[r.effects.kit],kit('rig',2),'a sea chest for the newest generator (still Rover here)');
-  if(t.id==='beach-beacon')assert.equal(s.energy,Math.min(120,e+20+chest));
+  if(t.id==='beach-beacon')assert.equal(s.energy,Math.max(e,Math.min(50,e+10+chest)));
   assert.equal(s.board.filter(x=>x?.type==='cargo').length,27,'upgrades never open cargo');
  }
  // Later stages follow, in any order; the cheapest open one is the next.
@@ -100,10 +101,11 @@ test('orders grow harder with the beach and the generators, never repeat a live 
  const a=fresh(0);a.orderSeq=10;const t0=tiers(a);assert.ok(Math.min(...t0)>=1&&Math.max(...t0)<=2,JSON.stringify([...new Set(t0)]));
  // Player level alone changes nothing (build 29).
  const b=fresh(0);b.orderSeq=10;b.level.level=9;assert.deepEqual(tiers(b),t0);
- // Twelve beach stages: tier 3 and up, top 4.
- const c=fresh(0);c.orderSeq=10;c.built={'beach-path':3,'beach-tent':3,'beach-mast':3,'beach-workshop':3};const t2=tiers(c);assert.ok(Math.min(...t2)>=3&&Math.max(...t2)<=4,JSON.stringify([...new Set(t2)]));
+ // Twelve beach stages: tier 3 and up (an easy turn one under), but never more than one tier
+ // past what a level-1 Rover makes easily (Build 41g).
+ const c=fresh(0);c.orderSeq=10;c.built={'beach-path':3,'beach-tent':3,'beach-mast':3,'beach-workshop':3};const t2=tiers(c);assert.ok(Math.min(...t2)>=2&&Math.max(...t2)<=3,JSON.stringify([...new Set(t2)]));
  // A generator at level 3 lifts the top tier by one.
- const d=fresh(0);d.orderSeq=10;d.board[ROVER].level=3;assert.ok(Math.max(...tiers(d))===3);
+ const d=fresh(0);d.orderSeq=10;d.board[ROVER].level=3;{const t=tiers(d);assert.ok(t.includes(3)&&Math.max(...t)===4,'a hard turn goes one tier over the top (Build 41g)');}
  // The story's order: one at a time, for the next beach stage, the newest generator's best part, half as much again.
  const e=fresh(0);e.orderSeq=10;e.orders=[];const so=makeOrder(e);assert.equal(so.story,'beach-path');assert.equal(so.needs[0].family,'rig');assert.equal(so.needs[0].tier,2);
  assert.equal(so.coins,Math.round(so.needs.reduce((v,r)=>v+r.count*COIN_VALUE[r.tier],0)*1.5/5)*5);
@@ -141,7 +143,9 @@ test('orders pay coins, no box; boxes and generator levels work here too',()=>{
 test('levels give energy, no crate',()=>{
  const s=camp();s.level.xp=19;const e=s.energy,r=ok(s,{type:'merge',from:14,to:16});
  assert.equal(r.levelUp[0].level,2);assert.equal(r.levelUp[0].family,null);assert.ok(!s.board.some(x=>x?.type==='kit'),'no crate');assert.equal(s.board.filter(x=>x?.type==='cargo').length,27);
- assert.equal(CHEST_ENERGY,12);assert.equal(s.energy,e+12);
+ assert.equal(CHEST_ENERGY,15);assert.equal(s.energy,Math.min(50,e+15),'up to the refill cap');
+ // Build 41g: level energy tops up to 50 and no further; bought energy above it is kept.
+ for(const [start,end] of [[30,45],[45,50],[60,60]]){const t=camp();t.level.xp=19;t.energy=start;ok(t,{type:'merge',from:14,to:16});assert.equal(t.energy,end,`${start} → ${end}`);}
 });
 
 test('energy refills over time and a low-energy ration helps once an hour',()=>{
@@ -213,7 +217,9 @@ test('one generator, one chain; each generator at level 3 brings out the next ki
  assert.ok(Object.values(CARGO).every(c=>c[2].type!=='source'&&c[2].type!=='cog'),'no generators or cogs in cargo');
  for(const [,c] of Object.entries(CARGO))assert.ok(GENERATOR_ORDER.includes(CHAINS[c[0]].gen));
  const gifts=AREAS[0].tasks.flatMap(t=>t.stages.flatMap((st,k)=>st.effect?.copy?[t.id+(k+1)+':'+st.effect.copy]:[]));
- assert.deepEqual(gifts,['beach-path2:rig','beach-mast2:rig','beach-workshop1:rig','beach-pier2:newest','beach-beacon2:newest','beach-cliff2:newest'],'the beach gives three Rovers, then copies of the newest generator');
+ // Build 41g (user: "1-2 turliin oiroltsoo tuvshinii itemiin task tasraltgui"): four Rovers early so
+ // the Survey Kite comes out at 6–8 minutes, then copies of the newest generator.
+ assert.deepEqual(gifts,['beach-path2:rig','beach-tent2:rig','beach-mast1:rig','beach-mast2:rig','beach-workshop1:newest','beach-pier2:newest','beach-beacon2:newest','beach-cliff2:newest'],'the beach gives four Rovers, then copies of the newest generator');
  // Play it through: two Rovers make level 2.
  const s=fresh(0);s.board[7]=source('rig');
  // Merge the two Rovers: level 2 is not enough yet; a Brass cog makes level 3 and brings out the Survey Kite beside it.
@@ -379,7 +385,7 @@ test('the Survey Worksite: seven places in three stages, every stage a reward, t
  assert.ok(AREAS.slice(2).every(a=>a.coming&&!a.tasks.length),'later areas are still to come');
  // Its stages are bought like the beach's and keep the beach's stages.
  const s=stock(fresh(0));s.area=1;s.built=beachDone();s.coins=5000;
- assert.equal(nextTask(s).id,'ws-camp');const r=ok(s,{type:'restore'});assert.equal(r.task,'ws-camp');assert.equal(r.effects.energy,15);
+ assert.equal(nextTask(s).id,'ws-camp');const r=ok(s,{type:'restore'});assert.equal(r.task,'ws-camp');assert.equal(r.effects.energy,Math.min(8,Math.max(0,50-40)));
  assert.equal(stageOf(s,'beach-cliff'),3);assert.equal(builtCount(s),1);assert.equal(totalBuilt(s),22);
 });
 
@@ -388,9 +394,9 @@ test('worksite orders lean on the Rope Winch, ask tier 3–5 and pay whole coins
  const main=[];for(let k=0;k<80;k++){const o=makeOrder(s);if(o.story){s.orders.push(o);continue;}main.push(o);}
  const rope=main.filter(o=>o.needs[0].family==='rope').length;
  assert.ok(rope/main.length>=.45,`rope orders ${rope}/${main.length}`);
- for(const o of main){assert.ok(o.needs.every(r=>r.tier>=1&&r.tier<=ORDER_TOP),JSON.stringify(o.needs));assert.ok(o.needs[0].tier>=3);assert.ok(Number.isInteger(o.coins)&&o.coins>0);assert.equal(o.coins,priceOf(o.needs));}
+ for(const o of main){assert.ok(o.needs.every(r=>r.tier>=1&&r.tier<=ORDER_TOP),JSON.stringify(o.needs));assert.ok(o.needs[0].tier>=2,'tier 3 and up, an easy turn one under');assert.ok(Number.isInteger(o.coins)&&o.coins>0);assert.equal(o.coins,priceOf(o.needs));}
  // The beach alone has no focus: Rope Winch parts are one chain among the others there.
- const b=fresh(0);b.built=beachDone();b.board[15]=source('chart');b.board[16]=source('rope');b.orderSeq=10;
+ const b=fresh(0);b.built=beachDone();b.board[15]=source('chart');b.board[16]=source('rope');b.board[ROVER].level=3;b.orderSeq=10;// the same generators
  const bm=[];for(let k=0;k<80;k++){const o=makeOrder(b);if(o.story)b.orders.push(o);else bm.push(o);}
  assert.ok(bm.filter(o=>o.needs[0].family==='rope').length<rope);
 });
@@ -418,7 +424,8 @@ test('the economy is tight: energy runs low through the worksite without long wa
  const s=fresh(0);let now=0,waited=0,lowest=99,beach=null,shell=null,lamp=null;const STEP=4000;
  assert.equal(s.energy,40,'a new camp starts with 40 energy');
  while(!(s.area===1&&areaDone(s))&&now<3*3600e3){
-  tick(s,now);const a=nextAction(s);if(!a){now+=30000;waited+=30000;continue;}
+  // Build 41g: out of energy, a player buys the shop's Energy pack when coins allow.
+  tick(s,now);const a=nextAction(s);if(!a&&s.energy<1&&act(s,{type:'buy',id:'energy',day:Math.floor(now/864e5)},now).ok)continue;if(!a){now+=30000;waited+=30000;continue;}
   const r=ok(s,a,now);now+=STEP;if(r.effects?.nextArea)beach=now;if(r.released?.some(n=>n.id==='shell'))shell=now;if(r.released?.some(n=>n.id==='lamp'))lamp=now;
   if(beach&&now>beach+5*60000)lowest=Math.min(lowest,s.energy);
  }
