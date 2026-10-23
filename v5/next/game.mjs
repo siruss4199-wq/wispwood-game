@@ -90,11 +90,14 @@ const CARGO_CELLS=[
  [2,1,'rig',3,K('rig',1)],[4,1,'chart',3,S(4)],[5,1,'rope',5,T()],
  [2,5,'rig',5,S(12)],[4,5,'chart',3,I('chart',3)],[5,5,'chart',3,K('chart',1)],
  [5,3,'rig',3,E(5)],
- // Ring 3 (the edge): tier 3–4 keys for everyday finds, tier 4–5 for tokens, trunks and big pouches.
- [0,1,'chart',5,K('chart',3)],[0,2,'rig',4,E(5)],[0,3,'rig',4,S(10)],[0,4,'chart',4,K('chart',2)],[0,5,'shell',4,T()],
- [1,6,'shell',3,S(6)],[2,6,'rope',3,I('rope',2)],[3,6,'rig',5,S(16)],[4,6,'rope',5,K('rope',3)],
- [6,6,'lamp',4,S(16)],[6,4,'shell',3,K('shell',1)],[6,3,'rope',4,S(10)],[6,1,'rope',3,K('rope',1)],[6,0,'rig',5,K('rig',3)],
- [4,0,'chart',5,T()],[3,0,'rig',4,K('rig',2)],[2,0,'shell',4,S(12)]
+ // Ring 3 (the edge) is packed by other crews: every crate there wants a Survey Kite or a
+ // Rope Winch part, so the edge opens as those generators arrive (build 21, user chose this
+ // over the tide: "ene shine uurchlult sain bish, uur shiidel"). Tier 3–4 for everyday
+ // finds, 4–5 for tokens, trunks and big pouches.
+ [0,1,'chart',5,K('chart',3)],[0,2,'rope',3,E(5)],[0,3,'chart',4,S(10)],[0,4,'rope',4,K('chart',2)],[0,5,'chart',4,T()],
+ [1,6,'rope',3,S(6)],[2,6,'chart',3,I('rope',2)],[3,6,'rope',5,S(16)],[4,6,'chart',5,K('rope',3)],
+ [6,6,'rope',4,S(16)],[6,4,'chart',3,K('chart',1)],[6,3,'rope',4,S(10)],[6,1,'chart',3,K('rope',1)],[6,0,'rope',5,K('rig',3)],
+ [4,0,'chart',5,T()],[3,0,'rope',3,K('rig',2)],[2,0,'chart',4,S(12)]
 ];
 export const CARGO=Object.fromEntries(CARGO_CELLS.map(([r,c,f,tier,find])=>[at(r,c),[f,tier,find]]));
 // Tideglass: a part locked in glass near the generator that makes it. Six ring the camp, so a
@@ -173,24 +176,15 @@ export const newestGenerator=s=>[...GENERATOR_ORDER].reverse().find(g=>sourceOpe
 // opened, so the board opens outward from the camp one ring at a time; cargo
 // further in keeps even its key hidden.
 const neighbours=i=>{const [r,c]=cellPos(i);return [[r-1,c],[r+1,c],[r,c-1],[r,c+1]].map(([rr,cc])=>rr<0||cc<0||rr>6||cc>6?-1:cc===6?36+rr:rr===6?43+cc:rr*6+cc).filter(j=>j>=0);};
-// The tide covers the board's outer ring, one side at a time; each side dries when a
-// particular place on the beach reaches a stage (build 19, user: "board bas hurdan l
-// tseverlegdeed baina"; build 20 ties each side to a place instead of a count, so it does
-// not read as level-numbered cells: "travel towniig duuraisan bolchihgui yu"). The board's
-// space grows with the story. Nothing under the tide opens or cracks; cells keep their finds.
-export const SHORES={left:['beach-path',2],bottom:['beach-mast',1],right:['beach-pier',1],top:['beach-beacon',1]};
-export const TIDE=Object.fromEntries(Array.from({length:BOARD_SIZE},(_,i)=>{const [r,c]=cellPos(i);return [i,r===0?'top':c===6?'right':r===6?'bottom':c===0?'left':null];}).filter(([,n])=>n));
-export const shoreOpen=(s,side)=>stageOf(s,SHORES[side][0])>=SHORES[side][1];
-export const tideLocked=(s,i)=>!!TIDE[i]&&!shoreOpen(s,TIDE[i]);
-export const reachable=(s,i)=>s.board[i]?.type==='cargo'&&!tideLocked(s,i)&&neighbours(i).some(j=>!['cargo','glass'].includes(s.board[j]?.type));
+export const reachable=(s,i)=>s.board[i]?.type==='cargo'&&neighbours(i).some(j=>!['cargo','glass'].includes(s.board[j]?.type));
 // Which part each reachable cargo is waiting for.
 export const cargoKeys=s=>s.board.flatMap((x,i)=>reachable(s,i)?[{index:i,...x.key}]:[]);
 // A merge on cell i cracks the tideglass beside it, if what it makes is at least as strong
 // as the part in the glass (build 19: small merges no longer chip it); the last crack frees
-// the part. Glass under the tide does not crack.
+// the part.
 function crack(s,i,power=Infinity){
  const cracked=[],freed=[];
- for(const j of neighbours(i)){const g=s.board[j];if(g?.type!=='glass'||power<g.tier||tideLocked(s,j))continue;
+ for(const j of neighbours(i)){const g=s.board[j];if(g?.type!=='glass'||power<g.tier)continue;
   g.cracks=(g.cracks??0)+1;if(g.cracks>=GLASS_HITS){s.board[j]=item(g.family,g.tier);freed.push(j);}else cracked.push(j);}
  return {cracked,freed,bonus:freed.length*XP.unseal};
 }

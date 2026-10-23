@@ -71,3 +71,14 @@ Each of those stages says so in its story lines; the beach screen adds "dries th
 the board" to the place whose next stage does it; tapping a covered cell names the stage
 to build. `SHORES`, `shoreOpen` in `v5/next/game.mjs`; no save change (derived from the
 beach stages). Pacing as in build 19 (Landing Beach 41–61 min, Survey Kite 12–19 min).
+
+## Build 21 — the tide removed; the edge wants later generators' parts (user: "Ene shine uurchlult sain bish yum baina, uur shiidel"; chose "outer crates want the new generators' parts")
+The tide (builds 19–20) is gone: no blue cells, badges or shore story lines. Instead the
+outer ring's 17 crates all open with a Survey Kite or a Rope Winch part (tier 3–4 for
+everyday finds, 4–5 for tokens, trunks and big pouches), so the edge of the board opens as
+those generators arrive (Kite at level 3 of the Rover, Rope Winch at level 3 of the Kite).
+No new rule, mark or state: it is in the crate keys. Generators still come only from the
+beach, and only a strong merge cracks tideglass.
+Scripted player, 4–6 s per action: Survey Kite at 11–16 min, Rope Winch at 33–50 min,
+Landing Beach in 37–56 min, energy 17–19 at the end, no waiting; closed cells of 40:
+~32 at 10 min, 28–31 at 20, 26 at the end.
