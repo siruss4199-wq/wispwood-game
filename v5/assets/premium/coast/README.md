@@ -17,8 +17,8 @@ export 192 px WebP (quality 88, alpha 100) with the names below.
 | driftwood-crate, sea-chest, captains-trunk | crates, sizes 1–3 |
 | tide-token, brass-cog | Tide token, Brass cog |
 
-**Place stages (build 38).** `render-places.html` draws three beach places in three stages each
-(`render-shot.cjs workshop1 workshop2 workshop3 pier1 pier2 pier3 beacon1 beacon2 beacon3`). Each
+**Place stages (builds 38–39).** `render-places.html` draws every Landing Beach place in three stages
+(`render-shot.cjs workshop1 … cliff3`: workshop, pier, beacon, path, tent, mast, cliff × 1–3). Each
 place's three renders are cropped to the union of their alpha boxes plus 16 px (so the stages line
 up), then exported at 256 px WebP (quality 88).
 
@@ -27,5 +27,9 @@ up), then exported at 256 px WebP (quality 88).
 | place-workshop-1, -2, -3 | timber workshop · + chimney with fire and anvil · + parts store lean-to, crates, sign |
 | place-pier-1, -2, -3 | pier on pilings · + cargo crane · + moored supply boat |
 | place-beacon-1, -2, -3 | stone beacon with fire · + brass mirrors · + tideglass crown |
+| place-path-1, -2, -3 | sand path lined with stones · + boardwalk · + lantern posts |
+| place-tent-1, -2, -3 | striped camp tent · + stove and bedrolls · + mess awning with table and benches |
+| place-mast-1, -2, -3 | signal mast with a pennant · + strings of flags · + lookout nest with a spyglass |
+| place-cliff-1, -2, -3 | steps cut into the cliff · + rope hand rail · + stone cliff gate, open |
 
 Painted art from `docs/V5_COAST_ART_BRIEF_2026-10-23.md` can replace any file with the same name.

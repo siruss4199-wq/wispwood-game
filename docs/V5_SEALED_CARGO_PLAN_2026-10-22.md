@@ -507,3 +507,19 @@ They grow with the stage on the picture (74 / 86 / 98 px) and replace the icon i
 list too (grey stage-1 drawing before the place is restored). Places get an optional `art`
 field (`v5/next/areas.mjs`); the other places keep their icons. No rule or save change; the
 browser test checks the right stage picture loads for each.
+
+## Build 39 — every beach place drawn stage by stage (user: "uldsen 4 gazriin zurgiig ch hii")
+The other four Landing Beach places get rendered stage pictures too (same renderer, same
+crop per place so the stages line up):
+- **Landing path:** a sand path lined with stones and a pile of cleared rocks → + a plank
+  boardwalk → + lantern posts.
+- **Camp tent:** a striped canvas tent with guy ropes → + a stove with smoke and bedrolls →
+  + a striped mess awning with a long table and benches.
+- **Signal mast:** a mast with stays and a teal pennant → + strings of signal flags → + a
+  lookout nest with a spyglass.
+- **Cliff path:** steps cut into a mossy rock with the cleared rubble beside them → + a rope
+  hand rail on posts → + an open stone cliff gate with a lamp.
+All 21 pictures were rendered again together so the sand and stone match (warmer, darker
+sand and rock than build 38). The places were spread out on the picture (they overlapped on
+the left), which also moves their patches of colour. The browser test now checks every
+place's stage picture.
