@@ -78,7 +78,7 @@ test('coins upgrade each place in three stages; every stage gives a reward',()=>
   const chest=(r.levelUp??[]).reduce((n,u)=>n+u.energy,0);
   // Build 41g: stage and level energy top up to the refill cap (50) and no further.
   if(t.id==='beach-tent'){assert.ok(r.effects.energy<=8);assert.equal(s.energy,Math.max(e,Math.min(50,e+8+chest)));}
-  if(t.id==='beach-mast'){assert.equal(s.slots,4);assert.equal(s.orders.length,4);assert.deepEqual(s.board[r.effects.copy],source('rig'),'and a Rover from the first crew to answer');}
+  if(t.id==='beach-mast'){assert.equal(s.slots,4);assert.equal(s.orders.length,4);}
   if(t.id==='beach-workshop'){assert.deepEqual(s.board[r.effects.copy],source('rig'),'a second Rivet Rover');const m=ok(s,{type:'merge',from:r.effects.copy,to:ROVER});assert.equal(s.board[ROVER].level,2);assert.equal(m.released,undefined,'level 2 is not yet enough for the Kite');}
   if(t.id==='beach-pier')assert.deepEqual(s.board[r.effects.kit],kit('rig',2),'a sea chest for the newest generator (still Rover here)');
   if(t.id==='beach-beacon')assert.equal(s.energy,Math.max(e,Math.min(50,e+10+chest)));
@@ -91,7 +91,7 @@ test('coins upgrade each place in three stages; every stage gives a reward',()=>
  assert.ok(areaDone(s,AREAS[0]));assert.equal(builtCount(s,AREAS[0]),21);assert.equal(s.area,1);assert.equal(builtCount(s),0);assert.equal(nextTask(s).id,'ws-camp');
  assert.match(refused(s,{type:'restore',id:'beach-path'}).message,/fully upgraded/);assert.match(refused(s,{type:'restore',id:'ws-ropes'}).message,/before it/);
  assert.deepEqual(AREAS[0].tasks.map(t=>t.stages.length),Array(7).fill(3));
- const total=AREAS[0].tasks.flatMap(t=>t.stages.map(x=>x.cost)).reduce((a,b)=>a+b);assert.equal(total,1400);
+ const total=AREAS[0].tasks.flatMap(t=>t.stages.map(x=>x.cost)).reduce((a,b)=>a+b);assert.equal(total,2800);// Build 41h: ×2 (was 1400)
  assert.ok(AREAS[0].tasks.every(t=>t.stages[0].cost<t.stages[1].cost&&t.stages[1].cost<t.stages[2].cost),'each stage costs more');
 });
 
@@ -162,10 +162,13 @@ test('saves round-trip; anything malformed starts a new camp',()=>{
  const classic=readFileSync(new URL('./fixtures/stage2/conduit-completed.json',import.meta.url),'utf8');assert.equal(load(classic,5).moves,0,'a Classic save is not a Coast Camp save');
 });
 
-test('a scripted player upgrades Landing Beach (21 stages) in 30–60 minutes and feels energy by the end',()=>{
+// Build 41h (user: "story upgrade task bielelt heterhii hurdan ... merge togloh medremj avch
+// amjilgui", choosing a classic free-to-play pace): about three minutes of play per stage, and
+// energy runs out, so the beach takes longer in real time than in play.
+test('a scripted player upgrades Landing Beach (21 stages) in 45–110 minutes of play and runs out of energy',()=>{
  for(const step of [5000,6000]){
   const s=fresh(0);let now=0,firstRestore=null,actions=0,waited=0;const levels=[];
-  while(s.area<1&&now<90*60*1000){
+  while(s.area<1&&now<24*3600e3){
    tick(s,now);const a=nextAction(s);if(!a){now+=30000;waited+=30000;continue;}
    const r=ok(s,a,now);actions++;now+=step;
    if(r.event==='restore'&&firstRestore===null)firstRestore=now;
@@ -173,11 +176,9 @@ test('a scripted player upgrades Landing Beach (21 stages) in 30–60 minutes an
   }
   assert.ok(areaDone(s,AREAS[0]),'area complete');
   assert.ok(firstRestore<3*60*1000,'first upgrade within 3 minutes');
-  assert.ok(now>=30*60*1000&&now<=60*60*1000,`area 1 took ${(now/60000).toFixed(1)} min`);
+  const play=now-waited;assert.ok(play>=45*60000&&play<=110*60000,`area 1 took ${(play/60000).toFixed(1)} min of play`);
+  assert.ok(waited>0,'energy ran out');assert.ok(now<=4*3600e3,`and the beach is done within ${(now/3600e3).toFixed(1)} h of real time`);
   assert.ok(levels.length>=4,'several level-ups');
-  // Build 41's approved spec drops forced energy starvation; energy should still be spent, not
-  // pile up at the cap (Build 41e: 23–25 at the end of the beach).
-  assert.ok(s.energy<30,`energy is being spent by the end of the area (${s.energy})`);
   console.log(JSON.stringify({step,minutes:+(now/60000).toFixed(1),firstRestore:+(firstRestore/60000).toFixed(1),actions,levels:levels.length,energy:s.energy,waited}));
  }
 });
@@ -218,8 +219,8 @@ test('one generator, one chain; each generator at level 3 brings out the next ki
  for(const [,c] of Object.entries(CARGO))assert.ok(GENERATOR_ORDER.includes(CHAINS[c[0]].gen));
  const gifts=AREAS[0].tasks.flatMap(t=>t.stages.flatMap((st,k)=>st.effect?.copy?[t.id+(k+1)+':'+st.effect.copy]:[]));
  // Build 41g (user: "1-2 turliin oiroltsoo tuvshinii itemiin task tasraltgui"): four Rovers early so
- // the Survey Kite comes out at 6–8 minutes, then copies of the newest generator.
- assert.deepEqual(gifts,['beach-path2:rig','beach-tent2:rig','beach-mast1:rig','beach-mast2:rig','beach-workshop1:newest','beach-pier2:newest','beach-beacon2:newest','beach-cliff2:newest'],'the beach gives four Rovers, then copies of the newest generator');
+ // the Survey Kite comes out early (Build 41h: the lanterns' Rover, as stages are slower).
+ assert.deepEqual(gifts,['beach-path2:rig','beach-path3:rig','beach-tent2:rig','beach-mast2:rig','beach-workshop1:newest','beach-pier2:newest','beach-beacon2:newest','beach-cliff2:newest'],'the beach gives four Rovers, then copies of the newest generator');
  // Play it through: two Rovers make level 2.
  const s=fresh(0);s.board[7]=source('rig');
  // Merge the two Rovers: level 2 is not enough yet; a Brass cog makes level 3 and brings out the Survey Kite beside it.
@@ -380,7 +381,7 @@ test('the Survey Worksite: seven places in three stages, every stage a reward, t
  assert.deepEqual(w.tasks.map(t=>t.stages.length),Array(7).fill(3));
  assert.ok(w.tasks.every(t=>t.stages[0].cost<t.stages[1].cost&&t.stages[1].cost<t.stages[2].cost),'each stage costs more');
  assert.ok(w.tasks.every(t=>t.stages.every(x=>Object.keys(x.effect).length===1&&x.lines.length>=1)),'every stage gives one reward and a line');
- assert.equal(w.tasks.flatMap(t=>t.stages.map(x=>x.cost)).reduce((a,b)=>a+b),1635);// Build 41e: ×1.15 (was 1420)
+ assert.equal(w.tasks.flatMap(t=>t.stages.map(x=>x.cost)).reduce((a,b)=>a+b),3270);// Build 41h: ×2 (Build 41e: 1635)
  assert.equal(Object.keys(TASKS).length,14,'place ids are unique across areas');
  assert.ok(AREAS.slice(2).every(a=>a.coming&&!a.tasks.length),'later areas are still to come');
  // Its stages are bought like the beach's and keep the beach's stages.
@@ -419,25 +420,25 @@ test('a save that finished the beach before the worksite existed goes up the cli
  const v=fresh(0);v.area=4;v.moves=3;assert.equal(load(JSON.stringify(v),5).moves,0);
 });
 
-test('the economy is tight: energy runs low through the worksite without long waits',()=>{
- // A quick player (an action every 4 s) runs short of energy here; slower ones barely wait.
+test('the economy is tight: energy runs out through both areas, and both still finish',()=>{
+ // A quick player (an action every 4 s) runs out of energy and buys packs when coins allow.
  const s=fresh(0);let now=0,waited=0,lowest=99,beach=null,shell=null,lamp=null;const STEP=4000;
  assert.equal(s.energy,40,'a new camp starts with 40 energy');
- while(!(s.area===1&&areaDone(s))&&now<3*3600e3){
+ let beachWait=0;
+ while(!(s.area===1&&areaDone(s))&&now<48*3600e3){
   // Build 41g: out of energy, a player buys the shop's Energy pack when coins allow.
   tick(s,now);const a=nextAction(s);if(!a&&s.energy<1&&act(s,{type:'buy',id:'energy',day:Math.floor(now/864e5)},now).ok)continue;if(!a){now+=30000;waited+=30000;continue;}
-  const r=ok(s,a,now);now+=STEP;if(r.effects?.nextArea)beach=now;if(r.released?.some(n=>n.id==='shell'))shell=now;if(r.released?.some(n=>n.id==='lamp'))lamp=now;
+  const r=ok(s,a,now);now+=STEP;if(r.effects?.nextArea){beach=now;beachWait=waited;}if(r.released?.some(n=>n.id==='shell'))shell=now;if(r.released?.some(n=>n.id==='lamp'))lamp=now;
   if(beach&&now>beach+5*60000)lowest=Math.min(lowest,s.energy);
  }
  assert.ok(areaDone(s,AREAS[1]),'the worksite is finished');
- assert.ok(beach>=25*60000&&beach<=60*60000,`the beach took ${(beach/60000).toFixed(1)} min`);
- assert.ok(now-beach>=20*60000&&now-beach<=60*60000,`the worksite took ${((now-beach)/60000).toFixed(1)} min`);
+ const beachPlay=beach-beachWait,sitePlay=now-beach-(waited-beachWait);
+ assert.ok(beachPlay>=40*60000&&beachPlay<=100*60000,`the beach took ${(beachPlay/60000).toFixed(1)} min of play`);
+ assert.ok(sitePlay>=40*60000&&sitePlay<=110*60000,`the worksite took ${(sitePlay/60000).toFixed(1)} min of play`);
+ assert.ok(now<=12*3600e3,`both areas within ${(now/3600e3).toFixed(1)} h of real time`);
  assert.ok(shell>beach,'the Shell Trap comes out at the worksite');
  assert.ok(lamp>shell&&lamp<now,'the Lantern Kiln comes out before the worksite is finished (build 36)');
- // Build 41's approved spec drops forced starvation (it was < 5 here); energy is still spent
- // well below the 50 cap (Build 41e: lowest 26 at 4 s/action).
- assert.ok(lowest<30,`energy is spent at the worksite (${lowest})`);
- assert.ok(waited<=20*60000,`waited ${(waited/60000).toFixed(1)} min`);
+ assert.ok(lowest<1,`energy runs out at the worksite (lowest ${lowest})`);
  console.log(JSON.stringify({beach:+(beach/60000).toFixed(1),worksite:+((now-beach)/60000).toFixed(1),waited:waited/60000,shell:+(shell/60000).toFixed(1),lamp:+(lamp/60000).toFixed(1)}));
 });
 
@@ -667,7 +668,7 @@ test('the primary action names the one next step',()=>{
  s.board[14]=item('rig',0);s.board[16]=item('rig',0);
  assert.deepEqual(primaryAction(s).kind,'merge');assert.deepEqual(primaryAction(s).cells,[14,16]);
  s.board[20]=item('rig',2);const d=primaryAction(s);assert.equal(d.kind,'deliver');assert.equal(d.id,'o0');
- s.coins=20;s.board[20]=null;assert.notEqual(primaryAction(s).kind,'upgrade','coins alone are not enough');stock(s);assert.equal(primaryAction(s).kind,'upgrade');assert.match(primaryAction(s).label,/Clear the landing path/);
+ s.coins=40;s.board[20]=null;assert.notEqual(primaryAction(s).kind,'upgrade','coins alone are not enough');stock(s);assert.equal(primaryAction(s).kind,'upgrade');assert.match(primaryAction(s).label,/Clear the landing path/);
  // The tapped order comes first: a Pocket winch (tier 3) is wanted, a pair of Split spanners leads to it.
  const t=fresh(0);t.board[15]=source('chart');t.board[14]=item('rig',2);t.board[16]=item('rig',2);t.board[20]=item('chart',0);t.board[22]=item('chart',0);
  t.orders=[{id:'a',who:'neri',needs:[{family:'chart',tier:1,count:1}],coins:5},{id:'b',who:'ivo',needs:[{family:'rig',tier:3,count:1}],coins:25}];

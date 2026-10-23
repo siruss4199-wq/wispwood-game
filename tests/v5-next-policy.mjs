@@ -48,6 +48,11 @@ export function nextAction(s){
  // delivered first, and other orders do not take the parts it is waiting for.
  {const gold=s.orders.find(o=>o.story);if(gold&&orderItems(s,gold))return {type:'deliver',id:gold.id};
   const keep=new Map((gold?.needs??[]).map(r=>[r.family+r.tier,r.count]));
+  // Build 41h: gold orders ask bigger parts, so the parts one tier below a missing one are
+  // kept for it too (two per missing part), or other orders eat the way there.
+  for(const r of gold?.needs??[]){const miss=r.count-Math.min(r.count,count(s,r));if(miss>0&&r.tier>0){const k=r.family+(r.tier-1);keep.set(k,(keep.get(k)??0)+2*miss);}}
+  // and a pair one tier below a missing gold part is merged at once.
+  for(const r of gold?.needs??[]){if(count(s,r)>=r.count||!r.tier)continue;const pair=b.flatMap((x,i)=>matches(x,{family:r.family,tier:r.tier-1})?[i]:[]);if(pair.length>=2)return pairMerge(b,pair[0],pair[1]);}
   for(const o of s.orders)if(!o.story&&orderItems(s,o)&&o.needs.every(r=>!keep.has(r.family+r.tier)||count(s,r)>=r.count+keep.get(r.family+r.tier)))return {type:'deliver',id:o.id};}
  // Open cargo with a part no order is waiting for (generator cargo first).
  const orderWant=new Map();for(const o of s.orders)for(const r of o.needs)orderWant.set(r.family+r.tier,(orderWant.get(r.family+r.tier)??0)+r.count);

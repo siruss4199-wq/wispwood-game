@@ -196,11 +196,11 @@ async function perform(page,a){
     else await page.locator('#coastMap [data-back]').tap();}
    await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.materials={'beach-path':1};localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
    await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
-   await page.locator('#mapButton').tap();assert.match(await page.locator('#mapCard [data-go]').textContent(),/Earn 10 more/);assert.match(await page.locator('#mapCard').textContent(),/Materials/);await page.locator('#coastMap [data-back]').tap();
+   await page.locator('#mapButton').tap();assert.match(await page.locator('#mapCard [data-go]').textContent(),/Earn 30 more/);assert.match(await page.locator('#mapCard').textContent(),/Materials/);await page.locator('#coastMap [data-back]').tap();
    await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.coins=40;localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
    await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
    await page.locator('#mapButton').tap();await page.locator('#coastMap [data-restore="beach-path"]').tap();
-   assert.match(await page.locator('#beat .beatReceipt').textContent(),/−20 coins/);await closeBeats(page);await page.locator('#coastMap [data-back]').tap();
+   assert.match(await page.locator('#beat .beatReceipt').textContent(),/−40 coins/);await closeBeats(page);await page.locator('#coastMap [data-back]').tap();
    // A full board with no twins and a full shed still has a way out.
    await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));let k=0;const fam=['rig','chart','rope','shell','lamp'];
     s.board=s.board.map(x=>x===null?{type:'item',family:fam[k%5],tier:Math.floor(k++/5)}:x);s.shed=s.shed.map((_,i)=>({type:'item',family:'rig',tier:i+1}));localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
@@ -213,7 +213,7 @@ async function perform(page,a){
     assert.ok(out.counts.order>=1&&out.counts.stage>=1);assert.equal((await read(page)).moves,st.moves,'opening the log changes nothing in the game');
     await page.locator('#playlog .close').tap();}
    // Build 31: the beach's last stage opens the Survey Worksite, its intro and its screen.
-   await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.built={'beach-path':3,'beach-tent':3,'beach-mast':3,'beach-workshop':3,'beach-pier':3,'beach-beacon':3,'beach-cliff':2};s.materials={'beach-cliff':3};s.coins=200;localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
+   await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.built={'beach-path':3,'beach-tent':3,'beach-mast':3,'beach-workshop':3,'beach-pier':3,'beach-beacon':3,'beach-cliff':2};s.materials={'beach-cliff':3};s.coins=300;localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
    await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
    assert.equal(await page.locator('#mapButton span').textContent(),'BEACH');
    await page.locator('#mapButton').tap();await page.locator('#coastMap [data-restore="beach-cliff"]').tap();await closeBeats(page);

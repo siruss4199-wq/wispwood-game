@@ -182,6 +182,17 @@ export function secondChain(families,main,tier,seed){const ok=families.filter(f=
 // A second part never asks more than its generator can reach easily: one tier above its level
 // (a new Lv1 generator: tier 2 at most), so fair chains do not mean dear parts.
 const reach=(s,chain)=>Math.max(1,...s.board.filter(x=>x?.type==='source'&&x.id===CHAINS[chain].gen).map(producerLevel));
+// The gold order is a stage's materials, so it is the biggest order on the board (Build 41h,
+// user: "story upgrade task bielelt heterhii hurdan ... merge togloh medremj avch amjilgui",
+// with energy left to run out as in a classic free-to-play merge game): the newest generator's
+// part one tier past what it makes easily and two of a second chain's part (a third part was
+// measured too: three-part gold orders made the session 7 hours of waiting).
+function goldNeeds(s,families,family,low,n){
+ const tier=Math.max(2,Math.min(maxTier(family)-1,reach(s,family)+1));
+ const needs=[{family,tier,count:1}],other=secondChain(families,family,Math.max(1,low),n*29+3);
+ needs.push(other?{family:other,tier:Math.max(1,Math.min(low+1,reach(s,other)+1,maxTier(other)-1)),count:2}:{family,tier:Math.max(1,tier-1),count:2});
+ return needs;
+}
 export function makeOrder(s){
  const n=s.orderSeq++;let needs;
  if(n<FIRST.length)needs=FIRST[n].map(([family,tier,count])=>({family,tier,count}));
@@ -217,8 +228,7 @@ export function makeOrder(s){
   const range=fresh=>pool.flatMap(f=>{const hi=Math.max(lo,Math.min(role===2?top+1:top,reach(s,f)+1,maxTier(f)-1)),out=[];for(let t=lo;t<=hi;t++)if(!fresh||!live.has(f+t))out.push([f,t]);return out;}).sort((a,b)=>a[1]-b[1]);
   let cands=range(true),repeat=false;if(!cands.length){repeat=true;const all=range(false),least=Math.min(...all.map(([f,t])=>uses(f+t)));cands=all.filter(([f,t])=>uses(f+t)===least);}
   if(!story){const third=Math.ceil(cands.length/3),part=repeat?cands:role===0?cands.slice(0,third):role===2?cands.slice(-third):cands.slice(third,2*third);const pick=part.length?part:cands;[family,tier]=pick[Math.floor(rand(n*7)*pick.length)];}
-  if(story){needs=[{family,tier,count:1}];const other=secondChain(families,family,Math.max(1,low),n*29+3);needs.push({family:other??family,tier:other?Math.max(1,Math.min(low,reach(s,other))):Math.max(1,tier-1),count:1});if(needs[1].family===family&&needs[1].tier===tier)needs.pop();
-   return {id:'o'+n,who:crewFor(needs),needs,coins:priceOf(needs,true),story:story.id};}
+  if(story){needs=goldNeeds(s,families,family,low,n);return {id:'o'+n,who:crewFor(needs),needs,coins:priceOf(needs,true),story:story.id};}
   needs=[{family,tier,count:tier<=2&&rand(n*13)<.6?2:1}];
   if(repeat||rand(n*17)<Math.min(.6,.2+built*.02)){const other=secondChain(families,family,Math.max(1,tier-1),n*23+5)??family,t=Math.max(1,other===family?tier-1:Math.min(tier-1,reach(s,other)));if(other!==family||t!==tier)needs.push({family:other,tier:t,count:1});}
  }

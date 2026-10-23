@@ -702,3 +702,16 @@ Answers chosen: "Kite early + no repeats"; "cut the bonuses". Measured before: t
 - Result (scripted player, 5 seeds): mean energy 22–31 (was 44–52), at 45+ 5–13 % of the time (was 44–69 %), under 10 for 4–20 %; quick players (4–5 s/action) run out 1–2 times a session and buy an Energy pack with coins; slow players (8 s+) do not run out. Waiting alone (no shop) still finishes, never more than two minutes at a time.
 
 **Harness**: `simulate(..., {shop:true})` buys the shop's Energy pack with coins when energy is out; the guard now uses it, checks that energy does run out at 4–5 s/action and not at 8 s+, and checks the no-shop player still finishes. The Kite guard is ≤1.6 min per s/action. Totals stay within ±15 % of Build 40 (62–153 min).
+
+### Build 41h · stages earned by merging, classic free-to-play energy (user: "Story upgrade task bielelt heterhii hurdan bieleeed baina merge togloh medremj avch amjilgui")
+Answers chosen: about 3–4 minutes a stage; make the gold order bigger; and, once it was measured that twice the merging per stage needs about twice the energy, **"Хүлээлттэй (сонгодог F2P)"** — energy as it is, so it runs out and the player comes back for refills (or uses the ration, the ad or the shop's Energy pack).
+
+**Rules**
+- The gold order (`goldNeeds`) asks the newest generator's part one tier past what it makes easily **and two** of a second chain's part (was one). A three-part gold order was measured and dropped: 7 hours of real time, mostly waiting.
+- Every stage's coin cost ×2 (beach 1400 → 2800, worksite 1635 → 3270): with bigger gold orders coins piled up (3,000+ left at the end), so coins mean something again (200–400 left).
+- The lanterns stage (path 3) gives the Rover copy the signal mast gave in 41g, so the Survey Kite still comes early (13 min at 5 s/action) with slower stages.
+- Scripted player (`tests/v5-next-policy.mjs`): parts one tier below a missing gold part are kept for it and merged first; without this the bigger gold orders deadlocked the script (other orders ate the parts on the way).
+
+**Measured** (shop-buying player, 8 speeds × 5 seeds): play per stage 2.8 / 3.6 / 5.6 / 6.9 min at 4 / 5 / 8 / 10 s/action; both areas in 118–288 min of play and 4.6–5.2 h of real time (5.6–6.8 h waiting alone); energy runs out at every speed; ~800 taps; first stages at 5 s: 1.5, 3.7, 6.1, 9.8, 12.6, 14.4 min (6 in the first 15 min; 41g: 9).
+
+**Guard rewritten** (`tests/v5-next-economy.test.mjs`): finishes within 8 h (10 h without the shop); 0.55–0.9 min of play per stage per s/action; energy runs out and waiting happens only without energy (never idle over 3 min at a time with energy in hand); orders and restorations keep coming; Kite ≤ 3 min per s/action; first 15 min: first merge ≤1, order ≤2.5, restoration ≤4.5, discovery ≤8 min, 3–6 restorations (8 at 4–4.5 s). The Build 40 comparison (±15 % session, idle ≤5 min) is retired: waiting for energy is now intended. Unit tests on beach and worksite pace now count minutes of play, not real time.
