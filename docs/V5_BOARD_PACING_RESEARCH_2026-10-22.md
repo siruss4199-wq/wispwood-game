@@ -58,3 +58,16 @@ fast; research the information I gave and other sources, and develop it.)
 - https://ludocious.com/index.php?p=blog&u=merge2021
 - https://www.deconstructoroffun.com/blog/2023/10/22/deconstructing-merge-garden
 - https://www.gamedeveloper.com/design/part-2-how-merge-unlocks-its-next-stage-of-growth
+
+## Build 20 — shores tied to beach places, no numbers (user: "Ene yun toonuudtai tsenher nudnuud bilee" … "travel towniig duuraisan bolchihgui yu" … chose option 1)
+The numbered blue cells read like the reference game's level-numbered cells. Each side of
+the outer ring is now tied to one place on the beach instead of an upgrade count, and the
+water shows that place's picture, not a number:
+- left shore dries with **Lay a boardwalk** (landing path stage 2),
+- lower shore with **Raise the signal mast** (stage 1),
+- right shore with **Build the supply pier** (stage 1),
+- far shore with **Light the beacon** (stage 1).
+Each of those stages says so in its story lines; the beach screen adds "dries the … shore of
+the board" to the place whose next stage does it; tapping a covered cell names the stage
+to build. `SHORES`, `shoreOpen` in `v5/next/game.mjs`; no save change (derived from the
+beach stages). Pacing as in build 19 (Landing Beach 41–61 min, Survey Kite 12–19 min).

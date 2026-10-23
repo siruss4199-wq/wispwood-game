@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {cellPos} from '../v5/core.mjs';
 import {xpToNext} from '../v5/levels.mjs';
-import {SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,TIDE,tideLocked,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
+import {SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,TIDE,SHORES,tideLocked,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
 import {AREAS} from '../v5/next/areas.mjs';
 import {kit} from '../v5/kits.mjs';
 import {nextAction} from './v5-next-policy.mjs';
@@ -149,7 +149,7 @@ test('cargo opens only with the part it shows, only at the edge of open ground; 
  assert.equal(Object.values(CARGO).filter(c=>c[2].type==='jar').length,2);assert.ok(Object.values(CARGO).every(c=>c[2].type!=='jar'||c[2].energy<=5));
  // 3 now touches open ground (9), but it is on the top row: under the tide until the beach has 12 upgrades.
  assert.match(refused(s,{type:'unseal',from:15,index:3}).message,/deeper|tide/);
- s.built={'beach-path':3,'beach-tent':3,'beach-mast':3,'beach-workshop':3};
+ s.built={'beach-path':3,'beach-tent':3,'beach-mast':3,'beach-workshop':3,'beach-pier':1,'beach-beacon':1};
  const st=s.coins;ok(s,{type:'unseal',from:15,index:3});assert.equal(s.coins,st+50,'deeper crates pay more');assert.equal(s.board[3],null);
  s.board[15]=item('rig',3);ok(s,{type:'unseal',from:15,index:13});assert.deepEqual(s.board[13],kit('rig',1));
  assert.equal(s.board.filter(x=>x?.type==='cargo').length,23);
@@ -296,19 +296,24 @@ test('a build-15 save (version 3, stars) loads with coins and its restored place
  assert.equal(SAVE_KEY,'vaultwake-v5-coast');
 });
 
-test('the tide covers the outer ring until the beach has enough upgrades; generators come only from the beach',()=>{
+test('the tide covers the outer ring; each side dries when its beach place is built; generators come only from the beach',()=>{
  const s=fresh(0);
- // Left side after 3 upgrades, bottom 6, right 9, top 12; the camp and the ring around it are never under the tide.
+ // Left side with the boardwalk (path stage 2), lower with the signal mast, right with the pier, far with the beacon.
+ assert.deepEqual(SHORES,{left:['beach-path',2],bottom:['beach-mast',1],right:['beach-pier',1],top:['beach-beacon',1]});
  const sides={};for(const [i,n] of Object.entries(TIDE)){sides[n]=(sides[n]??0)+1;assert.ok(!CAMP.includes(+i));}
- assert.deepEqual(sides,{3:5,6:6,9:6,12:7});
+ assert.deepEqual(sides,{top:7,right:6,bottom:6,left:5});
  assert.ok(Object.keys(TIDE).every(i=>tideLocked(s,+i)));
  // A crate on the left side (12) stays sealed and keyless while the tide covers it.
  s.board[12]=cargo({family:'rig',tier:1},item('rig',1));s.board[13]=null;s.board[15]=item('rig',1);
  assert.ok(!cargoKeys(s).some(k=>k.index===12),'a crate under the tide shows no key');refused(s,{type:'unseal',from:15,index:12});
- s.built={'beach-path':2,'beach-tent':1};assert.ok(!tideLocked(s,12),'three upgrades: the left side is free');
- ok(s,{type:'unseal',from:15,index:12});assert.ok(tideLocked(s,42),'the right side still waits');
+ s.built={'beach-path':1,'beach-tent':3,'beach-mast':3};assert.ok(tideLocked(s,12),'any number of upgrades elsewhere does not dry it');
+ s.built={'beach-path':2};assert.ok(!tideLocked(s,12),'the boardwalk dries the left shore');assert.ok(tideLocked(s,42)&&tideLocked(s,44)&&tideLocked(s,0));
+ ok(s,{type:'unseal',from:15,index:12});
+ // Each of those stages says so in its story.
+ for(const [side,[id,stage]] of Object.entries(SHORES))assert.match(AREAS[0].tasks.find(t=>t.id===id).stages[stage-1].lines.map(l=>l[1]).join(' '),/shore/,side);
  // Level chests give crates, never generators.
  const t=fresh(0);t.level.level=4;t.level.xp=xpToNext(4)-1;const before=t.board.filter(x=>x?.type==='source').length;
  const r=ok(t,{type:'merge',from:14,to:16});assert.equal(r.levelUp[0].level,5);assert.equal(r.levelUp[0].generator,undefined);
  assert.equal(t.board.filter(x=>x?.type==='source').length,before,'no generator from a level chest');assert.equal(t.board[r.levelUp[0].index].type,'kit');
 });
+

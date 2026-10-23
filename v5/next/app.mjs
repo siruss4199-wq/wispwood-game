@@ -1,6 +1,6 @@
 // Coast Camp: the new-loop page (v5/play.html). Same look as Classic V5, one loop:
 // generators → merge → crew orders → coins → upgrade the coast's places on the beach screen.
-import {SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,orderProgress,nextTask,currentArea,areaDone,upgrades,stageOf,builtCount,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys,reachable,generatorsMerge,MAX_GENERATOR_LEVEL,GLASS_HITS,nextKind,UNLOCK_LEVEL,GENERATOR_ORDER,TIDE,tideLocked} from './game.mjs';
+import {SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,orderProgress,nextTask,currentArea,areaDone,upgrades,stageOf,builtCount,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys,reachable,generatorsMerge,MAX_GENERATOR_LEVEL,GLASS_HITS,nextKind,UNLOCK_LEVEL,GENERATOR_ORDER,TIDE,tideLocked,SHORES} from './game.mjs';
 import {AREAS,STAGES} from './areas.mjs';
 import {cellPos} from '../core.mjs';
 import {CHAINS,draw,maxTier,chainsAt,GENERATOR_CHAINS} from './chains.mjs';
@@ -15,7 +15,7 @@ import {sound,reduced,burst,rewardFlight,moment as sharedMoment} from '../feedba
 function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el=document.querySelector('.moment');if(!x||!el)return;const icon=document.createElement('span');icon.style.cssText='float:left;width:42px;height:42px;margin-right:10px';icon.innerHTML=draw(x);icon.firstElementChild.style.cssText='width:100%;height:100%';el.prepend(icon);}
 
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 19 · the tide';
+export const BUILD='Build 20 · shores';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
@@ -27,8 +27,9 @@ const persist=()=>storage.set(SAVE_KEY,JSON.stringify(state));
 persist();
 
 const ICONS={rock:{type:'rock'},'crate-salvage':{type:'crate',kind:'salvage'},'crate-survey':{type:'crate',kind:'survey'},'source-chart':{type:'source',id:'chart'},'flux-3':item('flux',3),'chart-1':item('chart',1)};
-// A small wave (cells under the tide).
-const WAVE='<svg class="wave" viewBox="0 0 24 12" aria-hidden="true"><path d="M1 8Q4 3 7 8T13 8T19 8T23 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>';
+// The beach stage that dries each side of the board (shown on the cells under the tide).
+const shoreOf=side=>{const [id,stage]=SHORES[side],t=AREAS[0].tasks.find(t=>t.id===id);return {id,stage,icon:t.icon,name:t.stages[stage-1].name};};
+const SIDE_NAMES={left:'left',bottom:'lower',right:'right',top:'far'};
 // A gold coin (orders pay coins; coins upgrade the beach).
 const COIN='<i class="coinIcon" aria-hidden="true"></i>';
 const pips=n=>`<span class="pips" aria-label="stage ${n} of ${STAGES}">${Array.from({length:STAGES},(_,k)=>`<i class="${k<n?'on':''}"></i>`).join('')}</span>`;
@@ -75,9 +76,9 @@ function renderBoard(){
   else if(x?.type==='cargo'&&(x.find?.type==='source'||x.find?.type==='cog'||x.find?.type==='token'))badge=`<span class="cargoGlow ${x.find.type!=='source'?'cogGlow':''}" aria-hidden="true"></span>`;
   else if(wanted)badge='<span class="useBadge" aria-hidden="true">★</span>';
   // The tide covers the outer ring until the beach has enough upgrades.
-  const tide=!!x&&tideLocked(state,i);if(tide)badge=`<span class="tideBadge" aria-hidden="true">${WAVE}${TIDE[i]-builtCount(state)}</span>`;
+  const tide=!!x&&tideLocked(state,i);if(tide)badge=`<span class="tideBadge" aria-hidden="true">${iconArt(shoreOf(TIDE[i]).icon)}</span>`;
   const deep=x?.type==='cargo'&&!reachable(state,i),ready=x?.type==='cargo'&&!deep&&state.board.some(y=>matches(y,x.key));
-  return `<button class="tile ${x?.type??'empty'} ${x?.cracks?'cracked':''} ${ready?'keyReady':''} ${deep?'deep':''} ${tide?'tide':''} ${locked?'locked':''} ${selected===i?'selected':''} ${twin?'match':''} ${wanted?'wanted':''} ${focused?'nextAction':''}" data-index="${i}" style="grid-row:${r+1};grid-column:${c+1}" ${x?.family||x?.id?`data-family="${x.family??x.id}"`:''} aria-label="${nameOf(x)}${locked?' · locked':''}${tide?` · under the tide for ${TIDE[i]-builtCount(state)} more beach upgrades`:''}. Space ${i+1}" aria-pressed="${selected===i}">${draw(deep?{...x,deep:true}:x)}${badge}</button>`;
+  return `<button class="tile ${x?.type??'empty'} ${x?.cracks?'cracked':''} ${ready?'keyReady':''} ${deep?'deep':''} ${tide?'tide':''} ${locked?'locked':''} ${selected===i?'selected':''} ${twin?'match':''} ${wanted?'wanted':''} ${focused?'nextAction':''}" data-index="${i}" style="grid-row:${r+1};grid-column:${c+1}" ${x?.family||x?.id?`data-family="${x.family??x.id}"`:''} aria-label="${nameOf(x)}${locked?' · locked':''}${tide?` · under the tide until ${shoreOf(TIDE[i]).name} on the beach`:''}. Space ${i+1}" aria-pressed="${selected===i}">${draw(deep?{...x,deep:true}:x)}${badge}</button>`;
  }).join('');
  $('#free').textContent=state.board.filter(x=>x===null).length+' spaces';
 }
@@ -104,7 +105,7 @@ function renderSelection(){
  else if(x.type==='jar')desc='Energy, sealed in a jar.';
  else if(x.type==='token')desc='Lay it on a part (tap the token, then the part, or drag): the part becomes one of the same tier that a crew order is waiting for.';
  else if(x.type==='cog')desc=`Lay it on a generator (tap the cog, then the generator, or drag): +1 level, up to ${MAX_GENERATOR_LEVEL}. Higher levels make better parts.`;
- if(tideLocked(state,selected)){const n=TIDE[selected]-builtCount(state);title='Under the tide';desc=`The tide still covers this ${x.type==='glass'?'tideglass':'crate'}. It goes out after ${n} more beach upgrade${n>1?'s':''}: spend coins on the beach (BEACH button).`;buttons='';}
+ if(tideLocked(state,selected)){const sh=shoreOf(TIDE[selected]);title='Under the tide';desc=`The tide still covers this shore. Build "${sh.name}" on the beach (BEACH button) and it dries.`;buttons='';}
  $('#selection').innerHTML=`<span class="preview">${draw(x)}</span><span class="copy"><b>${title}</b><small>${desc}</small></span><span class="actionGroup">${buttons}</span>`;
 }
 const has=id=>state.board.some(x=>x?.type==='source'&&x.id===id);
@@ -196,7 +197,8 @@ function showMap(){
   const n=stageOf(state,t.id),u=open.get(t.id),afford=u&&state.coins>=u.cost;
   const status=n>=STAGES?'done':afford?'ready':u?'next':'locked';
   const now=n?t.stages[n-1].name:t.name;
-  const next=n>=STAGES?'Complete':!u?'Restore the place before it first':n?`Next: ${u.name}`:'Not restored yet';
+  const dries=Object.entries(SHORES).find(([,v])=>v[0]===t.id&&v[1]===n+1)?.[0];
+  const next=(n>=STAGES?'Complete':!u?'Restore the place before it first':n?`Next: ${u.name}`:'Not restored yet')+(dries&&u?` · dries the ${SIDE_NAMES[dries]} shore of the board`:'');
   return `<li class="place" data-status="${status}" data-place="${t.id}"><span class="placeIcon">${iconArt(t.icon)}</span><span><strong>${now}</strong>${pips(n)}<small>${next}</small></span>${n>=STAGES?`<button data-replay="${t.id}" aria-label="Replay ${t.name}">✓</button>`:u?`<button data-restore="${t.id}" ${afford?'':'disabled'}>${COIN} ${u.cost}</button>`:'<button disabled aria-label="Locked">🔒</button>'}</li>`;
  }).join('');
  const later=AREAS.slice(state.area+1).map(a=>`<section class="mapArea coming"><div class="mapHead"><img src="assets/premium/${a.picture}-vibrant.webp" alt=""><div><h2>${a.name}</h2><b>Next update</b></div></div></section>`).join('');

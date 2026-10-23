@@ -173,12 +173,15 @@ export const newestGenerator=s=>[...GENERATOR_ORDER].reverse().find(g=>sourceOpe
 // opened, so the board opens outward from the camp one ring at a time; cargo
 // further in keeps even its key hidden.
 const neighbours=i=>{const [r,c]=cellPos(i);return [[r-1,c],[r+1,c],[r,c-1],[r,c+1]].map(([rr,cc])=>rr<0||cc<0||rr>6||cc>6?-1:cc===6?36+rr:rr===6?43+cc:rr*6+cc).filter(j=>j>=0);};
-// The tide covers the board's outer ring, one side at a time, until the beach has enough
-// upgrades (build 19, user: "board bas hurdan l tseverlegdeed baina"; the board's space now
-// grows with the story): left side after 3 upgrades, bottom 6, right 9, top 12. Nothing
-// under the tide opens or cracks; the cells keep what they hold.
-export const TIDE=Object.fromEntries(Array.from({length:BOARD_SIZE},(_,i)=>{const [r,c]=cellPos(i);return [i,r===0?12:c===6?9:r===6?6:c===0?3:0];}).filter(([,n])=>n));
-export const tideLocked=(s,i)=>(TIDE[i]??0)>builtCount(s);
+// The tide covers the board's outer ring, one side at a time; each side dries when a
+// particular place on the beach reaches a stage (build 19, user: "board bas hurdan l
+// tseverlegdeed baina"; build 20 ties each side to a place instead of a count, so it does
+// not read as level-numbered cells: "travel towniig duuraisan bolchihgui yu"). The board's
+// space grows with the story. Nothing under the tide opens or cracks; cells keep their finds.
+export const SHORES={left:['beach-path',2],bottom:['beach-mast',1],right:['beach-pier',1],top:['beach-beacon',1]};
+export const TIDE=Object.fromEntries(Array.from({length:BOARD_SIZE},(_,i)=>{const [r,c]=cellPos(i);return [i,r===0?'top':c===6?'right':r===6?'bottom':c===0?'left':null];}).filter(([,n])=>n));
+export const shoreOpen=(s,side)=>stageOf(s,SHORES[side][0])>=SHORES[side][1];
+export const tideLocked=(s,i)=>!!TIDE[i]&&!shoreOpen(s,TIDE[i]);
 export const reachable=(s,i)=>s.board[i]?.type==='cargo'&&!tideLocked(s,i)&&neighbours(i).some(j=>!['cargo','glass'].includes(s.board[j]?.type));
 // Which part each reachable cargo is waiting for.
 export const cargoKeys=s=>s.board.flatMap((x,i)=>reachable(s,i)?[{index:i,...x.key}]:[]);

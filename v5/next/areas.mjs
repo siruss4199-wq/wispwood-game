@@ -13,14 +13,14 @@ export const AREAS=[
   tasks:[
    place('beach-path','rock',[18,78],[
     {name:'Clear the landing path',cost:15,effect:{kit:['rig',1]},lines:[['ivo','A path from the boats to dry ground. Now the crew can carry real loads.'],['ivo','Somebody left a driftwood crate on it: it is ours now.']]},
-    {name:'Lay a boardwalk',cost:20,effect:{copy:'rig'},lines:[['ivo','Planks over the sand. The carts stop sinking.'],['ivo','A Rivet Rover was buried under the old planks! Merge it with yours.']]},
+    {name:'Lay a boardwalk',cost:20,effect:{copy:'rig'},lines:[['ivo','Planks over the sand. The carts stop sinking.'],['ivo','A Rivet Rover was buried under the old planks! Merge it with yours.'],['neri','The boardwalk holds back the water: the left shore of the camp is dry now.']]},
     {name:'Line the path with lanterns',cost:30,lines:[['neri','Lanterns all the way to the boats. Night shifts are safe now.']]}]),
    place('beach-tent','crate-salvage',[33,70],[
     {name:'Pitch the camp tent',cost:25,effect:{energy:15},lines:[['neri','Dry blankets and hot tea. Everyone works faster after a rest.'],['ivo','+15 energy for the crew.']]},
     {name:'Add bunks and a stove',cost:30,lines:[['neri','Bunks and a stove. Nobody sleeps on wet sand any more.']]},
     {name:'Raise the mess hall',cost:40,lines:[['bram','A real mess hall. The crew eats together and plans together.']]}]),
    place('beach-mast','source-chart',[52,58],[
-    {name:'Raise the signal mast',cost:35,effect:{slots:4},lines:[['neri','The mast is up. Camps along the reach can see our signal.'],['bram','More crews will send orders now: a fourth order card.']]},
+    {name:'Raise the signal mast',cost:35,effect:{slots:4},lines:[['neri','The mast is up. Camps along the reach can see our signal.'],['bram','More crews will send orders now: a fourth order card.'],['tamsin','From up the mast we can steer the crews around the sandbanks: the lower shore is dry.']]},
     {name:'Hang the signal flags',cost:45,effect:{copy:'rig'},lines:[['neri','Flags for every crew along the reach. They know who we are.'],['bram','A neighbouring camp answered with a gift: another Rivet Rover.']]},
     {name:'Fit a lookout nest',cost:55,lines:[['tamsin','From the lookout I can see the cliff path, and something glinting beyond it.']]}]),
    place('beach-workshop','workshop',[12,52],[
@@ -28,11 +28,11 @@ export const AREAS=[
     {name:'Fire up the forge',cost:55,lines:[['ivo','The forge is hot again. Every tool in camp gets a fresh edge.']]},
     {name:'Open the parts store',cost:70,lines:[['ivo','Shelves for every part we make. The Workshop runs like a clock.']]}]),
    place('beach-pier','crate-survey',[78,74],[
-    {name:'Build the supply pier',cost:55,effect:{kit:['newest',2]},lines:[['bram','A pier means supply boats. The first one brought a sea chest for our newest generator.']]},
+    {name:'Build the supply pier',cost:55,effect:{kit:['newest',2]},lines:[['bram','A pier means supply boats. The first one brought a sea chest for our newest generator.'],['ivo','The pier breaks the waves: the right shore of the camp is dry now.']]},
     {name:'Add a cargo crane',cost:70,effect:{copy:'newest'},lines:[['bram','A crane on the pier. Supply boats unload in half the time.'],['bram','The first load off the crane: a copy of our newest generator.']]},
     {name:'Moor the supply boat',cost:80,lines:[['bram','Our own boat, tied up and ready. The beach is joined to the world again.']]}]),
    place('beach-beacon','flux-3',[66,40],[
-    {name:'Light the beacon',cost:65,effect:{energy:20},lines:[['tamsin','The beacon burns all night. Nobody gets lost on this beach again.'],['ivo','The crew is rested and proud: +20 energy.']]},
+    {name:'Light the beacon',cost:65,effect:{energy:20},lines:[['tamsin','The beacon burns all night. Nobody gets lost on this beach again.'],['ivo','The crew is rested and proud: +20 energy.'],['neri','By the beacon\'s light we dug a channel: the tide has left the far shore.']]},
     {name:'Mirror the beacon',cost:80,effect:{copy:'newest'},lines:[['tamsin','Brass mirrors double the light. Ships see us from the open sea.'],['tamsin','A trader followed the light in and left us a copy of our newest generator.']]},
     {name:'Crown the beacon',cost:90,lines:[['tamsin','The beacon wears a crown of tideglass. It hums when the tide turns.']]}]),
    place('beach-cliff','chart-1',[86,30],[
