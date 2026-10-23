@@ -491,3 +491,19 @@ art:
 - A finished area is in **full colour** with a warm light; the next area starts grey again.
 Checked at 390 px with 0, 7, 20 beach stages and the worksite's first stages; the browser
 test checks the grey base, the masks and `--p`. No rules or saves changed.
+
+## Build 38 — the workshop, pier and beacon drawn stage by stage (user: "ehleed workshop, pier, beacon-iin zurgiig hiigeerei")
+Three places of Landing Beach now stand on the picture as they are at their stage instead
+of one icon for all stages (rendered with the same WebGL renderer as the crates and tokens;
+`v5/assets/premium/coast/render-places.html`, README there):
+- **Coastal Workshop:** a timber workshop with a lit window → + a stone chimney with fire and
+  smoke and an anvil ("Fire up the forge") → + a teal parts-store lean-to with shelves,
+  crates and a brass sign ("Open the parts store").
+- **Supply pier:** a plank pier on pilings with rope rails → + a cargo crane with a hanging
+  crate → + the moored supply boat.
+- **Beacon:** a striped stone beacon with its fire → + three brass mirrors → + a tideglass
+  crown.
+They grow with the stage on the picture (74 / 86 / 98 px) and replace the icon in the place
+list too (grey stage-1 drawing before the place is restored). Places get an optional `art`
+field (`v5/next/areas.mjs`); the other places keep their icons. No rule or save change; the
+browser test checks the right stage picture loads for each.

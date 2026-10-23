@@ -266,3 +266,10 @@ img.art{-webkit-user-drag:none;user-select:none}
 .beachScene.complete .sceneStorm{opacity:0}
 .beachScene.complete::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 15% 0%,#fff6c855,transparent 55%);pointer-events:none}
 .beachScene .restored{z-index:1}
+/* Build 38: the workshop, pier and beacon drawn stage by stage on the area picture. */
+.restoredIcon.staged{width:74px;height:74px;filter:drop-shadow(0 3px 3px #0004)}
+.restoredIcon.staged.stage2{width:86px;height:86px}
+.restoredIcon.staged.stage3{width:98px;height:98px;filter:drop-shadow(0 0 8px #ffe48a) drop-shadow(0 3px 3px #0004)}
+.restoredIcon.staged::before{display:none}
+.restoredIcon.staged .pips{bottom:-4px}
+.placeIcon.unbuilt img{filter:grayscale(1) opacity(.45)}

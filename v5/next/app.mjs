@@ -17,7 +17,7 @@ import {sound,reduced,burst,rewardFlight,moment as sharedMoment} from '../feedba
 function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el=document.querySelector('.moment');const top=[...document.querySelectorAll('dialog[open]')].pop();if(el&&top)top.append(el);if(!x||!el)return;const icon=document.createElement('span');icon.style.cssText='float:left;width:42px;height:42px;margin-right:10px';icon.innerHTML=draw(x);icon.firstElementChild.style.cssText='width:100%;height:100%';el.prepend(icon);}
 
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 37 · the coast comes back to colour';
+export const BUILD='Build 38 · workshop, pier and beacon drawn by stage';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
@@ -32,7 +32,10 @@ const ICONS={rock:{type:'rock'},'crate-salvage':{type:'crate',kind:'salvage'},'c
 // A gold coin (orders pay coins; coins upgrade the beach).
 const COIN='<i class="coinIcon" aria-hidden="true"></i>';
 const pips=n=>`<span class="pips" aria-label="stage ${n} of ${STAGES}">${Array.from({length:STAGES},(_,k)=>`<i class="${k<n?'on':''}"></i>`).join('')}</span>`;
-const placeIcons=list=>list.map(t=>{const n=stageOf(state,t.id);return `<span class="restoredIcon stage${n}" data-task="${t.id}" data-stage="${n}" style="left:${t.at[0]}%;top:${t.at[1]}%">${iconArt(t.icon)}${pips(n)}</span>`;}).join('');
+// Places with stage art (build 38: workshop, pier, beacon) are drawn as they stand at their stage.
+const stageArt=(t,n)=>`<img class="art" src="assets/premium/coast/place-${t.art}-${Math.max(1,n)}.webp" alt="" draggable="false">`;
+const placeArt=(t,n)=>t.art?stageArt(t,n):iconArt(t.icon);
+const placeIcons=list=>list.map(t=>{const n=stageOf(state,t.id);return `<span class="restoredIcon stage${n} ${t.art?'staged':''}" data-task="${t.id}" data-stage="${n}" style="left:${t.at[0]}%;top:${t.at[1]}%">${placeArt(t,n)}${pips(n)}</span>`;}).join('');
 // Worksite icons are Coast Camp parts ('rope-2') and generators ('source-rope'), drawn by draw().
 const iconArt=k=>{if(k==='workshop')return '<img class="art" src="assets/premium/workshop-operational.webp" alt="">';if(ICONS[k])return art(ICONS[k]);const g=k.match(/^source-(\w+)$/),p=k.match(/^(\w+)-(\d)$/);return draw(g?{type:'source',id:g[1]}:item(p[1],+p[2]));};
 // A part a Tide token can turn into one an order wants.
@@ -334,7 +337,7 @@ function showMap(){
   const status=n>=STAGES?'done':afford?'ready':u?'next':'locked';
   const now=n?t.stages[n-1].name:t.name;
   const next=n>=STAGES?'Complete':!u?'Restore the place before it first':n?`Next: ${u.name}`:'Not restored yet';
-  return `<li class="place" data-status="${status}" data-place="${t.id}"><span class="placeIcon">${iconArt(t.icon)}</span><span><strong>${now}</strong>${pips(n)}<small>${next}</small></span>${n>=STAGES?`<button data-replay="${t.id}" aria-label="Replay ${t.name}">✓</button>`:u?`<button data-restore="${t.id}" ${afford?'':'disabled'}>${COIN} ${u.cost}</button>`:'<button disabled aria-label="Locked">🔒</button>'}</li>`;
+  return `<li class="place" data-status="${status}" data-place="${t.id}"><span class="placeIcon ${t.art&&!n?'unbuilt':''}">${placeArt(t,n)}</span><span><strong>${now}</strong>${pips(n)}<small>${next}</small></span>${n>=STAGES?`<button data-replay="${t.id}" aria-label="Replay ${t.name}">✓</button>`:u?`<button data-restore="${t.id}" ${afford?'':'disabled'}>${COIN} ${u.cost}</button>`:'<button disabled aria-label="Locked">🔒</button>'}</li>`;
  }).join('');
  // Finished areas stay listed above the current one, the ones still to come below it.
  const before=AREAS.slice(0,state.area).map(a=>`<section class="mapArea done"><div class="mapHead"><img src="assets/premium/${a.picture}-vibrant.webp" alt=""><div><h2>${a.name}</h2><b>Complete ✓</b></div></div></section>`).join('');

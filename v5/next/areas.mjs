@@ -6,7 +6,9 @@
 // give generator copies (build 18): level a generator to 3 with them to bring out the next kind. A place's first
 // stage opens once the place before it has its first stage; its later stages follow its own.
 // Pure data. Effects are applied by game.mjs.
-const place=(id,icon,at,stages)=>({id,icon,at,name:stages[0].name,stages});
+const place=(id,icon,at,stages,art)=>({id,icon,at,name:stages[0].name,stages,...(art?{art}:{})});
+// art: a place drawn stage by stage on the area picture (v5/assets/premium/coast/place-<art>-<stage>.webp,
+// build 38); the others still show their icon.
 export const AREAS=[
  {id:'beach',name:'Landing Beach',short:'BEACH',picture:'landing',
   intro:[['neri','The storm left us one beach and a lot of sand. Somewhere under the cliff is the Tideglass Vault.'],['ivo','First we make this beach a camp. Bring me parts and I will put them to work.']],
@@ -26,15 +28,15 @@ export const AREAS=[
    place('beach-workshop','workshop',[12,52],[
     {name:'Restore the Coastal Workshop',cost:50,effect:{copy:'rig'},lines:[['ivo','Tools on the wall, fire in the forge.'],['ivo','In the back of the Workshop: a second Rivet Rover! Merge the two and you get a stronger one.']]},
     {name:'Fire up the forge',cost:60,effect:{kit:['newest',2]},lines:[['ivo','The forge is hot again. Every tool in camp gets a fresh edge.']]},
-    {name:'Open the parts store',cost:75,effect:{kit:['newest',2]},lines:[['ivo','Shelves for every part we make. The Workshop runs like a clock.']]}]),
+    {name:'Open the parts store',cost:75,effect:{kit:['newest',2]},lines:[['ivo','Shelves for every part we make. The Workshop runs like a clock.']]}],'workshop'),
    place('beach-pier','crate-survey',[78,74],[
     {name:'Build the supply pier',cost:60,effect:{kit:['newest',2]},lines:[['bram','A pier means supply boats. The first one brought a sea chest for our newest generator.']]},
     {name:'Add a cargo crane',cost:75,effect:{copy:'newest'},lines:[['bram','A crane on the pier. Supply boats unload in half the time.'],['bram','The first load off the crane: a copy of our newest generator.']]},
-    {name:'Moor the supply boat',cost:90,effect:{kit:['newest',3]},lines:[['bram','Our own boat, tied up and ready. The beach is joined to the world again.']]}]),
+    {name:'Moor the supply boat',cost:90,effect:{kit:['newest',3]},lines:[['bram','Our own boat, tied up and ready. The beach is joined to the world again.']]}],'pier'),
    place('beach-beacon','flux-3',[66,40],[
     {name:'Light the beacon',cost:70,effect:{energy:20},lines:[['tamsin','The beacon burns all night. Nobody gets lost on this beach again.'],['ivo','The crew is rested and proud: +20 energy.']]},
     {name:'Mirror the beacon',cost:85,effect:{copy:'newest'},lines:[['tamsin','Brass mirrors double the light. Ships see us from the open sea.'],['tamsin','A trader followed the light in and left us a copy of our newest generator.']]},
-    {name:'Crown the beacon',cost:100,effect:{token:1},lines:[['tamsin','The beacon wears a crown of tideglass. It hums when the tide turns.']]}]),
+    {name:'Crown the beacon',cost:100,effect:{token:1},lines:[['tamsin','The beacon wears a crown of tideglass. It hums when the tide turns.']]}],'beacon'),
    place('beach-cliff','chart-1',[86,30],[
     {name:'Clear the cliff path',cost:80,effect:{energy:5},lines:[['neri','Rockfall cleared. The path climbs halfway up the cliff.']]},
     {name:'Rope the cliff steps',cost:100,effect:{copy:'newest'},lines:[['ivo','Ropes and pegs on every step. Even the carts can climb now.'],['neri','Halfway up we found an old cache: a copy of our newest generator.']]},

@@ -68,6 +68,11 @@ async function perform(page,a){
     assert.ok(Math.abs(p-built/21)<.001,'the storm lifts with every stage');assert.equal(await page.locator('#coastMap .sceneBase').count(),1);
     const mask=await page.locator('#coastMap .sceneColor').evaluate(e=>getComputedStyle(e).webkitMaskImage||getComputedStyle(e).maskImage);assert.match(mask,/radial-gradient/,'colour comes back around each place');
     assert.equal(await page.locator('#coastMap .beachScene.complete').count(),0);}
+   // Build 38: the workshop, pier and beacon are drawn as they stand at their stage.
+   for(const [id,art] of [['beach-workshop','workshop'],['beach-pier','pier'],['beach-beacon','beacon']]){const n=s.built[id]??0;
+    const src=await page.locator(`#coastMap [data-place="${id}"] .placeIcon img`).getAttribute('src');assert.equal(src,`assets/premium/coast/place-${art}-${Math.max(1,n)}.webp`);
+    if(n)assert.equal(await page.locator(`#coastMap .restoredIcon.staged[data-task="${id}"] img`).getAttribute('src'),src);}
+   assert.equal(await page.evaluate(()=>[...document.querySelectorAll('#coastMap img')].filter(i=>i.complete&&i.naturalWidth===0).length),0,'every picture loads');
    assert.equal(await page.evaluate(()=>document.querySelector('#coastMap').scrollWidth<=innerWidth),true,'no sideways scroll on the beach');
    await page.locator('#coastMap [data-back]').tap();assert.equal(await page.locator('#coastMap[open]').count(),0,'back to the board');
    await page.locator('#menuButton').tap();assert.equal(await page.locator('#classicLink').getAttribute('href'),'index.html');await page.locator('#menu .close').tap();
