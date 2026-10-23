@@ -339,3 +339,11 @@ Order difficulty no longer depends on the player level:
   reads "Rivet Rover Lv3 → Survey Kite · merge copies from the beach" (cogs left cargo in
   build 18).
 - Scripted player, 4–6 s per action: Survey Kite at 8–14 min, Landing Beach in 38–58 min.
+
+## Build 30 — the camp starts empty (user, with a screenshot of an order ready at once: "Shuud orohod ingeed task deliver hiihed belen ehelj baina, toglogch yamar negen yum buteej task bieluuldeg medremjtei baimaar baina, esvel anhnii item generator-s garch ireeguigeer ehleh ch yumuu")
+A new camp no longer starts with five parts around the Rover (which filled the first order
+at once). The camp is Rivet Rover and eight empty spaces; the first orders are built from
+its first taps and merges: a Grip tool, a Split spanner, two Grip tools. The start hint
+says "Tap Rivet Rover for a Copper offcut", then "Drag a Copper offcut onto its twin". A
+unit test checks no order can be delivered before building something. Existing camps keep
+their board. Scripted player: first upgrade within a minute, Landing Beach 40–60 min.

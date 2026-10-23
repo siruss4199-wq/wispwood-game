@@ -9,6 +9,8 @@ import {AREAS} from '../v5/next/areas.mjs';
 import {kit} from '../v5/kits.mjs';
 import {nextAction} from './v5-next-policy.mjs';
 
+// The camp's parts before build 30 (it now starts empty), for rule tests that need some.
+const camp=()=>{const s=fresh(0);for(const [i,t] of [[14,0],[16,0],[20,0],[27,1],[28,0]])s.board[i]=item('rig',t);return s;};
 const ok=(s,a,now=1)=>{const r=act(s,a,now);assert.equal(r.ok,true,JSON.stringify(a)+' '+r.message);return r;};
 function refused(s,a){const before=JSON.stringify(s),r=act(s,a,1);assert.equal(r.ok,false,JSON.stringify(a));assert.equal(JSON.stringify(s),before,'refusal leaves state untouched');return r;}
 
@@ -19,23 +21,28 @@ test('its own save key; the Classic keys are never written',()=>{
 
 test('a new camp: Rivet Rover alone in the middle of its camp, sealed cargo and tideglass everywhere else, three orders',()=>{
  const s=fresh(0);
- assert.deepEqual(s.board.flatMap((x,i)=>x===null?[i]:[]),[15,22,26]);
+ assert.deepEqual(s.board.flatMap((x,i)=>x===null?[i]:[]),[14,15,16,20,22,26,27,28],'the camp starts empty around the Rover');
  assert.deepEqual(CAMP,[14,15,16,20,21,22,26,27,28]);assert.equal(ROVER,21);assert.deepEqual(s.board[21],source('rig'),'Rivet Rover stands in the middle of the board');
  assert.deepEqual(s.board.flatMap((x,i)=>x?.type==='source'?[x.id]:[]),['rig'],'one generator to start');
  assert.equal(s.board.filter(x=>x?.type==='cargo').length,27);assert.equal(s.board.filter(x=>x?.type==='glass').length,13);
  assert.deepEqual([8,10,19,23,32,34].map(i=>s.board[i].type),Array(6).fill('glass'),'half-buried parts ring the camp');
  assert.ok(s.board.every((x,i)=>CAMP.includes(i)||x.type==='cargo'||x.type==='glass'));
- assert.deepEqual(s.orders.map(o=>o.needs),[[{family:'rig',tier:1,count:2}],[{family:'rig',tier:2,count:1}],[{family:'rig',tier:1,count:1},{family:'rig',tier:0,count:2}]]);
+ assert.deepEqual(s.orders.map(o=>o.needs),[[{family:'rig',tier:1,count:1}],[{family:'rig',tier:2,count:1}],[{family:'rig',tier:1,count:2}]]);
+ assert.ok(s.orders.every(o=>!orderItems(s,o)),'no order can be delivered before building something');
  assert.equal(s.coins,0);assert.deepEqual(s.built,{});assert.equal(sourceOpen(s,'chart'),false);assert.equal(nextTask(s).id,'beach-path');assert.equal(nextTask(s).stage,1);
 });
 
-test('the first merge completes the first order and opens nothing',()=>{
- const s=fresh(0),r=ok(s,{type:'merge',from:14,to:16});
+test('the first taps and merge build the first order; nothing opens',()=>{
+ const s=fresh(0);
+ const a=ok(s,{type:'produce',id:'rig'}),b=ok(s,{type:'produce',id:'rig'});assert.deepEqual([s.board[a.index],s.board[b.index]],[item('rig',0),item('rig',0)]);
+ assert.ok(!orderItems(s,s.orders[0]));
+ const r=ok(s,{type:'merge',from:a.index,to:b.index});
  assert.equal(s.board.filter(x=>x?.type==='cargo').length,27,'merging never opens cargo');assert.equal(r.xp,1);
- assert.ok(orderItems(s,s.orders[0]));
- const d=ok(s,{type:'deliver',id:'o0'});assert.equal(d.coins,10);assert.equal(s.coins,10);assert.equal(d.xp,2,'orders pay a fifth of their coins as XP');assert.equal(s.orders[0].id,'o3');
+ assert.ok(orderItems(s,s.orders[0]),'one Grip tool: the first order is ready');
+ const d=ok(s,{type:'deliver',id:'o0'});assert.equal(d.coins,5);assert.equal(s.coins,5);assert.equal(d.xp,1);assert.equal(s.orders[0].id,'o3');
  refused(s,{type:'deliver',id:'o0'});
 });
+
 
 test('generators cost energy, place near themselves and refuse when locked, empty or full',()=>{
  const s=fresh(0),e=s.energy,r=ok(s,{type:'produce',id:'rig'});
@@ -111,7 +118,7 @@ test('every third order brings a small box of its kind; boxes and generator leve
 });
 
 test('levels give a chest with a driftwood crate of a generator you have',()=>{
- const s=fresh(0);s.level.xp=19;const e=s.energy,r=ok(s,{type:'merge',from:14,to:16});
+ const s=camp();s.level.xp=19;const e=s.energy,r=ok(s,{type:'merge',from:14,to:16});
  assert.equal(r.levelUp[0].level,2);assert.equal(r.levelUp[0].family,'rig');assert.equal(s.board.filter(x=>x?.type==='cargo').length,27);
  assert.equal(CHEST_ENERGY,10);assert.equal(s.energy,e+10);
 });
@@ -122,7 +129,7 @@ test('energy refills over time and a low-energy ration helps once an hour',()=>{
 });
 
 test('saves round-trip; anything malformed starts a new camp',()=>{
- const s=fresh(0);ok(s,{type:'merge',from:14,to:16});s.board[15]=kit('chart',2);s.board[ROVER].level=3;
+ const s=camp();ok(s,{type:'merge',from:14,to:16});s.board[15]=kit('chart',2);s.board[ROVER].level=3;
  const back=load(JSON.stringify(s),5);assert.deepEqual(back.board,s.board);assert.deepEqual(back.orders,s.orders);assert.equal(back.moves,1);
  const bad=[x=>x.version=5,x=>x.board[2]={type:'water'},x=>x.board[2]={type:'cargo'},x=>x.board[2]=cargo({family:'gold',tier:0}),x=>x.board[2]=cargo({family:'rig',tier:1},item('rig',5)),x=>x.board[2]=cargo({family:'rig',tier:1},{type:'kit',family:'zz',size:1,left:3}),x=>x.board[2]=cargo({family:'rig',tier:1},{type:'coins',n:0}),x=>x.board[2]=cargo({family:'rig',tier:1},source('nope')),x=>x.board.pop(),x=>x.board[2]={type:'item',family:'gold',tier:0},x=>x.board[2]={type:'crate',kind:'salvage',left:3},x=>x.coins=-1,x=>x.orders.pop(),x=>x.orders[0].who='zed',x=>x.built.nowhere=1,x=>x.built['beach-path']=4,x=>x.built=[],x=>x.slots=5,x=>x.taps.rig=-1,x=>x.board[ROVER].level=9];
  for(const f of bad){const t=structuredClone(s);f(t);assert.equal(load(JSON.stringify(t),5).moves,0,f.toString());}
@@ -155,7 +162,7 @@ test('crates are named for the coast; merges and feeding work as before',()=>{
 });
 
 test('cargo opens only with the part it shows, only at the edge of open ground; the part is used up',()=>{
- const s=fresh(0);
+ const s=camp();
  // 9, straight above the Rover, holds a star pouch and opens with a Split spanner; it touches the camp.
  assert.deepEqual(s.board[9].key,{family:'rig',tier:2});
  refused(s,{type:'merge',from:14,to:9});// a Copper offcut is the wrong part
@@ -243,7 +250,7 @@ test('build-4 (tide) and build-3 (sand) saves load as sealed cargo, keeping ever
 });
 
 test('tideglass takes no part: merges beside it crack it, the third breaks it and frees the part as it is',()=>{
- const s=fresh(0);
+ const s=camp();
  assert.deepEqual(s.board[8],{type:'glass',family:'rig',tier:2},'a Split spanner in glass beside the camp');
  s.board[15]=item('rig',2);
  assert.match(refused(s,{type:'merge',from:15,to:8}).message,/beside it/,'even its twin cannot be laid on it (that is what cargo does)');
@@ -272,7 +279,7 @@ test('tideglass takes no part: merges beside it crack it, the third breaks it an
 
 
 test('a Brass cog (from older saves) still raises the generator it is laid on by one level',()=>{
- const s=fresh(0);s.board[15]=cog();
+ const s=camp();s.board[15]=cog();
  refused(s,{type:'merge',from:15,to:14});refused(s,{type:'recycle',index:15});refused(s,{type:'openKit',index:15});
  ok(s,{type:'move',from:15,to:22});
  const u=ok(s,{type:'merge',from:22,to:ROVER});assert.equal(u.event,'producerUp');assert.equal(u.cog,true);assert.equal(s.board[ROVER].level,2);assert.ok(!s.board.some(x=>x?.type==='cog'),'the cog is used up');
@@ -323,7 +330,7 @@ test('the edge of the board wants Kite and Rope Winch parts; generators come onl
  assert.ok(edge.some(([,c])=>c[0]==='chart')&&edge.some(([,c])=>c[0]==='rope'));
  const s=fresh(0);assert.equal(s.board.filter(x=>x?.type==='glass'||x?.type==='cargo').length,40);
  // Level chests give crates, never generators.
- const t=fresh(0);t.level.level=4;t.level.xp=xpToNext(4)-1;const before=t.board.filter(x=>x?.type==='source').length;
+ const t=camp();t.level.level=4;t.level.xp=xpToNext(4)-1;const before=t.board.filter(x=>x?.type==='source').length;
  const r=ok(t,{type:'merge',from:14,to:16});assert.equal(r.levelUp[0].level,5);assert.equal(r.levelUp[0].generator,undefined);
  assert.equal(t.board.filter(x=>x?.type==='source').length,before,'no generator from a level chest');assert.equal(t.board[r.levelUp[0].index].type,'kit');
 });

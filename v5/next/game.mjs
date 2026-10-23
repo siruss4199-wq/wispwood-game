@@ -113,7 +113,6 @@ export const cargoAt=i=>{const c=CARGO[i];return c?cargo({family:c[0],tier:c[1]}
 export function fresh(now=Date.now()){
  const board=Array(BOARD_SIZE).fill(null);
  board[ROVER]=source('rig');
- for(const [r,c,t] of [[2,2,0],[2,4,0],[3,2,0],[4,3,1],[4,4,0]])board[at(r,c)]=item('rig',t);
  for(let i=0;i<BOARD_SIZE;i++)if(!CAMP.includes(i))board[i]=GLASS[i]?glass(...GLASS[i]):cargoAt(i);
  const s={version:VERSION,board,energy:50,energyAt:now,coins:0,level:freshLevel(),taps:{},
   orders:[],slots:3,orderSeq:0,ordersDone:0,area:0,built:{},found:[],moves:0,merges:0,lastAt:now};
@@ -124,7 +123,10 @@ export function fresh(now=Date.now()){
 
 // ---- orders ----
 // The first three teach the loop; then a deterministic mix grows with the level.
-const FIRST=[[['rig',1,2]],[['rig',2,1]],[['rig',1,1],['rig',0,2]]];
+// The camp starts empty around Rivet Rover (build 30, user: "shuud orohod ingeed task deliver
+// hiihed belen ehelj baina ... anhnii item generator-s garch ireeguigeer ehleh"): the first
+// orders are built from its first taps and merges.
+const FIRST=[[['rig',1,1]],[['rig',2,1]],[['rig',1,2]]];
 function rand(n){let t=(n*2654435761+0x6D2B79F5)>>>0;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296;}
 const CREW_OF={rig:'ivo',rope:'ivo',chart:'neri',shell:'neri',flux:'tamsin',lamp:'tamsin'};
 const crewFor=needs=>needs.length>1?'bram':CREW_OF[needs[0].family];
