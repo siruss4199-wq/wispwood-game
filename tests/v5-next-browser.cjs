@@ -174,7 +174,8 @@ async function perform(page,a){
    await page.locator('#mapButton').tap();await page.locator('#coastMap [data-restore="beach-cliff"]').tap();await closeBeats(page);
    assert.equal((await read(page)).area,1,'the worksite is open');
    assert.equal(await page.locator('#coastMap #mapTitle').textContent(),'Survey Worksite');assert.equal(await page.locator('#coastMap .place').count(),7);
-   assert.equal(await page.locator('#coastMap .mapArea.done').count(),1,'the finished beach stays listed');assert.equal(await page.locator('#coastMap [data-restore="ws-camp"]').count(),1);
+   assert.equal(await page.locator('#coastMap .mapArea.done').count(),1,'the finished beach stays listed');
+   assert.equal(await page.locator('#coastMap [data-place="ws-hoist"] .placeIcon img').getAttribute('src'),'assets/premium/coast/place-ws-hoist-1.webp','worksite places are drawn too (build 40)');assert.equal(await page.locator('#coastMap [data-restore="ws-camp"]').count(),1);
    assert.equal(await page.evaluate(()=>document.querySelector('#coastMap').scrollWidth<=innerWidth),true,'no sideways scroll at the worksite');
    await page.locator('#coastMap [data-back]').tap();
    assert.equal(await page.locator('#mapButton span').textContent(),'SITE');assert.equal(await page.locator('#areaBrand').textContent(),'SURVEY WORKSITE');

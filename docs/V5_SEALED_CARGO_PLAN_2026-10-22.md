@@ -523,3 +523,22 @@ All 21 pictures were rendered again together so the sand and stone match (warmer
 sand and rock than build 38). The places were spread out on the picture (they overlapped on
 the left), which also moves their patches of colour. The browser test now checks every
 place's stage picture.
+
+## Build 40 — the Survey Worksite's places drawn stage by stage (user: "worksite-iin gazruudiig chi hii")
+The worksite's seven places get rendered stage pictures like the beach's (same renderer and
+crop; `place-ws-*-1…3.webp`):
+- **Survey camp:** an ochre survey tent with a pennant → + stacked instrument crates → + a
+  drafting table with a gridded plan and a lamp.
+- **Theodolite:** a brass theodolite on a tripod → + red-and-white survey poles and marked
+  lines → + a chart on an easel.
+- **Hauling ropes:** a coiled rope → + a rope reel → + a roofed rope store with hanging coils.
+- **Rock steps:** steps cut between two limestone boulders → + hand ropes on posts → + a
+  paved floor in front.
+- **Tide pool:** a shallow pool ringed with stones and shells → + a sieve and a bucket of
+  shells → + a stone wall.
+- **Rope hoist:** an A-frame hoist with a pulley and a hanging crate → + brass gears and a
+  crank → + a cable running off with a bucket.
+- **Vault door:** a survey scaffold with a ladder and a measuring pole → + lantern posts →
+  + a chart of the dial on an easel.
+The places moved a little on the worksite picture so the bigger pictures do not overlap or
+leave the frame. No rule or save change.

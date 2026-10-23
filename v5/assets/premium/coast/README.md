@@ -17,8 +17,8 @@ export 192 px WebP (quality 88, alpha 100) with the names below.
 | driftwood-crate, sea-chest, captains-trunk | crates, sizes 1–3 |
 | tide-token, brass-cog | Tide token, Brass cog |
 
-**Place stages (builds 38–39).** `render-places.html` draws every Landing Beach place in three stages
-(`render-shot.cjs workshop1 … cliff3`: workshop, pier, beacon, path, tent, mast, cliff × 1–3). Each
+**Place stages (builds 38–40).** `render-places.html` draws every place of Landing Beach and the Survey
+Worksite in three stages (`render-shot.cjs workshop1 … cliff3 wscamp1 … wsdoor3`). Each
 place's three renders are cropped to the union of their alpha boxes plus 16 px (so the stages line
 up), then exported at 256 px WebP (quality 88).
 
@@ -31,5 +31,12 @@ up), then exported at 256 px WebP (quality 88).
 | place-tent-1, -2, -3 | striped camp tent · + stove and bedrolls · + mess awning with table and benches |
 | place-mast-1, -2, -3 | signal mast with a pennant · + strings of flags · + lookout nest with a spyglass |
 | place-cliff-1, -2, -3 | steps cut into the cliff · + rope hand rail · + stone cliff gate, open |
+| place-ws-camp-1, -2, -3 | ochre survey tent · + stacked instrument crates · + drafting table with a lamp |
+| place-ws-scope-1, -2, -3 | theodolite on a tripod · + survey poles and marked lines · + chart on an easel |
+| place-ws-ropes-1, -2, -3 | coiled hauling rope · + rope reel · + rope store rack under a roof |
+| place-ws-steps-1, -2, -3 | steps cut between boulders · + hand ropes · + paved floor |
+| place-ws-pool-1, -2, -3 | tide pool ringed with stones, shells · + sieve and a bucket of shells · + stone wall |
+| place-ws-hoist-1, -2, -3 | A-frame hoist with a pulley and crate · + brass gears and crank · + cable with a bucket |
+| place-ws-door-1, -2, -3 | survey scaffold with a ladder · + lantern posts · + chart of the dial on an easel |
 
 Painted art from `docs/V5_COAST_ART_BRIEF_2026-10-23.md` can replace any file with the same name.

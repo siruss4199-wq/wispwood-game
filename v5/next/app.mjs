@@ -17,7 +17,7 @@ import {sound,reduced,burst,rewardFlight,moment as sharedMoment} from '../feedba
 function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el=document.querySelector('.moment');const top=[...document.querySelectorAll('dialog[open]')].pop();if(el&&top)top.append(el);if(!x||!el)return;const icon=document.createElement('span');icon.style.cssText='float:left;width:42px;height:42px;margin-right:10px';icon.innerHTML=draw(x);icon.firstElementChild.style.cssText='width:100%;height:100%';el.prepend(icon);}
 
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 39 · every beach place drawn by stage';
+export const BUILD='Build 40 · worksite places drawn by stage';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};

@@ -51,34 +51,34 @@ export const AREAS=[
  {id:'worksite',name:'Survey Worksite',short:'SITE',picture:'worksite',focus:'rope',
   intro:[['neri','Up the cliff at last: the Survey Worksite. Old instruments half-buried in sand, and a door in the rock.'],['ivo','Everything up here is hauled, hoisted or lowered. The Rope Winch will be busy.']],
   tasks:[
-   place('ws-camp','crate-survey',[8,60],[
+   place('ws-camp','crate-survey',[10,50],[
     {name:'Pitch the survey camp',cost:35,effect:{energy:15},lines:[['bram','Tents up on the cliff top. The crew can sleep where it works.'],['ivo','+15 energy for the crew.']]},
     {name:'Stack the instrument crates',cost:45,effect:{kit:['newest',2]},lines:[['neri','Every crate labelled and stacked. One of them was still full: a sea chest for our newest generator.']]},
-    {name:'Raise a drafting table',cost:55,effect:{token:1},lines:[['neri','A table for the maps. Now we can plan the whole cliff on paper first.']]}]),
-   place('ws-scope','chart-3',[21,62],[
+    {name:'Raise a drafting table',cost:55,effect:{token:1},lines:[['neri','A table for the maps. Now we can plan the whole cliff on paper first.']]}],'ws-camp'),
+   place('ws-scope','chart-3',[28,64],[
     {name:'Set up the theodolite',cost:45,effect:{copy:'newest'},lines:[['neri','The old theodolite still turns. It points straight at the door in the rock.'],['ivo','Packed beside it: a copy of our newest generator. Merge it in.']]},
     {name:'Mark the survey lines',cost:55,effect:{energy:10},lines:[['neri','White lines across the whole worksite. Nobody digs in the wrong place again.']]},
-    {name:'Chart the whole cliff',cost:60,effect:{kit:['newest',2]},lines:[['neri','The cliff is charted, every ledge and crack. The door sits in the middle of an old quarry.']]}]),
-   place('ws-ropes','rope-1',[12,86],[
+    {name:'Chart the whole cliff',cost:60,effect:{kit:['newest',2]},lines:[['neri','The cliff is charted, every ledge and crack. The door sits in the middle of an old quarry.']]}],'ws-scope'),
+   place('ws-ropes','rope-1',[14,86],[
     {name:'Coil the hauling ropes',cost:50,effect:{copy:'newest'},lines:[['ivo','Rope everywhere, tangled by the storm. Coiled, it is worth more than gold up here.'],['ivo','Under the last coil: a copy of our newest generator.']]},
     {name:'Splice the long lines',cost:60,effect:{token:1},lines:[['ivo','Spliced lines long enough to reach the beach. Loads can come straight up.']]},
-    {name:'Rig the rope store',cost:70,effect:{kit:['rope',3]},lines:[['ivo','A proper rope store, dry and ordered. The Rope Winch never runs short.'],['bram','The store keeper left us a captain\'s trunk for the winch.']]}]),
-   place('ws-steps','rock',[52,64],[
+    {name:'Rig the rope store',cost:70,effect:{kit:['rope',3]},lines:[['ivo','A proper rope store, dry and ordered. The Rope Winch never runs short.'],['bram','The store keeper left us a captain\'s trunk for the winch.']]}],'ws-ropes'),
+   place('ws-steps','rock',[48,60],[
     {name:'Cut steps through the rocks',cost:55,effect:{energy:20},lines:[['ivo','Steps cut through the boulders. The carts reach the door now.'],['bram','The crew is proud of the work: +20 energy.']]},
     {name:'Fit hand ropes',cost:65,effect:{copy:'newest'},lines:[['ivo','Hand ropes on every step. Safe in the wind, safe in the rain.'],['neri','Wedged under a step: a copy of our newest generator.']]},
-    {name:'Pave the quarry floor',cost:75,effect:{kit:['newest',2]},lines:[['bram','A level floor in front of the door. Room for the whole crew and all the tools.']]}]),
-   place('ws-pool','shell-2',[64,84],[
+    {name:'Pave the quarry floor',cost:75,effect:{kit:['newest',2]},lines:[['bram','A level floor in front of the door. Room for the whole crew and all the tools.']]}],'ws-steps'),
+   place('ws-pool','shell-2',[62,84],[
     {name:'Drain the tide pool',cost:60,effect:{kit:['newest',2]},lines:[['tamsin','The pool below the door drains with the tide. Shells everywhere, and something glinting.']]},
     {name:'Sieve the pool bed',cost:75,effect:{token:1},lines:[['tamsin','Sieved sand, sorted shells. One of them hums like the beacon did.']]},
-    {name:'Wall in the pool',cost:85,effect:{copy:'newest'},lines:[['tamsin','A stone wall keeps the sea out. The pool is a workshop now.'],['tamsin','At the bottom: a copy of our newest generator.']]}]),
-   place('ws-hoist','source-rope',[95,66],[
+    {name:'Wall in the pool',cost:85,effect:{copy:'newest'},lines:[['tamsin','A stone wall keeps the sea out. The pool is a workshop now.'],['tamsin','At the bottom: a copy of our newest generator.']]}],'ws-pool'),
+   place('ws-hoist','source-rope',[89,70],[
     {name:'Raise the rope hoist',cost:70,effect:{energy:20},lines:[['ivo','A hoist on the cliff edge. One pull and the beach sends up anything we need.'],['bram','Supplies came up with the first load: +20 energy.']]},
     {name:'Gear the hoist',cost:85,effect:{copy:'newest'},lines:[['ivo','Brass gears from the Workshop. The hoist lifts twice the load.'],['ivo','The first geared load: a copy of our newest generator.']]},
-    {name:'Run the hoist to the door',cost:95,effect:{kit:['newest',3]},lines:[['ivo','A line from the hoist straight to the door. Whatever is behind it, we can move it.']]}]),
-   place('ws-door','lamp-2',[86,40],[
+    {name:'Run the hoist to the door',cost:95,effect:{kit:['newest',3]},lines:[['ivo','A line from the hoist straight to the door. Whatever is behind it, we can move it.']]}],'ws-hoist'),
+   place('ws-door','lamp-2',[74,38],[
     {name:'Survey the vault door',cost:80,effect:{energy:10},lines:[['neri','The door is a dial, as tall as three of us. Every ring turns.']]},
     {name:'Light the door',cost:95,effect:{copy:'newest'},lines:[['tamsin','Lanterns all around the dial. The tideglass in it glows back at us.'],['tamsin','We will need lamps of our own up here. Packed with the lanterns: a copy of our newest generator.']]},
-    {name:'Map the dial',cost:105,effect:{kit:['newest',3]},lines:[['neri','Every ring of the dial is mapped. Now we know how it opens.'],['bram','The worksite is done. Next: the Vault Entrance itself.']]}])
+    {name:'Map the dial',cost:105,effect:{kit:['newest',3]},lines:[['neri','Every ring of the dial is mapped. Now we know how it opens.'],['bram','The worksite is done. Next: the Vault Entrance itself.']]}],'ws-door')
   ]},
  {id:'entrance',name:'Vault Entrance',picture:'entrance',coming:true,tasks:[]},
  {id:'vault',name:'The Vault',picture:'vault-open',coming:true,tasks:[]}
