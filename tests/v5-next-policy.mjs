@@ -1,7 +1,7 @@
 // A scripted player for the new loop: upgrade the cheapest open place when affordable, deliver ready orders,
 // open sealed cargo with spare parts (generator cargo first), grow crates, merge toward
 // what orders and cargo need, otherwise tap the generator whose parts are wanted.
-import {count,matches,orderItems,nextTask,sourceOpen,openFamilies,cargoKeys,generatorsMerge,GENERATOR_ORDER,nextKind,UNLOCK_LEVEL} from '../v5/next/game.mjs';
+import {bookReady,pageReady,BOOK_CHAINS,count,matches,orderItems,nextTask,sourceOpen,openFamilies,cargoKeys,generatorsMerge,GENERATOR_ORDER,nextKind,UNLOCK_LEVEL} from '../v5/next/game.mjs';
 import {CHAINS,maxTier} from '../v5/next/chains.mjs';
 import {kitsMerge,kitFull,MAX_KIT_SIZE} from '../v5/kits.mjs';
 
@@ -35,6 +35,9 @@ const glassBeside=(b,i)=>near(i).filter(j=>b[j]?.type==='glass').length;
 const pairMerge=(b,i,j)=>glassBeside(b,i)>glassBeside(b,j)?{type:'merge',from:j,to:i}:{type:'merge',from:i,to:j};
 export function nextAction(s){
  const b=s.board,t=nextTask(s);
+ // Parts found for the first time are ticked off in the book for their coins (build 33), and a
+ // finished page's Brass cog is taken when there is room for it.
+ {const k=bookReady(s)[0];if(k)return {type:'book',key:k};const f=BOOK_CHAINS.find(f=>pageReady(s,f));if(f&&(b.includes(null)||s.shed.includes(null)))return {type:'bookPage',family:f};}
  if(t&&s.coins>=t.cost)return {type:'restore',id:t.id};
  // Curious: the crate on the way to a glowing one opens first, even before deliveries.
  {const g=target(s),have=g?b.findIndex(x=>matches(x,g)):-1;if(have>=0)return {type:'unseal',from:have,index:g.index};}

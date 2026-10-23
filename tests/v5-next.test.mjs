@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {cellPos} from '../v5/core.mjs';
 import {xpToNext} from '../v5/levels.mjs';
-import {SHED_SLOTS,DAILY,priceOf,totalBuilt,ORDER_TOP,SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,makeOrder,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
+import {BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,priceOf,totalBuilt,ORDER_TOP,SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,makeOrder,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
 import {AREAS,TASKS} from '../v5/next/areas.mjs';
 import {kit} from '../v5/kits.mjs';
 import {nextAction} from './v5-next-policy.mjs';
@@ -450,4 +450,33 @@ test('saves from before the shed and the daily gift load with an empty shed and 
  const back=load(JSON.stringify(s),5);assert.equal(back.moves,40);assert.deepEqual(back.shed,Array(SHED_SLOTS).fill(null));assert.deepEqual(back.daily,{day:-1,count:0});
  assert.equal(act(back,{type:'daily',day:100},5).ok,true,'the first gift is ready');
  for(const f of [x=>x.shed=[null],x=>x.shed[0]={type:'source',id:'rig'},x=>x.shed[1]=item('gold',1),x=>x.daily={day:'x',count:0},x=>x.daily.count=-1]){const t=fresh(0);t.moves=3;f(t);assert.equal(load(JSON.stringify(t),5).moves,0,f.toString());}
+});
+
+// Build 33: the collection book.
+test('the book: each part found pays its coins once when ticked off; a whole page gives a Brass cog',()=>{
+ assert.deepEqual(BOOK_CHAINS,GENERATOR_ORDER,'one page per generator chain');assert.equal(BOOK_COINS.length,8);
+ assert.equal(bookKeys('lamp').length,5);assert.equal(bookKeys('rig').length,8);
+ const s=fresh(0);assert.deepEqual(s.book,{claimed:[],pages:[]});assert.deepEqual(bookReady(s),[]);
+ const a=ok(s,{type:'produce',id:'rig'}),b=ok(s,{type:'produce',id:'rig'});assert.deepEqual(bookReady(s),['rig0']);
+ refused(s,{type:'book',key:'rig1'});refused(s,{type:'book',key:'flux0'});refused(s,{type:'book'});
+ const c=s.coins,r=ok(s,{type:'book',key:'rig0'});assert.equal(r.coins,BOOK_COINS[0]);assert.equal(s.coins,c+BOOK_COINS[0]);
+ assert.match(refused(s,{type:'book',key:'rig0'}).message,/Already/);
+ ok(s,{type:'merge',from:a.index,to:b.index});assert.deepEqual(bookReady(s),['rig1'],'a new part waits in the book');
+ // A full page: every Rivet Rover part found and ticked → a Brass cog, once.
+ const p=fresh(0);p.found=bookKeys('rig');refused(p,{type:'bookPage',family:'rig'});
+ let coins=0;for(const k of bookKeys('rig')){coins+=ok(p,{type:'book',key:k}).coins;}assert.equal(coins,BOOK_COINS.reduce((x,y)=>x+y));
+ assert.ok(pageReady(p,'rig'));const g=ok(p,{type:'bookPage',family:'rig'});assert.equal(p.board[g.index].type,'cog');assert.deepEqual(p.book.pages,['rig']);
+ assert.match(refused(p,{type:'bookPage',family:'rig'}).message,/already/);refused(p,{type:'bookPage',family:'chart'});refused(p,{type:'bookPage',family:'flux'});
+ // With the board full the cog goes to the shed; with both full it waits.
+ const f=fresh(0);f.found=bookKeys('lamp');f.book.claimed=[...f.found];for(let i=0;i<f.board.length;i++)if(f.board[i]===null)f.board[i]=item('rig',0);
+ assert.equal(ok(f,{type:'bookPage',family:'lamp'}).slot,0);assert.equal(f.shed[0].type,'cog');
+ const h=fresh(0);h.found=bookKeys('lamp');h.book.claimed=[...h.found];for(let i=0;i<h.board.length;i++)if(h.board[i]===null)h.board[i]=item('rig',0);h.shed=h.shed.map(()=>item('rig',1));
+ assert.match(refused(h,{type:'bookPage',family:'lamp'}).message,/space/);
+ assert.deepEqual(load(JSON.stringify(p),5).book,p.book,'saves keep the book');
+});
+
+test('saves from before the book load with every part already found waiting in it',()=>{
+ const s=camp();ok(s,{type:'merge',from:14,to:16});s.moves=60;delete s.book;assert.ok(s.found.length>=2);
+ const back=load(JSON.stringify(s),5);assert.equal(back.moves,60);assert.deepEqual(back.book,{claimed:[],pages:[]});assert.deepEqual(bookReady(back),s.found.filter(k=>/^(rig|chart|rope|shell|lamp)/.test(k)));
+ for(const f of [x=>x.book={claimed:'x',pages:[]},x=>x.book.claimed=['rig9'],x=>x.book.claimed=['rig5'],x=>x.book.claimed=['rig1','rig1'],x=>x.book.pages=['rig'],x=>x.book.pages=['flux']]){const t=camp();ok(t,{type:'merge',from:14,to:16});t.moves=3;f(t);assert.equal(load(JSON.stringify(t),5).moves,0,f.toString());}
 });

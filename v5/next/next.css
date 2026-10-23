@@ -196,3 +196,26 @@ img.art{-webkit-user-drag:none;user-select:none}
 .dailyDay.today{background:#fff4d6;box-shadow:0 0 0 3px #f2b94b,0 3px 0 #d79a2b;animation:pop .5s}
 .dailyDay:last-child{grid-column:span 2}
 .dailyClaim{width:100%;margin-top:12px;min-height:46px;font-size:15px}
+/* Build 33: the collection book. */
+#bookButton{position:relative;background:#e7f1ff;color:#24456f;border-radius:8px;padding:6px 8px;font-weight:800}
+#bookButton.ready{background:#fff0c4;color:#76511d}
+#bookCount{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;border-radius:9px;background:#e4572e;color:#fff;font:800 11px/18px system-ui;font-style:normal;text-align:center;padding:0 4px}
+#book{padding:20px 14px;max-height:88dvh}
+.bookIntro{margin:0 0 8px}
+.bookAll{width:100%;margin:2px 0 10px;min-height:44px}
+.bookPage{background:#fff;border-radius:16px;padding:10px;margin:0 0 10px;box-shadow:0 2px 0 #d9dfeb}
+.bookPage.closed{opacity:.6}.bookPage.closed .bookGen{filter:grayscale(1)}
+.bookHead{display:flex;align-items:center;gap:8px}
+.bookHead>span:nth-child(2){flex:1;min-width:0}.bookHead b{display:block;font-size:14px}.bookHead small{display:block;font-size:11px;color:#6a7b93}
+.bookGen{width:40px;height:40px;flex:none;position:relative}.bookGen .art,.bookGen img,.bookGen svg{width:100%;height:100%}
+.pagePrize{width:30px;height:30px;flex:none;opacity:.45;filter:grayscale(.6)}.pagePrize img,.pagePrize .art{width:100%;height:100%}
+.pageDone{font-style:normal;font-size:12px;font-weight:800;color:#1f8a6d}
+.pageClaim{min-height:40px;font-size:12px}
+.bookGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+.bookItem{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 3px 6px;border-radius:12px;background:#f3f5fa;min-height:76px;min-width:0}
+.bookItem .art,.bookItem img{width:44px;height:44px;object-fit:contain}
+.bookItem small{font-size:9px!important;line-height:1.15!important;text-align:center;color:#52667f;overflow-wrap:anywhere}
+.bookItem.unknown .art,.bookItem.unknown img{filter:brightness(0) opacity(.18)}
+.bookItem.ready{background:#fff4d6;box-shadow:0 0 0 2px #f2b94b,0 2px 0 #d79a2b}
+.bookCoins{position:absolute;top:-6px;right:-4px;background:#ffd34d;color:#5b3d06;border-radius:8px;padding:1px 5px;font-size:10px;box-shadow:0 1px 0 #b98410}
+.bookItem.got{background:#eef8f2}

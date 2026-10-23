@@ -21,6 +21,8 @@ async function perform(page,a){
  else if(a.type==='recycle'){if(!await pressed(a.index))await tile(a.index).tap();await page.locator('#selection [data-action="recycle"]').tap();}
  else if(a.type==='ration')await page.locator('#rationButton').tap();
  else if(a.type==='unseal')await dragTo(page,a.from,a.index);
+ // The book (build 33): open it, tick the part off (or claim the page's cog), close it.
+ else if(a.type==='book'||a.type==='bookPage'){await page.locator('#bookButton').tap();await page.locator(a.type==='book'?`#book [data-key="${a.key}"]`:`#book [data-page="${a.family}"]`).tap();await page.locator('#book .close').tap();}
  else throw Error('Unexpected action '+JSON.stringify(a));
  await page.waitForFunction(n=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).moves>n,s.moves,{timeout:4000});
 }
@@ -128,6 +130,15 @@ async function perform(page,a){
    await page.locator('#shed [data-slot="2"]').tap();
    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).shed[2]===null,null,{timeout:4000});
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'no sideways scroll with the shed');
+   // Build 33: the collection book. Parts already found wait in it; ticking one off pays its coins.
+   {const st=await read(page),c=st.coins,n=st.found.filter(k=>/^(rig|chart|rope|shell|lamp)\d$/.test(k)&&!st.book.claimed.includes(k)).length;
+    assert.ok(n>=1,'something waits in the book');assert.equal(await page.locator('#bookCount').textContent(),String(n));
+    await page.locator('#bookButton').tap();assert.equal(await page.locator('#book .bookPage').count(),5,'a page per generator chain');
+    await page.locator('#book [data-key]').first().tap();
+    await page.waitForFunction(c=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).coins>c,c,{timeout:4000});
+    assert.equal((await read(page)).book.claimed.length,st.book.claimed.length+1);
+    assert.equal(await page.evaluate(()=>document.querySelector('#book').scrollWidth<=document.querySelector('#book').clientWidth),true,'no sideways scroll in the book');
+    await page.locator('#book .close').tap();}
    // Build 31: the beach's last stage opens the Survey Worksite, its intro and its screen.
    await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.built={'beach-path':3,'beach-tent':3,'beach-mast':3,'beach-workshop':3,'beach-pier':3,'beach-beacon':3,'beach-cliff':2};s.coins=200;localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
    await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
@@ -141,7 +152,7 @@ async function perform(page,a){
    assert.equal(await page.locator('#mapButton span').textContent(),'SITE');assert.equal(await page.locator('#areaBrand').textContent(),'SURVEY WORKSITE');
    {const b=await page.locator('#mapButton').boundingBox();assert.ok(b.x+b.width<=width,'the SITE button fits the header');}
    assert.deepEqual(errors,[]);
-   console.log(`${engine} ${width} Coast Camp: intro → orders → 2 restorations → reload → map → worksite → daily gift → shed passed`);
+   console.log(`${engine} ${width} Coast Camp: intro → orders → 2 restorations → reload → map → worksite → daily gift → shed → book passed`);
    await context.close();
   }}finally{await browser.close();}
  }

@@ -398,3 +398,20 @@ needs a space goes to the shed if the board is full; with both full it waits.
 gift waiting (test: "saves from before the shed and the daily gift…"); a malformed shed or
 daily record starts a new camp like any other malformed field. The scripted player does not
 use either, so pacing numbers are unchanged from build 31.
+
+## Build 33 — the collection book (user: "cugluulgiin nom nem", proposal 4 of the build-30 review)
+A page per generator chain (Rivet Rover, Survey Kite, Rope Winch, Shell Trap, Lantern
+Kiln: 33 parts). Every part made for the first time (`s.found`) waits in the book with a
+small coin reward; ticking it off pays it (`book` action, `BOOK_COINS` by tier:
+1, 1, 2, 3, 5, 8, 12, 20). A page with every part ticked gives a Brass cog (`bookPage`;
+board, else shed, else it waits). Pages of generators not yet out are shown closed
+("Comes out later"); unfound parts are shadows, so the high tiers become visible goals.
+- UI: 📖 Book button in the footer with a count of rewards waiting; "Tick off all"; the
+  "New: …" moment names the book reward.
+- Balance: book coins of 5–60 (first draft) removed the energy tension build 31 added (a
+  quick scripted player stopped running low); the small values keep the build-31 numbers
+  (beach 35 min, worksite 43 min, 14 min waiting at 4 s per action). The scripted player
+  ticks parts off as soon as they wait, so the pacing tests include the book.
+- Saves: no version bump. Older saves load with an empty book, so every part they already
+  found waits in it to be ticked off (`s.book={claimed,pages}`); a malformed book starts a
+  new camp like any other malformed field.

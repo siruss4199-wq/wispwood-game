@@ -27,6 +27,15 @@ export const CHEST_ENERGY=6;
 // or cargo; tap it to bring it back to the board.
 export const SHED_SLOTS=4,SHED_TYPES=['item','kit','cog','token'];
 // The daily gift: one a day, seven in a row then round again. A missed day does not reset it.
+// The collection book (build 33, user: "cugluulgiin nom nem"): every part found for the first
+// time pays a few coins once it is ticked off in the book, more for higher tiers; a chain's
+// whole page found and ticked gives a Brass cog.
+export const BOOK_COINS=[1,1,2,3,5,8,12,20];// kept small: bigger book coins undid build 31's energy tension (scripted player)
+export const BOOK_CHAINS=['rig','chart','rope','shell','lamp'];// the chains of GENERATOR_ORDER
+export const bookKeys=family=>Array.from({length:maxTier(family)+1},(_,t)=>family+t);
+// Parts found but not yet ticked off in the book.
+export const bookReady=s=>s.found.filter(k=>!s.book.claimed.includes(k)&&BOOK_CHAINS.includes(k.replace(/\d+$/,'')));
+export const pageReady=(s,family)=>!s.book.pages.includes(family)&&bookKeys(family).every(k=>s.book.claimed.includes(k));
 export const DAILY=[{energy:10},{coins:25},{kit:1},{energy:15},{token:1},{coins:50},{cog:1}];
 // Coast Camp's own crates (the generator boxes of v5/kits.mjs, by size).
 export const CRATES=['Driftwood crate','Sea chest','Captain\'s trunk'];
@@ -125,7 +134,7 @@ export function fresh(now=Date.now()){
  for(let i=0;i<BOARD_SIZE;i++)if(!CAMP.includes(i))board[i]=GLASS[i]?glass(...GLASS[i]):cargoAt(i);
  const s={version:VERSION,board,energy:40,energyAt:now,coins:0,level:freshLevel(),taps:{},
   orders:[],slots:3,orderSeq:0,ordersDone:0,area:0,built:{},found:[],moves:0,merges:0,lastAt:now,
-  shed:Array(SHED_SLOTS).fill(null),daily:{day:-1,count:0}};
+  shed:Array(SHED_SLOTS).fill(null),daily:{day:-1,count:0},book:{claimed:[],pages:[]}};
  for(const g of Object.keys(GENERATOR_CHAINS))s.taps[g]=0;
  for(let i=0;i<s.slots;i++)s.orders.push(makeOrder(s));
  note(s);return s;
@@ -391,6 +400,18 @@ function step(s,a,now){
   s.daily={day:a.day,count:s.daily.count+1};
   return {ok:true,event:'daily',gift,index:gift.index??null,message:`Daily gift · day ${n+1} of ${DAILY.length}`};
  }
+ // The book: tick off a found part for its coins; a page with every part ticked gives a cog.
+ if(a.type==='book'){
+  const k=typeof a.key==='string'?a.key:'';if(!bookReady(s).includes(k))return fail(s.book.claimed.includes(k)?'Already in the book.':'Find this part on the board first.');
+  const tier=+k.match(/\d+$/)[0],coins=BOOK_COINS[tier];s.book.claimed.push(k);s.coins+=coins;
+  return {ok:true,event:'book',key:k,coins,message:`In the book · +${coins} coins`};
+ }
+ if(a.type==='bookPage'){
+  if(!BOOK_CHAINS.includes(a.family)||!pageReady(s,a.family))return fail(s.book.pages?.includes(a.family)?'This page is already complete.':'Find every part on this page first.');
+  const i=nearestFree(s.board,ROVER,cellPos),k=s.shed.indexOf(null);if(i<0&&k<0)return fail('Make space on the board or in the shed for the Brass cog.');
+  if(i>=0)s.board[i]=cog();else s.shed[k]=cog();s.book.pages.push(a.family);
+  return {ok:true,event:'bookPage',family:a.family,index:i>=0?i:null,slot:i>=0?null:k,message:`${CHAINS[a.family].names.at(-1)} page complete · a Brass cog`};
+ }
  if(a.type==='recycle'){
   const x=valid(a.index)?s.board[a.index]:null;if(x?.type!=='item')return fail('Only loose parts can be recycled.');
   s.board[a.index]=null;s.energy=Math.min(MAX_ENERGY,s.energy+1);
@@ -475,6 +496,10 @@ export function load(raw,now=Date.now()){
   if(!s.taps||!Object.keys(GENERATOR_CHAINS).every(k=>integer(s.taps[k],0,1e9)))return fresh(now);
   // Build 32 added the shed and the daily gift; older saves get an empty shed and a gift today.
   s.shed??=Array(SHED_SLOTS).fill(null);s.daily??={day:-1,count:0};
+  // Build 33 added the book: parts already found wait in it to be ticked off.
+  s.book??={claimed:[],pages:[]};
+  const bookKey=k=>typeof k==='string'&&/^[a-z]+\d$/.test(k)&&BOOK_CHAINS.includes(k.slice(0,-1))&&+k.slice(-1)<=maxTier(k.slice(0,-1));
+  if(!s.book||!Array.isArray(s.book.claimed)||!Array.isArray(s.book.pages)||!s.book.claimed.every(k=>bookKey(k)&&s.found.includes(k))||new Set(s.book.claimed).size!==s.book.claimed.length||!s.book.pages.every(f=>BOOK_CHAINS.includes(f)&&bookKeys(f).every(k=>s.book.claimed.includes(k))))return fresh(now);
   if(!Array.isArray(s.shed)||s.shed.length!==SHED_SLOTS||!s.shed.every(x=>x===null||SHED_TYPES.includes(x?.type)&&validCell(x)))return fresh(now);
   if(!s.daily||!integer(s.daily.day,-1,1e7)||!integer(s.daily.count,0,1e7))return fresh(now);
   s.level=validLevel(s.level);
