@@ -679,3 +679,11 @@ Answer chosen: the camp's four corners start in tideglass.
 - Rules: building a stage that leaves no gold order live brings one at once, in place of the crew order the player has made least of (`effects.goldOrder`); before, it came with the next delivery, which left the screen saying "gold order next".
 - That made play smoother (fewer waits for a gold order), so the Survey Worksite costs ×1.15 (1420 → 1635) to keep the session near Build 40: 61.3 / 76.6 / 122.6 / 148.7 min at 4 / 5 / 8 / 10 s/action (Build 40: 62.6 / 80.6 / 123.1 / 153.1), taps 376–388, idle and starvation 0.
 - Two Build 31 checks that demanded energy run nearly out ("energy runs low") now ask only that energy is spent (below 30 of the 50 cap): Build 41's approved spec dropped forced starvation, and with gold orders arriving at once the scripted player no longer runs dry (lowest 26 at the worksite at 4 s/action).
+
+### Build 41f · the coast screen moves (user: "Animation huseed baina")
+- Opening: the picture scales in, the pins drop in one by one, the card slides up, the place tiles pop in; the progress bar fills from empty and its stripes flow.
+- Always on: pins float (a ready one bobs), the chosen pin has a pulsing ring, a band of sunlight sweeps over the picture with twinkles on the water, the missing gold-order parts wiggle, the big button shines; choosing another place pops the card.
+- Building: six coins fly from the button to the place, the picture thumps, the place pops in bright, a ring and sparks burst; the story follows one second later.
+- Effects on this screen are drawn inside the dialog (`mapFx`): before, bursts went to the page body and were hidden behind the modal coast screen.
+- After a place's last stage the card moves on to the next best place.
+- Everything moving is under `prefers-reduced-motion: no-preference`; with Reduce Motion on (iPhone Settings → Accessibility → Motion) the screen stays still and the story opens at once. The browser tests run with reduced motion.

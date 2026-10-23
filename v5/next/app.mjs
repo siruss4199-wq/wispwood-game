@@ -203,7 +203,8 @@ function run(a){
   if(r.materials){const t=TASKS[r.materials.id],u=t.stages[r.materials.stage-1];setTimeout(()=>moment('Materials in: '+t.name,`${u.name} can be built for ${u.cost} coins on the ${currentArea(state).name}.`),500);}$('#coinPill').classList.remove('bump');void $('#coinPill').offsetWidth;$('#coinPill').classList.add('bump');}
  if(r.event==='producerUp'){const src=state.board[r.index],next=nextKind(src.id),waiting=next&&src.level<UNLOCK_LEVEL&&!state.board.some(y=>y?.type==='source'&&y.id===next);
   moment(SOURCES[src.id].name+' · level '+src.level,LEVEL_GAIN[src.level]+(waiting?` Level ${UNLOCK_LEVEL} brings out the ${SOURCES[next].name}.`:''),src);tile?.classList.add('merge-pop');burst(tile?.getBoundingClientRect(),'gold',true);sfx('milestone');}
- if(r.event==='restore')showBeat(r.task,r.effects);
+ // On the coast screen the build plays first (Build 41f), then its story.
+ if(r.event==='restore'){if($('#coastMap').open&&!reduced())setTimeout(()=>showBeat(r.task,r.effects),1000);else showBeat(r.task,r.effects);}
  if(r.event==='store'){$(`#shed [data-slot="${r.slot}"]`)?.classList.add('merge-pop');sfx('tap');}
  if(r.event==='unstore'){tile?.classList.add('merge-pop');sfx('tap');}
  if(r.event==='shop'){const o=SHOP[r.id];if(r.energy)rewardFlight(($('#shop').open?$('#shopContent'):$('#adEnergyButton')).getBoundingClientRect(),$('#energyPill').getBoundingClientRect(),`+${r.energy} ϟ`);else moment(o.name+(r.ad?' · thanks for watching':''),r.slot!=null?'In the shed: the board is full.':'On the board next to Rivet Rover.',r.thing);tile?.classList.add('unsealed');sfx('rare');}
@@ -394,23 +395,40 @@ function showMap(){
   const n=stageOf(state,t.id),u=open.get(t.id);
   const status=n>=STAGES?'done':u&&canBuild(u)?'ready':u?'next':'locked';
   const badge=status==='done'?'<b class="tileBadge done">✓</b>':status==='ready'?'<b class="tileBadge ready">!</b>':status==='locked'?'<b class="tileBadge locked">🔒</b>':'';
-  return `<li class="place ${t.id===mapFocus?'selected':''}" data-status="${status}" data-place="${t.id}"><button type="button" data-select="${t.id}" aria-label="${t.name}: ${status==='done'?'complete':status==='locked'?'locked':status==='ready'?'ready to build':`stage ${n} of ${STAGES}`}"><span class="placeIcon ${t.art&&!n?'unbuilt':''}">${placeArt(t,n)}</span>${pips(n)}${badge}</button></li>`;
+  return `<li class="place ${t.id===mapFocus?'selected':''}" style="--i:${area.tasks.indexOf(t)}" data-status="${status}" data-place="${t.id}"><button type="button" data-select="${t.id}" aria-label="${t.name}: ${status==='done'?'complete':status==='locked'?'locked':status==='ready'?'ready to build':`stage ${n} of ${STAGES}`}"><span class="placeIcon ${t.art&&!n?'unbuilt':''}">${placeArt(t,n)}</span>${pips(n)}${badge}</button></li>`;
  }).join('');
- const markers=area.tasks.filter(t=>open.has(t.id)).map(t=>{const u=open.get(t.id);return `<button type="button" class="siteMarker ${canBuild(u)?'ready':''} ${t.id===mapFocus?'selected':''}" data-select="${t.id}" style="left:${Math.min(88,Math.max(12,t.at[0]))}%;top:${Math.max(24,t.at[1])}%" aria-label="${u.name}"><span>${canBuild(u)?'▲':'🔨'}</span></button>`;}).join('');
+ const markers=area.tasks.filter(t=>open.has(t.id)).map((t,k)=>{const u=open.get(t.id);return `<button type="button" class="siteMarker ${canBuild(u)?'ready':''} ${t.id===mapFocus?'selected':''}" data-select="${t.id}" style="--i:${k};left:${Math.min(88,Math.max(12,t.at[0]))}%;top:${Math.max(24,t.at[1])}%" aria-label="${u.name}"><span>${canBuild(u)?'▲':'🔨'}</span></button>`;}).join('');
  // Finished areas stay listed above the current one, the ones still to come below it.
  const before=AREAS.slice(0,state.area).map(a=>`<section class="mapArea done"><div class="mapHead"><img src="assets/premium/${a.picture}-vibrant.webp" alt=""><div><h2>${a.name}</h2><b>Complete ✓</b></div></div></section>`).join('');
  const later=AREAS.slice(state.area+1).map(a=>`<section class="mapArea coming"><div class="mapHead"><img src="assets/premium/${a.picture}-vibrant.webp" alt=""><div><h2>${a.name}</h2><b>Next update</b></div></div></section>`).join('');
  $('#mapContent').innerHTML=`<div class="beachTop"><h2 id="mapTitle" class="mapTitle">${area.name}</h2><b class="beachCoins">${COIN} ${state.coins}</b></div>
-  <div class="sceneWrap">${sceneHtml(area)}<div class="siteMarkers">${markers}</div>
+  <div class="sceneWrap">${sceneHtml(area)}<div class="sceneLight" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div><div class="siteMarkers">${markers}</div>
   <div class="mapProgress" role="img" aria-label="${built} of ${total} upgrades"><i style="width:${(100*built/total).toFixed(1)}%"></i><b>${built} / ${total}${areaDone(state)?' · complete!':''}</b></div></div>
   ${mapCard(area,focus,open.get(focus.id))}
   <ol class="places">${places}</ol>${before}${later}
   <button class="backToBoard" type="button" data-back>Back to the board</button>`;
- if(!$('#coastMap').open)$('#coastMap').showModal();
+ // Opening plays the screen in (picture, pins, card, tiles); choosing another place swaps the card.
+ const content=$('#mapContent'),opening=!$('#coastMap').open;
+ content.classList.toggle('entering',opening);if(opening){clearTimeout(content._enter);content._enter=setTimeout(()=>content.classList.remove('entering'),1400);}
+ if(!opening&&shownCard!==mapFocus)$('#mapCard')?.classList.add('swapIn');shownCard=mapFocus;
+ if(opening)$('#coastMap').showModal();
  if(!$('#beat').open)growScene();
 }
+let shownCard=null;
+// Effects on the coast screen are drawn inside it: the screen is a modal dialog, so anything on
+// the page body would be hidden behind it (Build 41f).
+function mapFx(cls,x,y,css='',ms=900){const el=document.createElement('i');el.className='mapFx '+cls;el.style.cssText=`left:${x}px;top:${y}px;${css}`;$('#coastMap').append(el);setTimeout(()=>el.remove(),ms);return el;}
+function buildFx(id,from){
+ if(reduced())return;
+ const icon=$(`#coastMap .restoredIcon[data-task="${id}"]`),scene=$('#coastMap .beachScene');const to=(icon??scene).getBoundingClientRect(),tx=to.x+to.width/2,ty=to.y+to.height/2;
+ // Coins fly from the button to the place, then it is built with a thump, a ring and sparks.
+ if(from)for(let k=0;k<6;k++){const fx=from.x+from.width/2+(k-2.5)*14,fy=from.y+from.height/2;mapFx('coinFly',fx,fy,`--dx:${tx-fx}px;--dy:${ty-fy}px;animation-delay:${k*55}ms`,900);}
+ setTimeout(()=>{scene?.classList.remove('thump');void scene?.offsetWidth;scene?.classList.add('thump');icon?.classList.add('built');
+  mapFx('buildRing',tx,ty,'',800);for(let k=0;k<14;k++){const a=2*Math.PI*k/14,d=46+(k%3)*14;mapFx('buildSpark',tx,ty,`--dx:${Math.cos(a)*d}px;--dy:${Math.sin(a)*d}px;background:${k%2?'#ffe08a':'#ffffff'}`,800);}
+  sfx('milestone');},520);
+}
 $('#mapContent').addEventListener('click',e=>{
- const r=e.target.closest('[data-restore]');if(r){const cost=upgrades(state).find(u=>u.id===r.dataset.restore)?.cost;receipt=cost;const res=run({type:'restore',id:r.dataset.restore});if(!res.ok)receipt=null;if(res.ok&&!res.effects.nextArea)lastStage={id:res.task,stage:res.stage};showMap();return;}
+ const r=e.target.closest('[data-restore]');if(r){const from=r.getBoundingClientRect(),cost=upgrades(state).find(u=>u.id===r.dataset.restore)?.cost;receipt=cost;const res=run({type:'restore',id:r.dataset.restore});if(!res.ok)receipt=null;if(res.ok&&!res.effects.nextArea)lastStage={id:res.task,stage:res.stage};if(res.ok&&stageOf(state,res.task)>=STAGES)mapFocus=null;showMap();if(res.ok&&!res.effects.nextArea)buildFx(res.task,from);return;}
  const sel=e.target.closest('[data-select]');if(sel){mapFocus=sel.dataset.select;sfx('tap');showMap();return;}
  const make=e.target.closest('[data-make]');if(make){$('#coastMap').close();focusOrder=make.dataset.make;render();$('#message').textContent='The gold order is marked: make its parts and deliver it for the materials.';return;}
  const p=e.target.closest('[data-replay]');if(p){showBeat(p.dataset.replay,{},STAGES);return;}
