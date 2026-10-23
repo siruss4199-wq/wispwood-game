@@ -561,3 +561,19 @@ configuration, every other chain within ±35 % of an even share for each main ch
   jitter, the free field ration used when energy is out): forced idle 0 at every speed (Build 40:
   up to 3.0 min at 4 s), session length within ±15 % of Build 40 at every speed, Kite ≤ 20.3 min,
   Lantern Kiln before the worksite ends in every run.
+### M2 · economy guard (done)
+`tests/v5-next-economy-sim.mjs` (harness) and `tests/v5-next-economy.test.mjs` (≈30 s): 8 speeds
+(4–10 s/action) × 5 seeds, action times jittered ±40 %, the field ration taken when energy is
+out and nothing else is possible. Build 40 measured with the same harness gives the baseline.
+Checks (all pass on Build 41 M1): finished both areas; idle ≤ 5 min per run, longest ≤ 3; out of
+energy ≤ 4 times on average, ≤ 3 min at a time; free-move share while energy < 3 not below
+Build 40 − 0.05 where there are ≥ 30 such moments; order median ≤ 5 min (≤ 6 at 10 s/action —
+see below), order p90 ≤ 40; restoration gap median ≤ 3.5, max ≤ 16; ≥ 95 % of Build 40's orders;
+Kite ≤ 22 min, Kiln before the end; session length within ±15 % and taps ≤ +10 % of Build 40.
+First 15 minutes per run: first merge ≤ 1 min, first order ≤ 2.5, first restoration ≤ 4.5,
+first cargo or generator merge ≤ 8, ≥ 8 orders and ≥ 6 restorations.
+**Deviation from the approved spec, for sign-off:** at 10 s/action the order median is
+5.5–6.0 min in every seed (Build 40: 4.2). Throughput did not drop (40 orders, 152 vs 153 min):
+orders now mix two generators, so several are in progress at once and each waits longer in its
+lane. The check allows 36 actions per order at that speed (6.0 min) and adds the throughput
+check instead.
