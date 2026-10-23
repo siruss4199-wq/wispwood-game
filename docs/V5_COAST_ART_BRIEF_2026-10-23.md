@@ -64,3 +64,11 @@ flat SVG. This session has no image-generation tool, so the art has to be made e
 Look at each at real size (48 px) next to the Split spanner and Copper offcut: same camera,
 same light from the upper left, same satin finish, no text, transparent background. A chain's
 tiers should grow in size and richness from one to the next.
+
+## Build 26 — shaded SVG in the meantime (user: "chi uuruu saijruulaad bai")
+Until painted art arrives, Coast Camp's own objects are redrawn as shaded "toy render" SVGs
+in `v5/next/coast-art.mjs`: three-quarter view, light from the upper left, darker right
+faces, rim highlights, gloss and a soft contact shadow. Redrawn: the four cargo looks
+(wooden crate, canvas bundle, barrel, wicker basket), the three crates (open driftwood
+crate with parts, teal sea chest, red captain's trunk with glowing seam), the Tide token
+and the Brass cog. Painted WebP files named as in the tables above can replace any of them.
