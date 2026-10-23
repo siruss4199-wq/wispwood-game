@@ -299,3 +299,12 @@ scrolled and cancelled the drag. Nothing followed the finger either.
   letting go there merges or moves; cancelling clears it all.
 - Browser test: a touch drag straight down of a generator copy onto the Rover (Chromium
   touch events) merges it and leaves no copy behind. Safari on iPhone is not testable here.
+
+## Build 24 — merge by dragging only (user: "touch-r mergelehgui, zuvhun drag hiij mergeldeg baiy")
+Tapping a part and then its twin no longer merges; nor does tap-then-tap open cargo, feed
+a cog or token, merge generators or move things. All of those are drags. Taps still make a
+part (generator), open a crate (tap it twice) and show what a thing is; the twins of the
+selected part stay marked as drag targets. Texts say "drag" (start hint, help, cargo, cog
+and token descriptions). The click a drag ends with is ignored, but only that one (it used
+to block every tap for 300 ms after a drag). Browser test: tapping twins does not merge;
+every merge and cargo opening in the walkthrough is a drag.

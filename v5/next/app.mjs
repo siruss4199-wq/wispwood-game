@@ -16,14 +16,14 @@ import {sound,reduced,burst,rewardFlight,moment as sharedMoment} from '../feedba
 function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el=document.querySelector('.moment');const top=[...document.querySelectorAll('dialog[open]')].pop();if(el&&top)top.append(el);if(!x||!el)return;const icon=document.createElement('span');icon.style.cssText='float:left;width:42px;height:42px;margin-right:10px';icon.innerHTML=draw(x);icon.firstElementChild.style.cssText='width:100%;height:100%';el.prepend(icon);}
 
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 23 · drag to merge';
+export const BUILD='Build 24 · drag only';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
 // ?new=1 (the playtest page's "start from the beginning" link) starts a new camp.
 const startNew=new URLSearchParams(location.search).has('new');
 if(startNew)history.replaceState(null,'',location.pathname);
-let state=startNew?fresh(Date.now()):load(storage.get(SAVE_KEY)??'',Date.now()),selected=null,focusOrder=null,drag=null,suppressUntil=0;
+let state=startNew?fresh(Date.now()):load(storage.get(SAVE_KEY)??'',Date.now()),selected=null,focusOrder=null,drag=null,suppressClick=false;
 const persist=()=>storage.set(SAVE_KEY,JSON.stringify(state));
 persist();
 
@@ -99,16 +99,16 @@ function renderSelection(){
 } else if(x.type==='glass'){const n=CHAINS[x.family].names;title=x.cracks?'Cracked tideglass':'Tideglass';desc=`A ${n[x.tier]} locked in tideglass. It takes no part: a merge in a space beside it that makes a ${n[x.tier]} or better (any chain) cracks it; ${GLASS_HITS} cracks break it and the ${n[x.tier]} is yours.`+(x.cracks?` ${GLASS_HITS-x.cracks} more merge${GLASS_HITS-x.cracks>1?'s':''} beside it.`:'');
  } else if(x.type==='cargo'&&!reachable(state,selected)){title='Sealed cargo';desc='Buried deeper in the cargo. Open the crates around it first, and this one will show the part that opens it.'+(x.find?.type==='source'?' Something glows inside.':['cog','token'].includes(x.find?.type)?' Something gleams inside.':'');
  }else if(x.type==='cargo'){const k=CHAINS[x.key.family].names[x.key.tier],have=state.board.some(y=>matches(y,x.key)),gen=CHAINS[x.key.family].gen;
-  title='Sealed cargo';desc=`Opens with a ${k}: lay one on it. What is inside is a surprise`+(x.find?.type==='source'?' — something glows in there.':['cog','token'].includes(x.find?.type)?' — something gleams in there.':'.')+(have?' You have one: tap it, then this cargo.':sourceOpen(state,gen)?` ${SOURCES[gen].name} makes them.`:` Its generator is still sealed somewhere on the board.`);}
+  title='Sealed cargo';desc=`Opens with a ${k}: lay one on it. What is inside is a surprise`+(x.find?.type==='source'?' — something glows in there.':['cog','token'].includes(x.find?.type)?' — something gleams in there.':'.')+(have?' You have one: drag it onto this cargo.':sourceOpen(state,gen)?` ${SOURCES[gen].name} makes them.`:` Its generator is still sealed somewhere on the board.`);}
  else if(x.type==='jar')desc='Energy, sealed in a jar.';
- else if(x.type==='token')desc='Lay it on a part (tap the token, then the part, or drag): the part becomes one of the same tier that a crew order is waiting for.';
- else if(x.type==='cog')desc=`Lay it on a generator (tap the cog, then the generator, or drag): +1 level, up to ${MAX_GENERATOR_LEVEL}. Higher levels make better parts.`;
+ else if(x.type==='token')desc='Drag it onto a part: the part becomes one of the same tier that a crew order is waiting for.';
+ else if(x.type==='cog')desc=`Drag it onto a generator: +1 level, up to ${MAX_GENERATOR_LEVEL}. Higher levels make better parts.`;
  $('#selection').innerHTML=`<span class="preview">${draw(x)}</span><span class="copy"><b>${title}</b><small>${desc}</small></span><span class="actionGroup">${buttons}</span>`;
 }
 const has=id=>state.board.some(x=>x?.type==='source'&&x.id===id);
 function renderHint(){
  const task=nextTask(state),ready=state.orders.find(o=>orderItems(state,o));let hint;
- if(!state.merges)hint='START · Tap a Copper offcut, then its twin';
+ if(!state.merges)hint='START · Drag a Copper offcut onto its twin';
  else if(task&&state.coins>=task.cost)hint=`${task.cost} coins ready · upgrade on the beach ↑`;
  else if(ready)hint='Order ready · tap it to collect coins';
  else if(cargoKeys(state).some(k=>state.board.some(y=>matches(y,k))))hint='Lay a matching part on a crate to open it';
@@ -158,24 +158,22 @@ function run(a){
  if(r.levelUp){const u=r.levelUp.at(-1);setTimeout(()=>{moment('Level '+u.level+'!',`Chest: +${r.levelUp.reduce((n,v)=>n+v.energy,0)} ϟ`+(u.generator?' · a second '+SOURCES[u.generator].name+' to merge':u.family?' · '+nameOf({type:'kit',family:u.family,size:1}):''),u.generator?{type:'source',id:u.generator}:u.family?{type:'kit',family:u.family,size:1,left:3}:null);sound.play('milestone');$('#levelPill').classList.add('levelUp');setTimeout(()=>$('#levelPill').classList.remove('levelUp'),1400);},r.event==='restore'?0:400);}
  return r;
 }
+// Taps make, open and show; merging, opening cargo and moving are done by dragging only
+// (build 24, user: "touch-r mergelehgui, zuvhun drag hiij mergeldeg baiy").
 function clickTile(i){
- const x=state.board[i],prev=state.board[selected];
- // A generator: tapping it makes a part; tapping a second identical one right after merges them.
- if(x?.type==='source'){const from=selected;selected=i;if(from!==i&&(generatorsMerge(prev,x)||prev?.type==='cog')){run({type:'merge',from,to:i});return;}if(sourceOpen(state,x.id))run({type:'produce',id:x.id,index:i});render();return;}
- if(selected!==null&&selected!==i&&prev){
-  if(prev.type==='item'&&(x?.type==='item'&&matches(x,prev)||x?.type==='cargo'&&matches(prev,x.key))||prev.type==='kit'&&kitsMerge(prev,x)||prev.type==='cog'&&x?.type==='source'||prev.type==='token'&&x?.type==='item'||['item','kit','source','cog','token'].includes(prev.type)&&!x){run({type:'merge',from:selected,to:i});return;}
- }
- if(prev?.type==='cargo'&&matches(x,prev.key)){run({type:'unseal',from:i,index:selected});return;}
+ const x=state.board[i];
+ if(x?.type==='source'){selected=i;if(sourceOpen(state,x.id))run({type:'produce',id:x.id,index:i});render();return;}
  if(x?.type==='kit'&&selected===i){run({type:'openKit',index:i});return;}
  selected=selected===i&&x?.type==='item'?null:x?i:null;render();
 }
-board.addEventListener('click',e=>{const t=e.target.closest('[data-index]');if(t&&performance.now()>suppressUntil)clickTile(+t.dataset.index);});
+// The click a drag ends with is not a tap; the next press clears the flag if no click came.
+board.addEventListener('click',e=>{if(suppressClick){suppressClick=false;return;}const t=e.target.closest('[data-index]');if(t)clickTile(+t.dataset.index);});
 // Drag to merge (build 23, user: "merge hiih uildel drag hiij zuuj bolohgui baina"): every
 // movable thing owns its touch gesture (no page scroll), a copy follows the finger, and the
 // space under it is marked; letting go there merges or moves.
 const DRAGGABLE=['item','kit','source','cog','token'];
 function endDrag(){board.querySelectorAll('.dragging,.target').forEach(x=>x.classList.remove('dragging','target'));drag?.ghost?.remove();drag=null;}
-board.addEventListener('pointerdown',e=>{const t=e.target.closest('[data-index]');if(!t||e.button!==0)return;const i=+t.dataset.index;if(!DRAGGABLE.includes(state.board[i]?.type))return;drag={from:i,id:e.pointerId,x:e.clientX,y:e.clientY,moved:false,over:null};});
+board.addEventListener('pointerdown',e=>{suppressClick=false;const t=e.target.closest('[data-index]');if(!t||e.button!==0)return;const i=+t.dataset.index;if(!DRAGGABLE.includes(state.board[i]?.type))return;drag={from:i,id:e.pointerId,x:e.clientX,y:e.clientY,moved:false,over:null};});
 board.addEventListener('pointermove',e=>{
  if(!drag||drag.id!==e.pointerId)return;
  if(!drag.moved){if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)<=8)return;drag.moved=true;
@@ -185,7 +183,7 @@ board.addEventListener('pointermove',e=>{
  const t=document.elementFromPoint(e.clientX,e.clientY)?.closest('#board [data-index]'),i=t?+t.dataset.index:null;
  if(i!==drag.over){board.querySelector('.target')?.classList.remove('target');drag.over=i;if(t&&i!==drag.from)t.classList.add('target');}
 });
-board.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;const d=drag;endDrag();if(!d.moved)return;suppressUntil=performance.now()+300;const t=document.elementFromPoint(e.clientX,e.clientY)?.closest('#board [data-index]');if(t&&+t.dataset.index!==d.from){selected=d.from;run({type:'merge',from:d.from,to:+t.dataset.index});}});
+board.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;const d=drag;endDrag();if(!d.moved)return;suppressClick=true;const t=document.elementFromPoint(e.clientX,e.clientY)?.closest('#board [data-index]');if(t&&+t.dataset.index!==d.from){selected=d.from;run({type:'merge',from:d.from,to:+t.dataset.index});}});
 board.addEventListener('pointercancel',endDrag);
 // iOS Safari can still start a scroll from a button; while dragging, the finger is ours.
 board.addEventListener('touchmove',e=>{if(drag?.moved)e.preventDefault();},{passive:false});

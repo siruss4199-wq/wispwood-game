@@ -7,17 +7,20 @@ const assert=require('node:assert/strict');const {chromium,webkit}=require('play
 const URL='http://127.0.0.1:8080/v5/play.html';
 const read=page=>page.evaluate(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')));
 async function closeBeats(page){for(let n=0;n<6&&await page.locator('#beat[open]').count();n++){await page.locator('#beatNext').tap();await page.waitForTimeout(80);}}
+// Merging, opening cargo and moving are done by dragging only (build 24).
+async function dragTo(page,from,to){const a=await page.locator(`#board [data-index="${from}"]`).boundingBox(),b=await page.locator(`#board [data-index="${to}"]`).boundingBox();
+ await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:6});await page.mouse.up();}
 async function perform(page,a){
  const s=await read(page),tile=i=>page.locator(`#board [data-index="${i}"]`),pressed=async i=>await tile(i).getAttribute('aria-pressed')==='true';
  if(a.type==='produce')await tile(s.board.findIndex(x=>x?.type==='source'&&x.id===a.id)).tap();
- else if(a.type==='merge'){if(!await pressed(a.from))await tile(a.from).tap();await tile(a.to).tap();}
+ else if(a.type==='merge')await dragTo(page,a.from,a.to);
  else if(a.type==='openKit'){if(!await pressed(a.index))await tile(a.index).tap();await page.locator('#selection [data-action="openKit"]').tap();}
  else if(a.type==='deliver')await page.locator(`[data-order="${a.id}"]`).tap();
  // Upgrades happen on the separate beach screen: go there, upgrade, watch the story, come back.
  else if(a.type==='restore'){await page.locator('#mapButton').tap();await page.locator(`#coastMap [data-restore="${a.id}"]`).tap();await closeBeats(page);await page.locator('#coastMap [data-back]').tap();}
  else if(a.type==='recycle'){if(!await pressed(a.index))await tile(a.index).tap();await page.locator('#selection [data-action="recycle"]').tap();}
  else if(a.type==='ration')await page.locator('#rationButton').tap();
- else if(a.type==='unseal'){if(!await pressed(a.from))await tile(a.from).tap();await tile(a.index).tap();}
+ else if(a.type==='unseal')await dragTo(page,a.from,a.index);
  else throw Error('Unexpected action '+JSON.stringify(a));
  await page.waitForFunction(n=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).moves>n,s.moves,{timeout:4000});
 }
@@ -68,7 +71,10 @@ async function perform(page,a){
    await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.board[14]={type:'item',family:'rig',tier:1};s.board[16]={type:'item',family:'rig',tier:1};localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
    await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
    assert.equal(await page.locator('#board .tile.tide, #board .tideBadge').count(),0,'no tide cells');
-   await page.locator('#board [data-index="16"]').tap();await page.locator('#board [data-index="14"]').tap();
+   // A tap on a part, then on its twin, no longer merges: only a drag does.
+   await page.locator('#board [data-index="16"]').tap();await page.locator('#board [data-index="14"]').tap();await page.waitForTimeout(150);
+   assert.equal((await read(page)).board[16]?.tier,1,'tapping twins does not merge them');
+   await dragTo(page,16,14);
    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).board[8].cracks===1,null,{timeout:4000});
    assert.equal(await page.locator('#board [data-index="8"].glass.cracked').count(),1,'the glass beside the merge shows its crack');
    // Generators grow by merging: drag a second Rivet Rover onto the first.
@@ -96,7 +102,7 @@ async function perform(page,a){
    await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
    assert.equal(await page.locator('#board [data-index="15"].cog').count(),1,'the cog stands on the board');
    await page.locator('#board [data-index="15"]').tap();assert.match(await page.locator('#selection').textContent(),/generator/);
-   await page.locator('#board [data-index="21"]').tap();
+   await dragTo(page,15,21);
    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).board[21].level===3,null,{timeout:4000});
    assert.ok(!(await read(page)).board.some(x=>x?.type==='cog'),'the cog is used up');
    assert.equal(await page.locator('#board .source[data-family="chart"]').count(),1,'Rivet Rover level 3 brought out the Survey Kite');
