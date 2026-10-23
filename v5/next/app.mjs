@@ -16,7 +16,7 @@ import {sound,reduced,burst,rewardFlight,moment as sharedMoment} from '../feedba
 function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el=document.querySelector('.moment');const top=[...document.querySelectorAll('dialog[open]')].pop();if(el&&top)top.append(el);if(!x||!el)return;const icon=document.createElement('span');icon.style.cssText='float:left;width:42px;height:42px;margin-right:10px';icon.innerHTML=draw(x);icon.firstElementChild.style.cssText='width:100%;height:100%';el.prepend(icon);}
 
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 22 · rewards and levels';
+export const BUILD='Build 23 · drag to merge';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
@@ -170,10 +170,25 @@ function clickTile(i){
  selected=selected===i&&x?.type==='item'?null:x?i:null;render();
 }
 board.addEventListener('click',e=>{const t=e.target.closest('[data-index]');if(t&&performance.now()>suppressUntil)clickTile(+t.dataset.index);});
-board.addEventListener('pointerdown',e=>{const t=e.target.closest('[data-index]');if(!t||e.button!==0)return;const i=+t.dataset.index;if(!['item','kit','source','cog','token'].includes(state.board[i]?.type))return;drag={from:i,id:e.pointerId,x:e.clientX,y:e.clientY,moved:false};});
-board.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)return;if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>8&&!drag.moved){drag.moved=true;board.querySelector(`[data-index="${drag.from}"]`)?.classList.add('dragging');}});
-board.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;const d=drag;drag=null;board.querySelectorAll('.dragging').forEach(x=>x.classList.remove('dragging'));if(!d.moved)return;suppressUntil=performance.now()+300;const t=document.elementFromPoint(e.clientX,e.clientY)?.closest('#board [data-index]');if(t&&+t.dataset.index!==d.from){selected=d.from;run({type:'merge',from:d.from,to:+t.dataset.index});}});
-board.addEventListener('pointercancel',()=>{drag=null;});
+// Drag to merge (build 23, user: "merge hiih uildel drag hiij zuuj bolohgui baina"): every
+// movable thing owns its touch gesture (no page scroll), a copy follows the finger, and the
+// space under it is marked; letting go there merges or moves.
+const DRAGGABLE=['item','kit','source','cog','token'];
+function endDrag(){board.querySelectorAll('.dragging,.target').forEach(x=>x.classList.remove('dragging','target'));drag?.ghost?.remove();drag=null;}
+board.addEventListener('pointerdown',e=>{const t=e.target.closest('[data-index]');if(!t||e.button!==0)return;const i=+t.dataset.index;if(!DRAGGABLE.includes(state.board[i]?.type))return;drag={from:i,id:e.pointerId,x:e.clientX,y:e.clientY,moved:false,over:null};});
+board.addEventListener('pointermove',e=>{
+ if(!drag||drag.id!==e.pointerId)return;
+ if(!drag.moved){if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)<=8)return;drag.moved=true;
+  const from=board.querySelector(`[data-index="${drag.from}"]`),r=from.getBoundingClientRect();from.classList.add('dragging');
+  drag.ghost=document.createElement('div');drag.ghost.className='dragGhost';drag.ghost.style.cssText=`width:${r.width}px;height:${r.height}px`;drag.ghost.innerHTML=draw(state.board[drag.from]);document.body.append(drag.ghost);}
+ drag.ghost.style.transform=`translate(${e.clientX-drag.ghost.offsetWidth/2}px,${e.clientY-drag.ghost.offsetHeight*.7}px)`;
+ const t=document.elementFromPoint(e.clientX,e.clientY)?.closest('#board [data-index]'),i=t?+t.dataset.index:null;
+ if(i!==drag.over){board.querySelector('.target')?.classList.remove('target');drag.over=i;if(t&&i!==drag.from)t.classList.add('target');}
+});
+board.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;const d=drag;endDrag();if(!d.moved)return;suppressUntil=performance.now()+300;const t=document.elementFromPoint(e.clientX,e.clientY)?.closest('#board [data-index]');if(t&&+t.dataset.index!==d.from){selected=d.from;run({type:'merge',from:d.from,to:+t.dataset.index});}});
+board.addEventListener('pointercancel',endDrag);
+// iOS Safari can still start a scroll from a button; while dragging, the finger is ours.
+board.addEventListener('touchmove',e=>{if(drag?.moved)e.preventDefault();},{passive:false});
 $('#selection').addEventListener('click',e=>{const b=e.target.closest('[data-action]');if(!b)return;const x=state.board[selected];run({type:b.dataset.action,index:selected,id:x?.id});});
 $('#requests').addEventListener('click',e=>{const c=e.target.closest('[data-order]');if(!c)return;const o=state.orders.find(o=>o.id===c.dataset.order);if(!o)return;if(orderItems(state,o)){run({type:'deliver',id:o.id});return;}focusOrder=focusOrder===o.id?null:o.id;render();$('#message').textContent=`${CREW[o.who].name} needs ${o.needs.map(r=>r.count+' × '+nameOf(item(r.family,r.tier))).join(' and ')}. Their parts are marked on the board.`;});
 // The upgrading happens on the beach screen (user: "tusdaa orchinruu ochij upgrade hiih").

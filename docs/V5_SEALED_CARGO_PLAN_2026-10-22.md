@@ -287,3 +287,15 @@ the next kind; crates hold a new Tide token plus more coins, parts and crates.
 - Economy: level chest +10 energy (was 15); beach costs 1295 coins. Scripted player, 4–6 s
   per action: Survey Kite 10–16 min, Landing Beach 47–60 min, ~19 of 40 cells still closed
   at the end, energy 3–6 left.
+
+## Build 23 — drag to merge works with a finger (user: "Merge hiih uildel drag hiij zuuj bolohgui baina")
+Repro (Chromium, 390 px, touch events through CDP): dragging a generator straight down onto
+another did nothing: only parts claimed the touch gesture (`touch-action:none` in
+`v5/mobile.css` covered `.item`, not `.kit`, `.source`, `.cog` or `.token`), so the page
+scrolled and cancelled the drag. Nothing followed the finger either.
+- Every movable thing (parts, crates, generators, cogs, tokens) owns its touch gesture;
+  while a drag is under way a non-passive `touchmove` stops iOS Safari from scrolling.
+- A copy follows the finger, the original fades, and the space under the finger is marked;
+  letting go there merges or moves; cancelling clears it all.
+- Browser test: a touch drag straight down of a generator copy onto the Rover (Chromium
+  touch events) merges it and leaves no copy behind. Safari on iPhone is not testable here.

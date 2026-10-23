@@ -79,6 +79,18 @@ async function perform(page,a){
    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).board[21].level===2,null,{timeout:4000});
    assert.equal((await read(page)).board[15],null);assert.match(await page.locator('#board [data-index="21"]').textContent(),/Lv2/);
    assert.equal(await page.locator('#board .source[data-family="chart"]').count(),0,'level 2 is not yet enough for the Survey Kite');
+   // Touch drag (a finger, not a mouse), straight down: a generator copy onto the Rover. The page must not scroll it away.
+   if(engine==='chromium'){
+    await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.board[15]={type:'source',id:'rig',level:2};localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
+    await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
+    const cdp=await context.newCDPSession(page),at=async i=>{const r=await page.locator(`#board [data-index="${i}"]`).boundingBox();return {x:r.x+r.width/2,y:r.y+r.height/2};},a=await at(15),z=await at(21);
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:a.x,y:a.y}]});
+    for(let k=1;k<=10;k++){await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:a.x,y:a.y+(z.y-a.y)*k/10}]});await page.waitForTimeout(16);if(k===8)assert.equal(await page.locator('.dragGhost').count(),1,'a copy follows the finger');}
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).board[21].level===3,null,{timeout:4000});
+    assert.equal(await page.locator('.dragGhost').count(),0,'the copy is gone after the drop');
+    await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.board[21].level=2;s.board=s.board.map((x,i)=>x?.type==='source'&&x.id==='chart'?null:x);localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
+   }
    // A Brass cog: tap it, then the Rover, and the Rover goes up a level.
    await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.board[15]={type:'cog'};localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
    await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
