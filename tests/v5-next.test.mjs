@@ -27,21 +27,27 @@ test('a new camp: Rivet Rover alone in the middle of its camp, sealed cargo and 
  assert.equal(s.board.filter(x=>x?.type==='cargo').length,27);assert.equal(s.board.filter(x=>x?.type==='glass').length,13);
  assert.deepEqual([8,10,19,23,32,34].map(i=>s.board[i].type),Array(6).fill('glass'),'half-buried parts ring the camp');
  assert.ok(s.board.every((x,i)=>CAMP.includes(i)||x.type==='cargo'||x.type==='glass'));
- assert.deepEqual(s.orders.map(o=>o.needs),[[{family:'rig',tier:1,count:1}],[{family:'rig',tier:2,count:1}],[{family:'rig',tier:1,count:2}]]);
+ assert.deepEqual(s.orders.map(o=>o.needs),[[{family:'rig',tier:2,count:1}],[{family:'rig',tier:3,count:1}],[{family:'rig',tier:2,count:1},{family:'rig',tier:1,count:2}]]);
  assert.ok(s.orders.every(o=>!orderItems(s,o)),'no order can be delivered before building something');
  assert.equal(s.coins,0);assert.deepEqual(s.built,{});assert.equal(sourceOpen(s,'chart'),false);assert.equal(nextTask(s).id,'beach-path');assert.equal(nextTask(s).stage,1);
 });
 
-test('the first taps and merge build the first order; nothing opens',()=>{
- const s=fresh(0);
- const a=ok(s,{type:'produce',id:'rig'}),b=ok(s,{type:'produce',id:'rig'});assert.deepEqual([s.board[a.index],s.board[b.index]],[item('rig',0),item('rig',0)]);
- assert.ok(!orderItems(s,s.orders[0]));
- const r=ok(s,{type:'merge',from:a.index,to:b.index});
- assert.equal(s.board.filter(x=>x?.type==='cargo').length,27,'merging never opens cargo');assert.equal(r.xp,1);
- assert.ok(orderItems(s,s.orders[0]),'one Grip tool: the first order is ready');
- const d=ok(s,{type:'deliver',id:'o0'});assert.equal(d.coins,5);assert.equal(s.coins,5);assert.equal(d.xp,1);assert.equal(s.orders[0].id,'o3');
- refused(s,{type:'deliver',id:'o0'});
+// Build 35 (user: "generatoroo hed tovshihod l ehnii 3 task shuud bieleh hemjeend ochij bainshdee"):
+// the first orders are a short ladder (Split spanner, Pocket winch, then two kinds at once), so
+// taps alone fill none of them and each takes a few merges.
+test('the first orders need merging: taps alone fill none; the first takes four taps and two merges',()=>{
+ const s=fresh(0),at=[];
+ for(let n=0;n<8;n++){at.push(ok(s,{type:'produce',id:'rig'}).index);assert.ok(s.orders.every(o=>!orderItems(s,o)),`no order ready after ${n+1} taps`);}
+ const t=fresh(0),i=[0,1,2,3].map(()=>ok(t,{type:'produce',id:'rig'}).index);
+ assert.deepEqual(i.map(j=>t.board[j]),[item('rig',0),item('rig',0),item('rig',0),item('rig',1)],'every fourth part comes out a tier higher');
+ const r=ok(t,{type:'merge',from:i[0],to:i[1]});assert.equal(r.xp,1);assert.ok(!orderItems(t,t.orders[0]));
+ ok(t,{type:'merge',from:i[3],to:i[1]});assert.deepEqual(t.board[i[1]],item('rig',2));
+ assert.equal(t.board.filter(x=>x?.type==='cargo').length,27,'merging never opens cargo');
+ assert.ok(orderItems(t,t.orders[0]),'a Split spanner: the first order is ready');
+ const d=ok(t,{type:'deliver',id:'o0'});assert.equal(d.coins,10);assert.equal(t.coins,10);assert.equal(d.xp,2);assert.equal(t.orders[0].id,'o3');
+ refused(t,{type:'deliver',id:'o0'});
 });
+
 
 
 test('generators cost energy, place near themselves and refuse when locked, empty or full',()=>{
@@ -110,7 +116,7 @@ test('orders grow harder with the beach and the generators, never repeat a live 
 
 
 test('every third order brings a small box of its kind; boxes and generator levels work here too',()=>{
- const s=fresh(0);s.ordersDone=2;const o=s.orders[1];s.board[15]=item('rig',2);
+ const s=fresh(0);s.ordersDone=2;const o=s.orders[1];s.board[15]=item('rig',3);
  const d=ok(s,{type:'deliver',id:o.id});assert.deepEqual(s.board[d.box],kit('rig',1));
  const t=fresh(0);t.board[15]=kit('rig',3);refused(t,{type:'merge',from:15,to:ROVER});// crates no longer feed generators
  t.board[15]=source('rig');const r=ok(t,{type:'merge',from:15,to:ROVER});assert.equal(r.event,'producerUp');assert.equal(t.board[ROVER].level,2);
@@ -351,7 +357,7 @@ test('the Survey Worksite: seven places in three stages, every stage a reward, t
  assert.deepEqual(w.tasks.map(t=>t.stages.length),Array(7).fill(3));
  assert.ok(w.tasks.every(t=>t.stages[0].cost<t.stages[1].cost&&t.stages[1].cost<t.stages[2].cost),'each stage costs more');
  assert.ok(w.tasks.every(t=>t.stages.every(x=>Object.keys(x.effect).length===1&&x.lines.length>=1)),'every stage gives one reward and a line');
- assert.equal(w.tasks.flatMap(t=>t.stages.map(x=>x.cost)).reduce((a,b)=>a+b),1500);
+ assert.equal(w.tasks.flatMap(t=>t.stages.map(x=>x.cost)).reduce((a,b)=>a+b),1420);
  assert.equal(Object.keys(TASKS).length,14,'place ids are unique across areas');
  assert.ok(AREAS.slice(2).every(a=>a.coming&&!a.tasks.length),'later areas are still to come');
  // Its stages are bought like the beach's and keep the beach's stages.

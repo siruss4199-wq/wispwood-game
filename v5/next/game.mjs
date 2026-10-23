@@ -158,8 +158,10 @@ export function fresh(now=Date.now()){
 // The first three teach the loop; then a deterministic mix grows with the level.
 // The camp starts empty around Rivet Rover (build 30, user: "shuud orohod ingeed task deliver
 // hiihed belen ehelj baina ... anhnii item generator-s garch ireeguigeer ehleh"): the first
-// orders are built from its first taps and merges.
-const FIRST=[[['rig',1,1]],[['rig',2,1]],[['rig',1,2]]];
+// orders are built from its first taps and merges. Build 35 (user: "generatoroo hed tovshihod l
+// ehnii 3 task shuud bieleh hemjeend ochij bainshdee"): a short ladder instead of Grip tools,
+// a Split spanner, then a Pocket winch, then two kinds at once, so taps alone fill none of them.
+const FIRST=[[['rig',2,1]],[['rig',3,1]],[['rig',2,1],['rig',1,2]]];
 function rand(n){let t=(n*2654435761+0x6D2B79F5)>>>0;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296;}
 const CREW_OF={rig:'ivo',rope:'ivo',chart:'neri',shell:'neri',flux:'tamsin',lamp:'tamsin'};
 const crewFor=needs=>needs.length>1?'bram':CREW_OF[needs[0].family];

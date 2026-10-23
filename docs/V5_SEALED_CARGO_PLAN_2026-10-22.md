@@ -439,3 +439,17 @@ reward is given only when the ad finished (`adReward` action, called by the app 
 - Fix: crate icons outside the board (shop, daily gift) drew their small tag at the size
   of the dialog; their containers are now positioned.
 - Saves: no version bump; older saves load with a full day's stock.
+
+## Build 35 — the first orders need merging (user: "generatoroo hed tovshihod l ehnii 3 task shuud bieleh hemjeend ochij bainshdee")
+The first three orders (Grip tool, Split spanner, two Grip tools) were ready after 2, 8 and
+5 taps (scripted player): every fourth tap already gives a Grip tool. They are now a short
+ladder: **a Split spanner** (4 taps and 2 merges), **a Pocket winch** (about 8 taps and 3
+merges, and it competes with the crates around the camp that want one), and **a Split
+spanner with two Grip tools** (the first two-part order). A unit test checks that eight taps
+without merging fill none of them. First upgrade now at ~1.8 min (was 0.8).
+- The extra early energy pushed the worksite toward its energy cliff (a quick 4 s player
+  waited 35 min instead of 14). Averaged over eight player speeds (3.75–6 s), worksite costs
+  of 0.62× the first draft (1420 coins, was 1500) gave the fewest waits (mean 1.4 min, max
+  5.5) and still run energy low; the scripted player's single runs are too chaotic to tune
+  on one speed.
+- Saves: camps already under way keep their orders; only new camps get the new ladder.
