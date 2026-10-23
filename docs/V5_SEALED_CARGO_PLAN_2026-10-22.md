@@ -415,3 +415,27 @@ board, else shed, else it waits). Pages of generators not yet out are shown clos
 - Saves: no version bump. Older saves load with an empty book, so every part they already
   found waits in it to be ticked off (`s.book={claimed,pages}`); a malformed book starts a
   new camp like any other malformed field.
+
+## Build 34 — the shop and rewarded ads (user: "delguur bolon zar shurtchilgaanii shagnal nem", proposal 5 of the build-30 review)
+**The shop** (🛒 Shop, in the new dock under the shed) sells for coins, a few of each per
+local day (`SHOP`, `s.shop={day,bought}`): Energy pack +20 ϟ for 80 coins (3 a day), Sea
+chest of the newest generator for 40 (2), Tide token for 50 (1), Brass cog for 200 (1).
+Coins have no other use than the coast's upgrades, so the shop is a real trade-off: help
+now, or the next stage sooner. Energy costs 4 coins an energy while orders pay about 3, so
+buying energy can never loop into profit (unit test). No real-money purchases: the web build
+has no payment provider.
+**Rewarded ads**: two shop offers are free after a short ad: +15 energy (3 a day) and a
+driftwood crate (2 a day); a "▶ +15 ϟ" button joins the dock when energy is below 5. The
+reward is given only when the ad finished (`adReward` action, called by the app after the ad).
+- `v5/next/ads.mjs` requests a rewarded ad through the CrazyGames SDK v3 when it is on the
+  page (`SDK.ad.requestAd('rewarded', …)`, sound muted while it plays). `v4/platform.mjs`
+  is unchanged (read-only; it notes Basic Launch has no ads).
+- Without the SDK (the playtest page) a labelled **ad stand-in** counts down 5 s; closing
+  it early pays nothing. Release note: a CrazyGames entry page for Coast Camp must load the
+  SDK script, and ads are only served after Full Launch; until then requests fail and no
+  reward is given (the player sees "No ad is available right now").
+- Dock: Shop, Book, Gift and the ad-energy button moved out of the footer into one row of
+  40 px+ buttons. The scripted player does not shop, so pacing numbers are unchanged.
+- Fix: crate icons outside the board (shop, daily gift) drew their small tag at the size
+  of the dialog; their containers are now positioned.
+- Saves: no version bump; older saves load with a full day's stock.

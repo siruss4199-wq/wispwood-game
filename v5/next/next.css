@@ -219,3 +219,26 @@ img.art{-webkit-user-drag:none;user-select:none}
 .bookItem.ready{background:#fff4d6;box-shadow:0 0 0 2px #f2b94b,0 2px 0 #d79a2b}
 .bookCoins{position:absolute;top:-6px;right:-4px;background:#ffd34d;color:#5b3d06;border-radius:8px;padding:1px 5px;font-size:10px;box-shadow:0 1px 0 #b98410}
 .bookItem.got{background:#eef8f2}
+/* Build 34: the dock (shop, book, gift, ad energy), the shop and the ad stand-in. */
+.dock{display:flex;gap:6px;flex-wrap:wrap;margin:2px 2px 8px}
+.dock button{position:relative;min-height:40px;padding:8px 12px;border-radius:12px;font-size:13px;font-weight:800;background:#e7f1ff;color:#24456f;box-shadow:0 2px 0 #c3d3ea}
+.dock #shopButton{background:#e3f6ee;color:#17614f;box-shadow:0 2px 0 #b6dccb}
+.dock #dailyButton{background:#ffe6b0;color:#76511d;box-shadow:0 2px 0 #e2c27a}
+.dock .adOffer,.shopList .adOffer{background:#2f6fd6;color:#fff;box-shadow:0 2px 0 #1d4f9e}
+#shop{padding:20px 14px;max-height:88dvh}
+.shopTop{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-right:34px}
+#shop h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6a7b93;margin:14px 0 6px}
+.shopList{list-style:none;padding:0;margin:0;display:grid;gap:8px}
+.shopItem{display:flex;align-items:center;gap:10px;background:#fff;border-radius:14px;padding:8px 10px;box-shadow:0 2px 0 #d9dfeb}
+.shopIcon{width:46px;height:46px;flex:none;display:flex;align-items:center;justify-content:center}
+.shopIcon .art,.shopIcon img{width:100%;height:100%;object-fit:contain}.shopIcon .bolt{font-size:32px;color:#d98a1f}
+.shopText{flex:1;min-width:0}.shopText b{display:block;font-size:14px}.shopText small{display:block;font-size:11px!important;line-height:1.3!important;color:#6a7b93}
+.shopText small.left{color:#9a7a3c}
+.shopItem button{min-width:76px;min-height:44px;border-radius:12px;font-weight:800;font-size:13px;padding:6px 10px}
+.shopItem .buy{background:#16877e;color:#fff;box-shadow:0 2px 0 #0f5f58}
+.shopItem button:disabled{background:#e3e7f0;color:#8a96a8;box-shadow:none}
+#adStandIn{text-align:center;padding:26px 20px}
+.adTag{display:inline-block;font-size:10px;letter-spacing:.14em;font-weight:900;color:#2f6fd6;background:#e6efff;border-radius:6px;padding:3px 7px}
+.adSkip{margin-top:8px;background:#e3e7f2;border-radius:12px;padding:10px 14px;min-height:44px;font-weight:700}
+#adStandIn .primary{width:100%;min-height:46px;font-size:15px}
+.shopIcon,.dailyIcon{position:relative}

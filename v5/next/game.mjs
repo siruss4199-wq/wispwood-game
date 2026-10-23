@@ -36,6 +36,20 @@ export const bookKeys=family=>Array.from({length:maxTier(family)+1},(_,t)=>famil
 // Parts found but not yet ticked off in the book.
 export const bookReady=s=>s.found.filter(k=>!s.book.claimed.includes(k)&&BOOK_CHAINS.includes(k.replace(/\d+$/,'')));
 export const pageReady=(s,family)=>!s.book.pages.includes(family)&&bookKeys(family).every(k=>s.book.claimed.includes(k));
+// The shop (build 34, user: "delguur bolon zar shurtchilgaanii shagnal nem"): coins buy
+// energy, crates, a Tide token or a Brass cog, a few of each per day, so the shop competes
+// with the coast's upgrades for coins. Energy costs more coins than orders pay for it (about
+// 3 coins an energy), so buying it never loops into profit. Two offers are paid by watching a
+// rewarded ad instead (ad:true); the app gives them only after an ad has finished.
+export const SHOP={
+ energy:{name:'Energy pack',cost:80,energy:20,limit:3},
+ chest:{name:'Sea chest',cost:40,kit:2,limit:2},
+ token:{name:'Tide token',cost:50,token:1,limit:1},
+ cog:{name:'Brass cog',cost:200,cog:1,limit:1},
+ adEnergy:{name:'Energy',ad:true,energy:15,limit:3},
+ adCrate:{name:'Driftwood crate',ad:true,kit:1,limit:2}
+};
+export const shopLeft=(s,id,day)=>SHOP[id].limit-(day>s.shop.day?0:s.shop.bought[id]??0);
 export const DAILY=[{energy:10},{coins:25},{kit:1},{energy:15},{token:1},{coins:50},{cog:1}];
 // Coast Camp's own crates (the generator boxes of v5/kits.mjs, by size).
 export const CRATES=['Driftwood crate','Sea chest','Captain\'s trunk'];
@@ -134,7 +148,7 @@ export function fresh(now=Date.now()){
  for(let i=0;i<BOARD_SIZE;i++)if(!CAMP.includes(i))board[i]=GLASS[i]?glass(...GLASS[i]):cargoAt(i);
  const s={version:VERSION,board,energy:40,energyAt:now,coins:0,level:freshLevel(),taps:{},
   orders:[],slots:3,orderSeq:0,ordersDone:0,area:0,built:{},found:[],moves:0,merges:0,lastAt:now,
-  shed:Array(SHED_SLOTS).fill(null),daily:{day:-1,count:0},book:{claimed:[],pages:[]}};
+  shed:Array(SHED_SLOTS).fill(null),daily:{day:-1,count:0},book:{claimed:[],pages:[]},shop:{day:-1,bought:{}}};
  for(const g of Object.keys(GENERATOR_CHAINS))s.taps[g]=0;
  for(let i=0;i<s.slots;i++)s.orders.push(makeOrder(s));
  note(s);return s;
@@ -412,6 +426,23 @@ function step(s,a,now){
   if(i>=0)s.board[i]=cog();else s.shed[k]=cog();s.book.pages.push(a.family);
   return {ok:true,event:'bookPage',family:a.family,index:i>=0?i:null,slot:i>=0?null:k,message:`${CHAINS[a.family].names.at(-1)} page complete · a Brass cog`};
  }
+ // The shop: buy with coins, or take an ad offer once its ad has played. Stock is per local day.
+ if(a.type==='buy'||a.type==='adReward'){
+  const o=SHOP[a.id];if(!o||!!o.ad!==(a.type==='adReward'))return fail('Unknown offer.');
+  if(!Number.isInteger(a.day)||a.day<Math.max(0,s.shop.day))return fail('Unknown day.');
+  if(shopLeft(s,a.id,a.day)<1)return fail(`No more ${o.name.toLowerCase()} today. The shop restocks tomorrow.`);
+  if(!o.ad&&s.coins<o.cost)return fail(`${o.name} costs ${o.cost} coins.`);
+  if(o.energy&&s.energy+o.energy>MAX_ENERGY)return fail('Energy is almost full. Spend some first.');
+  let thing=null,index=null,slot=null;
+  if(o.kit||o.token||o.cog){thing=o.kit?kit(newestGenerator(s),o.kit):o.token?token():cog();const i=nearestFree(s.board,ROVER,cellPos),k=s.shed.indexOf(null);
+   if(i<0&&k<0)return fail('Make space on the board or in the shed first.');
+   if(i>=0){s.board[i]=thing;index=i;}else{s.shed[k]=thing;slot=k;}}
+  if(a.day>s.shop.day)s.shop={day:a.day,bought:{}};
+  s.shop.bought[a.id]=(s.shop.bought[a.id]??0)+1;
+  if(!o.ad)s.coins-=o.cost;
+  if(o.energy)s.energy+=o.energy;
+  return {ok:true,event:'shop',id:a.id,ad:!!o.ad,index,slot,thing,energy:o.energy??0,message:`${o.name}`+(o.energy?` · +${o.energy} energy`:'')+(slot!=null?' · in the shed':'')};
+ }
  if(a.type==='recycle'){
   const x=valid(a.index)?s.board[a.index]:null;if(x?.type!=='item')return fail('Only loose parts can be recycled.');
   s.board[a.index]=null;s.energy=Math.min(MAX_ENERGY,s.energy+1);
@@ -498,6 +529,9 @@ export function load(raw,now=Date.now()){
   s.shed??=Array(SHED_SLOTS).fill(null);s.daily??={day:-1,count:0};
   // Build 33 added the book: parts already found wait in it to be ticked off.
   s.book??={claimed:[],pages:[]};
+  // Build 34 added the shop's daily stock.
+  s.shop??={day:-1,bought:{}};
+  if(!s.shop||!integer(s.shop.day,-1,1e7)||!s.shop.bought||typeof s.shop.bought!=='object'||Array.isArray(s.shop.bought)||!Object.entries(s.shop.bought).every(([id,n])=>SHOP[id]&&integer(n,0,SHOP[id].limit)))return fresh(now);
   const bookKey=k=>typeof k==='string'&&/^[a-z]+\d$/.test(k)&&BOOK_CHAINS.includes(k.slice(0,-1))&&+k.slice(-1)<=maxTier(k.slice(0,-1));
   if(!s.book||!Array.isArray(s.book.claimed)||!Array.isArray(s.book.pages)||!s.book.claimed.every(k=>bookKey(k)&&s.found.includes(k))||new Set(s.book.claimed).size!==s.book.claimed.length||!s.book.pages.every(f=>BOOK_CHAINS.includes(f)&&bookKeys(f).every(k=>s.book.claimed.includes(k))))return fresh(now);
   if(!Array.isArray(s.shed)||s.shed.length!==SHED_SLOTS||!s.shed.every(x=>x===null||SHED_TYPES.includes(x?.type)&&validCell(x)))return fresh(now);

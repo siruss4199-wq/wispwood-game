@@ -139,6 +139,18 @@ async function perform(page,a){
     assert.equal((await read(page)).book.claimed.length,st.book.claimed.length+1);
     assert.equal(await page.evaluate(()=>document.querySelector('#book').scrollWidth<=document.querySelector('#book').clientWidth),true,'no sideways scroll in the book');
     await page.locator('#book .close').tap();}
+   // Build 34: the shop sells for coins; an ad offer plays the stand-in here (no ad network) and pays only when it ends.
+   await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.coins=100;s.energy=10;localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
+   await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
+   await page.locator('#shopButton').tap();assert.equal(await page.locator('#shop .shopItem').count(),6);
+   await page.locator('#shop [data-buy="chest"]').tap();await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).coins===60,null,{timeout:4000});
+   await page.locator('#shop [data-ad="adEnergy"]').tap();await page.locator('#adStandIn [data-skip]').tap();await page.waitForTimeout(150);
+   assert.equal((await read(page)).energy,10,'an ad closed early pays nothing');
+   await page.locator('#shop [data-ad="adEnergy"]').tap();await page.waitForSelector('#adStandIn [data-collect]',{timeout:8000});await page.locator('#adStandIn [data-collect]').tap();
+   await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).energy===25,null,{timeout:4000});
+   assert.equal(await page.evaluate(()=>document.querySelector('#shop').scrollWidth<=document.querySelector('#shop').clientWidth),true,'no sideways scroll in the shop');
+   await page.locator('#shop .close').tap();
+   for(const sel of ['#shopButton','#bookButton']){const b=await page.locator(sel).boundingBox();assert.ok(b.height>=40&&b.x+b.width<=width,sel+' fits');}
    // Build 31: the beach's last stage opens the Survey Worksite, its intro and its screen.
    await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.built={'beach-path':3,'beach-tent':3,'beach-mast':3,'beach-workshop':3,'beach-pier':3,'beach-beacon':3,'beach-cliff':2};s.coins=200;localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
    await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
@@ -152,7 +164,7 @@ async function perform(page,a){
    assert.equal(await page.locator('#mapButton span').textContent(),'SITE');assert.equal(await page.locator('#areaBrand').textContent(),'SURVEY WORKSITE');
    {const b=await page.locator('#mapButton').boundingBox();assert.ok(b.x+b.width<=width,'the SITE button fits the header');}
    assert.deepEqual(errors,[]);
-   console.log(`${engine} ${width} Coast Camp: intro → orders → 2 restorations → reload → map → worksite → daily gift → shed → book passed`);
+   console.log(`${engine} ${width} Coast Camp: intro → orders → 2 restorations → reload → map → worksite → daily gift → shed → book → shop passed`);
    await context.close();
   }}finally{await browser.close();}
  }

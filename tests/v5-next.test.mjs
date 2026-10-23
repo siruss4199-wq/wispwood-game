@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {cellPos} from '../v5/core.mjs';
 import {xpToNext} from '../v5/levels.mjs';
-import {BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,priceOf,totalBuilt,ORDER_TOP,SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,makeOrder,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
+import {SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,priceOf,totalBuilt,ORDER_TOP,SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,makeOrder,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
 import {AREAS,TASKS} from '../v5/next/areas.mjs';
 import {kit} from '../v5/kits.mjs';
 import {nextAction} from './v5-next-policy.mjs';
@@ -479,4 +479,55 @@ test('saves from before the book load with every part already found waiting in i
  const s=camp();ok(s,{type:'merge',from:14,to:16});s.moves=60;delete s.book;assert.ok(s.found.length>=2);
  const back=load(JSON.stringify(s),5);assert.equal(back.moves,60);assert.deepEqual(back.book,{claimed:[],pages:[]});assert.deepEqual(bookReady(back),s.found.filter(k=>/^(rig|chart|rope|shell|lamp)/.test(k)));
  for(const f of [x=>x.book={claimed:'x',pages:[]},x=>x.book.claimed=['rig9'],x=>x.book.claimed=['rig5'],x=>x.book.claimed=['rig1','rig1'],x=>x.book.pages=['rig'],x=>x.book.pages=['flux']]){const t=camp();ok(t,{type:'merge',from:14,to:16});t.moves=3;f(t);assert.equal(load(JSON.stringify(t),5).moves,0,f.toString());}
+});
+
+// Build 34: the shop and rewarded-ad offers.
+test('the shop sells energy, crates, a token and a cog for coins, a few a day',()=>{
+ const s=fresh(0);s.board[15]=source('chart');s.coins=1000;assert.deepEqual(s.shop,{day:-1,bought:{}});
+ const e=s.energy;ok(s,{type:'buy',id:'energy',day:50});assert.equal(s.energy,e+20);assert.equal(s.coins,920);
+ ok(s,{type:'buy',id:'energy',day:50});ok(s,{type:'buy',id:'energy',day:50});assert.equal(shopLeft(s,'energy',50),0);
+ assert.match(refused(s,{type:'buy',id:'energy',day:50}).message,/tomorrow/);
+ const c=ok(s,{type:'buy',id:'chest',day:50});assert.deepEqual(s.board[c.index],kit('chart',2),'a sea chest of the newest generator');
+ const t=ok(s,{type:'buy',id:'token',day:50});assert.equal(s.board[t.index].type,'token');refused(s,{type:'buy',id:'token',day:50});
+ const g=ok(s,{type:'buy',id:'cog',day:50});assert.equal(s.board[g.index].type,'cog');assert.equal(s.coins,1000-240-40-50-200);
+ // A new day restocks; an earlier day is refused.
+ assert.equal(shopLeft(s,'energy',51),3);ok(s,{type:'buy',id:'cog',day:51});refused(s,{type:'buy',id:'cog',day:50});assert.equal(s.shop.day,51);
+ // Not enough coins, unknown offers, ad offers through 'buy', energy past the cap: refused, untouched.
+ const p=fresh(0);p.coins=30;assert.match(refused(p,{type:'buy',id:'chest',day:1}).message,/40 coins/);
+ refused(p,{type:'buy',id:'gold',day:1});refused(p,{type:'buy',id:'adEnergy',day:1});refused(p,{type:'buy',id:'chest'});
+ const q=fresh(0);q.coins=500;q.energy=110;assert.match(refused(q,{type:'buy',id:'energy',day:1}).message,/full/);
+ // Energy bought costs more coins than orders pay for it (about 3 coins an energy).
+ assert.ok(SHOP.energy.cost/SHOP.energy.energy>3.5);
+ // With the board full a crate goes to the shed; with both full the coins stay.
+ const f=fresh(0);f.coins=100;for(let i=0;i<f.board.length;i++)if(f.board[i]===null)f.board[i]=item('rig',0);
+ assert.equal(ok(f,{type:'buy',id:'chest',day:1}).slot,0);f.shed=f.shed.map(()=>item('rig',1));assert.match(refused(f,{type:'buy',id:'token',day:1}).message,/space/);assert.equal(f.coins,60);
+ assert.deepEqual(load(JSON.stringify(s),5).shop,s.shop,'saves keep the day\'s stock');
+});
+
+test('rewarded-ad offers give energy or a crate, free, a few a day; they cannot be bought',()=>{
+ const s=fresh(0);s.energy=0;const r=ok(s,{type:'adReward',id:'adEnergy',day:9});assert.equal(r.ad,true);assert.equal(s.energy,15);assert.equal(s.coins,0);
+ ok(s,{type:'adReward',id:'adEnergy',day:9});ok(s,{type:'adReward',id:'adEnergy',day:9});refused(s,{type:'adReward',id:'adEnergy',day:9});
+ const k=ok(s,{type:'adReward',id:'adCrate',day:9});assert.deepEqual(s.board[k.index],kit('rig',1));ok(s,{type:'adReward',id:'adCrate',day:9});refused(s,{type:'adReward',id:'adCrate',day:9});
+ refused(s,{type:'adReward',id:'energy',day:9});refused(s,{type:'adReward',id:'cog',day:9});
+ assert.deepEqual(Object.entries(SHOP).filter(([,o])=>o.ad).map(([id])=>id),['adEnergy','adCrate']);
+});
+
+test('saves from before the shop load with a full day\'s stock; a malformed shop starts a new camp',()=>{
+ const s=camp();s.moves=12;delete s.shop;const back=load(JSON.stringify(s),5);assert.equal(back.moves,12);assert.deepEqual(back.shop,{day:-1,bought:{}});
+ for(const f of [x=>x.shop={day:'x',bought:{}},x=>x.shop.bought={gold:1},x=>x.shop.bought={cog:2},x=>x.shop.bought=[]]){const t=fresh(0);t.moves=3;f(t);assert.equal(load(JSON.stringify(t),5).moves,0,f.toString());}
+});
+
+test('rewarded ads: CrazyGames SDK when present (reward only when the ad finished), else the stand-in',async()=>{
+ const {rewardedAd}=await import('../v5/next/ads.mjs?case=none');
+ assert.equal(await rewardedAd({standIn:async()=>'finished'}),'finished','no SDK: the stand-in decides');
+ const calls=[];let mode='finish';
+ globalThis.CrazyGames={SDK:{environment:'crazygames',init:async()=>calls.push('init'),ad:{requestAd(kind,cb){calls.push(kind);cb.adStarted();mode==='finish'?cb.adFinished():cb.adError('no fill');}}}};
+ try{
+  const {rewardedAd:ad}=await import('../v5/next/ads.mjs?case=sdk');const seen=[];
+  assert.equal(await ad({onStart:()=>seen.push('start'),onEnd:()=>seen.push('end'),standIn:async()=>'stand-in'}),'finished');
+  assert.deepEqual(calls,['init','rewarded']);assert.deepEqual(seen,['start','end'],'sound can be muted while the ad plays');
+  mode='error';assert.equal(await ad({standIn:async()=>'stand-in'}),'error','no fill: no reward');assert.equal(calls.filter(c=>c==='init').length,1,'the SDK starts once');
+  globalThis.CrazyGames.SDK.environment='disabled';
+  const {rewardedAd:off}=await import('../v5/next/ads.mjs?case=disabled');assert.equal(await off({standIn:async()=>'stand-in'}),'stand-in','SDK disabled outside CrazyGames');
+ }finally{delete globalThis.CrazyGames;}
 });
