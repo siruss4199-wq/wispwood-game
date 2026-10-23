@@ -4,9 +4,10 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {cellPos} from '../v5/core.mjs';
 import {xpToNext} from '../v5/levels.mjs';
-import {FREE_SWAPS,AD_SWAPS,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,priceOf,totalBuilt,ORDER_TOP,SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,makeOrder,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
+import {secondChain,FREE_SWAPS,AD_SWAPS,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,priceOf,totalBuilt,ORDER_TOP,SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,makeOrder,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
 import {AREAS,TASKS} from '../v5/next/areas.mjs';
 import {kit} from '../v5/kits.mjs';
+import {maxTier as maxTierOf} from '../v5/next/chains.mjs';
 import {nextAction} from './v5-next-policy.mjs';
 
 // The camp's parts before build 30 (it now starts empty), for rule tests that need some.
@@ -127,7 +128,7 @@ test('every third order brings a small box of its kind; boxes and generator leve
 test('levels give a chest with a driftwood crate of a generator you have',()=>{
  const s=camp();s.level.xp=19;const e=s.energy,r=ok(s,{type:'merge',from:14,to:16});
  assert.equal(r.levelUp[0].level,2);assert.equal(r.levelUp[0].family,'rig');assert.equal(s.board.filter(x=>x?.type==='cargo').length,27);
- assert.equal(CHEST_ENERGY,6);assert.equal(s.energy,e+6);
+ assert.equal(CHEST_ENERGY,7);assert.equal(s.energy,e+7);
 });
 
 test('energy refills over time and a low-energy ration helps once an hour',()=>{
@@ -567,4 +568,32 @@ test('a stuck crew order can be changed: three a day free, then five after an ad
  // Older saves get a full day of changes; a malformed record starts a new camp.
  const t=camp();t.moves=9;delete t.swaps;assert.deepEqual(load(JSON.stringify(t),5).swaps,{day:-1,n:0,ads:0});
  for(const f of [x=>x.swaps={day:'x',n:0,ads:0},x=>x.swaps.n=4,x=>x.swaps.ads=-1]){const u=fresh(0);u.moves=3;f(u);assert.equal(load(JSON.stringify(u),5).moves,0,f.toString());}
+});
+
+// Build 41 (M1): the second part of an order comes from another open chain, evenly.
+test('second parts are spread evenly over the other open chains, for 2 to 5 open chains',()=>{
+ const gens=['rig','chart','rope','shell','lamp'],seeds=[10,1000,5000,20000,77777];
+ for(let k=2;k<=5;k++){
+  const s=fresh(0);gens.slice(1,k).forEach((g,i)=>{s.board[[15,16,20,22][i]]=source(g);});
+  s.built=Object.fromEntries(AREAS[0].tasks.slice(0,4).map(t=>[t.id,3]));
+  const open=gens.slice(0,k),byMain={};let total=0;
+  for(const seed of seeds){s.orderSeq=seed;
+   for(let n=0;n<4000;n++){s.orders=[{id:'x',who:'ivo',needs:[{family:'rig',tier:9,count:1}],coins:5,story:'beach-path'}];
+    const o=makeOrder(s);assert.ok(o.needs.every(r=>open.includes(r.family)),'only open chains are asked for');
+    assert.ok(o.needs.every(r=>r.tier>=1&&r.tier<=maxTierOf(r.family)));
+    if(o.needs.length<2||o.needs[1].family===o.needs[0].family)continue;
+    const m=o.needs[0].family;(byMain[m]??={})[o.needs[1].family]=(byMain[m][o.needs[1].family]??0)+1;total++;}}
+  assert.ok(total>=1000,`${k} chains: ${total} second parts`);
+  for(const [m,c] of Object.entries(byMain)){const n=Object.values(c).reduce((a,b)=>a+b,0),others=open.filter(f=>f!==m);
+   if(n<200)continue;
+   for(const f of others){const share=(c[f]??0)/n,even=1/others.length;assert.ok(share>=even*.65&&share<=even*1.35,`${k} chains, main ${m}: ${f} has ${(share*100).toFixed(1)}% of ${n} (even ${(even*100).toFixed(1)}%)`);}}
+ }
+ // Story orders too: their second part is spread over the other open chains.
+ {const s=fresh(0);['chart','rope','shell'].forEach((g,i)=>{s.board[[15,16,20][i]]=source(g);});const c={};
+  for(let n=0;n<1200;n++){s.orderSeq=100+n;s.orders=[];const o=makeOrder(s);assert.ok(o.story);if(o.needs[1])c[o.needs[1].family]=(c[o.needs[1].family]??0)+1;}
+  const n=Object.values(c).reduce((a,b)=>a+b,0);for(const f of ['rig','chart','rope'])assert.ok((c[f]??0)/n>=.2,`story second parts: ${JSON.stringify(c)}`);}
+ // The helper itself: never the main chain, only chains that reach the tier, null when none.
+ assert.equal(secondChain(['rig'],'rig',2,1),null);
+ for(let n=0;n<200;n++){const c=secondChain(['rig','chart','lamp'],'chart',3,n);assert.ok(['rig','lamp'].includes(c));}
+ assert.equal(secondChain(['rig','lamp'],'rig',5,1),null,'Lantern Kiln parts stop at tier 4');
 });

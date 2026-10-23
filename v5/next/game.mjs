@@ -21,7 +21,7 @@ export const XP={merge:1,restore:8,feed:5,unseal:2};// feed: merging two generat
 export const COIN_VALUE=[5,5,10,25,45,80,140,240];
 // Orders ask for tier 5 at most (build 31: a sixth-tier story order stalled the beach's end).
 export const ORDER_TOP=5;export const COIN_RATE=5;
-export const CHEST_ENERGY=6;
+export const CHEST_ENERGY=7;
 // The camp shed (build 32, user: "aguulah bolon udur tutmiin shagnaliig nem"): four spaces off
 // the board for parts, crates, cogs and tokens. What is in the shed does not count for orders
 // or cargo; tap it to bring it back to the board.
@@ -173,6 +173,12 @@ const CREW_OF={rig:'ivo',rope:'ivo',chart:'neri',shell:'neri',flux:'tamsin',lamp
 const crewFor=needs=>needs.length>1?'bram':CREW_OF[needs[0].family];
 // Coins an order pays: its parts' worth, half as much again for the story's (rounded to 5).
 export const priceOf=(needs,story=false)=>{const v=needs.reduce((v,r)=>v+r.count*COIN_VALUE[r.tier],0);return story?Math.round(v*1.5/5)*5:v;};
+// The second part of an order comes from another open chain, chosen evenly by the order's own
+// seed (build 41: it was always the first open chain, so Rivet Rover filled most second parts).
+export function secondChain(families,main,tier,seed){const ok=families.filter(f=>f!==main&&tier<=maxTier(f));return ok.length?ok[Math.floor(rand(seed)*ok.length)]:null;}
+// A second part never asks more than its generator can reach easily: one tier above its level
+// (a new Lv1 generator: tier 2 at most), so fair chains do not mean dear parts.
+const reach=(s,chain)=>Math.max(1,...s.board.filter(x=>x?.type==='source'&&x.id===CHAINS[chain].gen).map(producerLevel));
 export function makeOrder(s){
  const n=s.orderSeq++;let needs;
  if(n<FIRST.length)needs=FIRST[n].map(([family,tier,count])=>({family,tier,count}));
@@ -195,10 +201,10 @@ export function makeOrder(s){
   // Survey Worksite's Rope Winch).
   const focus=currentArea(s)?.focus,pool=focus&&families.includes(focus)&&rand(n*19)<.5?[focus]:families;
   if(!story)do{family=pool[Math.floor(rand(n*7+k)*pool.length)];const hi=Math.max(low,Math.min(top,maxTier(family)-1));tier=low+Math.floor(rand(n*11+k)*(hi-low+1));k++;}while(live.has(family+tier)&&k<8);
-  if(story){needs=[{family,tier,count:1}];const other=families.find(f=>f!==family);needs.push({family:other??family,tier:other?Math.max(1,low):Math.max(1,tier-1),count:1});if(needs[1].family===family&&needs[1].tier===tier)needs.pop();
+  if(story){needs=[{family,tier,count:1}];const other=secondChain(families,family,Math.max(1,low),n*29+3);needs.push({family:other??family,tier:other?Math.max(1,Math.min(low,reach(s,other))):Math.max(1,tier-1),count:1});if(needs[1].family===family&&needs[1].tier===tier)needs.pop();
    return {id:'o'+n,who:crewFor(needs),needs,coins:priceOf(needs,true),story:story.id};}
   needs=[{family,tier,count:tier<=2&&rand(n*13)<.6?2:1}];
-  if(rand(n*17)<Math.min(.6,.2+built*.02)){const other=families.find(f=>f!==family)??family,t=Math.max(1,tier-1);if(other!==family||t!==tier)needs.push({family:other,tier:t,count:1});}
+  if(rand(n*17)<Math.min(.6,.2+built*.02)){const other=secondChain(families,family,Math.max(1,tier-1),n*23+5)??family,t=Math.max(1,other===family?tier-1:Math.min(tier-1,reach(s,other)));if(other!==family||t!==tier)needs.push({family:other,tier:t,count:1});}
  }
  return {id:'o'+n,who:crewFor(needs),needs,coins:priceOf(needs)};
 }

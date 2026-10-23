@@ -542,3 +542,22 @@ crop; `place-ws-*-1…3.webp`):
   + a chart of the dial on an easel.
 The places moved a little on the worksite picture so the bigger pictures do not overlap or
 leave the frame. No rule or save change.
+
+## Build 41 — playtest readiness (approved spec, 2026-10-23)
+### M1 · fair second parts (done)
+`families.find(f=>f!==family)` gave every second part to the first open chain (Rivet Rover:
+rig 102 / chart 41 / rope 0 of 143 in a 300-order sample). `secondChain()` now picks evenly among
+the other open chains that reach the tier, seeded by the order number (deterministic); story
+orders use their own seed. Test: 2–5 open chains × 5 seeds, ≥1000 second parts per
+configuration, every other chain within ±35 % of an even share for each main chain.
+- The apparent main-chain skew (chart 49 % with three chains) is the existing "never repeat a
+  live need" rule steering away from the story order's parts, not a defect: with no live
+  conflicts the main chain splits 985 / 1017 / 998.
+- The bias had been hiding economy cost: fair second parts come from newer, lower-level
+  generators and cost more energy (a 4 s/action player idled 66 min instead of 2.5). Two
+  changes keep requested parts reachable without more grinding: a second part asks at most the
+  tier equal to its generator's level (a new Lv1 generator: tier 1), and level chests give
+  +7 energy (was +6). Measured with the M2 harness (8 speeds × 5 seeds, ±40 % action-time
+  jitter, the free field ration used when energy is out): forced idle 0 at every speed (Build 40:
+  up to 3.0 min at 4 s), session length within ±15 % of Build 40 at every speed, Kite ≤ 20.3 min,
+  Lantern Kiln before the worksite ends in every run.
