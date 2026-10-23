@@ -120,7 +120,8 @@ test('orders grow harder with the beach and the generators, never repeat a live 
  assert.equal(s.ordersDone,60);
  // Its gold order brought the first stage's materials; nothing else is open, so no gold order waits.
  assert.equal(s.materials['beach-path'],1);assert.ok(!s.orders.some(x=>x.story),'no gold order while every open stage has its materials');
- ok(s,{type:'restore',id:'beach-path'},2);s.orders[0]=makeOrder(s);assert.equal(s.orders[0].story,'beach-path','the next stage wants its own');
+ const r=ok(s,{type:'restore',id:'beach-path'},2);assert.ok(r.effects.goldOrder,'building a stage brings the next gold order at once');
+ assert.equal(s.orders.find(x=>x.story).story,'beach-path','the next stage wants its own');assert.equal(s.orders.length,3);
  // Saves keep it; a story order for a place that does not exist starts a new camp.
  assert.deepEqual(load(JSON.stringify(s),5).orders,s.orders);
  const bad=structuredClone(s);bad.orders.find(x=>x.story).story='nowhere';assert.equal(load(JSON.stringify(bad),5).moves,0);
@@ -170,7 +171,9 @@ test('a scripted player upgrades Landing Beach (21 stages) in 30–60 minutes an
   assert.ok(firstRestore<3*60*1000,'first upgrade within 3 minutes');
   assert.ok(now>=30*60*1000&&now<=60*60*1000,`area 1 took ${(now/60000).toFixed(1)} min`);
   assert.ok(levels.length>=4,'several level-ups');
-  assert.ok(s.energy<25,'energy runs low by the end of the area');
+  // Build 41's approved spec drops forced energy starvation; energy should still be spent, not
+  // pile up at the cap (Build 41e: 23–25 at the end of the beach).
+  assert.ok(s.energy<30,`energy is being spent by the end of the area (${s.energy})`);
   console.log(JSON.stringify({step,minutes:+(now/60000).toFixed(1),firstRestore:+(firstRestore/60000).toFixed(1),actions,levels:levels.length,energy:s.energy,waited}));
  }
 });
@@ -371,7 +374,7 @@ test('the Survey Worksite: seven places in three stages, every stage a reward, t
  assert.deepEqual(w.tasks.map(t=>t.stages.length),Array(7).fill(3));
  assert.ok(w.tasks.every(t=>t.stages[0].cost<t.stages[1].cost&&t.stages[1].cost<t.stages[2].cost),'each stage costs more');
  assert.ok(w.tasks.every(t=>t.stages.every(x=>Object.keys(x.effect).length===1&&x.lines.length>=1)),'every stage gives one reward and a line');
- assert.equal(w.tasks.flatMap(t=>t.stages.map(x=>x.cost)).reduce((a,b)=>a+b),1420);
+ assert.equal(w.tasks.flatMap(t=>t.stages.map(x=>x.cost)).reduce((a,b)=>a+b),1635);// Build 41e: ×1.15 (was 1420)
  assert.equal(Object.keys(TASKS).length,14,'place ids are unique across areas');
  assert.ok(AREAS.slice(2).every(a=>a.coming&&!a.tasks.length),'later areas are still to come');
  // Its stages are bought like the beach's and keep the beach's stages.
@@ -424,7 +427,9 @@ test('the economy is tight: energy runs low through the worksite without long wa
  assert.ok(now-beach>=20*60000&&now-beach<=60*60000,`the worksite took ${((now-beach)/60000).toFixed(1)} min`);
  assert.ok(shell>beach,'the Shell Trap comes out at the worksite');
  assert.ok(lamp>shell&&lamp<now,'the Lantern Kiln comes out before the worksite is finished (build 36)');
- assert.ok(lowest<5,'energy runs low at the worksite');
+ // Build 41's approved spec drops forced starvation (it was < 5 here); energy is still spent
+ // well below the 50 cap (Build 41e: lowest 26 at 4 s/action).
+ assert.ok(lowest<30,`energy is spent at the worksite (${lowest})`);
  assert.ok(waited<=20*60000,`waited ${(waited/60000).toFixed(1)} min`);
  console.log(JSON.stringify({beach:+(beach/60000).toFixed(1),worksite:+((now-beach)/60000).toFixed(1),waited:waited/60000,shell:+(shell/60000).toFixed(1),lamp:+(lamp/60000).toFixed(1)}));
 });
@@ -637,8 +642,7 @@ test('a stage needs its gold order delivered; older saves keep what they could b
  const d=ok(s,{type:'deliver',id:so.id});assert.deepEqual(d.materials,{id:'beach-path',stage:1});assert.match(d.message,/materials for Clear the landing path/);
  assert.equal(s.materials['beach-path'],1);assert.equal(nextTask(s).id,'beach-path');ok(s,{type:'restore',id:'beach-path'});
  assert.equal(nextTask(s),null,'the next stage waits for its own gold order');
- const o=s.orders.find(x=>!x.story);for(const r of o.needs)for(let k=0;k<r.count;k++)s.board[s.board.indexOf(null)]=item(r.family,r.tier);
- ok(s,{type:'deliver',id:o.id});assert.equal(s.orders.filter(x=>x.story).length,1,'the next delivery brings it');
+ assert.equal(s.orders.filter(x=>x.story).length,1,'and building brought it at once');assert.equal(s.orders.length,3,'in place of a crew order');
  // A Build 40 save mid-beach (no materials field): every stage it could buy is open; nothing else.
  const old=fresh(0);old.built={'beach-path':2,'beach-tent':1};old.coins=120;old.moves=300;delete old.materials;
  const back=load(JSON.stringify(old),5);assert.equal(back.moves,300);assert.equal(back.coins,120);assert.deepEqual(back.built,old.built);

@@ -168,7 +168,7 @@ function renderHint(){
 $('#hint').onclick=()=>{
  const g=guide;if(!g)return;
  if(g.kind==='deliver')run({type:'deliver',id:g.id});
- else if(g.kind==='upgrade')showMap();
+ else if(g.kind==='upgrade'){mapFocus=g.id;showMap();}
  else if(g.kind==='tap'){selected=g.index;run({type:'produce',id:g.id,index:g.index});render();}
  else if(g.kind==='merge'||g.kind==='unseal'){for(const i of g.cells)board.querySelector(`[data-index="${i}"]`)?.classList.add('hintPair');$('#message').textContent=g.kind==='merge'?'Drag one of the two marked parts onto the other.':'Drag the marked part onto the marked crate.';}
  else if(g.kind==='space')$('#message').textContent='Deliver a ready order, merge two twins, or tap a part and choose Shed.';
@@ -258,7 +258,7 @@ board.addEventListener('touchmove',e=>{if(drag?.moved)e.preventDefault();},{pass
 $('#selection').addEventListener('click',e=>{const b=e.target.closest('[data-action]');if(!b)return;const x=state.board[selected];run({type:b.dataset.action,index:selected,id:x?.id});});
 $('#requests').addEventListener('click',e=>{const c=e.target.closest('[data-order]');if(!c)return;const o=state.orders.find(o=>o.id===c.dataset.order);if(!o)return;if(orderItems(state,o)){run({type:'deliver',id:o.id});return;}focusOrder=focusOrder===o.id?null:o.id;render();$('#message').textContent=`${CREW[o.who].name} needs ${o.needs.map(r=>r.count+' × '+nameOf(item(r.family,r.tier))).join(' and ')}. Their parts are marked on the board.`;});
 // The upgrading happens on the beach screen (user: "tusdaa orchinruu ochij upgrade hiih").
-$('#mapButton').onclick=showMap;
+$('#mapButton').onclick=()=>{mapFocus=null;showMap();};
 $('#rationButton').onclick=()=>run({type:'ration'});
 $('#shed').addEventListener('click',e=>{const b=e.target.closest('[data-slot]');if(!b)return;if(state.shed[+b.dataset.slot])run({type:'unstore',slot:+b.dataset.slot});else $('#message').textContent='Drag a part, crate, cog or token here to keep it off the board.';});
 // ---------- the daily gift ----------
@@ -364,33 +364,57 @@ function growScene(){
  if(!lastStage)return;const area=currentArea(state),k=area.tasks.findIndex(t=>t.id===lastStage.id),img=$('#coastMap .sceneColor');lastStage=null;
  if(!img||k<0)return;requestAnimationFrame(()=>requestAnimationFrame(()=>img.style.setProperty(`--r${k}`,REVEAL[stageOf(state,area.tasks[k].id)])));
 }
+// The coast screen (Build 41e, user: "Bolhi baina 2000onii togloom bishdee yamar"): the area's
+// picture fills the top with a marker on every place that can be built; one card for the
+// chosen place says what its next stage needs (its gold order's parts, its coins) with one big
+// button; the places sit below as a grid of tiles to choose from.
+let mapFocus=null;
+const canBuild=u=>u.materials&&state.coins>=u.cost;
+function mapCard(area,t,u){
+ const n=stageOf(state,t.id);
+ if(n>=STAGES)return `<section id="mapCard" class="mapCard done" data-card="${t.id}"><span class="cardArt">${placeArt(t,n)}</span><div class="cardBody"><small class="cardPlace">${t.name}</small><h3>${t.stages[STAGES-1].name}</h3>${pips(n)}<p class="cardDone">Fully restored ✓</p></div><button class="cardButton replay" type="button" data-replay="${t.id}">Replay its story</button></section>`;
+ if(!u){const k=area.tasks.indexOf(t);return `<section id="mapCard" class="mapCard locked" data-card="${t.id}"><span class="cardArt unbuilt">${placeArt(t,0)}</span><div class="cardBody"><small class="cardPlace">Locked</small><h3>${t.name}</h3><p class="cardDone">Opens when ${area.tasks[k-1]?.name??'the place before it'} has its first stage.</p></div></section>`;}
+ const order=state.orders.find(o=>o.story===t.id),coinsOk=state.coins>=u.cost;
+ const stuff=u.materials?`<span class="need ok"><b class="needIcon">✓</b><span>Materials</span></span>`
+  :order?`<span class="need"><span class="needParts">${orderProgress(state,order).map(r=>`<i>${draw(item(r.family,r.tier))}<b>${r.have}/${r.count}</b></i>`).join('')}</span><span>Gold order</span></span>`
+  :`<span class="need"><b class="needIcon">…</b><span>Gold order coming</span></span>`;
+ const coins=`<span class="need ${coinsOk?'ok':''}"><b class="needIcon coinNeed">${COIN}</b><span><b>${Math.min(state.coins,u.cost)}</b>/${u.cost}</span></span>`;
+ const button=canBuild(u)?`<button class="cardButton build" type="button" data-restore="${t.id}">Build · ${COIN} ${u.cost}</button>`
+  :!u.materials&&order?`<button class="cardButton go" type="button" data-make="${order.id}">Make the gold order</button>`
+  :!u.materials?`<button class="cardButton go" type="button" data-go>Deliver an order</button>`
+  :`<button class="cardButton go" type="button" data-go>Earn ${u.cost-state.coins} more ${COIN}</button>`;
+ return `<section id="mapCard" class="mapCard ${canBuild(u)?'ready':''}" data-card="${t.id}"><span class="cardArt next">${placeArt(t,u.stage)}<em>Stage ${u.stage}</em></span><div class="cardBody"><small class="cardPlace">${n?t.stages[n-1].name:t.name}</small><h3>${u.name}</h3>${pips(n)}<div class="needs">${stuff}${coins}</div></div>${button}</section>`;
+}
 function showMap(){
- const area=currentArea(state),open=new Map(upgrades(state).map(u=>[u.id,u]));
+ const area=currentArea(state),ups=upgrades(state),open=new Map(ups.map(u=>[u.id,u]));
+ if(!area.tasks.some(t=>t.id===mapFocus))mapFocus=null;
+ mapFocus??=(ups.find(canBuild)??ups.find(u=>u.materials)??ups.find(u=>state.orders.some(o=>o.story===u.id))??ups[0])?.id??area.tasks.at(-1).id;
+ const focus=area.tasks.find(t=>t.id===mapFocus),total=area.tasks.length*STAGES,built=builtCount(state);
  const places=area.tasks.map(t=>{
-  const n=stageOf(state,t.id),u=open.get(t.id),afford=u?.materials&&state.coins>=u.cost;
-  const status=n>=STAGES?'done':afford?'ready':u?'next':'locked';
-  const now=n?t.stages[n-1].name:t.name;
-  // A stage needs its materials (its gold order delivered) and its coins (Build 41).
-  const stuff=u?(u.materials?' · materials ✓':' · needs its gold order'):'';
-  const next=n>=STAGES?'Complete':!u?'Restore the place before it first':(n?`Next: ${u.name}`:'Not restored yet')+stuff;
-  const short=!u?.materials?'<small class="short">gold order</small>':state.coins<u.cost?`<small class="short">${u.cost-state.coins} more</small>`:'';
-  return `<li class="place" data-status="${status}" data-place="${t.id}"><span class="placeIcon ${t.art&&!n?'unbuilt':''}">${placeArt(t,n)}</span><span><strong>${now}</strong>${pips(n)}<small>${next}</small></span>${n>=STAGES?`<button data-replay="${t.id}" aria-label="Replay ${t.name}">✓</button>`:u?`<button data-restore="${t.id}" ${afford?'':'disabled'} aria-label="${afford?`Upgrade for ${u.cost} coins`:!u.materials?`Needs its materials: deliver the gold order for ${t.name}`:`Needs ${u.cost-state.coins} more coins`}">${COIN} ${u.cost}${short}</button>`:'<button disabled aria-label="Locked">🔒</button>'}</li>`;
+  const n=stageOf(state,t.id),u=open.get(t.id);
+  const status=n>=STAGES?'done':u&&canBuild(u)?'ready':u?'next':'locked';
+  const badge=status==='done'?'<b class="tileBadge done">✓</b>':status==='ready'?'<b class="tileBadge ready">!</b>':status==='locked'?'<b class="tileBadge locked">🔒</b>':'';
+  return `<li class="place ${t.id===mapFocus?'selected':''}" data-status="${status}" data-place="${t.id}"><button type="button" data-select="${t.id}" aria-label="${t.name}: ${status==='done'?'complete':status==='locked'?'locked':status==='ready'?'ready to build':`stage ${n} of ${STAGES}`}"><span class="placeIcon ${t.art&&!n?'unbuilt':''}">${placeArt(t,n)}</span>${pips(n)}${badge}</button></li>`;
  }).join('');
+ const markers=area.tasks.filter(t=>open.has(t.id)).map(t=>{const u=open.get(t.id);return `<button type="button" class="siteMarker ${canBuild(u)?'ready':''} ${t.id===mapFocus?'selected':''}" data-select="${t.id}" style="left:${Math.min(88,Math.max(12,t.at[0]))}%;top:${Math.max(24,t.at[1])}%" aria-label="${u.name}"><span>${canBuild(u)?'▲':'🔨'}</span></button>`;}).join('');
  // Finished areas stay listed above the current one, the ones still to come below it.
  const before=AREAS.slice(0,state.area).map(a=>`<section class="mapArea done"><div class="mapHead"><img src="assets/premium/${a.picture}-vibrant.webp" alt=""><div><h2>${a.name}</h2><b>Complete ✓</b></div></div></section>`).join('');
  const later=AREAS.slice(state.area+1).map(a=>`<section class="mapArea coming"><div class="mapHead"><img src="assets/premium/${a.picture}-vibrant.webp" alt=""><div><h2>${a.name}</h2><b>Next update</b></div></div></section>`).join('');
  $('#mapContent').innerHTML=`<div class="beachTop"><h2 id="mapTitle" class="mapTitle">${area.name}</h2><b class="beachCoins">${COIN} ${state.coins}</b></div>
-  ${sceneHtml(area)}
-  <p class="beachCount">${builtCount(state)} / ${area.tasks.length*STAGES} upgrades${areaDone(state)?' · complete!':''}</p>
+  <div class="sceneWrap">${sceneHtml(area)}<div class="siteMarkers">${markers}</div>
+  <div class="mapProgress" role="img" aria-label="${built} of ${total} upgrades"><i style="width:${(100*built/total).toFixed(1)}%"></i><b>${built} / ${total}${areaDone(state)?' · complete!':''}</b></div></div>
+  ${mapCard(area,focus,open.get(focus.id))}
   <ol class="places">${places}</ol>${before}${later}
-  <button class="primary backToBoard" type="button" data-back>Back to the board</button>`;
+  <button class="backToBoard" type="button" data-back>Back to the board</button>`;
  if(!$('#coastMap').open)$('#coastMap').showModal();
  if(!$('#beat').open)growScene();
 }
 $('#mapContent').addEventListener('click',e=>{
  const r=e.target.closest('[data-restore]');if(r){const cost=upgrades(state).find(u=>u.id===r.dataset.restore)?.cost;receipt=cost;const res=run({type:'restore',id:r.dataset.restore});if(!res.ok)receipt=null;if(res.ok&&!res.effects.nextArea)lastStage={id:res.task,stage:res.stage};showMap();return;}
+ const sel=e.target.closest('[data-select]');if(sel){mapFocus=sel.dataset.select;sfx('tap');showMap();return;}
+ const make=e.target.closest('[data-make]');if(make){$('#coastMap').close();focusOrder=make.dataset.make;render();$('#message').textContent='The gold order is marked: make its parts and deliver it for the materials.';return;}
  const p=e.target.closest('[data-replay]');if(p){showBeat(p.dataset.replay,{},STAGES);return;}
- if(e.target.closest('[data-back]'))$('#coastMap').close();
+ if(e.target.closest('[data-back],[data-go]'))$('#coastMap').close();
 });
 function rewardText(e={}){
  const out=[];

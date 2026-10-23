@@ -414,6 +414,12 @@ function step(s,a,now){
   if(e.token){effects.token=put(s,token());}
   if(e.slots&&s.slots<e.slots){s.slots=e.slots;while(s.orders.length<s.slots)s.orders.push(makeOrder(s));effects.slots=e.slots;}
   if(areaDone(s)){effects.areaDone=AREAS[s.area].id;const next=advance(s);if(next)effects.nextArea=next;}
+  // A stage that opens with no gold order live gets one at once (Build 41e): it takes the place
+  // of the crew order the player has made least of (parts made stay on the board).
+  if(!s.orders.some(o=>o?.story)&&storyTarget(s)){
+   const made=o=>orderProgress(s,o).reduce((n,r)=>n+r.have/r.count,0),lane=s.orders.reduce((k,o,i)=>made(o)<made(s.orders[k])?i:k,0);
+   const o=makeOrder(s);if(o.story){s.orders[lane]=o;effects.goldOrder=o.id;}
+  }
   return {ok:true,event:'restore',task:t.id,stage:t.stage,effects,xp:XP.restore,message:t.name+(t.stage===1?' · restored':` · stage ${t.stage}`)};
  }
  // The shed: a part, crate, cog or token goes in the first free shed space, and back out to

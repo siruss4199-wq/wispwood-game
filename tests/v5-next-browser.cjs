@@ -17,7 +17,7 @@ async function perform(page,a){
  else if(a.type==='openKit'){if(!await pressed(a.index))await tile(a.index).tap();await page.locator('#selection [data-action="openKit"]').tap();}
  else if(a.type==='deliver')await page.locator(`[data-order="${a.id}"]`).tap();
  // Upgrades happen on the separate beach screen: go there, upgrade, watch the story, come back.
- else if(a.type==='restore'){await page.locator('#mapButton').tap();await page.locator(`#coastMap [data-restore="${a.id}"]`).tap();await closeBeats(page);await page.locator('#coastMap [data-back]').tap();}
+ else if(a.type==='restore'){await page.locator('#mapButton').tap();await page.locator(`#coastMap .place[data-place="${a.id}"] button`).tap();await page.locator(`#coastMap [data-restore="${a.id}"]`).tap();await closeBeats(page);await page.locator('#coastMap [data-back]').tap();}
  else if(a.type==='recycle'){if(!await pressed(a.index))await tile(a.index).tap();await page.locator('#selection [data-action="recycle"]').tap();}
  else if(a.type==='ration')await page.locator('#rationButton').tap();
  else if(a.type==='unseal')await dragTo(page,a.from,a.index);
@@ -179,7 +179,7 @@ async function perform(page,a){
    // Build 41 M3/M4: one primary action, the tapped order's generator, upgrade shortfalls, the
    // spend receipt, at most two attention marks, and clearing a part only when the board is full.
    await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));const f=JSON.parse(JSON.stringify(s));
-    f.board=f.board.map((x,i)=>[14,15,16,20,22,26,27,28].includes(i)?null:x);f.coins=10;f.built={};f.area=0;f.orders=[{id:'q1',who:'ivo',needs:[{family:'rig',tier:2,count:1}],coins:10},{id:'q2',who:'ivo',needs:[{family:'rig',tier:3,count:1}],coins:25},{id:'q3',who:'neri',needs:[{family:'rig',tier:1,count:2}],coins:10}];f.slots=3;f.energy=30;f.materials={};
+    f.board=f.board.map((x,i)=>[14,15,16,20,22,26,27,28].includes(i)?null:x);f.coins=10;f.built={};f.area=0;f.orders=[{id:'q1',who:'ivo',needs:[{family:'rig',tier:2,count:1}],coins:10},{id:'q2',who:'ivo',needs:[{family:'rig',tier:3,count:1}],coins:25},{id:'q3',who:'neri',needs:[{family:'rig',tier:1,count:2}],coins:15,story:'beach-path'}];f.slots=3;f.energy=30;f.materials={};
     localStorage.setItem('vaultwake-v5-coast',JSON.stringify(f));});
    await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
    assert.equal(await page.locator('#hint').getAttribute('data-kind'),'tap');assert.match(await page.locator('#hint').textContent(),/Tap Rivet Rover/);
@@ -189,11 +189,14 @@ async function perform(page,a){
     const marks=await page.evaluate(()=>['#mapReady','#adEnergyButton','#dailyButton','#bookCount'].filter(q=>{const e=document.querySelector(q);return e&&!e.hidden&&e.getClientRects().length;}).length);assert.ok(marks<=2,`${marks} attention marks`);}
    await page.locator('[data-order="q2"]').tap();assert.equal(await page.locator('#board [data-index="21"].orderSource').count(),1,'the tapped order lights its generator');await page.locator('[data-order="q2"]').tap();
    // Build 41: a stage needs its gold order's materials as well as coins.
-   await page.locator('#mapButton').tap();assert.match(await page.locator('#coastMap [data-restore="beach-path"]').textContent(),/gold order/);
-   assert.match(await page.locator('#coastMap [data-place="beach-path"]').textContent(),/needs its gold order/);await page.locator('#coastMap [data-back]').tap();
+   await page.locator('#mapButton').tap();assert.equal(await page.locator('#mapCard').getAttribute('data-card'),'beach-path');assert.equal(await page.locator('#coastMap [data-restore]').count(),0,'no Build button without materials');
+   assert.match(await page.locator('#mapCard').textContent(),/Gold order/);
+   // Build 41e: the card's button goes to the gold order on the board.
+   {const id=(await read(page)).orders.find(o=>o.story)?.id;if(id){await page.locator('#mapCard [data-make]').tap();assert.equal(await page.locator('#coastMap[open]').count(),0);assert.equal(await page.locator(`[data-order="${id}"].active`).count(),1,'the gold order is marked');await page.locator(`[data-order="${id}"]`).tap();}
+    else await page.locator('#coastMap [data-back]').tap();}
    await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.materials={'beach-path':1};localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
    await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
-   await page.locator('#mapButton').tap();assert.match(await page.locator('#coastMap [data-restore="beach-path"]').textContent(),/10 more/);assert.match(await page.locator('#coastMap [data-place="beach-path"]').textContent(),/materials ✓/);
+   await page.locator('#mapButton').tap();assert.match(await page.locator('#mapCard [data-go]').textContent(),/Earn 10 more/);assert.match(await page.locator('#mapCard').textContent(),/Materials/);await page.locator('#coastMap [data-back]').tap();
    await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.coins=40;localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
    await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
    await page.locator('#mapButton').tap();await page.locator('#coastMap [data-restore="beach-path"]').tap();
@@ -217,7 +220,7 @@ async function perform(page,a){
    assert.equal((await read(page)).area,1,'the worksite is open');
    assert.equal(await page.locator('#coastMap #mapTitle').textContent(),'Survey Worksite');assert.equal(await page.locator('#coastMap .place').count(),7);
    assert.equal(await page.locator('#coastMap .mapArea.done').count(),1,'the finished beach stays listed');
-   assert.equal(await page.locator('#coastMap [data-place="ws-hoist"] .placeIcon img').getAttribute('src'),'assets/premium/coast/place-ws-hoist-1.webp','worksite places are drawn too (build 40)');assert.equal(await page.locator('#coastMap [data-restore="ws-camp"]').count(),1);
+   assert.equal(await page.locator('#coastMap [data-place="ws-hoist"] .placeIcon img').getAttribute('src'),'assets/premium/coast/place-ws-hoist-1.webp','worksite places are drawn too (build 40)');assert.equal(await page.locator('#mapCard').getAttribute('data-card'),'ws-camp','the worksite card is its first place');
    assert.equal(await page.evaluate(()=>document.querySelector('#coastMap').scrollWidth<=innerWidth),true,'no sideways scroll at the worksite');
    await page.locator('#coastMap [data-back]').tap();
    assert.equal(await page.locator('#mapButton span').textContent(),'SITE');assert.equal(await page.locator('#areaBrand').textContent(),'SURVEY WORKSITE');

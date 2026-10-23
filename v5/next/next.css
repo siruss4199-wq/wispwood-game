@@ -296,3 +296,66 @@ body[data-art] .boardHeading #hint.primaryAction:before{content:none}
 #playlogText{width:100%;font:12px/1.35 ui-monospace,Menlo,monospace;border-radius:10px;border:1px solid #cfd8e6;padding:8px;background:#fff;color:#203451}
 .playlogAsk{background:#fff7e3;border-radius:10px;padding:8px 10px;font-size:13px}
 .playlogButtons .primary{width:100%;min-height:44px;margin-top:8px}
+/* Build 41e: the coast screen as a game screen (user: "Bolhi baina 2000onii togloom bishdee
+   yamar"): a big picture with build markers, one card with one button, places as tiles. */
+#coastMap.beachScreen{background:linear-gradient(#183a4a 0,#1f5160 300px,#f3ead6 300px);color:#203451}
+#coastMap .beachTop{padding:12px 64px 8px 16px}
+#coastMap .beachTop .mapTitle{color:#fff;font-size:22px!important;letter-spacing:.01em;text-shadow:0 2px 0 #0004}
+#coastMap .beachCoins{display:inline-flex;align-items:center;gap:6px;background:#fff6dc;border:2px solid #f0c45a;border-radius:999px;padding:4px 12px 4px 6px;font-size:16px;color:#5a3c06;box-shadow:0 2px 0 #c4901e}
+#coastMap .close{background:#ffffff26;color:#fff;border-radius:50%}
+#coastMap .sceneWrap{position:relative;margin:0 10px}
+#coastMap .beachScene{margin:0;aspect-ratio:4/3;border-radius:22px;border:3px solid #fff;box-shadow:0 8px 22px #0006}
+#coastMap .siteMarkers{position:absolute;inset:0;pointer-events:none}
+#coastMap .siteMarker{pointer-events:auto;position:absolute;transform:translate(-50%,-125%);width:40px;height:40px;min-width:0;padding:0;border-radius:50% 50% 50% 6px;rotate:-45deg;background:linear-gradient(#ffffff,#e4edf3);border:3px solid #fff;box-shadow:0 3px 8px #0006;font-size:17px;line-height:1;display:grid;place-items:center;z-index:2}
+#coastMap .siteMarker{color:#24456f}
+#coastMap .siteMarker span{rotate:45deg}
+#coastMap .siteMarker.ready{background:linear-gradient(#ffcf5a,#f08a1c);color:#fff;border-color:#fff4cf}
+#coastMap .siteMarker.selected{outline:3px solid #43bfe7;outline-offset:2px}
+@media(prefers-reduced-motion:no-preference){#coastMap .siteMarker.ready{animation:markerBob 1.1s ease-in-out infinite}}
+@keyframes markerBob{50%{translate:0 -6px}}
+#coastMap .mapProgress{position:absolute;left:12px;right:12px;top:10px;height:22px;border-radius:999px;background:#0b2230b3;border:2px solid #ffffffcc;overflow:hidden;z-index:2}
+#coastMap .mapProgress i{position:absolute;inset:0 auto 0 0;background:linear-gradient(#ffd66b,#f0a93b);border-radius:999px;transition:width .8s cubic-bezier(.2,.8,.3,1)}
+#coastMap .mapProgress b{position:relative;display:block;text-align:center;font-size:12px;line-height:18px;color:#fff;text-shadow:0 1px 2px #000a;letter-spacing:.04em}
+#coastMap .mapCard{position:relative;margin:-6px 10px 0;z-index:3;display:grid;grid-template-columns:92px minmax(0,1fr);gap:4px 12px;align-items:center;background:#fff;border-radius:22px;padding:12px;box-shadow:0 6px 18px #1d3a4033,0 2px 0 #e2d6bc}
+#coastMap .mapCard.ready{box-shadow:0 0 0 3px #f0a93b,0 6px 18px #f0a93b55}
+#coastMap .cardArt{position:relative;width:92px;height:92px;border-radius:18px;background:radial-gradient(circle at 50% 40%,#fff8e6,#efe2c2);display:grid;place-items:center}
+#coastMap .cardArt img,#coastMap .cardArt .art{width:84px;height:84px;object-fit:contain}
+#coastMap .cardArt.unbuilt img{filter:grayscale(1) opacity(.45)}
+#coastMap .cardArt em{position:absolute;left:4px;top:4px;z-index:1;font-style:normal;font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;background:#16877e;color:#fff;border-radius:999px;padding:2px 8px;white-space:nowrap}
+#coastMap .cardBody{min-width:0}
+#coastMap .cardPlace{display:block;font-size:11px;font-weight:800;color:#7b8a96;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#coastMap .mapCard h3{margin:2px 0 3px;font-size:18px;line-height:1.15;color:#1d3a40}
+#coastMap .cardDone{margin:4px 0 0;font-size:13px;color:#5f7380}
+#coastMap .needs{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+#coastMap .need{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:3px 10px 3px 4px;border-radius:12px;background:#fff1e0;border:2px solid #f3c79a;font-size:12px;font-weight:800;color:#8a4a12}
+#coastMap .need.ok{background:#e6f6ee;border-color:#8fd3b2;color:#1f6e57}
+#coastMap .needIcon{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:#fff;font-size:14px}
+#coastMap .needIcon .coinIcon{width:20px;height:20px}
+#coastMap .needParts{display:inline-flex;gap:2px}
+#coastMap .needParts i{position:relative;width:30px;height:30px;font-style:normal}
+#coastMap .needParts i .art,#coastMap .needParts i img,#coastMap .needParts i svg{width:30px;height:30px}
+#coastMap .needParts i b{position:absolute;right:-3px;bottom:-4px;font-size:9px;background:#fff;border-radius:6px;padding:0 3px;color:#8a4a12}
+#coastMap .cardButton{grid-column:1/-1;margin-top:8px;min-height:52px;border-radius:16px;font-size:17px;font-weight:900;letter-spacing:.02em;display:flex;align-items:center;justify-content:center;gap:6px;border:0}
+#coastMap .cardButton.build{background:linear-gradient(#ffb547,#f07f1c);color:#fff;text-shadow:0 1px 0 #a6500a;box-shadow:0 4px 0 #b85a10,0 6px 14px #f07f1c66}
+@media(prefers-reduced-motion:no-preference){#coastMap .cardButton.build{animation:buildPulse 1.6s ease-in-out infinite}}
+@keyframes buildPulse{50%{transform:scale(1.025)}}
+#coastMap .cardButton.go{background:linear-gradient(#2fb3a6,#16877e);color:#fff;box-shadow:0 4px 0 #0f5f58}
+#coastMap .cardButton.replay{background:#e6f6ee;color:#1f6e57;box-shadow:0 3px 0 #b6dcc9}
+#coastMap .cardButton .coinIcon{width:20px;height:20px}
+#coastMap .places{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:14px 10px 6px}
+#coastMap .place{display:block;padding:0;background:none;border:0;border-radius:0}
+#coastMap .place>button{position:relative;width:100%;min-height:0;padding:6px 2px 8px;border-radius:16px;background:#fff;box-shadow:0 3px 0 #e2d6bc;display:flex;flex-direction:column;align-items:center;gap:4px;color:inherit}
+#coastMap .place .placeIcon{width:100%;height:auto;aspect-ratio:1;background:none}
+#coastMap .place .placeIcon img,#coastMap .place .placeIcon .art{width:100%;height:100%;max-width:64px;max-height:64px}
+#coastMap .place.selected>button{box-shadow:0 0 0 3px #43bfe7,0 3px 0 #2a8fb5}
+#coastMap .place[data-status="locked"]>button{background:#ece6d8;box-shadow:none}
+#coastMap .place[data-status="locked"]{opacity:.7}
+#coastMap .tileBadge{position:absolute;top:-6px;right:-4px;min-width:22px;height:22px;border-radius:999px;display:grid;place-items:center;font-size:12px;font-weight:900;color:#fff;box-shadow:0 2px 0 #0003}
+#coastMap .tileBadge.done{background:#2c9a78}
+#coastMap .tileBadge.ready{background:#f07f1c}
+#coastMap .tileBadge.locked{background:#fff;font-size:11px}
+@media(prefers-reduced-motion:no-preference){#coastMap .tileBadge.ready{animation:markerBob 1.1s ease-in-out infinite}}
+#coastMap .backToBoard{margin:10px auto 6px;background:#fff;color:#24456f;box-shadow:0 3px 0 #d6cbb2;font-weight:800}
+#coastMap .mapArea{margin:8px 10px}
+#coastMap .siteMarker{z-index:2}
+#coastMap .mapCard{margin-top:10px}
