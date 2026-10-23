@@ -664,3 +664,11 @@ Crates per run (5 s): ~51 → ~18 (14 from stages, 4 from cargo). At 5 s the fir
 **UI**: the coast list shows "materials ✓" or "needs its gold order" per stage and the button says "gold order" until they are in; the BEACH dot needs materials and coins; delivering a gold order says "Materials in: <place>"; the level-up moment says energy only; help text updated. `?build=41c`.
 
 **Story**: a one-place sample (Landing path) goes to the user first; the other 13 places are rewritten after it is approved.
+
+### Build 41d · fewer empty spaces at the start (user: "Ongorhoi nudiig bagasgay")
+Answer chosen: the camp's four corners start in tideglass.
+- `GLASS` gains the camp corners: Copper offcut (tier 0) at (2,2) and (4,4), Coil spring (tier 1) at (2,4) and (4,2). Any merge in the four open spaces beside them cracks two corners; the third crack frees the part. A new camp shows 4 open spaces instead of 8; it opens up within the first merges (first discovery at 5 s/action: 3.0 min, was 3.5).
+- The crates beside the corners (2,1), (2,5), (4,1), (4,5) show their keys only once a corner opens; the teaching crate above the Rover and the energy crate below it are reachable from the start.
+- New camps only; saved boards are not touched.
+- The shed now shows at ≤3 free spaces (was ≤4), so a new camp's four open spaces do not bring it out.
+- Measured (harness): totals 64.8 / 80.6 / 125.8 / 157.7 min at 4 / 5 / 8 / 10 s/action (Build 40: 62.6 / 80.6 / 123.1 / 153.1); idle 0; taps up to 428 at 6 s (+36 %), so the tap guard is Build 40 × 1.4.

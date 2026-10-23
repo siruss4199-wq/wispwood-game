@@ -39,7 +39,7 @@ async function perform(page,a){
    await page.reload();await page.waitForSelector('#board .tile');
    assert.equal(await page.locator('#beat[open]').count(),1,'the area intro plays on a new camp');await closeBeats(page);
    assert.equal(await page.locator('#board .tile').count(),49);
-   assert.equal(await page.locator('#board .tile.cargo').count(),27,'sealed cargo covers most of the board');assert.equal(await page.locator('#board .tile.glass').count(),13,'half-buried parts ring the camp, more near each generator');assert.equal(await page.locator('#board .cargoKey').count(),6,'only the crates touching the camp show their keys');assert.equal(await page.locator('#board .tile.cargo.deep').count(),21,'the rest are buried deeper');assert.equal(await page.locator('#board .tile.source').count(),1,'one generator to start');assert.equal(await page.locator('#board [data-index="21"]').getAttribute('data-family'),'rig','Rivet Rover stands in the middle');
+   assert.equal(await page.locator('#board .tile.cargo').count(),27,'sealed cargo covers most of the board');assert.equal(await page.locator('#board .tile.glass').count(),17,'half-buried parts ring the camp and fill its corners, more near each generator');assert.equal(await page.locator('#board .cargoKey').count(),2,'only the crates touching open ground show their keys');assert.equal(await page.locator('#board .tile.cargo.deep').count(),25,'the rest are buried deeper');assert.equal(await page.locator('#board .tile.source').count(),1,'one generator to start');assert.equal(await page.locator('#board [data-index="21"]').getAttribute('data-family'),'rig','Rivet Rover stands in the middle');
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'no sideways scroll');
    for(const t of await page.locator('#board .tile').all()){const b=await t.boundingBox();assert.ok(b.width>=44&&b.height>=44,'44px touch targets');}
    for(const sel of ['#energyPill','#coinPill','#levelPill','#mapButton','#menuButton']){const b=await page.locator(sel).boundingBox();assert.ok(b&&b.x>=0&&b.x+b.width<=width,sel+' fits the header');}
@@ -131,7 +131,7 @@ async function perform(page,a){
    // Build 32: the shed. Since Build 41 it shows when something is in it or the board is getting
    // full; a part's own Shed button always stores it. Then drag a part onto a shed space; tap the
    // space to bring it back.
-   await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.board[14]={type:'item',family:'rig',tier:1};s.board[16]={type:'item',family:'chart',tier:0};localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
+   await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.board[14]={type:'item',family:'rig',tier:1};s.board[16]={type:'item',family:'chart',tier:0};for(const i of [26,28])if(s.board[i]?.type==='glass')s.board[i]=null;localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
    await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
    assert.equal(await page.locator('#shed').isHidden(),true,'no shed on a roomy board');
    await page.locator('#board [data-index="16"]').tap();await page.locator('#selection [data-action="store"]').tap();

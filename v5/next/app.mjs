@@ -121,7 +121,8 @@ function renderBoard(){
 function renderShed(){
  // The shed shows when something is in it or the board is getting full (Build 41 M4); a part can
  // always be stored from its own panel (Shed), which brings the shed out.
- $('#shed').hidden=!(state.shed.some(Boolean)||state.board.filter(y=>y===null).length<=4);
+ // Build 41d: a new camp has four open spaces, so "getting full" is three or fewer.
+ $('#shed').hidden=!(state.shed.some(Boolean)||state.board.filter(y=>y===null).length<=3);
  $('#shed').innerHTML=`<span class="shedLabel">SHED</span>`+state.shed.map((x,k)=>`<button class="shedSlot ${x?'full':''}" data-slot="${k}" aria-label="${x?nameOf(x)+' · tap to put it back on the board':'Empty shed space'}">${x?draw(x):''}</button>`).join('');
 }
 function renderSelection(){

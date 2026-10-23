@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {cellPos} from '../v5/core.mjs';
 import {xpToNext} from '../v5/levels.mjs';
-import {allDone,secondChain,FREE_SWAPS,AD_SWAPS,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,priceOf,totalBuilt,ORDER_TOP,SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,storyTarget,makeOrder,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
+import {allDone,secondChain,FREE_SWAPS,AD_SWAPS,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,priceOf,totalBuilt,ORDER_TOP,SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,storyTarget,makeOrder,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,glass,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
 import {AREAS,TASKS} from '../v5/next/areas.mjs';
 import {primaryAction} from '../v5/next/guide.mjs';
 import {kit} from '../v5/kits.mjs';
@@ -26,10 +26,13 @@ test('its own save key; the Classic keys are never written',()=>{
 
 test('a new camp: Rivet Rover alone in the middle of its camp, sealed cargo and tideglass everywhere else, three orders',()=>{
  const s=fresh(0);
- assert.deepEqual(s.board.flatMap((x,i)=>x===null?[i]:[]),[14,15,16,20,22,26,27,28],'the camp starts empty around the Rover');
+ // Build 41d (user: "ongorhoi nudiig bagasgay"): four open spaces beside the Rover; the camp's
+ // corners hold small Rover parts in tideglass that the first merges crack open.
+ assert.deepEqual(s.board.flatMap((x,i)=>x===null?[i]:[]),[15,20,22,27],'four open spaces around the Rover');
+ assert.deepEqual([14,16,26,28].map(i=>s.board[i]),[glass('rig',0),glass('rig',1),glass('rig',1),glass('rig',0)],'the corners are in tideglass');
  assert.deepEqual(CAMP,[14,15,16,20,21,22,26,27,28]);assert.equal(ROVER,21);assert.deepEqual(s.board[21],source('rig'),'Rivet Rover stands in the middle of the board');
  assert.deepEqual(s.board.flatMap((x,i)=>x?.type==='source'?[x.id]:[]),['rig'],'one generator to start');
- assert.equal(s.board.filter(x=>x?.type==='cargo').length,27);assert.equal(s.board.filter(x=>x?.type==='glass').length,13);
+ assert.equal(s.board.filter(x=>x?.type==='cargo').length,27);assert.equal(s.board.filter(x=>x?.type==='glass').length,17);
  assert.deepEqual([8,10,19,23,32,34].map(i=>s.board[i].type),Array(6).fill('glass'),'half-buried parts ring the camp');
  assert.ok(s.board.every((x,i)=>CAMP.includes(i)||x.type==='cargo'||x.type==='glass'));
  assert.deepEqual(s.orders.map(o=>o.needs),[[{family:'rig',tier:2,count:1}],[{family:'rig',tier:3,count:1}],[{family:'rig',tier:2,count:1},{family:'rig',tier:1,count:2}]]);
@@ -42,7 +45,7 @@ test('a new camp: Rivet Rover alone in the middle of its camp, sealed cargo and 
 // taps alone fill none of them and each takes a few merges.
 test('the first orders need merging: taps alone fill none; the first takes four taps and two merges',()=>{
  const s=fresh(0),at=[];
- for(let n=0;n<8;n++){at.push(ok(s,{type:'produce',id:'rig'}).index);assert.ok(s.orders.every(o=>!orderItems(s,o)),`no order ready after ${n+1} taps`);}
+ for(let n=0;n<4;n++){at.push(ok(s,{type:'produce',id:'rig'}).index);assert.ok(s.orders.every(o=>!orderItems(s,o)),`no order ready after ${n+1} taps`);}
  const t=fresh(0),i=[0,1,2,3].map(()=>ok(t,{type:'produce',id:'rig'}).index);
  assert.deepEqual(i.map(j=>t.board[j]),[item('rig',0),item('rig',0),item('rig',0),item('rig',1)],'every fourth part comes out a tier higher');
  const r=ok(t,{type:'merge',from:i[0],to:i[1]});assert.equal(r.xp,1);assert.ok(!orderItems(t,t.orders[0]));
@@ -227,7 +230,7 @@ test('one generator, one chain; each generator at level 3 brings out the next ki
 
 test('cargo keys grow harder away from the camp and every generator is reachable',()=>{
  const s=fresh(0),keys=cargoKeys(s);
- assert.deepEqual(keys.map(k=>k.index),[9,13,17,25,29,33],'only the crates touching the camp show their keys');
+ assert.deepEqual(keys.map(k=>k.index),[9,33],'only the crates touching open ground show their keys (the camp corners are glass at first)');
  // The more useful the find, the harder the key: in each ring, Tide tokens, captain's trunks
  // and big coin pouches need a higher part than any small pouch, energy, part or small crate.
  const ring=i=>{const [r,c]=cellPos(i);return Math.max(Math.abs(r-3),Math.abs(c-3));},useful=f=>f.type==='token'||f.type==='kit'&&f.size===3||f.type==='coins'&&f.n>=60;
@@ -309,6 +312,7 @@ test('a Tide token from hard cargo turns a part into one a crew order is waiting
  const s=fresh(0);
  // Cell 7, in the corner beside the camp, holds a token behind a Crawler jack.
  assert.deepEqual(s.board[7],cargo({family:'rig',tier:4},token()));
+ s.board[14]=null;// the camp corner's glass is broken
  s.board[15]=item('rig',3);ok(s,{type:'unseal',from:15,index:13});
  s.board[15]=item('rig',4);const r=ok(s,{type:'unseal',from:15,index:7});
  assert.equal(r.opened.type,'token');assert.deepEqual(s.board[7],token());assert.match(r.message,/Tide token/);
@@ -345,7 +349,7 @@ test('the edge of the board wants Kite and Rope Winch parts; generators come onl
  const edge=Object.entries(CARGO).filter(([i])=>ring(+i)===3);assert.equal(edge.length,17);
  assert.ok(edge.every(([,c])=>['chart','rope'].includes(c[0])),'no Rover keys on the edge');
  assert.ok(edge.some(([,c])=>c[0]==='chart')&&edge.some(([,c])=>c[0]==='rope'));
- const s=fresh(0);assert.equal(s.board.filter(x=>x?.type==='glass'||x?.type==='cargo').length,40);
+ const s=fresh(0);assert.equal(s.board.filter(x=>x?.type==='glass'||x?.type==='cargo').length,44);
  // Levels give energy, never generators.
  const t=camp();t.level.level=4;t.level.xp=xpToNext(4)-1;const before=t.board.filter(x=>x?.type==='source').length;
  const r=ok(t,{type:'merge',from:14,to:16});assert.equal(r.levelUp[0].level,5);assert.equal(r.levelUp[0].generator,undefined);
