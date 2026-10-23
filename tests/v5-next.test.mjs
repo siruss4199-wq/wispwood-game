@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {cellPos} from '../v5/core.mjs';
 import {xpToNext} from '../v5/levels.mjs';
-import {SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
+import {SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,makeOrder,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
 import {AREAS} from '../v5/next/areas.mjs';
 import {kit} from '../v5/kits.mjs';
 import {nextAction} from './v5-next-policy.mjs';
@@ -71,16 +71,35 @@ test('coins upgrade each place in three stages; every stage gives a reward',()=>
  assert.ok(AREAS[0].tasks.every(t=>t.stages[0].cost<t.stages[1].cost&&t.stages[1].cost<t.stages[2].cost),'each stage costs more');
 });
 
-test('orders scale with level, never repeat a live need and pay coins by tier',()=>{
- const s=fresh(0);s.level.level=6;s.board[15]=source('chart');
+test('orders grow harder with the beach and the generators, never repeat a live need, and one is the story\'s',()=>{
+ const tiers=(s,n=40)=>{const all=[];for(let k=0;k<n;k++){const o=makeOrder(s);if(o.story)s.orders.push(o);else all.push(o.needs[0].tier);}assert.equal(all.length,n-1);return all;};// the main part (a second part may be one tier lower)
+ // A new beach and a level-1 Rover: tiers 1-2 only.
+ const a=fresh(0);a.orderSeq=10;const t0=tiers(a);assert.ok(Math.min(...t0)>=1&&Math.max(...t0)<=2,JSON.stringify([...new Set(t0)]));
+ // Player level alone changes nothing (build 29).
+ const b=fresh(0);b.orderSeq=10;b.level.level=9;assert.deepEqual(tiers(b),t0);
+ // Twelve beach stages: tier 3 and up, top 4.
+ const c=fresh(0);c.orderSeq=10;c.built={'beach-path':3,'beach-tent':3,'beach-mast':3,'beach-workshop':3};const t2=tiers(c);assert.ok(Math.min(...t2)>=3&&Math.max(...t2)<=4,JSON.stringify([...new Set(t2)]));
+ // A generator at level 3 lifts the top tier by one.
+ const d=fresh(0);d.orderSeq=10;d.board[ROVER].level=3;assert.ok(Math.max(...tiers(d))===3);
+ // The story's order: one at a time, for the next beach stage, the newest generator's best part, half as much again.
+ const e=fresh(0);e.orderSeq=10;e.orders=[];const so=makeOrder(e);assert.equal(so.story,'beach-path');assert.equal(so.needs[0].family,'rig');assert.equal(so.needs[0].tier,2);
+ assert.equal(so.coins,Math.round(so.needs.reduce((v,r)=>v+r.count*COIN_VALUE[r.tier],0)*1.5/5)*5);
+ e.orders.push(so);assert.equal(makeOrder(e).story,undefined,'only one story order at a time');
+ // Delivering it brings the next story order; normal orders pay by tier and never repeat a live need.
+ const s=fresh(0);s.board[15]=source('chart');
  for(let n=0;n<60;n++){
   const o=s.orders[n%3];for(const r of o.needs)for(let k=0;k<r.count;k++){const i=s.board.indexOf(null);assert.ok(i>=0);s.board[i]=item(r.family,r.tier);}
   ok(s,{type:'deliver',id:o.id});
-  for(const x of s.orders){assert.equal(x.coins,x.needs.reduce((v,r)=>v+r.count*COIN_VALUE[r.tier],0));for(const r of x.needs){assert.ok(['rig','chart'].includes(r.family));assert.ok(r.tier<=3+Math.floor(s.level.level/4),'the top tier climbs every fourth level');}if(+x.id.slice(1)>=3)assert.ok(x.needs[0].tier>=2,'from level 3 every order asks for tier 2 or more');}
+  assert.ok(s.orders.filter(x=>x.story).length<=1);
+  for(const x of s.orders)if(!x.story)assert.equal(x.coins,x.needs.reduce((v,r)=>v+r.count*COIN_VALUE[r.tier],0));
   s.board=s.board.map(x=>x?.type==='kit'||x?.type==='item'?null:x);s.board[15]??=source('chart');
  }
- assert.equal(s.ordersDone,60);
+ assert.equal(s.ordersDone,60);assert.ok(s.orders.some(x=>x.story),'a story order is live');
+ // Saves keep it; a story order for a place that does not exist starts a new camp.
+ assert.deepEqual(load(JSON.stringify(s),5).orders,s.orders);
+ const bad=structuredClone(s);bad.orders.find(x=>x.story).story='nowhere';assert.equal(load(JSON.stringify(bad),5).moves,0);
 });
+
 
 test('every third order brings a small box of its kind; boxes and generator levels work here too',()=>{
  const s=fresh(0);s.ordersDone=2;const o=s.orders[1];s.board[15]=item('rig',2);

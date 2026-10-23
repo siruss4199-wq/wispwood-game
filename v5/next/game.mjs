@@ -132,16 +132,24 @@ export function makeOrder(s){
  const n=s.orderSeq++;let needs;
  if(n<FIRST.length)needs=FIRST[n].map(([family,tier,count])=>({family,tier,count}));
  else{
-  // Harder from build 10 (user: "taskuud het amar baigaad baina") and again in build 16
-  // ("taskiig bas arai hard bolgoy", higher-tier parts): tier 2 and up from level 2, tier 3
-  // and up from level 7; the top tier starts at 3 and climbs every fourth level. Pairs and
-  // two-part orders are common.
-  const families=openChains(s),level=s.level.level,low=level>=7?3:level>=2?2:1,top=3+Math.floor(level/4);
+  // Difficulty follows the story and the merging, not the player level (build 29, user:
+  // "taskuudiin shinechlel hetsuu bololtiig story bolon mergeteigee uyalduulaad"): the lowest
+  // tier rises with beach upgrades (2 from 3 upgrades, 3 from 12), the top tier climbs every
+  // six upgrades and one more once a generator reaches level 3, and two-part orders grow
+  // more common as the beach is built.
+  const families=openChains(s),built=builtCount(s),best=Math.max(1,...s.board.filter(x=>x?.type==='source').map(producerLevel));
+  const low=built>=12?3:built>=3?2:1,top=2+Math.floor(built/6)+(best>=3?1:0);
+  // One order at a time is the story's: the newest generator's best part, for the next beach
+  // stage, paying half as much again.
+  const story=!s.orders.some(o=>o?.story)&&nextTask(s);
   const live=new Set(s.orders.filter(Boolean).flatMap(o=>o.needs.map(r=>r.family+r.tier)));
   let family,tier,k=0;
-  do{family=families[Math.floor(rand(n*7+k)*families.length)];const hi=Math.max(low,Math.min(top,maxTier(family)-1));tier=low+Math.floor(rand(n*11+k)*(hi-low+1));k++;}while(live.has(family+tier)&&k<8);
+  if(story){family=GENERATOR_CHAINS[newestGenerator(s)][0][0];tier=Math.max(low,Math.min(top,maxTier(family)-1));}
+  else do{family=families[Math.floor(rand(n*7+k)*families.length)];const hi=Math.max(low,Math.min(top,maxTier(family)-1));tier=low+Math.floor(rand(n*11+k)*(hi-low+1));k++;}while(live.has(family+tier)&&k<8);
+  if(story){needs=[{family,tier,count:1}];const other=families.find(f=>f!==family);needs.push({family:other??family,tier:other?Math.max(1,low):Math.max(1,tier-1),count:1});if(needs[1].family===family&&needs[1].tier===tier)needs.pop();
+   const coins=Math.round(needs.reduce((v,r)=>v+r.count*COIN_VALUE[r.tier],0)*1.5/5)*5;return {id:'o'+n,who:crewFor(needs),needs,coins,story:story.id};}
   needs=[{family,tier,count:tier<=2&&rand(n*13)<.6?2:1}];
-  if(level>=2&&rand(n*17)<.45){const other=families.find(f=>f!==family)??family,t=Math.max(1,tier-1);if(other!==family||t!==tier)needs.push({family:other,tier:t,count:1});}
+  if(rand(n*17)<.2+built*.02){const other=families.find(f=>f!==family)??family,t=Math.max(1,tier-1);if(other!==family||t!==tier)needs.push({family:other,tier:t,count:1});}
  }
  const coins=needs.reduce((v,r)=>v+r.count*COIN_VALUE[r.tier],0);
  return {id:'o'+n,who:crewFor(needs),needs,coins};
@@ -317,7 +325,8 @@ function step(s,a,now){
   if(!o)return fail('That order has already changed.');
   const take=orderItems(s,o);if(!take)return fail('Make the parts this order needs first.');
   for(const i of take)s.board[i]=null;
-  s.coins+=o.coins;s.ordersDone++;s.orders[lane]=makeOrder(s);
+  // The lane is cleared first, so a delivered story order is followed by the next one.
+  s.coins+=o.coins;s.ordersDone++;s.orders[lane]=null;s.orders[lane]=makeOrder(s);
   // Every third order also brings a driftwood crate of its kind.
   const box=s.ordersDone%3===0?put(s,kit(CHAINS[o.needs[0].family].gen,1),take[0]):-1;
   return {ok:true,event:'deliver',index:box>=0?box:null,xp:Math.max(1,Math.round(o.coins/COIN_RATE)),coins:o.coins,box,freed:take,message:`+${o.coins} coins`+(box>=0?' · '+nameOf(s.board[box]):'')};
@@ -373,7 +382,7 @@ function validCell(x){
  return false;
 }
 const validNeed=r=>r&&CHAINS[r.family]&&integer(r.tier,0,maxTier(r.family))&&integer(r.count,1,4);
-const validOrder=o=>o&&typeof o.id==='string'&&Array.isArray(o.needs)&&o.needs.length>=1&&o.needs.length<=2&&o.needs.every(validNeed)&&integer(o.coins,1,999)&&['ivo','neri','tamsin','bram'].includes(o.who);
+const validOrder=o=>o&&typeof o.id==='string'&&Array.isArray(o.needs)&&o.needs.length>=1&&o.needs.length<=2&&o.needs.every(validNeed)&&integer(o.coins,1,999)&&(o.story===undefined||!!TASKS[o.story])&&['ivo','neri','tamsin','bram'].includes(o.who);
 
 // Build 3 (version 1) had sand and numbered cells; build 4 (version 2) had the tide.
 // Both become sealed cargo: each covered cell gets the key this layout gives it and

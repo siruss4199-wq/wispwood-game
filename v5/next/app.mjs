@@ -16,7 +16,7 @@ import {sound,reduced,burst,rewardFlight,moment as sharedMoment} from '../feedba
 function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el=document.querySelector('.moment');const top=[...document.querySelectorAll('dialog[open]')].pop();if(el&&top)top.append(el);if(!x||!el)return;const icon=document.createElement('span');icon.style.cssText='float:left;width:42px;height:42px;margin-right:10px';icon.innerHTML=draw(x);icon.firstElementChild.style.cssText='width:100%;height:100%';el.prepend(icon);}
 
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 28 · compact orders';
+export const BUILD='Build 29 · story orders';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
@@ -60,7 +60,8 @@ function renderOrders(){
  $('#requests').style.setProperty('--slots',state.orders.length);
  $('#requests').innerHTML=`<div class="requestHeading"><span>CREW ORDERS <small>Deliver for coins</small></span></div><div class="requestShelf">${[...state.orders].sort((a,b)=>Number(!!orderItems(state,b))-Number(!!orderItems(state,a))).map(o=>{
   const p=orderProgress(state,o),ready=!!orderItems(state,o),who=CREW[o.who];
-  return `<button class="requestCard ${ready?'ready':''} ${focusOrder===o.id?'active':''}" data-order="${o.id}" aria-label="${who.name} asks for ${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier))).join(', ')}. ${ready?'Ready: tap to deliver.':'In progress.'} Reward ${o.coins} coins"><span class="requestCrew">${portrait(o.who)}<b class="requestLane"><em>${who.name}</em>${who.role}</b></span><span class="requestItems">${p.map(r=>`<span>${draw(item(r.family,r.tier))}<b>${r.have}/${r.count}</b></span>`).join('')}</span><span class="requestReward">+${o.coins} ${COIN}</span><strong>${ready?'✓ DELIVER':'MAKE'}</strong></button>`;
+  const place=o.story&&AREAS[state.area]?.tasks.find(t=>t.id===o.story);
+  return `<button class="requestCard ${ready?'ready':''} ${place?'storyOrder':''} ${focusOrder===o.id?'active':''}" data-order="${o.id}" aria-label="${place?`For the beach (${place.name}): `:''}${who.name} asks for ${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier))).join(', ')}. ${ready?'Ready: tap to deliver.':'In progress.'} Reward ${o.coins} coins"><span class="requestCrew">${place?`<span class="storyBadge" aria-hidden="true">${iconArt(place.icon)}</span>`:portrait(o.who)}<b class="requestLane"><em>${who.name}</em>${who.role}</b></span><span class="requestItems">${p.map(r=>`<span>${draw(item(r.family,r.tier))}<b>${r.have}/${r.count}</b></span>`).join('')}</span><span class="requestReward">+${o.coins} ${COIN}</span><strong>${ready?'✓ DELIVER':'MAKE'}</strong></button>`;
  }).join('')}</div>`;
 }
 function renderBoard(){
@@ -116,7 +117,7 @@ function renderHint(){
  else if(state.energy<1){const t=refillTimes(state,Date.now());hint='Out of energy · +1 in '+clock(t?.next??0);}
  else{// Next generator: which one has to reach level 2 to bring it out.
   const g=GENERATOR_ORDER.find(g=>has(g)&&nextKind(g)&&!has(nextKind(g)));
-  hint=g?`${SOURCES[g].name} level ${UNLOCK_LEVEL} brings out the ${SOURCES[nextKind(g)].name} · merge a copy or lay a cog on it`:'Make the parts the crew orders want';}
+  hint=g?`${SOURCES[g].name} Lv${UNLOCK_LEVEL} → ${SOURCES[nextKind(g)].name} · merge copies from the beach`:'Make the parts the crew orders want';}
  $('#hint').textContent=hint;
 }
 function header(){

@@ -170,3 +170,9 @@ img.art{-webkit-user-drag:none;user-select:none}
 .nextMode #requests .requestCard.ready{background:#e3f5dd;border-color:#3aa282}
 .nextMode .boardHeading{margin-top:4px}
 .nextMode #requests .requestItems:has(>span:nth-child(2))>span,.nextMode #requests .requestItems:has(>span:nth-child(2)) :is(svg,img){width:38px;height:38px}
+
+/* The story's order (build 29): gold edge, the beach place it is for instead of a portrait. */
+.nextMode #requests .requestCard.storyOrder:not(.ready){background:linear-gradient(170deg,#fff6dc,#fbe7b5);border-color:#e0a83e;box-shadow:inset 0 0 0 1px #f6d27a,0 2px 0 #d8b062}
+.storyBadge{display:grid;place-items:center;width:28px;height:28px;border-radius:9px;background:#fff;box-shadow:0 0 0 2px #e0a83e}
+.storyBadge .art,.storyBadge img{width:24px;height:24px;object-fit:contain}
+.nextMode #requests .requestCard.storyOrder .requestReward{background:#ffe08a}

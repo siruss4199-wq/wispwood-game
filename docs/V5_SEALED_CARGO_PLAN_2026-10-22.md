@@ -325,3 +325,17 @@ untouched): no heading; all orders side by side in one row (3 or 4 columns); eac
 small portrait, its coin reward, the parts with their counts and, only when ready, a green
 DELIVER bar. Two-part orders use slightly smaller parts. Checked at 360 px with four orders:
 no sideways scroll.
+
+## Build 29 — orders follow the story and the merging (user: "Taskuudiin shinechlel hetsuu bololtiig story bolon mergeteigee uyalduulaad hiivel zugeer baina")
+Order difficulty no longer depends on the player level:
+- **Story:** the lowest tier is 1, then 2 from 3 beach upgrades and 3 from 12; the top
+  tier is 2 and climbs every six upgrades; two-part orders grow from 20 % to ~60 % as the
+  beach is built.
+- **Merging:** once any generator reaches level 3 the top tier is one higher.
+- **The story's order:** one order at a time is for the next beach stage: gold edge, the
+  place's picture instead of a portrait, the newest generator's best part (plus a second
+  part), paying half as much again. Delivering it brings the next one at once.
+- Saves: an order may carry `story` (a place id); older orders have none. The hint now
+  reads "Rivet Rover Lv3 → Survey Kite · merge copies from the beach" (cogs left cargo in
+  build 18).
+- Scripted player, 4–6 s per action: Survey Kite at 8–14 min, Landing Beach in 38–58 min.
