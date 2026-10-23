@@ -290,6 +290,8 @@ export function upgrades(s){
 export const nextTask=s=>upgrades(s)[0]??null;
 export const areaDone=(s,a=currentArea(s))=>!!a&&a.tasks.length>0&&a.tasks.every(t=>stageOf(s,t.id)>=STAGES);
 export const builtCount=(s,a=currentArea(s))=>a?a.tasks.reduce((n,t)=>n+stageOf(s,t.id),0):0;
+// Every area that has places is finished: the end of this prototype (Build 41 M5).
+export const allDone=s=>AREAS.filter(a=>a.tasks.length).every(a=>areaDone(s,a));
 // Stages bought in every area (orders grow harder with it).
 export const totalBuilt=s=>Object.values(s.built).reduce((n,k)=>n+k,0);
 // When an area is complete the next one with places opens (build 31: the Survey Worksite).
@@ -472,6 +474,8 @@ function step(s,a,now){
   if(o.energy)s.energy+=o.energy;
   return {ok:true,event:'shop',id:a.id,ad:!!o.ad,index,slot,thing,energy:o.energy??0,message:`${o.name}`+(o.energy?` · +${o.energy} energy`:'')+(slot!=null?' · in the shed':'')};
  }
+ // The prototype-complete screen has been seen (Build 41 M5): it shows once.
+ if(a.type==='seenEnd'){if(!allDone(s)||s.seenEnd)return fail('Nothing to see yet.');s.seenEnd=true;return {ok:true,event:'seenEnd',message:'The coast so far is restored.'};}
  if(a.type==='recycle'){
   const x=valid(a.index)?s.board[a.index]:null;if(x?.type!=='item')return fail('Only loose parts can be recycled.');
   s.board[a.index]=null;s.energy=Math.min(MAX_ENERGY,s.energy+1);
@@ -562,6 +566,8 @@ export function load(raw,now=Date.now()){
   s.shop??={day:-1,bought:{}};
   // Build 36 added order changes.
   s.swaps??={day:-1,n:0,ads:0};
+  // Build 41 added seenEnd (the prototype-complete screen shown): absent means not yet.
+  if(s.seenEnd!==undefined&&typeof s.seenEnd!=='boolean')return fresh(now);
   if(!s.swaps||!integer(s.swaps.day,-1,1e7)||!integer(s.swaps.n,0,FREE_SWAPS)||!integer(s.swaps.ads,0,AD_SWAPS))return fresh(now);
   if(!s.shop||!integer(s.shop.day,-1,1e7)||!s.shop.bought||typeof s.shop.bought!=='object'||Array.isArray(s.shop.bought)||!Object.entries(s.shop.bought).every(([id,n])=>SHOP[id]&&integer(n,0,SHOP[id].limit)))return fresh(now);
   const bookKey=k=>typeof k==='string'&&/^[a-z]+\d$/.test(k)&&BOOK_CHAINS.includes(k.slice(0,-1))&&+k.slice(-1)<=maxTier(k.slice(0,-1));

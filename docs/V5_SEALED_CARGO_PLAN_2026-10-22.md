@@ -605,3 +605,21 @@ check instead.
 - Echo Crucible is kept: v1/v2 saves can hold a `flux` generator and `load()` would start them
   over without it (`tests/v5-next.test.mjs`). Its references: `sourceOpen`, `CREW_OF`,
   `gainXp`, `chains.mjs` (chain, name, colour). Reserved for a later area.
+### M5 · prototype complete (done)
+After the worksite's last stage (or on the next visit of a save that finished before this build)
+a screen says the coast so far is restored, with stages, orders and generators, a line about the
+Vault Entrance with no date, **Keep playing** and **Share feedback** (opens the playtest log with
+three questions to copy). Shown once: `seenEnd` (optional boolean, absent = not yet; a wrong type
+starts a new camp like other malformed fields; unit test with an older finished save).
+### M6 · local playtest log (done)
+`v5/next/playtest.mjs`, key `vaultwake-v5-coast-playtest` (separate from the save). Records:
+session start, last activity and pause (pagehide/hidden), first merge, first order, first stage,
+first discovery, every order and stage, area changes, generators, energy reaching 0, generator
+taps refused for energy, actions refused for a full board, ad offers and their outcome (start,
+finished, skipped, error), shop purchases, order changes, rations, gifts, completion. No
+identifiers: numbered sessions, screen size and touch only. Bounded to 2,000 events / 200 KB
+(oldest go first; milestones and counts stay); a storage error turns the log off for the session
+so the save is never at risk. Menu → **Playtest log**: Copy, Download .json, Clear log (save
+untouched). Tests: unit (bounds, corrupt data, quota error, no identifiers, clear), browser
+`tests/v5-next-playtest-browser.cjs` (a 20-minute session with a shifted clock exports valid
+JSON; kept across reloads; no request leaves the page; end screen once).

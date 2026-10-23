@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {cellPos} from '../v5/core.mjs';
 import {xpToNext} from '../v5/levels.mjs';
-import {secondChain,FREE_SWAPS,AD_SWAPS,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,priceOf,totalBuilt,ORDER_TOP,SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,makeOrder,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
+import {allDone,secondChain,FREE_SWAPS,AD_SWAPS,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,priceOf,totalBuilt,ORDER_TOP,SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,makeOrder,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
 import {AREAS,TASKS} from '../v5/next/areas.mjs';
 import {primaryAction} from '../v5/next/guide.mjs';
 import {kit} from '../v5/kits.mjs';
@@ -618,4 +618,37 @@ test('the primary action names the one next step',()=>{
  // A crate key in hand when no order part can be made (no energy).
  const c=fresh(0);c.energy=0;c.board[15]=item('rig',2);c.orders=c.orders.map(o=>({...o,needs:[{family:'chart',tier:1,count:1}]}));
  assert.deepEqual(primaryAction(c),{kind:'unseal',cells:[15,9],label:'Lay the Split spanner on its crate'});
+});
+
+// Build 41 M5/M6: the prototype-complete screen once, and the local playtest log.
+test('the end of the prototype is seen once; older finished saves see it on their next visit',()=>{
+ const s=fresh(0);refused(s,{type:'seenEnd'});
+ s.built=Object.fromEntries(AREAS.flatMap(a=>a.tasks.map(t=>[t.id,3])));s.area=1;assert.ok(allDone(s));
+ assert.equal(s.seenEnd,undefined);const back=load(JSON.stringify(s),5);assert.equal(back.seenEnd,undefined,'a finished save from before Build 41 has not seen it');
+ ok(back,{type:'seenEnd'});assert.equal(back.seenEnd,true);refused(back,{type:'seenEnd'});
+ assert.equal(load(JSON.stringify(back),5).seenEnd,true);
+ const bad=structuredClone(back);bad.seenEnd='yes';bad.moves=4;assert.equal(load(JSON.stringify(bad),5).moves,0);
+});
+
+test('the playtest log: sessions, milestones, bounds, storage failure and a clean export',async()=>{
+ const {createLog,LOG_KEY,MAX_EVENTS,MAX_BYTES}=await import('../v5/next/playtest.mjs');
+ const mem={},storage={get:k=>mem[k]??null,set:(k,v)=>{mem[k]=v;},remove:k=>{delete mem[k];}};let t=1000;const now=()=>t;
+ const log=createLog({storage,now,build:'Build 41',viewport:'390x844',touch:true});
+ log.startSession();t+=30000;log.milestone('firstMerge');log.milestone('firstMerge');t+=60000;log.event('order',{coins:10});
+ t+=20*60000;log.touch();log.end('hidden');
+ assert.ok(mem[LOG_KEY],'saved under its own key');
+ const out=JSON.parse(log.toJSON());assert.equal(out.summary.sessions,1);assert.ok(out.summary.totalMinutes>=20);assert.equal(out.counts.firstMerge,1,'a milestone happens once');
+ assert.deepEqual(Object.keys(out.sessions[0]).sort(),['end','last','n','start','touch','viewport']);
+ assert.doesNotMatch(log.toJSON(),/userAgent|Mozilla|email|@/,'no identifiers');
+ // A reload keeps it.
+ const again=createLog({storage,now,build:'Build 41'});again.startSession();assert.equal(again.data.sessions.length,2);assert.ok(again.data.milestones.firstMerge);
+ // Bounded: the oldest events go, milestones stay.
+ for(let k=0;k<MAX_EVENTS+300;k++)again.event('tick',{k});again.flush();
+ assert.ok(again.data.events.length<=MAX_EVENTS);assert.ok(mem[LOG_KEY].length<=MAX_BYTES);assert.ok(again.data.milestones.firstMerge);
+ // Corrupt storage starts a new log; a storage error turns the log off without throwing.
+ mem[LOG_KEY]='{not json';const fresh1=createLog({storage,now});assert.equal(fresh1.data.sessions.length,0);
+ const full={get:()=>null,set:()=>{throw new Error('QuotaExceededError');},remove:()=>{}};const q=createLog({storage:full,now});q.startSession();
+ assert.equal(q.flush(),false);assert.equal(q.off,true);q.event('order');assert.equal(q.flush(),false);
+ // Clearing removes only the log.
+ mem.other='keep';again.clear();assert.equal(mem[LOG_KEY],undefined);assert.equal(mem.other,'keep');
 });

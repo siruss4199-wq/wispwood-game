@@ -1,8 +1,9 @@
 // Coast Camp: the new-loop page (v5/play.html). Same look as Classic V5, one loop:
 // generators → merge → crew orders → coins → upgrade the coast's places on the beach screen.
-import {swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,newestGenerator,cog,token,SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,orderProgress,nextTask,currentArea,areaDone,upgrades,stageOf,builtCount,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys,reachable,generatorsMerge,MAX_GENERATOR_LEVEL,GLASS_HITS,nextKind,UNLOCK_LEVEL,GENERATOR_ORDER} from './game.mjs';
+import {allDone,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,newestGenerator,cog,token,SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,orderProgress,nextTask,currentArea,areaDone,upgrades,stageOf,builtCount,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys,reachable,generatorsMerge,MAX_GENERATOR_LEVEL,GLASS_HITS,nextKind,UNLOCK_LEVEL,GENERATOR_ORDER} from './game.mjs';
 import {AREAS,STAGES} from './areas.mjs';
 import {primaryAction} from './guide.mjs';
+import {createLog} from './playtest.mjs';
 import {rewardedAd} from './ads.mjs';
 import {cellPos} from '../core.mjs';
 import {CHAINS,draw,maxTier,chainsAt,GENERATOR_CHAINS} from './chains.mjs';
@@ -18,7 +19,7 @@ import {sound,reduced,burst,rewardFlight,moment as sharedMoment} from '../feedba
 function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el=document.querySelector('.moment');const top=[...document.querySelectorAll('dialog[open]')].pop();if(el&&top)top.append(el);if(!x||!el)return;const icon=document.createElement('span');icon.style.cssText='float:left;width:42px;height:42px;margin-right:10px';icon.innerHTML=draw(x);icon.firstElementChild.style.cssText='width:100%;height:100%';el.prepend(icon);}
 
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 41 (in progress) · one next step';
+export const BUILD='Build 41 (in progress) · playtest log';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
@@ -27,6 +28,13 @@ const startNew=new URLSearchParams(location.search).has('new');
 if(startNew)history.replaceState(null,'',location.pathname);
 let state=startNew?fresh(Date.now()):load(storage.get(SAVE_KEY)??'',Date.now()),selected=null,focusOrder=null,drag=null,suppressClick=false;
 const persist=()=>storage.set(SAVE_KEY,JSON.stringify(state));
+// The local playtest log (Build 41 M6): this browser only, copied out by the player.
+const playlog=createLog({storage:{get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>localStorage.setItem(k,v),remove:k=>localStorage.removeItem(k)},
+ build:BUILD,viewport:`${innerWidth}x${innerHeight}`,touch:!!globalThis.matchMedia?.('(pointer:coarse)').matches});
+playlog.startSession();
+setInterval(()=>playlog.flush(),5000);
+addEventListener('pagehide',()=>playlog.end('pagehide'));
+document.addEventListener('visibilitychange',()=>{if(document.hidden)playlog.end('hidden');else playlog.event('resume');});
 persist();
 
 const ICONS={rock:{type:'rock'},'crate-salvage':{type:'crate',kind:'salvage'},'crate-survey':{type:'crate',kind:'survey'},'source-chart':{type:'source',id:'chart'},'flux-3':item('flux',3),'chart-1':item('chart',1)};
@@ -61,6 +69,7 @@ function render(){
  renderOrders();renderBoard();renderShed();renderSelection();renderHint();
  $('#dailyButton').hidden=!giftReady();
  $('#adEnergyButton').hidden=!(state.energy<5&&shopLeft(state,'adEnergy',today())>0);
+ if(!$('#adEnergyButton').hidden&&!adOffered)playlog.event('adOffer',{id:'adEnergy'});adOffered=!$('#adEnergyButton').hidden;
  {const n=bookReady(state).length+BOOK_CHAINS.filter(f=>pageReady(state,f)).length;$('#bookCount').hidden=!n;$('#bookCount').textContent=n;$('#bookButton').classList.toggle('ready',n>0);}
  calmBadges();
  $('#rationButton').hidden=state.energy>3;
@@ -171,7 +180,10 @@ function run(a){
  const before={coins:state.coins,energy:state.energy},fromRect=a.type==='produce'?board.querySelector(`[data-index="${a.index??state.board.findIndex(x=>x?.type==='source'&&x.id===a.id)}"]`)?.getBoundingClientRect():a.type==='openKit'?board.querySelector(`[data-index="${a.index}"]`)?.getBoundingClientRect():null;
  const orderRect=a.type==='deliver'?$(`[data-order="${a.id}"]`)?.getBoundingClientRect():null;
  const reachBefore=new Set(cargoKeys(state).map(k=>k.index)),r=act(state,a,Date.now());
- if(!r.ok){$('#message').textContent=r.message;sound.play('tap');return r;}
+ if(!r.ok){$('#message').textContent=r.message;sound.play('tap');
+  if(a.type==='produce'&&state.energy<1)playlog.event('blockedEnergy');else if(/board is full|Make space/i.test(r.message))playlog.event('blockedFull',{type:a.type});
+  return r;}
+ logResult(a,r,before);
  $('#message').textContent=r.message;
  if(r.event==='merge'||r.event==='move'||r.event==='producerUp'||r.event==='unseal')selected=r.event==='producerUp'||r.event==='unseal'?null:r.index;
  if(r.event==='deliver'||r.event==='store'||r.event==='swapOrder'){focusOrder=null;selected=null;}
@@ -296,7 +308,7 @@ function showShop(){
  if(!$('#shop').open)$('#shop').showModal();
 }
 $('#shopContent').addEventListener('click',e=>{const b=e.target.closest('[data-buy]'),ad=e.target.closest('[data-ad]');if(b){run({type:'buy',id:b.dataset.buy,day:today()});showShop();}else if(ad)watchAd({type:'adReward',id:ad.dataset.ad});});
-$('#shopButton').onclick=showShop;
+$('#shopButton').onclick=()=>{playlog.event('shopOpen');showShop();};
 $('#adEnergyButton').onclick=()=>watchAd({type:'adReward',id:'adEnergy'});
 // Where no ad network is on the page (the playtest page), a stand-in counts down instead;
 // closing it early gives no reward, like a real rewarded ad.
@@ -312,9 +324,9 @@ function adStandIn(){
 let adBusy=false;
 // The action is run only when the ad finished; today's day is filled in then.
 async function watchAd(action){
- if(adBusy)return;adBusy=true;const wasOn=sound.enabled();
+ if(adBusy)return;adBusy=true;const wasOn=sound.enabled(),offer=action.type==='swapOrder'?'swap':action.id;playlog.event('ad',{id:offer,phase:'start'});
  const r=await rewardedAd({onStart(){if(sound.enabled())sound.toggle();},onEnd(){if(wasOn&&!sound.enabled())sound.toggle();},standIn:adStandIn});
- adBusy=false;
+ adBusy=false;playlog.event('ad',{id:offer,phase:r});
  if(r==='finished')run({...action,day:today()});
  else $('#message').textContent=r==='skipped'?'The ad was closed early: no reward.':'No ad is available right now. Try again later.';
  if($('#shop').open)showShop();render();
@@ -390,7 +402,8 @@ function showBeat(id,effects,stage=stageOf(state,id)){
  playLines(st.name,st.lines.concat(extra),()=>{if(effects?.nextArea){render();showMap();showIntro();}else if($('#coastMap').open)showMap();const icon=$(`#coastMap .restoredIcon[data-task="${id}"]`)??$(`.restoredIcon[data-task="${id}"]`);icon?.classList.add('upgraded');
   // The stage's rewards, said once the story has been told (build 22: every stage gives one).
   if(effects&&Object.keys(effects).length)moment(`${st.name} · stage ${stage} of ${STAGES}`,rewardText(effects),null);burst(($('#coastMap').open?$('#coastMap .beachScene'):board).getBoundingClientRect(),'gold',true);
-  for(const i of [effects?.kit,effects?.copy])if(i>=0)board.querySelector(`[data-index="${i}"]`)?.classList.add('unsealed');});
+  for(const i of [effects?.kit,effects?.copy])if(i>=0)board.querySelector(`[data-index="${i}"]`)?.classList.add('unsealed');
+  if(effects?.areaDone&&allDone(state))setTimeout(showEnd,900);});
  sound.play('milestone');
 }
 // The coins a bought stage cost, said on its story card (Build 41 M3, from PR #77's receipt).
@@ -407,8 +420,50 @@ function newGeneratorMoment(gen){const c=CHAINS[GENERATOR_CHAINS[gen][0][0]];mom
 function showIntro(){const a=currentArea(state);if(a.intro)playLines(a.name,a.intro);}
 
 $('#build').textContent='COAST CAMP · '+BUILD.toUpperCase();
+// What the playtest log keeps of an action (Build 41 M6).
+function logResult(a,r,before){
+ playlog.touch();
+ if(r.event==='merge')playlog.milestone('firstMerge');
+ if(r.event==='deliver'){playlog.milestone('firstOrder');playlog.event('order',{coins:r.coins});}
+ if(r.event==='restore'){playlog.milestone('firstStage');playlog.event('stage',{task:r.task,stage:r.stage});if(r.effects?.nextArea)playlog.event('area',{id:r.effects.nextArea});}
+ for(const n of r.released??[])playlog.event('generator',{id:n.id});
+ if(r.event==='unseal'||r.event==='producerUp')playlog.milestone('firstDiscovery');
+ if(before.energy>0&&state.energy===0)playlog.event('energyOut');
+ if(['ration','shop','swapOrder','daily'].includes(r.event))playlog.event(r.event,r.event==='shop'?{id:r.id,ad:r.ad}:r.event==='swapOrder'?{ad:r.ad}:undefined);
+ if(r.event==='seenEnd')playlog.milestone('complete',{orders:state.ordersDone});
+}
+let adOffered=false;
+// The end of this prototype (Build 41 M5): once, after the last stage or on the next visit.
+function showEnd(){
+ if(!allDone(state)||state.seenEnd)return;run({type:'seenEnd'});playlog.flush();
+ const gens=new Set(state.board.filter(x=>x?.type==='source').map(x=>x.id)).size,stages=Object.values(state.built).reduce((a,b)=>a+b,0);
+ $('#endContent').innerHTML=`<small class="adTag">PROTOTYPE COMPLETE</small><h2 id="endTitle">The coast is restored — for now</h2>
+  <p>You rebuilt Landing Beach and the Survey Worksite: <b>${stages} stages</b>, <b>${state.ordersDone} crew orders</b>, <b>${gens} generators</b>.</p>
+  <p>Next on the coast: the Vault Entrance. The dial is mapped and the crew is working out the way in; it comes in a later update.</p>
+  <button class="primary" type="button" data-keep>Keep playing</button><button class="menuButton" type="button" data-feedback>Share feedback</button>`;
+ $('#endDialog').showModal();
+}
+$('#endContent').addEventListener('click',e=>{if(e.target.closest('[data-keep]'))$('#endDialog').close();if(e.target.closest('[data-feedback]')){$('#endDialog').close();showPlaylog(true);}});
+// The playtest log screen: copy or download it, or clear it (the game's save is not touched).
+const QUESTIONS='1. What was the most fun?\n2. Where did you get stuck or bored?\n3. Would you play again tomorrow? Why?';
+function showPlaylog(ask=false){
+ playlog.flush();const json=playlog.toJSON(),sum=JSON.parse(json).summary;
+ $('#playlogContent').innerHTML=`<h2 id="playlogTitle">Playtest log</h2><p>Kept only in this browser and never sent anywhere: ${sum.sessions} sessions, ${sum.totalMinutes} minutes, ${sum.events} events. Copy it into your message to the team.</p>
+  ${ask?`<p class="playlogAsk">${QUESTIONS.replace(/\n/g,'<br>')}</p>`:''}
+  <textarea id="playlogText" readonly rows="6" aria-label="Playtest log as JSON">${(ask?QUESTIONS+'\n\n':'')+json}</textarea>
+  <div class="playlogButtons"><button class="primary" type="button" data-copy>Copy</button><button class="menuButton" type="button" data-download>Download .json</button><button class="menuButton danger" type="button" data-clear>Clear log</button></div>`;
+ if(!$('#playlog').open)$('#playlog').showModal();
+}
+$('#playlogContent').addEventListener('click',async e=>{
+ const text=$('#playlogText');
+ if(e.target.closest('[data-copy]')){try{await navigator.clipboard.writeText(text.value);$('#playlogContent [data-copy]').textContent='Copied';}catch{text.select();document.execCommand?.('copy');$('#playlogContent [data-copy]').textContent='Selected · copy it';}}
+ if(e.target.closest('[data-download]')){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([playlog.toJSON()],{type:'application/json'}));a.download='coast-camp-playtest.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+ if(e.target.closest('[data-clear]')&&confirm('Clear the playtest log? Your game is not affected.')){playlog.clear();showPlaylog();}
+});
+$('#playlogButton').onclick=()=>{$('#menu').close();showPlaylog();};
 // At most two things call for attention outside the board at once (Build 41 M3), in this order:
 // an affordable upgrade, energy from an ad when low, the daily gift, parts waiting in the book.
 function calmBadges(){let n=0;for(const el of [$('#mapReady'),$('#adEnergyButton'),$('#dailyButton'),$('#bookCount')]){if(el.hidden)continue;if(n>=2){el.hidden=true;if(el.id==='bookCount')$('#bookButton').classList.remove('ready');}else n++;}}
 render();header();setInterval(()=>{header();if(state.energy<1)renderHint();offerGift();$('#dailyButton').hidden=!giftReady();calmBadges();},1000);
 if(!state.moves)showIntro();
+else if(allDone(state)&&!state.seenEnd)setTimeout(showEnd,600);

@@ -287,3 +287,12 @@ body[data-art] .boardHeading #hint.primaryAction:is([data-kind="energy"],[data-k
 .places button small.short{display:block;font-size:10px;font-weight:700;opacity:.85}
 .beat .beatReceipt{display:inline-block;margin-left:8px;font-size:12px;color:#a63b1c;background:#ffe9dc;border-radius:8px;padding:2px 7px}
 body[data-art] .boardHeading #hint.primaryAction:before{content:none}
+/* Build 41 M5/M6: the prototype-complete screen and the playtest log. */
+#endDialog{text-align:center;padding:24px 18px}
+#endDialog p{font-size:14px}
+#endDialog .primary{width:100%;min-height:46px;font-size:15px;margin-top:6px}
+#endDialog .menuButton,#playlog .menuButton{width:100%;margin-top:8px;min-height:44px}
+#playlog{padding:20px 16px}
+#playlogText{width:100%;font:12px/1.35 ui-monospace,Menlo,monospace;border-radius:10px;border:1px solid #cfd8e6;padding:8px;background:#fff;color:#203451}
+.playlogAsk{background:#fff7e3;border-radius:10px;padding:8px 10px;font-size:13px}
+.playlogButtons .primary{width:100%;min-height:44px;margin-top:8px}

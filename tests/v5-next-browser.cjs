@@ -198,6 +198,12 @@ async function perform(page,a){
     s.board=s.board.map(x=>x===null?{type:'item',family:fam[k%5],tier:Math.floor(k++/5)}:x);s.shed=s.shed.map((_,i)=>({type:'item',family:'rig',tier:i+1}));localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
    await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
    {const i=(await read(page)).board.findIndex(x=>x?.type==='item');await page.locator(`#board [data-index="${i}"]`).tap();assert.match(await page.locator('#selection [data-action="recycle"]').textContent(),/Clear space/);}
+   // Build 41 M6: the playtest log is kept across reloads and exports as JSON (never sent).
+   {const st=await read(page);assert.ok(await page.evaluate(()=>!!localStorage.getItem('vaultwake-v5-coast-playtest')),'the log is written');
+    await page.locator('#menuButton').tap();await page.locator('#playlogButton').tap();
+    const out=JSON.parse(await page.locator('#playlogText').inputValue());assert.ok(out.summary.sessions>=2,'sessions from earlier reloads are kept');assert.ok(out.milestones.firstMerge&&out.milestones.firstOrder&&out.milestones.firstStage);
+    assert.ok(out.counts.order>=1&&out.counts.stage>=1);assert.equal((await read(page)).moves,st.moves,'opening the log changes nothing in the game');
+    await page.locator('#playlog .close').tap();}
    // Build 31: the beach's last stage opens the Survey Worksite, its intro and its screen.
    await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.built={'beach-path':3,'beach-tent':3,'beach-mast':3,'beach-workshop':3,'beach-pier':3,'beach-beacon':3,'beach-cliff':2};s.coins=200;localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
    await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
