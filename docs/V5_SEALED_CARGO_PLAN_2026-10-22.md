@@ -623,3 +623,14 @@ so the save is never at risk. Menu → **Playtest log**: Copy, Download .json, C
 untouched). Tests: unit (bounds, corrupt data, quota error, no identifiers, clear), browser
 `tests/v5-next-playtest-browser.cjs` (a 20-minute session with a shifted clock exports valid
 JSON; kept across reloads; no request leaves the page; end screen once).
+### M7 · CrazyGames — adapter only; the CrazyGames page waits (user: "crazy gamesd zoriulsan huudsaa hugjuulelt duusahaar boloy")
+`v5/next/platform-cg.mjs` replaces `v5/next/ads.mjs`: SDK v3 init with a timeout and the
+`environment!=='disabled'` check, loading start/stop, gameplay start/stop only on change (the app
+reports: off during the menu, help, log, end screen, an ad or a hidden tab), happytime when an
+area is finished, rewarded ads that stop gameplay and always give the sound back (finished,
+error or no answer in 90 s). Game sounds go through `sfx()`, silent during an ad or when
+CrazyGames mutes the game, without changing the player's sound setting. Without the SDK
+(`play.html`) every call is a no-op and the ad stand-in plays as before. Unit-tested with a fake
+SDK. **Not done, by the user's decision:** the CrazyGames entry page and its browser test; the
+SDK names still need checking against CrazyGames' current docs (unreachable from here).
+`v4/platform.mjs` unchanged.

@@ -526,20 +526,37 @@ test('saves from before the shop load with a full day\'s stock; a malformed shop
  for(const f of [x=>x.shop={day:'x',bought:{}},x=>x.shop.bought={gold:1},x=>x.shop.bought={cog:2},x=>x.shop.bought=[]]){const t=fresh(0);t.moves=3;f(t);assert.equal(load(JSON.stringify(t),5).moves,0,f.toString());}
 });
 
-test('rewarded ads: CrazyGames SDK when present (reward only when the ad finished), else the stand-in',async()=>{
- const {rewardedAd}=await import('../v5/next/ads.mjs?case=none');
- assert.equal(await rewardedAd({standIn:async()=>'finished'}),'finished','no SDK: the stand-in decides');
+test('CrazyGames adapter: lifecycle once per change, rewarded ads that always restore, quiet without the SDK',async()=>{
+ const {initPlatform,platform,rewardedAd,resetPlatform}=await import('../v5/next/platform-cg.mjs');
+ // No SDK: everything is a no-op and the stand-in decides.
+ resetPlatform();delete globalThis.CrazyGames;
+ assert.equal(await initPlatform(),false);await platform.setPlaying(true);assert.equal(platform.playing,false);
+ assert.equal(await rewardedAd({standIn:async()=>'finished'}),'finished');assert.equal(platform.muted(),false);
  const calls=[];let mode='finish';
- globalThis.CrazyGames={SDK:{environment:'crazygames',init:async()=>calls.push('init'),ad:{requestAd(kind,cb){calls.push(kind);cb.adStarted();mode==='finish'?cb.adFinished():cb.adError('no fill');}}}};
+ const fake={environment:'crazygames',init:async()=>calls.push('init'),game:{settings:{muteAudio:false},loadingStart:()=>calls.push('loadingStart'),loadingStop:()=>calls.push('loadingStop'),gameplayStart:()=>calls.push('start'),gameplayStop:()=>calls.push('stop'),happytime:()=>calls.push('happy')},
+  ad:{requestAd(kind,cb){calls.push('ad:'+kind);if(mode==='silent')return;cb.adStarted();mode==='finish'?cb.adFinished():cb.adError('no fill');}}};
  try{
-  const {rewardedAd:ad}=await import('../v5/next/ads.mjs?case=sdk');const seen=[];
-  assert.equal(await ad({onStart:()=>seen.push('start'),onEnd:()=>seen.push('end'),standIn:async()=>'stand-in'}),'finished');
-  assert.deepEqual(calls,['init','rewarded']);assert.deepEqual(seen,['start','end'],'sound can be muted while the ad plays');
-  mode='error';assert.equal(await ad({standIn:async()=>'stand-in'}),'error','no fill: no reward');assert.equal(calls.filter(c=>c==='init').length,1,'the SDK starts once');
-  globalThis.CrazyGames.SDK.environment='disabled';
-  const {rewardedAd:off}=await import('../v5/next/ads.mjs?case=disabled');assert.equal(await off({standIn:async()=>'stand-in'}),'stand-in','SDK disabled outside CrazyGames');
- }finally{delete globalThis.CrazyGames;}
+  resetPlatform();globalThis.CrazyGames={SDK:fake};
+  assert.equal(await initPlatform(),true);await platform.loadingStart();await platform.loadingStart();await platform.loadingStop();
+  await platform.setPlaying(true);await platform.setPlaying(true);await platform.happytime();
+  assert.deepEqual(calls,['init','loadingStart','loadingStop','start','happy'],'each change is passed on once');
+  // An ad stops gameplay, mutes through onStart/onEnd and starts gameplay again, finished or not.
+  for(const [m,want] of [['finish','finished'],['error','error']]){mode=m;calls.length=0;const seen=[];
+   assert.equal(await rewardedAd({onStart:()=>seen.push('mute'),onEnd:()=>seen.push('unmute'),standIn:async()=>'stand-in'}),want);
+   assert.deepEqual(calls,['stop','ad:rewarded','start']);assert.deepEqual(seen,['mute','unmute']);}
+  // No answer at all: the game is given back after the timeout, with the sound.
+  mode='silent';calls.length=0;const seen=[];
+  assert.equal(await rewardedAd({onStart:()=>seen.push('mute'),onEnd:()=>seen.push('unmute'),standIn:async()=>'x',timeout:30}),'error');
+  assert.deepEqual(seen,['unmute']);assert.deepEqual(calls,['stop','ad:rewarded','start']);
+  fake.game.settings.muteAudio=true;assert.equal(platform.muted(),true,'CrazyGames can mute the game');
+  // Outside CrazyGames the SDK reports disabled: no calls, the stand-in plays.
+  resetPlatform();fake.environment='disabled';calls.length=0;
+  assert.equal(await initPlatform(),false);assert.equal(await rewardedAd({standIn:async()=>'stand-in'}),'stand-in');assert.deepEqual(calls,['init']);
+  // An SDK that never finishes init does not hold the game.
+  resetPlatform();globalThis.CrazyGames={SDK:{...fake,environment:'crazygames',init:()=>new Promise(()=>{})}};assert.equal(await initPlatform({timeout:20}),false);
+ }finally{delete globalThis.CrazyGames;resetPlatform();}
 });
+
 
 // Build 36: the Lantern Kiln comes out at the worksite; stuck orders can be changed.
 test('the worksite\'s stage copies reach the Lantern Kiln: Light the door gives the missing one',()=>{
