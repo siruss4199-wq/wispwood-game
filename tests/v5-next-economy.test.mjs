@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import * as game from '../v5/next/game.mjs';
 import {nextAction} from './v5-next-policy.mjs';
 import {SPEEDS,SEEDS,simulate,summary,quantile} from './v5-next-economy-sim.mjs';
+import {primaryAction} from '../v5/next/guide.mjs';
 
 const MIN=60000;
 // Build 40 with this harness: mean session minutes and producer taps per speed.
@@ -49,7 +50,11 @@ test('passing is not bought with grinding: session length and taps stay near Bui
 
 // The first 15 minutes on their own (M8: the first-session journey, as far as a script can tell).
 test('first 15 minutes: first merge, order, restoration and discovery come early, and keep coming',()=>{
- for(const sp of SPEEDS)for(const sd of SEEDS){const r=simulate(game,nextAction,sp,sd,{firstOnly:true}),at=`${sp} s seed ${sd}`;
+ const KINDS=['deliver','upgrade','merge','tap','unseal','space','energy','level','orders'];
+ for(const sp of SPEEDS)for(const sd of SEEDS){
+  // J5: after every action of the first 15 minutes there is a named next step.
+  const onStep=s=>{const g=primaryAction(s);assert.ok(KINDS.includes(g.kind)&&g.label.length>5,`${sp} s seed ${sd}: no next step`);};
+  const r=simulate(game,nextAction,sp,sd,{firstOnly:true,onStep}),at=`${sp} s seed ${sd}`;
   assert.ok(r.first.merge<=1*MIN,`${at}: first merge ${(r.first.merge/MIN).toFixed(1)} min`);
   assert.ok(r.first.order<=2.5*MIN,`${at}: first order ${(r.first.order/MIN).toFixed(1)} min`);
   assert.ok(r.first.restore<=4.5*MIN,`${at}: first restoration ${(r.first.restore/MIN).toFixed(1)} min`);

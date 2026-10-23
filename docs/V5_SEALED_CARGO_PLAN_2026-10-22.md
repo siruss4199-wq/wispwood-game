@@ -577,3 +577,31 @@ first cargo or generator merge ≤ 8, ≥ 8 orders and ≥ 6 restorations.
 orders now mix two generators, so several are in progress at once and each waits longer in its
 lane. The check allows 36 actions per order at that speed (6.0 min) and adds the throughput
 check instead.
+### M3 · PR #77's UX, rewritten for Build 40 (done)
+- **One primary action** (`v5/next/guide.mjs`, the board heading button): deliver a ready order →
+  upgrade when affordable → a pair toward the tapped (else first) order → tap the generator it
+  needs → lay a crate key → any pair → why nothing can happen (full board, out of energy) → the
+  next generator. Tapping it delivers, opens the coast screen, taps the generator, or marks the
+  pair/crate. The very first pair is marked without asking. Unit-tested state by state; the
+  economy test checks there is a named next step after every action of the first 15 minutes
+  (J5), 40/40 runs.
+- The tapped order's generators glow; unaffordable upgrades say "N more"; a bought stage's story
+  card shows "−X coins".
+- At most two attention marks outside the board at once, in order: affordable upgrade, ad energy
+  when low, daily gift, book count.
+- **Deviation, for sign-off:** the approved "board ≥ 45 % of the screen at 390×844" cannot be met
+  by a square 7×7 board at that width (the board is 376 px of 844, 44.6 %). The browser test
+  checks the whole board is on screen at 360/390/430, ≥ 43 % at 390, and exactly one primary
+  action.
+- From PR #77 (`ee12c7f`, `122e687`): the contextual objective, order→producer highlight,
+  shortfall and receipt ideas. Not taken: tap-to-merge, tide UI, vector scenery, the old Workshop
+  pictures, help text (all superseded by Builds 21–40).
+### M4 · simplification (done)
+- Recycle shows only when ≤ 2 spaces are free, as "Clear space · +1 ϟ": the way out of a full
+  board (browser test: full board, no twins, full shed → it is offered). The scripted player
+  never needed it in 40 runs (it recycles only on a full board).
+- The shed shows when something is in it or ≤ 4 spaces are free; a part's own Shed button always
+  stores it, which brings the shed out. No save change.
+- Echo Crucible is kept: v1/v2 saves can hold a `flux` generator and `load()` would start them
+  over without it (`tests/v5-next.test.mjs`). Its references: `sourceOpen`, `CREW_OF`,
+  `gainXp`, `chains.mjs` (chain, name, colour). Reserved for a later area.

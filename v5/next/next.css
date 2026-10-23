@@ -273,3 +273,17 @@ img.art{-webkit-user-drag:none;user-select:none}
 .restoredIcon.staged::before{display:none}
 .restoredIcon.staged .pips{bottom:-4px}
 .placeIcon.unbuilt img{filter:grayscale(1) opacity(.45)}
+/* Build 41 M3: the one primary action (from PR #77's contextual objective), the tapped order's
+   generators, upgrade shortfalls and the spend receipt. */
+.boardHeading{height:auto;min-height:40px;padding:4px 2px}
+body[data-art] .boardHeading #hint.primaryAction{flex:1;min-width:0;min-height:40px;display:block;text-align:left;padding:8px 12px;border-radius:14px;background:#16877e;color:#fff;font-size:13px;font-weight:800;line-height:1.25;box-shadow:0 2px 0 #0f5f58;white-space:normal;overflow:hidden;text-overflow:ellipsis}
+body[data-art] .boardHeading #hint.primaryAction[data-kind="deliver"]{background:#f0a93b;color:#3d2606;box-shadow:0 2px 0 #c47d12}
+body[data-art] .boardHeading #hint.primaryAction[data-kind="upgrade"]{background:#e4572e;box-shadow:0 2px 0 #a63b1c}
+body[data-art] .boardHeading #hint.primaryAction:is([data-kind="energy"],[data-kind="space"],[data-kind="orders"],[data-kind="level"]){background:#e3ebf3;color:#24456f;box-shadow:0 2px 0 #c3d3ea}
+#board .tile.hintPair{outline:3px dashed #f0a93b;outline-offset:-3px;z-index:2}
+@media(prefers-reduced-motion:no-preference){#board .tile.hintPair{animation:hintPulse 1.2s ease-in-out infinite}}
+@keyframes hintPulse{50%{outline-color:#ffe08a}}
+#board .tile.orderSource{box-shadow:0 0 0 3px #43bfe7,0 0 14px #43bfe7aa}
+.places button small.short{display:block;font-size:10px;font-weight:700;opacity:.85}
+.beat .beatReceipt{display:inline-block;margin-left:8px;font-size:12px;color:#a63b1c;background:#ffe9dc;border-radius:8px;padding:2px 7px}
+body[data-art] .boardHeading #hint.primaryAction:before{content:none}

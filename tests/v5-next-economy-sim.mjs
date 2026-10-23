@@ -18,7 +18,7 @@ export function freeAction(g,s){
  const gens=b.filter(x=>x?.type==='source');
  return gens.some((x,i)=>gens.some((y,j)=>i!==j&&g.generatorsMerge(x,y)));
 }
-export function simulate(g,policy,speed,seed,{until=4*3600e3,firstOnly=false}={}){
+export function simulate(g,policy,speed,seed,{until=4*3600e3,firstOnly=false,onStep=null}={}){
  const rnd=mulberry(seed),s=g.fresh(0);let now=0;
  const m={speed,seed,idle:0,longestIdle:0,starve:[],lowStates:0,lowFree:0,taps:0,rations:0,orderAges:[],restores:[],gens:{},first:{},first15:{orders:0,restores:0}};
  let idleRun=0,starveStart=null;const born={};
@@ -39,6 +39,7 @@ export function simulate(g,policy,speed,seed,{until=4*3600e3,firstOnly=false}={}
   if(r.event==='deliver'){m.first.order??=now;m.orderAges.push(now-born[a.id]);if(now<15*MIN)m.first15.orders++;}
   if(r.event==='restore'){m.first.restore??=now;m.restores.push(now);if(now<15*MIN)m.first15.restores++;}
   for(const n of r.released??[])m.gens[n.id]??=now;
+  onStep?.(s,now);
  }
  if(starveStart!==null)m.starve.push(now-starveStart);
  m.total=now;m.finished=done();return m;

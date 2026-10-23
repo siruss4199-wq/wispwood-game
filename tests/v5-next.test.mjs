@@ -6,6 +6,7 @@ import {cellPos} from '../v5/core.mjs';
 import {xpToNext} from '../v5/levels.mjs';
 import {secondChain,FREE_SWAPS,AD_SWAPS,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,priceOf,totalBuilt,ORDER_TOP,SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,makeOrder,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
 import {AREAS,TASKS} from '../v5/next/areas.mjs';
+import {primaryAction} from '../v5/next/guide.mjs';
 import {kit} from '../v5/kits.mjs';
 import {maxTier as maxTierOf} from '../v5/next/chains.mjs';
 import {nextAction} from './v5-next-policy.mjs';
@@ -596,4 +597,25 @@ test('second parts are spread evenly over the other open chains, for 2 to 5 open
  assert.equal(secondChain(['rig'],'rig',2,1),null);
  for(let n=0;n<200;n++){const c=secondChain(['rig','chart','lamp'],'chart',3,n);assert.ok(['rig','lamp'].includes(c));}
  assert.equal(secondChain(['rig','lamp'],'rig',5,1),null,'Lantern Kiln parts stop at tier 4');
+});
+
+// Build 41 M3: one primary action, in order: deliver, upgrade, a wanted pair, the wanted
+// generator, a crate key, any pair, then why nothing can happen.
+test('the primary action names the one next step',()=>{
+ const s=fresh(0);assert.deepEqual(primaryAction(s),{kind:'tap',index:ROVER,id:'rig',label:'Tap Rivet Rover for a Copper offcut'});
+ s.board[14]=item('rig',0);s.board[16]=item('rig',0);
+ assert.deepEqual(primaryAction(s).kind,'merge');assert.deepEqual(primaryAction(s).cells,[14,16]);
+ s.board[20]=item('rig',2);const d=primaryAction(s);assert.equal(d.kind,'deliver');assert.equal(d.id,'o0');
+ s.coins=15;s.board[20]=null;assert.equal(primaryAction(s).kind,'upgrade');assert.match(primaryAction(s).label,/Clear the landing path/);
+ // The tapped order comes first: a Pocket winch (tier 3) is wanted, a pair of Split spanners leads to it.
+ const t=fresh(0);t.board[15]=source('chart');t.board[14]=item('rig',2);t.board[16]=item('rig',2);t.board[20]=item('chart',0);t.board[22]=item('chart',0);
+ t.orders=[{id:'a',who:'neri',needs:[{family:'chart',tier:1,count:1}],coins:5},{id:'b',who:'ivo',needs:[{family:'rig',tier:3,count:1}],coins:25}];
+ assert.deepEqual(primaryAction(t).cells,[20,22]);assert.deepEqual(primaryAction(t,'b').cells,[14,16]);
+ // Out of energy with nothing to merge; a full board with nothing to merge.
+ const e=fresh(0);e.energy=0;assert.equal(primaryAction(e).kind,'energy');
+ const f=fresh(0);let k=0;for(let i=0;i<f.board.length;i++)if(f.board[i]===null)f.board[i]=item(['rig','chart','rope','shell','lamp','rig','chart','rope'][k++],k<6?0:1);
+ assert.equal(primaryAction(f).kind,'space');
+ // A crate key in hand when no order part can be made (no energy).
+ const c=fresh(0);c.energy=0;c.board[15]=item('rig',2);c.orders=c.orders.map(o=>({...o,needs:[{family:'chart',tier:1,count:1}]}));
+ assert.deepEqual(primaryAction(c),{kind:'unseal',cells:[15,9],label:'Lay the Split spanner on its crate'});
 });

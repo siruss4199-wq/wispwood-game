@@ -2,6 +2,7 @@
 // generators → merge → crew orders → coins → upgrade the coast's places on the beach screen.
 import {swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,newestGenerator,cog,token,SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,orderProgress,nextTask,currentArea,areaDone,upgrades,stageOf,builtCount,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys,reachable,generatorsMerge,MAX_GENERATOR_LEVEL,GLASS_HITS,nextKind,UNLOCK_LEVEL,GENERATOR_ORDER} from './game.mjs';
 import {AREAS,STAGES} from './areas.mjs';
+import {primaryAction} from './guide.mjs';
 import {rewardedAd} from './ads.mjs';
 import {cellPos} from '../core.mjs';
 import {CHAINS,draw,maxTier,chainsAt,GENERATOR_CHAINS} from './chains.mjs';
@@ -17,7 +18,7 @@ import {sound,reduced,burst,rewardFlight,moment as sharedMoment} from '../feedba
 function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el=document.querySelector('.moment');const top=[...document.querySelectorAll('dialog[open]')].pop();if(el&&top)top.append(el);if(!x||!el)return;const icon=document.createElement('span');icon.style.cssText='float:left;width:42px;height:42px;margin-right:10px';icon.innerHTML=draw(x);icon.firstElementChild.style.cssText='width:100%;height:100%';el.prepend(icon);}
 
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 40 · worksite places drawn by stage';
+export const BUILD='Build 41 (in progress) · one next step';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
@@ -61,6 +62,7 @@ function render(){
  $('#dailyButton').hidden=!giftReady();
  $('#adEnergyButton').hidden=!(state.energy<5&&shopLeft(state,'adEnergy',today())>0);
  {const n=bookReady(state).length+BOOK_CHAINS.filter(f=>pageReady(state,f)).length;$('#bookCount').hidden=!n;$('#bookCount').textContent=n;$('#bookButton').classList.toggle('ready',n>0);}
+ calmBadges();
  $('#rationButton').hidden=state.energy>3;
  const wait=rationWait(state,Date.now());$('#rationButton').textContent=wait>0?`Field ration in ${clock(wait)}`:'Field ration · +8 ϟ';$('#rationButton').disabled=wait>0;
  $('#soundButton').textContent=sound.enabled()?'Sound on':'Sound off';
@@ -85,6 +87,8 @@ function renderOrderTools(){
 function renderBoard(){
  const sel=state.board[selected],want=wantedKeys(),focus=state.orders.find(o=>o.id===focusOrder);
  const focusKeys=new Set(focus?.needs.map(r=>r.family+r.tier)??[]);
+ // The tapped order's generators glow too (Build 41 M3, from PR #77).
+ const focusGens=new Set(focus?.needs.filter(r=>count(state,r)<r.count).map(r=>CHAINS[r.family].gen)??[]);
  board.innerHTML=state.board.map((x,i)=>{
   const [r,c]=cellPos(i),locked=x?.type==='source'&&!sourceOpen(state,x.id);
   const twin=sel&&i!==selected&&(sel.type==='item'&&(x?.type==='item'&&matches(x,sel)&&sel.tier<maxTier(sel.family)||x?.type==='cargo'&&reachable(state,i)&&matches(sel,x.key))||sel.type==='kit'&&kitsMerge(sel,x)||generatorsMerge(sel,x)||sel.type==='cog'&&x?.type==='source'&&producerLevel(x)<MAX_GENERATOR_LEVEL||sel.type==='token'&&x?.type==='item'&&swappable(x)||sel.type==='cargo'&&matches(x,sel.key));
@@ -96,12 +100,15 @@ function renderBoard(){
   else if(x?.type==='cargo'&&(x.find?.type==='source'||x.find?.type==='cog'||x.find?.type==='token'))badge=`<span class="cargoGlow ${x.find.type!=='source'?'cogGlow':''}" aria-hidden="true"></span>`;
   else if(wanted)badge='<span class="useBadge" aria-hidden="true">★</span>';
   const deep=x?.type==='cargo'&&!reachable(state,i),ready=x?.type==='cargo'&&!deep&&state.board.some(y=>matches(y,x.key));
-  return `<button class="tile ${x?.type??'empty'} ${x?.cracks?'cracked':''} ${ready?'keyReady':''} ${deep?'deep':''} ${locked?'locked':''} ${selected===i?'selected':''} ${twin?'match':''} ${wanted?'wanted':''} ${focused?'nextAction':''}" data-index="${i}" style="grid-row:${r+1};grid-column:${c+1}" ${x?.family||x?.id?`data-family="${x.family??x.id}"`:''} ${x?.type==='cargo'?`data-key="${x.key.family}"`:''} aria-label="${nameOf(x)}${locked?' · locked':''}. Space ${i+1}" aria-pressed="${selected===i}">${draw(deep?{...x,deep:true}:x)}${badge}</button>`;
+  return `<button class="tile ${x?.type??'empty'} ${x?.cracks?'cracked':''} ${ready?'keyReady':''} ${deep?'deep':''} ${locked?'locked':''} ${selected===i?'selected':''} ${twin?'match':''} ${wanted?'wanted':''} ${focused?'nextAction':''} ${x?.type==='source'&&focusGens.has(x.id)?'orderSource':''}" data-index="${i}" style="grid-row:${r+1};grid-column:${c+1}" ${x?.family||x?.id?`data-family="${x.family??x.id}"`:''} ${x?.type==='cargo'?`data-key="${x.key.family}"`:''} aria-label="${nameOf(x)}${locked?' · locked':''}. Space ${i+1}" aria-pressed="${selected===i}">${draw(deep?{...x,deep:true}:x)}${badge}</button>`;
  }).join('');
  $('#free').textContent=state.board.filter(x=>x===null).length+' spaces';
 }
 // The shed (build 32): four spaces under the board; drag onto one to store, tap it to take out.
 function renderShed(){
+ // The shed shows when something is in it or the board is getting full (Build 41 M4); a part can
+ // always be stored from its own panel (Shed), which brings the shed out.
+ $('#shed').hidden=!(state.shed.some(Boolean)||state.board.filter(y=>y===null).length<=4);
  $('#shed').innerHTML=`<span class="shedLabel">SHED</span>`+state.shed.map((x,k)=>`<button class="shedSlot ${x?'full':''}" data-slot="${k}" aria-label="${x?nameOf(x)+' · tap to put it back on the board':'Empty shed space'}">${x?draw(x):''}</button>`).join('');
 }
 function renderSelection(){
@@ -111,7 +118,9 @@ function renderSelection(){
  if(x.type==='item'){
   desc=x.tier<maxTier(x.family)?`Merge with a twin → ${CHAINS[x.family].names[x.tier+1]}.`:'Top of its chain.';
   if(wantedKeys().has(x.family+x.tier))desc='★ A crew order wants this. '+desc;
-  buttons='<button data-action="recycle">Recycle · +1 ϟ</button>';
+  // Clearing a part only appears when the board is nearly full (Build 41 M4): it is the way out of
+  // a full board, not an everyday energy trick.
+  if(state.board.filter(y=>y===null).length<=2)buttons='<button data-action="recycle">Clear space · +1 ϟ</button>';
  }else if(x.type==='source'){
   const chain=CHAINS[GENERATOR_CHAINS[x.id][0][0]];
   const next=nextKind(x.id),waiting=next&&!state.board.some(y=>y?.type==='source'&&y.id===next);
@@ -132,18 +141,25 @@ function renderSelection(){
 }
 const SHED_TYPES_UI=['item','kit','cog','token'];
 const has=id=>state.board.some(x=>x?.type==='source'&&x.id===id);
+// The one primary action (Build 41 M3, from PR #77's contextual objective): what to do next,
+// and tapping it does it or shows where.
+let guide=null;
 function renderHint(){
- const task=nextTask(state),ready=state.orders.find(o=>orderItems(state,o));let hint;
- if(!state.merges)hint=state.board.filter(x=>x?.type==='item').length<2?'START · Tap Rivet Rover for a Copper offcut':'START · Drag a Copper offcut onto its twin';
- else if(task&&state.coins>=task.cost)hint=`${task.cost} coins ready · upgrade the ${currentArea(state).name} ↑`;
- else if(ready)hint='Order ready · tap it to collect coins';
- else if(cargoKeys(state).some(k=>state.board.some(y=>matches(y,k))))hint='Lay a matching part on a crate to open it';
- else if(state.energy<1){const t=refillTimes(state,Date.now());hint='Out of energy · +1 in '+clock(t?.next??0);}
- else{// Next generator: which one has to reach level 2 to bring it out.
-  const g=GENERATOR_ORDER.find(g=>has(g)&&nextKind(g)&&!has(nextKind(g)));
-  hint=g?`${SOURCES[g].name} Lv${UNLOCK_LEVEL} → ${SOURCES[nextKind(g)].name} · merge copies`:'Make the parts the crew orders want';}
- $('#hint').textContent=hint;
+ guide=primaryAction(state,focusOrder);let label=guide.label;
+ if(guide.kind==='energy'){const t=refillTimes(state,Date.now());label+=' · +1 in '+clock(t?.next??0);}
+ const b=$('#hint');b.textContent=label;b.dataset.kind=guide.kind;
+ // The very first merge shows its pair without being asked.
+ if(guide.kind==='merge'&&!state.merges)for(const i of guide.cells)board.querySelector(`[data-index="${i}"]`)?.classList.add('hintPair');
 }
+$('#hint').onclick=()=>{
+ const g=guide;if(!g)return;
+ if(g.kind==='deliver')run({type:'deliver',id:g.id});
+ else if(g.kind==='upgrade')showMap();
+ else if(g.kind==='tap'){selected=g.index;run({type:'produce',id:g.id,index:g.index});render();}
+ else if(g.kind==='merge'||g.kind==='unseal'){for(const i of g.cells)board.querySelector(`[data-index="${i}"]`)?.classList.add('hintPair');$('#message').textContent=g.kind==='merge'?'Drag one of the two marked parts onto the other.':'Drag the marked part onto the marked crate.';}
+ else if(g.kind==='space')$('#message').textContent='Deliver a ready order, merge two twins, or tap a part and choose Shed.';
+ else if(g.kind==='energy')$('#message').textContent='Energy refills +1 every 2 minutes. Merges, crates and deliveries cost nothing.';
+};
 function header(){
  if(tick(state,Date.now())){persist();render();}
  const t=refillTimes(state,Date.now());$('#energyTimer').textContent=t?'+1 '+clock(t.next):'FULL';
@@ -337,7 +353,7 @@ function showMap(){
   const status=n>=STAGES?'done':afford?'ready':u?'next':'locked';
   const now=n?t.stages[n-1].name:t.name;
   const next=n>=STAGES?'Complete':!u?'Restore the place before it first':n?`Next: ${u.name}`:'Not restored yet';
-  return `<li class="place" data-status="${status}" data-place="${t.id}"><span class="placeIcon ${t.art&&!n?'unbuilt':''}">${placeArt(t,n)}</span><span><strong>${now}</strong>${pips(n)}<small>${next}</small></span>${n>=STAGES?`<button data-replay="${t.id}" aria-label="Replay ${t.name}">✓</button>`:u?`<button data-restore="${t.id}" ${afford?'':'disabled'}>${COIN} ${u.cost}</button>`:'<button disabled aria-label="Locked">🔒</button>'}</li>`;
+  return `<li class="place" data-status="${status}" data-place="${t.id}"><span class="placeIcon ${t.art&&!n?'unbuilt':''}">${placeArt(t,n)}</span><span><strong>${now}</strong>${pips(n)}<small>${next}</small></span>${n>=STAGES?`<button data-replay="${t.id}" aria-label="Replay ${t.name}">✓</button>`:u?`<button data-restore="${t.id}" ${afford?'':'disabled'} aria-label="${afford?`Upgrade for ${u.cost} coins`:`Needs ${u.cost-state.coins} more coins`}">${COIN} ${u.cost}${afford?'':`<small class="short">${u.cost-state.coins} more</small>`}</button>`:'<button disabled aria-label="Locked">🔒</button>'}</li>`;
  }).join('');
  // Finished areas stay listed above the current one, the ones still to come below it.
  const before=AREAS.slice(0,state.area).map(a=>`<section class="mapArea done"><div class="mapHead"><img src="assets/premium/${a.picture}-vibrant.webp" alt=""><div><h2>${a.name}</h2><b>Complete ✓</b></div></div></section>`).join('');
@@ -351,7 +367,7 @@ function showMap(){
  if(!$('#beat').open)growScene();
 }
 $('#mapContent').addEventListener('click',e=>{
- const r=e.target.closest('[data-restore]');if(r){const res=run({type:'restore',id:r.dataset.restore});if(res.ok&&!res.effects.nextArea)lastStage={id:res.task,stage:res.stage};showMap();return;}
+ const r=e.target.closest('[data-restore]');if(r){const cost=upgrades(state).find(u=>u.id===r.dataset.restore)?.cost;receipt=cost;const res=run({type:'restore',id:r.dataset.restore});if(!res.ok)receipt=null;if(res.ok&&!res.effects.nextArea)lastStage={id:res.task,stage:res.stage};showMap();return;}
  const p=e.target.closest('[data-replay]');if(p){showBeat(p.dataset.replay,{},STAGES);return;}
  if(e.target.closest('[data-back]'))$('#coastMap').close();
 });
@@ -377,9 +393,11 @@ function showBeat(id,effects,stage=stageOf(state,id)){
   for(const i of [effects?.kit,effects?.copy])if(i>=0)board.querySelector(`[data-index="${i}"]`)?.classList.add('unsealed');});
  sound.play('milestone');
 }
+// The coins a bought stage cost, said on its story card (Build 41 M3, from PR #77's receipt).
+let receipt=null;
 function playLines(title,lines,done){
- let n=0;const dlg=$('#beat');
- const show=()=>{const [who,line]=lines[n];$('#beatContent').innerHTML=`<div class="beat"><small>${title}</small><div class="beatLine">${portrait(who)}<p><b>${CREW[who].name}</b>${line}</p></div><div class="beatDots">${lines.map((_,k)=>`<i class="${k===n?'on':''}"></i>`).join('')}</div><button class="primary" id="beatNext">${n<lines.length-1?'Next':'Continue'}</button></div>`;
+ let n=0;const dlg=$('#beat'),spent=receipt;receipt=null;
+ const show=()=>{const [who,line]=lines[n];$('#beatContent').innerHTML=`<div class="beat"><small>${title}</small>${spent?`<b class="beatReceipt">−${spent} coins</b>`:''}<div class="beatLine">${portrait(who)}<p><b>${CREW[who].name}</b>${line}</p></div><div class="beatDots">${lines.map((_,k)=>`<i class="${k===n?'on':''}"></i>`).join('')}</div><button class="primary" id="beatNext">${n<lines.length-1?'Next':'Continue'}</button></div>`;
   $('#beatNext').onclick=()=>{n++;if(n<lines.length)show();else{dlg.close();done?.();}};};
  show();if(!dlg.open)dlg.showModal();
 }
@@ -389,5 +407,8 @@ function newGeneratorMoment(gen){const c=CHAINS[GENERATOR_CHAINS[gen][0][0]];mom
 function showIntro(){const a=currentArea(state);if(a.intro)playLines(a.name,a.intro);}
 
 $('#build').textContent='COAST CAMP · '+BUILD.toUpperCase();
-render();header();setInterval(()=>{header();if(state.energy<1)renderHint();offerGift();$('#dailyButton').hidden=!giftReady();},1000);
+// At most two things call for attention outside the board at once (Build 41 M3), in this order:
+// an affordable upgrade, energy from an ad when low, the daily gift, parts waiting in the book.
+function calmBadges(){let n=0;for(const el of [$('#mapReady'),$('#adEnergyButton'),$('#dailyButton'),$('#bookCount')]){if(el.hidden)continue;if(n>=2){el.hidden=true;if(el.id==='bookCount')$('#bookButton').classList.remove('ready');}else n++;}}
+render();header();setInterval(()=>{header();if(state.energy<1)renderHint();offerGift();$('#dailyButton').hidden=!giftReady();calmBadges();},1000);
 if(!state.moves)showIntro();
