@@ -151,6 +151,12 @@ async function perform(page,a){
    assert.equal(await page.evaluate(()=>document.querySelector('#shop').scrollWidth<=document.querySelector('#shop').clientWidth),true,'no sideways scroll in the shop');
    await page.locator('#shop .close').tap();
    for(const sel of ['#shopButton','#bookButton']){const b=await page.locator(sel).boundingBox();assert.ok(b.height>=40&&b.x+b.width<=width,sel+' fits');}
+   // Build 36: a tapped order that is not ready can be changed; the gold one cannot.
+   {const st=await read(page),o=st.orders.find(o=>!o.story&&!o.needs.every(r=>st.board.filter(x=>x?.type==='item'&&x.family===r.family&&x.tier===r.tier).length>=r.count));
+    if(o){await page.locator(`[data-order="${o.id}"]`).tap();assert.equal(await page.locator('#orderTools [data-swap]').count(),1,'a free change is offered');
+     await page.locator('#orderTools [data-swap]').tap();await page.waitForFunction(id=>!JSON.parse(localStorage.getItem('vaultwake-v5-coast')).orders.some(o=>o.id===id),o.id,{timeout:4000});
+     assert.equal((await read(page)).swaps.n,1);assert.equal(await page.locator('#orderTools').isHidden(),true);}
+    const g=(await read(page)).orders.find(o=>o.story);if(g){await page.locator(`[data-order="${g.id}"]`).tap();assert.equal(await page.locator('#orderTools button').count(),0,'the gold order stays');await page.locator(`[data-order="${g.id}"]`).tap();}}
    // Build 31: the beach's last stage opens the Survey Worksite, its intro and its screen.
    await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.built={'beach-path':3,'beach-tent':3,'beach-mast':3,'beach-workshop':3,'beach-pier':3,'beach-beacon':3,'beach-cliff':2};s.coins=200;localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
    await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
@@ -164,7 +170,7 @@ async function perform(page,a){
    assert.equal(await page.locator('#mapButton span').textContent(),'SITE');assert.equal(await page.locator('#areaBrand').textContent(),'SURVEY WORKSITE');
    {const b=await page.locator('#mapButton').boundingBox();assert.ok(b.x+b.width<=width,'the SITE button fits the header');}
    assert.deepEqual(errors,[]);
-   console.log(`${engine} ${width} Coast Camp: intro → orders → 2 restorations → reload → map → worksite → daily gift → shed → book → shop passed`);
+   console.log(`${engine} ${width} Coast Camp: intro → orders → 2 restorations → reload → map → worksite → daily gift → shed → book → shop → order change passed`);
    await context.close();
   }}finally{await browser.close();}
  }

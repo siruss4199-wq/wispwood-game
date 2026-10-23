@@ -1,6 +1,6 @@
 // Coast Camp: the new-loop page (v5/play.html). Same look as Classic V5, one loop:
 // generators → merge → crew orders → coins → upgrade the coast's places on the beach screen.
-import {SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,newestGenerator,cog,token,SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,orderProgress,nextTask,currentArea,areaDone,upgrades,stageOf,builtCount,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys,reachable,generatorsMerge,MAX_GENERATOR_LEVEL,GLASS_HITS,nextKind,UNLOCK_LEVEL,GENERATOR_ORDER} from './game.mjs';
+import {swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,newestGenerator,cog,token,SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,orderProgress,nextTask,currentArea,areaDone,upgrades,stageOf,builtCount,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys,reachable,generatorsMerge,MAX_GENERATOR_LEVEL,GLASS_HITS,nextKind,UNLOCK_LEVEL,GENERATOR_ORDER} from './game.mjs';
 import {AREAS,STAGES} from './areas.mjs';
 import {rewardedAd} from './ads.mjs';
 import {cellPos} from '../core.mjs';
@@ -17,7 +17,7 @@ import {sound,reduced,burst,rewardFlight,moment as sharedMoment} from '../feedba
 function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el=document.querySelector('.moment');const top=[...document.querySelectorAll('dialog[open]')].pop();if(el&&top)top.append(el);if(!x||!el)return;const icon=document.createElement('span');icon.style.cssText='float:left;width:42px;height:42px;margin-right:10px';icon.innerHTML=draw(x);icon.firstElementChild.style.cssText='width:100%;height:100%';el.prepend(icon);}
 
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 35 · first orders need merging';
+export const BUILD='Build 36 · Lantern Kiln and order changes';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
@@ -69,6 +69,15 @@ function renderOrders(){
   const place=o.story&&AREAS[state.area]?.tasks.find(t=>t.id===o.story);
   return `<button class="requestCard ${ready?'ready':''} ${place?'storyOrder':''} ${focusOrder===o.id?'active':''}" data-order="${o.id}" aria-label="${place?`For the ${AREAS[state.area].name} (${place.name}): `:''}${who.name} asks for ${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier))).join(', ')}. ${ready?'Ready: tap to deliver.':'In progress.'} Reward ${o.coins} coins"><span class="requestCrew">${place?`<span class="storyBadge" aria-hidden="true">${iconArt(place.icon)}</span>`:portrait(o.who)}<b class="requestLane"><em>${who.name}</em>${who.role}</b></span><span class="requestItems">${p.map(r=>`<span>${draw(item(r.family,r.tier))}<b>${r.have}/${r.count}</b></span>`).join('')}</span><span class="requestReward">+${o.coins} ${COIN}</span><strong>${ready?'✓ DELIVER':'MAKE'}</strong></button>`;
  }).join('')}</div>`;
+ renderOrderTools();
+}
+// A tapped order that is not ready can be changed (build 36): free ones first, then after an ad.
+function renderOrderTools(){
+ const o=state.orders.find(o=>o.id===focusOrder),bar=$('#orderTools');
+ if(!o||orderItems(state,o)){bar.hidden=true;bar.innerHTML='';return;}
+ const day=today(),free=swapsLeft(state,day),ads=adSwapsLeft(state,day);
+ bar.hidden=false;
+ bar.innerHTML=o.story?`<span>The gold order is for the ${currentArea(state).name}'s next stage: it stays.</span>`:`<span>Stuck on ${CREW[o.who].name}'s order?</span>`+(free>0?`<button data-swap>↻ New order <small>${free} free today</small></button>`:ads>0?'<button class="adOffer" data-swap-ad>▶ New order</button>':'<button disabled>No more changes today</button>');
 }
 function renderBoard(){
  const sel=state.board[selected],want=wantedKeys(),focus=state.orders.find(o=>o.id===focusOrder);
@@ -146,7 +155,7 @@ function run(a){
  if(!r.ok){$('#message').textContent=r.message;sound.play('tap');return r;}
  $('#message').textContent=r.message;
  if(r.event==='merge'||r.event==='move'||r.event==='producerUp'||r.event==='unseal')selected=r.event==='producerUp'||r.event==='unseal'?null:r.index;
- if(r.event==='deliver'||r.event==='store'){focusOrder=null;selected=null;}
+ if(r.event==='deliver'||r.event==='store'||r.event==='swapOrder'){focusOrder=null;selected=null;}
  persist();render();
  const tile=r.index!=null?board.querySelector(`[data-index="${r.index}"]`):null;
  for(const j of r.cracked??[])board.querySelector(`[data-index="${j}"]`)?.classList.add('glassCrack');
@@ -161,6 +170,7 @@ function run(a){
  if(r.event==='store'){$(`#shed [data-slot="${r.slot}"]`)?.classList.add('merge-pop');sound.play('tap');}
  if(r.event==='unstore'){tile?.classList.add('merge-pop');sound.play('tap');}
  if(r.event==='shop'){const o=SHOP[r.id];if(r.energy)rewardFlight(($('#shop').open?$('#shopContent'):$('#adEnergyButton')).getBoundingClientRect(),$('#energyPill').getBoundingClientRect(),`+${r.energy} ϟ`);else moment(o.name+(r.ad?' · thanks for watching':''),r.slot!=null?'In the shed: the board is full.':'On the board next to Rivet Rover.',r.thing);tile?.classList.add('unsealed');sound.play('rare');}
+ if(r.event==='swapOrder'){const c=$(`[data-order="${r.id}"]`);c?.classList.add('merge-pop');sound.play('tap');}
  if(r.event==='book'){sound.play('rare');}
  if(r.event==='bookPage'){sound.play('milestone');moment('Page complete!',`Every ${GENERATOR_NAMES_UI[r.family]} part found · a Brass cog`+(r.slot!=null?' (in the shed)':''),{type:'cog'});tile?.classList.add('unsealed');}
  if(r.event==='daily'){const g=r.gift;if(g.coins)rewardFlight($('#dailyButton').getBoundingClientRect(),$('#coinPill').getBoundingClientRect(),`+${g.coins} coins`);if(g.energy)rewardFlight($('#dailyButton').getBoundingClientRect(),$('#energyPill').getBoundingClientRect(),`+${g.energy} ϟ`);tile?.classList.add('unsealed');sound.play('milestone');moment(`Daily gift · day ${g.day} of ${DAILY.length}`,giftText(DAILY[g.day-1])+(g.slot!=null?' · in the shed (the board is full)':''),g.thing??null);}
@@ -252,6 +262,7 @@ $('#bookContent').addEventListener('click',e=>{
  showBook();
 });
 $('#bookButton').onclick=showBook;
+$('#orderTools').addEventListener('click',e=>{const id=focusOrder;if(e.target.closest('[data-swap]'))run({type:'swapOrder',id,day:today()});else if(e.target.closest('[data-swap-ad]'))watchAd({type:'swapOrder',id,day:today(),ad:true});});
 // ---------- the shop and rewarded ads (build 34) ----------
 const offerThing=o=>o.kit?{type:'kit',family:newestGenerator(state),size:o.kit,left:3}:o.token?token():o.cog?cog():null;
 function showShop(){
@@ -265,9 +276,9 @@ function showShop(){
   <h3>For coins</h3><ol class="shopList">${ids.filter(id=>!SHOP[id].ad).map(row).join('')}</ol>`;
  if(!$('#shop').open)$('#shop').showModal();
 }
-$('#shopContent').addEventListener('click',e=>{const b=e.target.closest('[data-buy]'),ad=e.target.closest('[data-ad]');if(b){run({type:'buy',id:b.dataset.buy,day:today()});showShop();}else if(ad)watchAd(ad.dataset.ad);});
+$('#shopContent').addEventListener('click',e=>{const b=e.target.closest('[data-buy]'),ad=e.target.closest('[data-ad]');if(b){run({type:'buy',id:b.dataset.buy,day:today()});showShop();}else if(ad)watchAd({type:'adReward',id:ad.dataset.ad});});
 $('#shopButton').onclick=showShop;
-$('#adEnergyButton').onclick=()=>watchAd('adEnergy');
+$('#adEnergyButton').onclick=()=>watchAd({type:'adReward',id:'adEnergy'});
 // Where no ad network is on the page (the playtest page), a stand-in counts down instead;
 // closing it early gives no reward, like a real rewarded ad.
 function adStandIn(){
@@ -280,11 +291,12 @@ function adStandIn(){
  });
 }
 let adBusy=false;
-async function watchAd(id){
+// The action is run only when the ad finished; today's day is filled in then.
+async function watchAd(action){
  if(adBusy)return;adBusy=true;const wasOn=sound.enabled();
  const r=await rewardedAd({onStart(){if(sound.enabled())sound.toggle();},onEnd(){if(wasOn&&!sound.enabled())sound.toggle();},standIn:adStandIn});
  adBusy=false;
- if(r==='finished')run({type:'adReward',id,day:today()});
+ if(r==='finished')run({...action,day:today()});
  else $('#message').textContent=r==='skipped'?'The ad was closed early: no reward.':'No ad is available right now. Try again later.';
  if($('#shop').open)showShop();render();
 }

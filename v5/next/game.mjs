@@ -50,6 +50,12 @@ export const SHOP={
  adCrate:{name:'Driftwood crate',ad:true,kit:1,limit:2}
 };
 export const shopLeft=(s,id,day)=>SHOP[id].limit-(day>s.shop.day?0:s.shop.bought[id]??0);
+// Changing an order (build 36, user: "gatssan taskaas ehel"): a crew order the player is stuck
+// on can be swapped for a new one, three times a day for free and then after a rewarded ad (five
+// a day). The gold story order cannot be changed: it is the coast's next stage.
+export const FREE_SWAPS=3,AD_SWAPS=5;
+export const swapsLeft=(s,day)=>FREE_SWAPS-(day>s.swaps.day?0:s.swaps.n);
+export const adSwapsLeft=(s,day)=>AD_SWAPS-(day>s.swaps.day?0:s.swaps.ads);
 export const DAILY=[{energy:10},{coins:25},{kit:1},{energy:15},{token:1},{coins:50},{cog:1}];
 // Coast Camp's own crates (the generator boxes of v5/kits.mjs, by size).
 export const CRATES=['Driftwood crate','Sea chest','Captain\'s trunk'];
@@ -148,7 +154,7 @@ export function fresh(now=Date.now()){
  for(let i=0;i<BOARD_SIZE;i++)if(!CAMP.includes(i))board[i]=GLASS[i]?glass(...GLASS[i]):cargoAt(i);
  const s={version:VERSION,board,energy:40,energyAt:now,coins:0,level:freshLevel(),taps:{},
   orders:[],slots:3,orderSeq:0,ordersDone:0,area:0,built:{},found:[],moves:0,merges:0,lastAt:now,
-  shed:Array(SHED_SLOTS).fill(null),daily:{day:-1,count:0},book:{claimed:[],pages:[]},shop:{day:-1,bought:{}}};
+  shed:Array(SHED_SLOTS).fill(null),daily:{day:-1,count:0},book:{claimed:[],pages:[]},shop:{day:-1,bought:{}},swaps:{day:-1,n:0,ads:0}};
  for(const g of Object.keys(GENERATOR_CHAINS))s.taps[g]=0;
  for(let i=0;i<s.slots;i++)s.orders.push(makeOrder(s));
  note(s);return s;
@@ -429,6 +435,21 @@ function step(s,a,now){
   return {ok:true,event:'bookPage',family:a.family,index:i>=0?i:null,slot:i>=0?null:k,message:`${CHAINS[a.family].names.at(-1)} page complete · a Brass cog`};
  }
  // The shop: buy with coins, or take an ad offer once its ad has played. Stock is per local day.
+ // Change a crew order: the new one is made while the old still stands, so it asks for
+ // something else.
+ if(a.type==='swapOrder'){
+  const lane=s.orders.findIndex(o=>o?.id===a.id),o=s.orders[lane];
+  if(!o)return fail('That order has already changed.');
+  if(o.story)return fail('The gold order is for the coast\'s next stage: it cannot be changed.');
+  if(!Number.isInteger(a.day)||a.day<Math.max(0,s.swaps.day))return fail('Unknown day.');
+  const free=swapsLeft(s,a.day)>0;
+  if(!free&&!a.ad)return fail('No free order changes left today. Watch a short ad to change it.');
+  if(!free&&adSwapsLeft(s,a.day)<1)return fail('No more order changes today.');
+  if(a.day>s.swaps.day)s.swaps={day:a.day,n:0,ads:0};
+  if(free)s.swaps.n++;else s.swaps.ads++;
+  const next=makeOrder(s);s.orders[lane]=next;
+  return {ok:true,event:'swapOrder',id:next.id,old:o.id,ad:!free,message:'A new crew order'};
+ }
  if(a.type==='buy'||a.type==='adReward'){
   const o=SHOP[a.id];if(!o||!!o.ad!==(a.type==='adReward'))return fail('Unknown offer.');
   if(!Number.isInteger(a.day)||a.day<Math.max(0,s.shop.day))return fail('Unknown day.');
@@ -533,6 +554,9 @@ export function load(raw,now=Date.now()){
   s.book??={claimed:[],pages:[]};
   // Build 34 added the shop's daily stock.
   s.shop??={day:-1,bought:{}};
+  // Build 36 added order changes.
+  s.swaps??={day:-1,n:0,ads:0};
+  if(!s.swaps||!integer(s.swaps.day,-1,1e7)||!integer(s.swaps.n,0,FREE_SWAPS)||!integer(s.swaps.ads,0,AD_SWAPS))return fresh(now);
   if(!s.shop||!integer(s.shop.day,-1,1e7)||!s.shop.bought||typeof s.shop.bought!=='object'||Array.isArray(s.shop.bought)||!Object.entries(s.shop.bought).every(([id,n])=>SHOP[id]&&integer(n,0,SHOP[id].limit)))return fresh(now);
   const bookKey=k=>typeof k==='string'&&/^[a-z]+\d$/.test(k)&&BOOK_CHAINS.includes(k.slice(0,-1))&&+k.slice(-1)<=maxTier(k.slice(0,-1));
   if(!s.book||!Array.isArray(s.book.claimed)||!Array.isArray(s.book.pages)||!s.book.claimed.every(k=>bookKey(k)&&s.found.includes(k))||new Set(s.book.claimed).size!==s.book.claimed.length||!s.book.pages.every(f=>BOOK_CHAINS.includes(f)&&bookKeys(f).every(k=>s.book.claimed.includes(k))))return fresh(now);

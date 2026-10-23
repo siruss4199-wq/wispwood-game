@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {cellPos} from '../v5/core.mjs';
 import {xpToNext} from '../v5/levels.mjs';
-import {SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,priceOf,totalBuilt,ORDER_TOP,SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,makeOrder,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
+import {FREE_SWAPS,AD_SWAPS,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,priceOf,totalBuilt,ORDER_TOP,SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,makeOrder,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
 import {AREAS,TASKS} from '../v5/next/areas.mjs';
 import {kit} from '../v5/kits.mjs';
 import {nextAction} from './v5-next-policy.mjs';
@@ -398,20 +398,21 @@ test('a save that finished the beach before the worksite existed goes up the cli
 
 test('the economy is tight: energy runs low through the worksite without long waits',()=>{
  // A quick player (an action every 4 s) runs short of energy here; slower ones barely wait.
- const s=fresh(0);let now=0,waited=0,lowest=99,beach=null,shell=null;const STEP=4000;
+ const s=fresh(0);let now=0,waited=0,lowest=99,beach=null,shell=null,lamp=null;const STEP=4000;
  assert.equal(s.energy,40,'a new camp starts with 40 energy');
  while(!(s.area===1&&areaDone(s))&&now<3*3600e3){
   tick(s,now);const a=nextAction(s);if(!a){now+=30000;waited+=30000;continue;}
-  const r=ok(s,a,now);now+=STEP;if(r.effects?.nextArea)beach=now;if(r.released?.some(n=>n.id==='shell'))shell=now;
+  const r=ok(s,a,now);now+=STEP;if(r.effects?.nextArea)beach=now;if(r.released?.some(n=>n.id==='shell'))shell=now;if(r.released?.some(n=>n.id==='lamp'))lamp=now;
   if(beach&&now>beach+5*60000)lowest=Math.min(lowest,s.energy);
  }
  assert.ok(areaDone(s,AREAS[1]),'the worksite is finished');
  assert.ok(beach>=25*60000&&beach<=60*60000,`the beach took ${(beach/60000).toFixed(1)} min`);
  assert.ok(now-beach>=20*60000&&now-beach<=60*60000,`the worksite took ${((now-beach)/60000).toFixed(1)} min`);
  assert.ok(shell>beach,'the Shell Trap comes out at the worksite');
+ assert.ok(lamp>shell&&lamp<now,'the Lantern Kiln comes out before the worksite is finished (build 36)');
  assert.ok(lowest<5,'energy runs low at the worksite');
  assert.ok(waited<=20*60000,`waited ${(waited/60000).toFixed(1)} min`);
- console.log(JSON.stringify({beach:+(beach/60000).toFixed(1),worksite:+((now-beach)/60000).toFixed(1),waited:waited/60000,shell:+(shell/60000).toFixed(1)}));
+ console.log(JSON.stringify({beach:+(beach/60000).toFixed(1),worksite:+((now-beach)/60000).toFixed(1),waited:waited/60000,shell:+(shell/60000).toFixed(1),lamp:+(lamp/60000).toFixed(1)}));
 });
 
 // Build 32: the camp shed and the daily gift.
@@ -536,4 +537,34 @@ test('rewarded ads: CrazyGames SDK when present (reward only when the ad finishe
   globalThis.CrazyGames.SDK.environment='disabled';
   const {rewardedAd:off}=await import('../v5/next/ads.mjs?case=disabled');assert.equal(await off({standIn:async()=>'stand-in'}),'stand-in','SDK disabled outside CrazyGames');
  }finally{delete globalThis.CrazyGames;}
+});
+
+// Build 36: the Lantern Kiln comes out at the worksite; stuck orders can be changed.
+test('the worksite\'s stage copies reach the Lantern Kiln: Light the door gives the missing one',()=>{
+ const w=AREAS[1].tasks.flatMap(t=>t.stages);assert.equal(w.filter(x=>x.effect.copy==='newest').length,6);
+ assert.deepEqual(w.find(x=>x.name==='Light the door').effect,{copy:'newest'});
+ // Three copies take a generator from level 1 to 3: the Rope Winch's bring out the Shell Trap, the Shell Trap's the Kiln.
+ const s=fresh(0);s.board[15]=source('shell');for(const i of [14,16,20])s.board[i]=source('shell');
+ ok(s,{type:'merge',from:14,to:15});ok(s,{type:'merge',from:20,to:16});const r=ok(s,{type:'merge',from:16,to:15});
+ assert.equal(s.board[15].level,3);assert.deepEqual(r.released.map(n=>n.id),['lamp']);
+});
+
+test('a stuck crew order can be changed: three a day free, then five after an ad; never the gold one',()=>{
+ const s=fresh(0);s.board[15]=source('chart');s.orderSeq=10;s.orders=[];for(let k=0;k<3;k++)s.orders.push(makeOrder(s));
+ const story=s.orders.find(o=>o.story),lane=s.orders.findIndex(o=>!o.story),old=s.orders[lane];
+ assert.ok(story,'one gold order');assert.match(refused(s,{type:'swapOrder',id:story.id,day:3}).message,/gold/);
+ const r=ok(s,{type:'swapOrder',id:old.id,day:3});assert.equal(r.ad,false);assert.notEqual(s.orders[lane].id,old.id);
+ assert.notDeepEqual(s.orders[lane].needs,old.needs,'it asks for something else');assert.ok(!s.orders[lane].story);
+ assert.equal(s.orders.length,3);assert.equal(swapsLeft(s,3),FREE_SWAPS-1);assert.equal(s.coins,0,'free');
+ for(let k=1;k<FREE_SWAPS;k++)ok(s,{type:'swapOrder',id:s.orders[lane].id,day:3});
+ assert.match(refused(s,{type:'swapOrder',id:s.orders[lane].id,day:3}).message,/ad/);
+ for(let k=0;k<AD_SWAPS;k++)assert.equal(ok(s,{type:'swapOrder',id:s.orders[lane].id,day:3,ad:true}).ad,true);
+ assert.equal(adSwapsLeft(s,3),0);refused(s,{type:'swapOrder',id:s.orders[lane].id,day:3,ad:true});
+ // A new day: three free again; an earlier day or an unknown order is refused.
+ assert.equal(swapsLeft(s,4),FREE_SWAPS);ok(s,{type:'swapOrder',id:s.orders[lane].id,day:4});refused(s,{type:'swapOrder',id:s.orders[lane].id,day:3});
+ refused(s,{type:'swapOrder',id:'o999',day:4});refused(s,{type:'swapOrder',id:s.orders[lane].id});
+ assert.deepEqual(load(JSON.stringify(s),5).swaps,s.swaps,'saves keep the day\'s changes');
+ // Older saves get a full day of changes; a malformed record starts a new camp.
+ const t=camp();t.moves=9;delete t.swaps;assert.deepEqual(load(JSON.stringify(t),5).swaps,{day:-1,n:0,ads:0});
+ for(const f of [x=>x.swaps={day:'x',n:0,ads:0},x=>x.swaps.n=4,x=>x.swaps.ads=-1]){const u=fresh(0);u.moves=3;f(u);assert.equal(load(JSON.stringify(u),5).moves,0,f.toString());}
 });

@@ -43,6 +43,9 @@ export const AREAS=[
  // Area 2 (build 31, user: "ehleed ediin zasgiig changalaad 2-r busiig nem"): the same shape as the
  // beach, seven places in three stages, built around the Rope Winch. It opens when the beach's
  // last stage is bought; half of its everyday orders want Rope Winch parts (focus).
+ // Its stage copies level the Rope Winch (bringing out the Shell Trap) and then the Shell Trap,
+ // so the Lantern Kiln comes out before its last stage (build 36: 'Light the door' gives the
+ // copy that was missing; the Kiln never came out before).
  {id:'worksite',name:'Survey Worksite',short:'SITE',picture:'worksite',focus:'rope',
   intro:[['neri','Up the cliff at last: the Survey Worksite. Old instruments half-buried in sand, and a door in the rock.'],['ivo','Everything up here is hauled, hoisted or lowered. The Rope Winch will be busy.']],
   tasks:[
@@ -72,7 +75,7 @@ export const AREAS=[
     {name:'Run the hoist to the door',cost:95,effect:{kit:['newest',3]},lines:[['ivo','A line from the hoist straight to the door. Whatever is behind it, we can move it.']]}]),
    place('ws-door','lamp-2',[86,40],[
     {name:'Survey the vault door',cost:80,effect:{energy:10},lines:[['neri','The door is a dial, as tall as three of us. Every ring turns.']]},
-    {name:'Light the door',cost:95,effect:{token:1},lines:[['tamsin','Lanterns all around the dial. The tideglass in it glows back at us.']]},
+    {name:'Light the door',cost:95,effect:{copy:'newest'},lines:[['tamsin','Lanterns all around the dial. The tideglass in it glows back at us.'],['tamsin','We will need lamps of our own up here. Packed with the lanterns: a copy of our newest generator.']]},
     {name:'Map the dial',cost:105,effect:{kit:['newest',3]},lines:[['neri','Every ring of the dial is mapped. Now we know how it opens.'],['bram','The worksite is done. Next: the Vault Entrance itself.']]}])
   ]},
  {id:'entrance',name:'Vault Entrance',picture:'entrance',coming:true,tasks:[]},

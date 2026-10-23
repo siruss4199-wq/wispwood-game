@@ -453,3 +453,22 @@ without merging fill none of them. First upgrade now at ~1.8 min (was 0.8).
   5.5) and still run energy low; the scripted player's single runs are too chaotic to tune
   on one speed.
 - Saves: camps already under way keep their orders; only new camps get the new ladder.
+
+## Build 36 — the Lantern Kiln comes out, and stuck orders can be changed (user: "zuvhsuurnu, ehleed lantern kiln bolon gatssan taskaas ehel", after the build-35 review)
+**Lantern Kiln.** The build-35 review found the Kiln never came out: the worksite's stage
+copies took the Rope Winch to level 3 (bringing out the Shell Trap), but only two reached
+the Shell Trap, which ended at level 2 + level 1. "Light the door" now gives a copy of the
+newest generator instead of a Tide token (six copy stages in the worksite). Scripted player:
+the Kiln comes out at 59 / 78 / 91 / 105 min with the worksite finished at 65 / 81 / 94 / 108
+min (4 / 5 / 6 / 7 s per action), so its book page and the lamp tideglass are no longer dead
+promises. Making a second stage a copy brought it out 5–10 min earlier but added up to
+20 min of waiting at some speeds, so only one changed. Echo Crucible stays unused (no
+generator on the board, not in the book).
+
+**Changing an order.** Stuck orders were mostly a Pocket winch the player had spent on the
+crates around the camp (median order age 2.8 min, 90th percentile 24 min). Tap an order
+that is not ready → a bar under the orders offers **↻ New order** (3 free a day), then
+**▶ New order** after a rewarded ad (5 a day). The new order is made while the old still
+stands, so it asks for something else; the gold story order cannot be changed (it is the
+next stage of the coast). `swapOrder` action, `s.swaps={day,n,ads}`; older saves load with a
+full day of changes. The scripted player does not change orders, so pacing is unchanged.
