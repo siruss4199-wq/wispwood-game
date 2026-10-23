@@ -44,7 +44,11 @@ export function nextAction(s){
  // After two orders, and while energy lasts (25+), the key on the way (with parts no order needs, unless energy is plentiful: 45+) to a new kind of generator is made first.
  {const g=s.ordersDone>=2&&s.energy>=25?target(s):null,ordered=new Map();for(const o of s.orders)for(const r of o.needs)ordered.set(r.family+r.tier,(ordered.get(r.family+r.tier)??0)+r.count);
   if(g?.newKind)for(let tier=g.tier-1;tier>=0;tier--){const pair=b.flatMap((x,i)=>matches(x,{family:g.family,tier})?[i]:[]);if(pair.length-(s.energy>=45?0:ordered.get(g.family+tier)??0)>=2)return pairMerge(b,pair[0],pair[1]);}}
- for(const o of s.orders)if(orderItems(s,o))return {type:'deliver',id:o.id};
+ // The gold order is the coast's next stage (Build 41: it carries the stage's materials): it is
+ // delivered first, and other orders do not take the parts it is waiting for.
+ {const gold=s.orders.find(o=>o.story);if(gold&&orderItems(s,gold))return {type:'deliver',id:gold.id};
+  const keep=new Map((gold?.needs??[]).map(r=>[r.family+r.tier,r.count]));
+  for(const o of s.orders)if(!o.story&&orderItems(s,o)&&o.needs.every(r=>!keep.has(r.family+r.tier)||count(s,r)>=r.count+keep.get(r.family+r.tier)))return {type:'deliver',id:o.id};}
  // Open cargo with a part no order is waiting for (generator cargo first).
  const orderWant=new Map();for(const o of s.orders)for(const r of o.needs)orderWant.set(r.family+r.tier,(orderWant.get(r.family+r.tier)??0)+r.count);
  const keys=cargoKeys(s).sort((a,b)=>Number(b.index===target(s)?.index)-Number(a.index===target(s)?.index));
@@ -65,7 +69,8 @@ export function nextAction(s){
  // Merge toward a wanted part: order parts first, then the highest tier below a wanted one.
  // Order parts come before the crate key being worked toward.
  const isOrder=r=>orderWant.has(r.family+r.tier);
- const needs=[...want.entries()].map(([k,n])=>({family:k.replace(/\d+$/,''),tier:+k.match(/\d+$/)[0],n})).filter(r=>count(s,r)<r.n).sort((x,y)=>Number(isOrder(y))-Number(isOrder(x))||y.tier-x.tier);
+ const goldKeys=new Set((s.orders.find(o=>o.story)?.needs??[]).map(r=>r.family+r.tier)),isGold=r=>goldKeys.has(r.family+r.tier);
+ const needs=[...want.entries()].map(([k,n])=>({family:k.replace(/\d+$/,''),tier:+k.match(/\d+$/)[0],n})).filter(r=>count(s,r)<r.n).sort((x,y)=>Number(isGold(y))-Number(isGold(x))||Number(isOrder(y))-Number(isOrder(x))||y.tier-x.tier);
  const keep=(i)=>{const x=b[i];const n=want.get(x.family+x.tier)??0;return n>0&&count(s,x)<=n;};
  for(const r of needs)for(let tier=r.tier-1;tier>=0;tier--){
   const pair=b.flatMap((x,i)=>matches(x,{family:r.family,tier})&&!keep(i)?[i]:[]);

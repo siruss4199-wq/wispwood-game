@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {cellPos} from '../v5/core.mjs';
 import {xpToNext} from '../v5/levels.mjs';
-import {allDone,secondChain,FREE_SWAPS,AD_SWAPS,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,priceOf,totalBuilt,ORDER_TOP,SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,makeOrder,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
+import {allDone,secondChain,FREE_SWAPS,AD_SWAPS,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,priceOf,totalBuilt,ORDER_TOP,SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,storyTarget,makeOrder,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
 import {AREAS,TASKS} from '../v5/next/areas.mjs';
 import {primaryAction} from '../v5/next/guide.mjs';
 import {kit} from '../v5/kits.mjs';
@@ -13,6 +13,9 @@ import {nextAction} from './v5-next-policy.mjs';
 
 // The camp's parts before build 30 (it now starts empty), for rule tests that need some.
 const camp=()=>{const s=fresh(0);for(const [i,t] of [[14,0],[16,0],[20,0],[27,1],[28,0]])s.board[i]=item('rig',t);return s;};
+// Every stage's materials in, for rule tests about coins and rewards (Build 41: a stage needs
+// its gold order delivered first).
+const stock=s=>{s.materials=Object.fromEntries(Object.keys(TASKS).map(id=>[id,3]));return s;};
 const ok=(s,a,now=1)=>{const r=act(s,a,now);assert.equal(r.ok,true,JSON.stringify(a)+' '+r.message);return r;};
 function refused(s,a){const before=JSON.stringify(s),r=act(s,a,1);assert.equal(r.ok,false,JSON.stringify(a));assert.equal(JSON.stringify(s),before,'refusal leaves state untouched');return r;}
 
@@ -31,7 +34,7 @@ test('a new camp: Rivet Rover alone in the middle of its camp, sealed cargo and 
  assert.ok(s.board.every((x,i)=>CAMP.includes(i)||x.type==='cargo'||x.type==='glass'));
  assert.deepEqual(s.orders.map(o=>o.needs),[[{family:'rig',tier:2,count:1}],[{family:'rig',tier:3,count:1}],[{family:'rig',tier:2,count:1},{family:'rig',tier:1,count:2}]]);
  assert.ok(s.orders.every(o=>!orderItems(s,o)),'no order can be delivered before building something');
- assert.equal(s.coins,0);assert.deepEqual(s.built,{});assert.equal(sourceOpen(s,'chart'),false);assert.equal(nextTask(s).id,'beach-path');assert.equal(nextTask(s).stage,1);
+ assert.equal(s.coins,0);assert.deepEqual(s.built,{});assert.equal(sourceOpen(s,'chart'),false);assert.equal(nextTask(s),null,'nothing to build before the first gold order');assert.equal(storyTarget(s).id,'beach-path');assert.equal(storyTarget(s).stage,1);
 });
 
 // Build 35 (user: "generatoroo hed tovshihod l ehnii 3 task shuud bieleh hemjeend ochij bainshdee"):
@@ -63,7 +66,8 @@ test('generators cost energy, place near themselves and refuse when locked, empt
 test('coins upgrade each place in three stages; every stage gives a reward',()=>{
  const s=fresh(0);
  refused(s,{type:'restore',id:'beach-path'});
- s.coins=5000;assert.match(refused(s,{type:'restore',id:'beach-tent'}).message,/before it/,'a place opens once the place before it has its first stage');
+ s.coins=5000;assert.match(refused(s,{type:'restore',id:'beach-path'}).message,/gold order/,'coins alone do not build');
+ stock(s);assert.match(refused(s,{type:'restore',id:'beach-tent'}).message,/before it/,'a place opens once the place before it has its first stage');
  let spent=0;
  for(const t of AREAS[0].tasks){if(t.id==='beach-pier')for(const i of [15,22,26])if(s.board[i]?.type!=='source')s.board[i]=null;// room for the sea chest
   const e=s.energy,r=ok(s,{type:'restore',id:t.id});spent+=t.stages[0].cost;assert.equal(s.coins,5000-spent);assert.equal(stageOf(s,t.id),1);assert.equal(r.stage,1);
@@ -83,7 +87,7 @@ test('coins upgrade each place in three stages; every stage gives a reward',()=>
  assert.ok(areaDone(s,AREAS[0]));assert.equal(builtCount(s,AREAS[0]),21);assert.equal(s.area,1);assert.equal(builtCount(s),0);assert.equal(nextTask(s).id,'ws-camp');
  assert.match(refused(s,{type:'restore',id:'beach-path'}).message,/fully upgraded/);assert.match(refused(s,{type:'restore',id:'ws-ropes'}).message,/before it/);
  assert.deepEqual(AREAS[0].tasks.map(t=>t.stages.length),Array(7).fill(3));
- const total=AREAS[0].tasks.flatMap(t=>t.stages.map(x=>x.cost)).reduce((a,b)=>a+b);assert.equal(total,1295);
+ const total=AREAS[0].tasks.flatMap(t=>t.stages.map(x=>x.cost)).reduce((a,b)=>a+b);assert.equal(total,1400);
  assert.ok(AREAS[0].tasks.every(t=>t.stages[0].cost<t.stages[1].cost&&t.stages[1].cost<t.stages[2].cost),'each stage costs more');
 });
 
@@ -110,26 +114,30 @@ test('orders grow harder with the beach and the generators, never repeat a live 
   for(const x of s.orders)if(!x.story)assert.equal(x.coins,x.needs.reduce((v,r)=>v+r.count*COIN_VALUE[r.tier],0));
   s.board=s.board.map(x=>x?.type==='kit'||x?.type==='item'?null:x);s.board[15]??=source('chart');
  }
- assert.equal(s.ordersDone,60);assert.ok(s.orders.some(x=>x.story),'a story order is live');
+ assert.equal(s.ordersDone,60);
+ // Its gold order brought the first stage's materials; nothing else is open, so no gold order waits.
+ assert.equal(s.materials['beach-path'],1);assert.ok(!s.orders.some(x=>x.story),'no gold order while every open stage has its materials');
+ ok(s,{type:'restore',id:'beach-path'},2);s.orders[0]=makeOrder(s);assert.equal(s.orders[0].story,'beach-path','the next stage wants its own');
  // Saves keep it; a story order for a place that does not exist starts a new camp.
  assert.deepEqual(load(JSON.stringify(s),5).orders,s.orders);
  const bad=structuredClone(s);bad.orders.find(x=>x.story).story='nowhere';assert.equal(load(JSON.stringify(bad),5).moves,0);
 });
 
 
-test('every third order brings a small box of its kind; boxes and generator levels work here too',()=>{
+// Build 41 (user: "ene hairtsagiig amarhan uguud baina"): orders no longer bring a box.
+test('orders pay coins, no box; boxes and generator levels work here too',()=>{
  const s=fresh(0);s.ordersDone=2;const o=s.orders[1];s.board[15]=item('rig',3);
- const d=ok(s,{type:'deliver',id:o.id});assert.deepEqual(s.board[d.box],kit('rig',1));
+ const d=ok(s,{type:'deliver',id:o.id});assert.equal(d.box,-1);assert.ok(!s.board.some(x=>x?.type==='kit'),'no box');
  const t=fresh(0);t.board[15]=kit('rig',3);refused(t,{type:'merge',from:15,to:ROVER});// crates no longer feed generators
  t.board[15]=source('rig');const r=ok(t,{type:'merge',from:15,to:ROVER});assert.equal(r.event,'producerUp');assert.equal(t.board[ROVER].level,2);
  t.board[15]=kit('rig',1);t.board[22]=kit('rig',1);ok(t,{type:'merge',from:15,to:22});assert.deepEqual(t.board[22],kit('rig',2));
  ok(t,{type:'openKit',index:22});
 });
 
-test('levels give a chest with a driftwood crate of a generator you have',()=>{
+test('levels give energy, no crate',()=>{
  const s=camp();s.level.xp=19;const e=s.energy,r=ok(s,{type:'merge',from:14,to:16});
- assert.equal(r.levelUp[0].level,2);assert.equal(r.levelUp[0].family,'rig');assert.equal(s.board.filter(x=>x?.type==='cargo').length,27);
- assert.equal(CHEST_ENERGY,7);assert.equal(s.energy,e+7);
+ assert.equal(r.levelUp[0].level,2);assert.equal(r.levelUp[0].family,null);assert.ok(!s.board.some(x=>x?.type==='kit'),'no crate');assert.equal(s.board.filter(x=>x?.type==='cargo').length,27);
+ assert.equal(CHEST_ENERGY,12);assert.equal(s.energy,e+12);
 });
 
 test('energy refills over time and a low-energy ration helps once an hour',()=>{
@@ -338,10 +346,10 @@ test('the edge of the board wants Kite and Rope Winch parts; generators come onl
  assert.ok(edge.every(([,c])=>['chart','rope'].includes(c[0])),'no Rover keys on the edge');
  assert.ok(edge.some(([,c])=>c[0]==='chart')&&edge.some(([,c])=>c[0]==='rope'));
  const s=fresh(0);assert.equal(s.board.filter(x=>x?.type==='glass'||x?.type==='cargo').length,40);
- // Level chests give crates, never generators.
+ // Levels give energy, never generators.
  const t=camp();t.level.level=4;t.level.xp=xpToNext(4)-1;const before=t.board.filter(x=>x?.type==='source').length;
  const r=ok(t,{type:'merge',from:14,to:16});assert.equal(r.levelUp[0].level,5);assert.equal(r.levelUp[0].generator,undefined);
- assert.equal(t.board.filter(x=>x?.type==='source').length,before,'no generator from a level chest');assert.equal(t.board[r.levelUp[0].index].type,'kit');
+ assert.equal(t.board.filter(x=>x?.type==='source').length,before,'no generator from a level');
 });
 
 
@@ -363,7 +371,7 @@ test('the Survey Worksite: seven places in three stages, every stage a reward, t
  assert.equal(Object.keys(TASKS).length,14,'place ids are unique across areas');
  assert.ok(AREAS.slice(2).every(a=>a.coming&&!a.tasks.length),'later areas are still to come');
  // Its stages are bought like the beach's and keep the beach's stages.
- const s=fresh(0);s.area=1;s.built=beachDone();s.coins=5000;
+ const s=stock(fresh(0));s.area=1;s.built=beachDone();s.coins=5000;
  assert.equal(nextTask(s).id,'ws-camp');const r=ok(s,{type:'restore'});assert.equal(r.task,'ws-camp');assert.equal(r.effects.energy,15);
  assert.equal(stageOf(s,'beach-cliff'),3);assert.equal(builtCount(s),1);assert.equal(totalBuilt(s),22);
 });
@@ -391,7 +399,7 @@ test('no order asks past tier 5 or is worth NaN; a saved NaN-priced order is pri
 });
 
 test('a save that finished the beach before the worksite existed goes up the cliff; one in progress stays',()=>{
- const s=fresh(0);s.built=beachDone();s.coins=40;s.moves=900;s.board[16]=source('rope');
+ const s=fresh(0);s.built=beachDone();s.coins=40;s.moves=900;s.board[16]=source('rope');delete s.materials;
  const back=load(JSON.stringify(s),5);assert.equal(back.area,1);assert.equal(back.moves,900);assert.equal(back.coins,40);assert.deepEqual(back.built,s.built);assert.equal(nextTask(back).id,'ws-camp');
  const t=fresh(0);t.built={...beachDone(),'beach-cliff':2};t.moves=500;const u=load(JSON.stringify(t),5);assert.equal(u.area,0);assert.equal(u.moves,500);
  // An area out of range still starts a new camp.
@@ -616,6 +624,27 @@ test('second parts are spread evenly over the other open chains, for 2 to 5 open
  assert.equal(secondChain(['rig','lamp'],'rig',5,1),null,'Lantern Kiln parts stop at tier 4');
 });
 
+// Build 41 (user: "umnu story upgrade shuud hurdan hiigdej baina"): a stage needs coins and its
+// gold order's materials. A save from before keeps every stage it could buy then.
+test('a stage needs its gold order delivered; older saves keep what they could buy',()=>{
+ const s=fresh(0);s.coins=500;assert.match(refused(s,{type:'restore',id:'beach-path'}).message,/gold order/);
+ const so=makeOrder(s);assert.equal(so.story,'beach-path');s.orders[0]=so;
+ for(const r of so.needs)for(let k=0;k<r.count;k++)s.board[s.board.indexOf(null)]=item(r.family,r.tier);
+ const d=ok(s,{type:'deliver',id:so.id});assert.deepEqual(d.materials,{id:'beach-path',stage:1});assert.match(d.message,/materials for Clear the landing path/);
+ assert.equal(s.materials['beach-path'],1);assert.equal(nextTask(s).id,'beach-path');ok(s,{type:'restore',id:'beach-path'});
+ assert.equal(nextTask(s),null,'the next stage waits for its own gold order');
+ const o=s.orders.find(x=>!x.story);for(const r of o.needs)for(let k=0;k<r.count;k++)s.board[s.board.indexOf(null)]=item(r.family,r.tier);
+ ok(s,{type:'deliver',id:o.id});assert.equal(s.orders.filter(x=>x.story).length,1,'the next delivery brings it');
+ // A Build 40 save mid-beach (no materials field): every stage it could buy is open; nothing else.
+ const old=fresh(0);old.built={'beach-path':2,'beach-tent':1};old.coins=120;old.moves=300;delete old.materials;
+ const back=load(JSON.stringify(old),5);assert.equal(back.moves,300);assert.equal(back.coins,120);assert.deepEqual(back.built,old.built);
+ assert.deepEqual(back.materials,{'beach-path':3,'beach-tent':2,'beach-mast':1});assert.ok(upgrades(back).every(u=>u.materials));
+ ok(back,{type:'restore',id:'beach-path'});
+ // A Build 41 save keeps its materials as they are; a malformed entry starts a new camp.
+ assert.deepEqual(load(JSON.stringify(s),5).materials,s.materials);
+ for(const m of [{'nowhere':1},{'beach-path':4},{'beach-path':0},[]]){const t=structuredClone(s);t.materials=m;assert.equal(load(JSON.stringify(t),5).moves,0,JSON.stringify(m));}
+});
+
 // Build 41 M3: one primary action, in order: deliver, upgrade, a wanted pair, the wanted
 // generator, a crate key, any pair, then why nothing can happen.
 test('the primary action names the one next step',()=>{
@@ -623,7 +652,7 @@ test('the primary action names the one next step',()=>{
  s.board[14]=item('rig',0);s.board[16]=item('rig',0);
  assert.deepEqual(primaryAction(s).kind,'merge');assert.deepEqual(primaryAction(s).cells,[14,16]);
  s.board[20]=item('rig',2);const d=primaryAction(s);assert.equal(d.kind,'deliver');assert.equal(d.id,'o0');
- s.coins=15;s.board[20]=null;assert.equal(primaryAction(s).kind,'upgrade');assert.match(primaryAction(s).label,/Clear the landing path/);
+ s.coins=20;s.board[20]=null;assert.notEqual(primaryAction(s).kind,'upgrade','coins alone are not enough');stock(s);assert.equal(primaryAction(s).kind,'upgrade');assert.match(primaryAction(s).label,/Clear the landing path/);
  // The tapped order comes first: a Pocket winch (tier 3) is wanted, a pair of Split spanners leads to it.
  const t=fresh(0);t.board[15]=source('chart');t.board[14]=item('rig',2);t.board[16]=item('rig',2);t.board[20]=item('chart',0);t.board[22]=item('chart',0);
  t.orders=[{id:'a',who:'neri',needs:[{family:'chart',tier:1,count:1}],coins:5},{id:'b',who:'ivo',needs:[{family:'rig',tier:3,count:1}],coins:25}];

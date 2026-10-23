@@ -38,14 +38,18 @@ test('orders and restorations keep coming',()=>{
  for(const r of runs)assert.ok(r.orderAges.length>=B40.orders*.95,`${r.speed} s seed ${r.seed}: ${r.orderAges.length} orders delivered`);
 });
 
+// Build 41 (user: "umnu story upgrade shuud hurdan hiigdej baina"): stages wait for their gold
+// orders, so the Kite's Rover copies come later than Build 40's (2.1 min per s/action there).
 test('generators arrive on time and the Lantern Kiln before the worksite ends',()=>{
- for(const r of rows){assert.ok(r.kiteMax<=22,`${r.speed} s: Survey Kite at ${r.kiteMax.toFixed(1)} min`);assert.ok(r.kilnBeforeEnd,`${r.speed} s: Lantern Kiln before the end`);}
+ for(const r of rows){assert.ok(r.kiteMax<=r.speed*3.3,`${r.speed} s: Survey Kite at ${r.kiteMax.toFixed(1)} min`);assert.ok(r.kilnBeforeEnd,`${r.speed} s: Lantern Kiln before the end`);}
 });
 
+// Taps: Build 41 took away the crates every third order and every level brought (user: "ene
+// hairtsagiig amarhan uguud baina"), so parts that came free are now made: up to 35 % more taps.
 test('passing is not bought with grinding: session length and taps stay near Build 40',()=>{
  rows.forEach((r,k)=>{
   assert.ok(Math.abs(r.totalMean/B40.total[k]-1)<=.15,`${r.speed} s: ${r.totalMean.toFixed(1)} min vs ${B40.total[k]} in Build 40`);
-  assert.ok(r.tapsMean<=B40.taps[k]*1.1,`${r.speed} s: ${r.tapsMean} taps vs ${B40.taps[k]} in Build 40`);});
+  assert.ok(r.tapsMean<=B40.taps[k]*1.35,`${r.speed} s: ${r.tapsMean} taps vs ${B40.taps[k]} in Build 40`);});
 });
 
 // The first 15 minutes on their own (M8: the first-session journey, as far as a script can tell).
@@ -59,7 +63,8 @@ test('first 15 minutes: first merge, order, restoration and discovery come early
   assert.ok(r.first.order<=2.5*MIN,`${at}: first order ${(r.first.order/MIN).toFixed(1)} min`);
   assert.ok(r.first.restore<=4.5*MIN,`${at}: first restoration ${(r.first.restore/MIN).toFixed(1)} min`);
   assert.ok(r.first.discovery<=8*MIN,`${at}: first cargo or generator merge ${(r.first.discovery/MIN).toFixed(1)} min`);
-  assert.ok(r.first15.orders>=8&&r.first15.restores>=6,`${at}: ${r.first15.orders} orders and ${r.first15.restores} restorations in 15 min`);}
+  // Build 41: fewer, earned restorations early (5 at 10 s/action, 9 at 5 s; Build 40 had more).
+  assert.ok(r.first15.orders>=8&&r.first15.restores>=5,`${at}: ${r.first15.orders} orders and ${r.first15.restores} restorations in 15 min`);}
 });
 
 test('the report the playtest notes quote',()=>{

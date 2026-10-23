@@ -14,17 +14,17 @@ export const AREAS=[
   intro:[['neri','The storm left us one beach and a lot of sand. Somewhere under the cliff is the Tideglass Vault.'],['ivo','First we make this beach a camp. Bring me parts and I will put them to work.']],
   tasks:[
    place('beach-path','rock',[22,84],[
-    {name:'Clear the landing path',cost:15,effect:{kit:['rig',1]},lines:[['ivo','A path from the boats to dry ground. Now the crew can carry real loads.'],['ivo','Somebody left a driftwood crate on it: it is ours now.']]},
-    {name:'Lay a boardwalk',cost:25,effect:{copy:'rig'},lines:[['ivo','Planks over the sand. The carts stop sinking.'],['ivo','A Rivet Rover was buried under the old planks! Merge it with yours.']]},
-    {name:'Line the path with lanterns',cost:35,effect:{kit:['newest',1]},lines:[['neri','Lanterns all the way to the boats. Night shifts are safe now.']]}],'path'),
+    {name:'Clear the landing path',cost:20,effect:{kit:['rig',1]},lines:[['ivo','A path from the boats to dry ground. Now the crew can carry real loads.'],['ivo','Somebody left a driftwood crate on it: it is ours now.']]},
+    {name:'Lay a boardwalk',cost:35,effect:{copy:'rig'},lines:[['ivo','Planks over the sand. The carts stop sinking.'],['ivo','A Rivet Rover was buried under the old planks! Merge it with yours.']]},
+    {name:'Line the path with lanterns',cost:50,effect:{kit:['newest',1]},lines:[['neri','Lanterns all the way to the boats. Night shifts are safe now.']]}],'path'),
    place('beach-tent','crate-salvage',[39,69],[
-    {name:'Pitch the camp tent',cost:30,effect:{energy:15},lines:[['neri','Dry blankets and hot tea. Everyone works faster after a rest.'],['ivo','+15 energy for the crew.']]},
-    {name:'Add bunks and a stove',cost:35,effect:{energy:5},lines:[['neri','Bunks and a stove. Nobody sleeps on wet sand any more.']]},
-    {name:'Raise the mess hall',cost:45,effect:{token:1},lines:[['bram','A real mess hall. The crew eats together and plans together.']]}],'tent'),
+    {name:'Pitch the camp tent',cost:40,effect:{energy:15},lines:[['neri','Dry blankets and hot tea. Everyone works faster after a rest.'],['ivo','+15 energy for the crew.']]},
+    {name:'Add bunks and a stove',cost:50,effect:{energy:5},lines:[['neri','Bunks and a stove. Nobody sleeps on wet sand any more.']]},
+    {name:'Raise the mess hall',cost:60,effect:{token:1},lines:[['bram','A real mess hall. The crew eats together and plans together.']]}],'tent'),
    place('beach-mast','source-chart',[53,49],[
-    {name:'Raise the signal mast',cost:40,effect:{slots:4},lines:[['neri','The mast is up. Camps along the reach can see our signal.'],['bram','More crews will send orders now: a fourth order card.']]},
-    {name:'Hang the signal flags',cost:50,effect:{copy:'rig'},lines:[['neri','Flags for every crew along the reach. They know who we are.'],['bram','A neighbouring camp answered with a gift: another Rivet Rover.']]},
-    {name:'Fit a lookout nest',cost:60,effect:{token:1},lines:[['tamsin','From the lookout I can see the cliff path, and something glinting beyond it.']]}],'mast'),
+    {name:'Raise the signal mast',cost:50,effect:{slots:4},lines:[['neri','The mast is up. Camps along the reach can see our signal.'],['bram','More crews will send orders now: a fourth order card.']]},
+    {name:'Hang the signal flags',cost:60,effect:{copy:'rig'},lines:[['neri','Flags for every crew along the reach. They know who we are.'],['bram','A neighbouring camp answered with a gift: another Rivet Rover.']]},
+    {name:'Fit a lookout nest',cost:75,effect:{token:1},lines:[['tamsin','From the lookout I can see the cliff path, and something glinting beyond it.']]}],'mast'),
    place('beach-workshop','workshop',[12,47],[
     {name:'Restore the Coastal Workshop',cost:50,effect:{copy:'rig'},lines:[['ivo','Tools on the wall, fire in the forge.'],['ivo','In the back of the Workshop: a second Rivet Rover! Merge the two and you get a stronger one.']]},
     {name:'Fire up the forge',cost:60,effect:{kit:['newest',2]},lines:[['ivo','The forge is hot again. Every tool in camp gets a fresh edge.']]},

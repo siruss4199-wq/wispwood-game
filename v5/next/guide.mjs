@@ -13,12 +13,14 @@ function pairFor(s,needs=null){
  return null;
 }
 export function primaryAction(s,focus=null){
- const ready=s.orders.find(o=>orderItems(s,o));
+ // The gold order (the next stage's materials) comes first when it is ready.
+ const ready=s.orders.find(o=>o.story&&orderItems(s,o))??s.orders.find(o=>orderItems(s,o));
  if(ready)return {kind:'deliver',id:ready.id,label:`✓ Deliver · +${ready.coins} coins`};
  const task=nextTask(s);
  if(task&&s.coins>=task.cost)return {kind:'upgrade',id:task.id,label:`Upgrade ${currentArea(s).name}: ${task.name}`};
  // Needs still missing, the tapped order's first.
- const orders=focus?[s.orders.find(o=>o.id===focus),...s.orders.filter(o=>o.id!==focus)].filter(Boolean):s.orders;
+ const first=focus??s.orders.find(o=>o.story)?.id;
+ const orders=first?[s.orders.find(o=>o.id===first),...s.orders.filter(o=>o.id!==first)].filter(Boolean):s.orders;
  const needs=orders.flatMap(o=>o.needs.filter(r=>count(s,r)<r.count));
  const merge=pair=>({kind:'merge',cells:pair,label:`Drag a ${nameOf(s.board[pair[0]])} onto its twin`});
  // Order by order, so the tapped (or first) order's pair comes first.

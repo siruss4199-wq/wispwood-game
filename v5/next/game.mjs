@@ -21,7 +21,7 @@ export const XP={merge:1,restore:8,feed:5,unseal:2};// feed: merging two generat
 export const COIN_VALUE=[5,5,10,25,45,80,140,240];
 // Orders ask for tier 5 at most (build 31: a sixth-tier story order stalled the beach's end).
 export const ORDER_TOP=5;export const COIN_RATE=5;
-export const CHEST_ENERGY=7;
+export const CHEST_ENERGY=12;
 // The camp shed (build 32, user: "aguulah bolon udur tutmiin shagnaliig nem"): four spaces off
 // the board for parts, crates, cogs and tokens. What is in the shed does not count for orders
 // or cargo; tap it to bring it back to the board.
@@ -63,7 +63,7 @@ export const CRATES=['Driftwood crate','Sea chest','Captain\'s trunk'];
 export const GENERATOR_ORDER=['rig','chart','rope','shell','lamp'];
 // Generators grow by merging two of the same kind and level (user, 2026-10-22:
 // "generatoriig uuriig ni merge hiij hugjuulj yavdag"). Copies come from cargo and
-// from every second level chest.
+// from place stages.
 export const MAX_GENERATOR_LEVEL=5;
 // Each generator brings out the next kind when it reaches level 2 (user, 2026-10-22: "ehleed
 // ehnii generatoroo saijruuldag baiy, ternii daraagaas daraagiin generator garch irdeg baih"):
@@ -154,7 +154,7 @@ export function fresh(now=Date.now()){
  for(let i=0;i<BOARD_SIZE;i++)if(!CAMP.includes(i))board[i]=GLASS[i]?glass(...GLASS[i]):cargoAt(i);
  const s={version:VERSION,board,energy:40,energyAt:now,coins:0,level:freshLevel(),taps:{},
   orders:[],slots:3,orderSeq:0,ordersDone:0,area:0,built:{},found:[],moves:0,merges:0,lastAt:now,
-  shed:Array(SHED_SLOTS).fill(null),daily:{day:-1,count:0},book:{claimed:[],pages:[]},shop:{day:-1,bought:{}},swaps:{day:-1,n:0,ads:0}};
+  shed:Array(SHED_SLOTS).fill(null),daily:{day:-1,count:0},book:{claimed:[],pages:[]},shop:{day:-1,bought:{}},swaps:{day:-1,n:0,ads:0},materials:{}};
  for(const g of Object.keys(GENERATOR_CHAINS))s.taps[g]=0;
  for(let i=0;i<s.slots;i++)s.orders.push(makeOrder(s));
  note(s);return s;
@@ -193,10 +193,13 @@ export function makeOrder(s){
   const low=built>=12?3:built>=3?2:1,top=Math.min(ORDER_TOP,2+Math.floor(built/6)+(best>=3?1:0));
   // One order at a time is the story's: the newest generator's best part, for the next beach
   // stage, paying half as much again.
-  const story=!s.orders.some(o=>o?.story)&&nextTask(s);
+  const story=!s.orders.some(o=>o?.story)&&storyTarget(s);
   const live=new Set(s.orders.filter(Boolean).flatMap(o=>o.needs.map(r=>r.family+r.tier)));
   let family,tier,k=0;
-  if(story){family=GENERATOR_CHAINS[newestGenerator(s)][0][0];tier=Math.max(low,Math.min(top,maxTier(family)-1));}
+  // The gold order holds back the stage, so it asks what the newest generator can reach: one
+  // tier above its level (Build 41; it asked its chain's second-best part, a Star chart from a
+  // new Survey Kite).
+  if(story){family=GENERATOR_CHAINS[newestGenerator(s)][0][0];tier=Math.max(1,Math.min(top,maxTier(family)-1,reach(s,family)+1));}
   // Half of an area's everyday orders want its focus chain once its generator is out (the
   // Survey Worksite's Rope Winch).
   const focus=currentArea(s)?.focus,pool=focus&&families.includes(focus)&&rand(n*19)<.5?[focus]:families;
@@ -266,12 +269,10 @@ function gainXp(s,amount){
  s.level=validLevel(s.level);s.level.xp+=amount;const ups=[];
  while(s.level.xp>=xpToNext(s.level.level)){
   s.level.xp-=xpToNext(s.level.level);s.level.level++;
-  const families=openFamilies(s).filter(g=>g!=='flux'),family=families[(s.level.level-2)%families.length];
-  // A driftwood crate of a generator you have (generators themselves come from the beach's
-  // stages only since build 19).
-  const index=put(s,kit(family,1));const energy=CHEST_ENERGY+(index<0?5:0);
-  s.energy=Math.min(MAX_ENERGY,s.energy+energy);
-  ups.push({level:s.level.level,energy,family:index<0?null:family,index});
+  // Energy only (Build 41, user: "ene hairtsagiig amarhan uguud baina"): level chests no longer
+  // add a driftwood crate.
+  const energy=CHEST_ENERGY;s.energy=Math.min(MAX_ENERGY,s.energy+energy);
+  ups.push({level:s.level.level,energy,family:null,index:-1});
  }
  return ups;
 }
@@ -284,10 +285,12 @@ export const stageOf=(s,id)=>s.built[id]??0;
 export function upgrades(s){
  const a=currentArea(s);if(!a)return [];
  return a.tasks.flatMap((t,k)=>{const n=stageOf(s,t.id);if(n>=STAGES||n===0&&k>0&&!stageOf(s,a.tasks[k-1].id))return [];
-  const st=t.stages[n];return [{id:t.id,stage:n+1,name:st.name,cost:st.cost,effect:st.effect,lines:st.lines,icon:t.icon,place:t.name}];}).sort((x,y)=>x.cost-y.cost);
+  const st=t.stages[n];return [{id:t.id,stage:n+1,name:st.name,cost:st.cost,effect:st.effect,lines:st.lines,icon:t.icon,place:t.name,materials:(s.materials?.[t.id]??0)>n}];}).sort((x,y)=>x.cost-y.cost);
 }
-// The cheapest upgrade open now (the one the main screen points to).
-export const nextTask=s=>upgrades(s)[0]??null;
+// The cheapest upgrade whose materials are in (the one the main screen points to), and the
+// cheapest still waiting for them (the gold order is for that one).
+export const nextTask=s=>upgrades(s).find(u=>u.materials)??null;
+export const storyTarget=s=>upgrades(s).find(u=>!u.materials)??null;
 export const areaDone=(s,a=currentArea(s))=>!!a&&a.tasks.length>0&&a.tasks.every(t=>stageOf(s,t.id)>=STAGES);
 export const builtCount=(s,a=currentArea(s))=>a?a.tasks.reduce((n,t)=>n+stageOf(s,t.id),0):0;
 // Every area that has places is finished: the end of this prototype (Build 41 M5).
@@ -386,15 +389,20 @@ function step(s,a,now){
   const take=orderItems(s,o);if(!take)return fail('Make the parts this order needs first.');
   for(const i of take)s.board[i]=null;
   // The lane is cleared first, so a delivered story order is followed by the next one.
-  s.coins+=o.coins;s.ordersDone++;s.orders[lane]=null;s.orders[lane]=makeOrder(s);
-  // Every third order also brings a driftwood crate of its kind.
-  const box=s.ordersDone%3===0?put(s,kit(CHAINS[o.needs[0].family].gen,1),take[0]):-1;
-  return {ok:true,event:'deliver',index:box>=0?box:null,xp:Math.max(1,Math.round(o.coins/COIN_RATE)),coins:o.coins,box,freed:take,message:`+${o.coins} coins`+(box>=0?' · '+nameOf(s.board[box]):'')};
+  s.coins+=o.coins;s.ordersDone++;s.orders[lane]=null;
+  if(o.story&&TASKS[o.story]&&stageOf(s,o.story)<STAGES)s.materials[o.story]=stageOf(s,o.story)+1;
+  s.orders[lane]=makeOrder(s);
+  // A gold order is the materials for its place's next stage (Build 41, user: "story upgrade
+  // shuud hurdan hiigdej baina"): the stage can be bought once they are delivered. Orders no
+  // longer bring a driftwood crate every third time.
+  const materials=o.story&&s.materials[o.story]>stageOf(s,o.story)?{id:o.story,stage:s.materials[o.story]}:null;
+  return {ok:true,event:'deliver',index:null,xp:Math.max(1,Math.round(o.coins/COIN_RATE)),coins:o.coins,box:-1,freed:take,...(materials?{materials}:{}),message:`+${o.coins} coins`+(materials?` · materials for ${TASKS[o.story].stages[materials.stage-1].name}`:'')};
  }
  // Upgrade a place on the beach one stage (the action keeps its old name, 'restore').
  if(a.type==='restore'){
   const up=upgrades(s),t=a.id===undefined?up[0]:up.find(u=>u.id===a.id);
   if(!t)return fail(TASKS[a.id]&&stageOf(s,a.id)>=STAGES?`${TASKS[a.id].name} is fully upgraded.`:TASKS[a.id]?'Upgrade the place before it first.':'Everything here is upgraded.');
+  if(!t.materials)return fail(`${t.name} needs its materials: deliver the gold order for it.`);
   if(s.coins<t.cost)return fail(`${t.name} needs ${t.cost} coins. Deliver crew orders for coins.`);
   s.coins-=t.cost;s.built[t.id]=t.stage;const e=t.effect??{},effects={};
   if(e.energy){s.energy=Math.min(MAX_ENERGY,s.energy+e.energy);effects.energy=e.energy;}
@@ -566,6 +574,10 @@ export function load(raw,now=Date.now()){
   s.shop??={day:-1,bought:{}};
   // Build 36 added order changes.
   s.swaps??={day:-1,n:0,ads:0};
+  // Build 41 added materials (stages whose gold order is delivered). An older save is not held
+  // back: every stage it could buy before has its materials (set below, once its area is known).
+  const before41=s.materials===undefined;s.materials??={};
+  if(!s.materials||typeof s.materials!=='object'||Array.isArray(s.materials)||!Object.entries(s.materials).every(([id,n])=>TASKS[id]&&integer(n,1,STAGES)))return fresh(now);
   // Build 41 added seenEnd (the prototype-complete screen shown): absent means not yet.
   if(s.seenEnd!==undefined&&typeof s.seenEnd!=='boolean')return fresh(now);
   if(!s.swaps||!integer(s.swaps.day,-1,1e7)||!integer(s.swaps.n,0,FREE_SWAPS)||!integer(s.swaps.ads,0,AD_SWAPS))return fresh(now);
@@ -577,6 +589,7 @@ export function load(raw,now=Date.now()){
   s.level=validLevel(s.level);
   // Saves that finished the beach before the Survey Worksite existed go up the cliff.
   advance(s);
+  if(before41)for(const u of upgrades(s))s.materials[u.id]=u.stage;
   if(s.rationAt!==undefined&&!(Number.isFinite(s.rationAt)&&s.rationAt<=now))delete s.rationAt;
   if(!Number.isFinite(s.energyAt)||s.energyAt>now)s.energyAt=now;
   settleEnergy(s,now);

@@ -634,3 +634,33 @@ CrazyGames mutes the game, without changing the player's sound setting. Without 
 SDK. **Not done, by the user's decision:** the CrazyGames entry page and its browser test; the
 SDK names still need checking against CrazyGames' current docs (unreachable from here).
 `v4/platform.mjs` unchanged.
+
+### Build 41c · fewer crates, earned stages (user: "Ene hairtsagiig amarhan uguud baina umnu story upgrade shuud hurdan hiigdej baina bas bodit bus story")
+Answers chosen: remove two crate sources; slow the early stages with both a gate and higher costs; rewrite the story so every reward has a cause (a one-place sample first).
+
+**Rules** (`v5/next/game.mjs`)
+- Orders no longer bring a driftwood crate every third delivery (`box` is always −1); levels no longer bring one either. A level gives energy only: `CHEST_ENERGY` 7 → 12.
+- A stage needs its **materials** as well as its coins: delivering the gold order for a place sets `materials[id]` to its next stage. `nextTask` is the cheapest stage with materials in; `storyTarget` (the gold order's place) is the cheapest without. Restoring without materials is refused ("deliver the gold order for it").
+- The gold order comes first in the scripted player and the primary action; its tier is capped by what the generators can reach (`reach+1`), so it never asks a Lv1 Kite for a fifth-tier part.
+- When every open stage already has its materials, no gold order is live; the next delivery after a build brings one.
+- Save: new optional field `materials` (version unchanged). A save without it (Build 40 and earlier) gets materials for every stage it could buy then, so nobody is held back; malformed entries start a new camp. Test: "a stage needs its gold order delivered; older saves keep what they could buy".
+
+**Costs** (`v5/next/areas.mjs`): path 15/25/35 → 20/35/50, tent 30/35/45 → 40/50/60, mast 40/50/60 → 50/60/75; later places unchanged (beach 1295 → 1400). Steeper early costs (path 20/45/70, tent 50/65/80, mast 60/75/90) and a full-beach raise (1750) were measured and rejected: at 4–5 s/action they starved energy for 40–60 min.
+
+**Measured** (harness, 8 speeds × 5 seeds; Build 40 in brackets)
+
+| | 4 s | 5 s | 8 s | 10 s |
+|---|---|---|---|---|
+| total min | 63.0 (62.6) | 77.0 (80.6) | 121.8 (123.1) | 154.9 (153.1) |
+| taps | 397 (308) | 395 (314) | 389 (317) | 399 (314) |
+| Survey Kite, worst seed | 12.4 (8.3) | 15.5 (10.4) | 24.8 (16.6) | 31.0 (20.7) |
+| restorations in the first 15 min | 12–13 | 8–9 | 6 | 5–6 |
+| idle / starvation | 0 / ≤0.6 | 0 / 0 | 0 / 0 | 0 / 0 |
+
+Crates per run (5 s): ~51 → ~18 (14 from stages, 4 from cargo). At 5 s the first stages land at 1.8, 3.4, 4.4, 4.8, 5.8, 7.3, 9.9, 13.3 min (before: 1.8, 3.4, 4.4, 4.8, 5.4, 5.9, 6.4).
+
+**Guard thresholds changed because of this request** (`tests/v5-next-economy.test.mjs`): taps ≤ Build 40 × 1.35 (was × 1.1: parts that came free from crates are now made); Survey Kite ≤ 3.3 min per s/action (was 22 min flat); at least 5 restorations in the first 15 min (was 6). Session length stays within ±15 % of Build 40.
+
+**UI**: the coast list shows "materials ✓" or "needs its gold order" per stage and the button says "gold order" until they are in; the BEACH dot needs materials and coins; delivering a gold order says "Materials in: <place>"; the level-up moment says energy only; help text updated. `?build=41c`.
+
+**Story**: a one-place sample (Landing path) goes to the user first; the other 13 places are rewritten after it is approved.

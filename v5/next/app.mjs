@@ -1,7 +1,7 @@
 // Coast Camp: the new-loop page (v5/play.html). Same look as Classic V5, one loop:
 // generators → merge → crew orders → coins → upgrade the coast's places on the beach screen.
 import {allDone,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,newestGenerator,cog,token,SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,orderProgress,nextTask,currentArea,areaDone,upgrades,stageOf,builtCount,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys,reachable,generatorsMerge,MAX_GENERATOR_LEVEL,GLASS_HITS,nextKind,UNLOCK_LEVEL,GENERATOR_ORDER} from './game.mjs';
-import {AREAS,STAGES} from './areas.mjs';
+import {AREAS,STAGES,TASKS} from './areas.mjs';
 import {primaryAction} from './guide.mjs';
 import {createLog} from './playtest.mjs';
 import {rewardedAd,initPlatform,platform} from './platform-cg.mjs';
@@ -64,7 +64,7 @@ function render(){
  $('#energy').innerHTML=`${state.energy}<span class="energyCap">/${REFILL_CAP}</span>`;
  $('#coins').textContent=state.coins;
  const lv=state.level;$('#levelNum').textContent=lv.level;$('#levelPill').style.setProperty('--p',Math.round(100*lv.xp/xpToNext(lv.level))+'%');$('#levelPill').setAttribute('aria-label',`Level ${lv.level}, ${lv.xp} of ${xpToNext(lv.level)} XP`);
- const ready=upgrades(state).some(u=>state.coins>=u.cost);$('#mapReady').hidden=!ready;
+ const ready=upgrades(state).some(u=>u.materials&&state.coins>=u.cost);$('#mapReady').hidden=!ready;
  // The beach and its upgrades live on their own screen (user, 2026-10-22: "ene zaaval boardtai
  // neg delgetsend tsug baimaargui"); the board screen keeps only the BEACH button, whose dot
  // shows when an upgrade is affordable, and the coin count.
@@ -85,7 +85,7 @@ function renderOrders(){
  $('#requests').innerHTML=`<div class="requestHeading"><span>CREW ORDERS <small>Deliver for coins</small></span></div><div class="requestShelf">${[...state.orders].sort((a,b)=>Number(!!orderItems(state,b))-Number(!!orderItems(state,a))).map(o=>{
   const p=orderProgress(state,o),ready=!!orderItems(state,o),who=CREW[o.who];
   const place=o.story&&AREAS[state.area]?.tasks.find(t=>t.id===o.story);
-  return `<button class="requestCard ${ready?'ready':''} ${place?'storyOrder':''} ${focusOrder===o.id?'active':''}" data-order="${o.id}" aria-label="${place?`For the ${AREAS[state.area].name} (${place.name}): `:''}${who.name} asks for ${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier))).join(', ')}. ${ready?'Ready: tap to deliver.':'In progress.'} Reward ${o.coins} coins"><span class="requestCrew">${place?`<span class="storyBadge" aria-hidden="true">${iconArt(place.icon)}</span>`:portrait(o.who)}<b class="requestLane"><em>${who.name}</em>${who.role}</b></span><span class="requestItems">${p.map(r=>`<span>${draw(item(r.family,r.tier))}<b>${r.have}/${r.count}</b></span>`).join('')}</span><span class="requestReward">+${o.coins} ${COIN}</span><strong>${ready?'✓ DELIVER':'MAKE'}</strong></button>`;
+  return `<button class="requestCard ${ready?'ready':''} ${place?'storyOrder':''} ${focusOrder===o.id?'active':''}" data-order="${o.id}" aria-label="${place?`Gold order: the materials for ${place.name}. `:''}${who.name} asks for ${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier))).join(', ')}. ${ready?'Ready: tap to deliver.':'In progress.'} Reward ${o.coins} coins"><span class="requestCrew">${place?`<span class="storyBadge" aria-hidden="true">${iconArt(place.icon)}</span>`:portrait(o.who)}<b class="requestLane"><em>${who.name}</em>${who.role}</b></span><span class="requestItems">${p.map(r=>`<span>${draw(item(r.family,r.tier))}<b>${r.have}/${r.count}</b></span>`).join('')}</span><span class="requestReward">+${o.coins} ${COIN}</span><strong>${ready?'✓ DELIVER':'MAKE'}</strong></button>`;
  }).join('')}</div>`;
  renderOrderTools();
 }
@@ -198,7 +198,8 @@ function run(a){
  if(r.event==='swap'){tile?.classList.add('merge-pop');burst(tile?.getBoundingClientRect(),'gold');sfx('rare');}
  if(r.event==='merge'){tile?.classList.add('merge-pop');burst(tile?.getBoundingClientRect(),state.board[r.index]?.family);sfx('merge',state.board[r.index]?.tier??0);for(const d of r.dug??[])board.querySelector(`[data-index="${d.index}"]`)?.classList.add('unlocked');}
  if((r.event==='produce'||r.event==='kit')&&fromRect&&tile&&!reduced()){const to=tile.getBoundingClientRect(),el=document.createElement('div');el.className='flight';el.innerHTML=draw(state.board[r.index]);el.style.cssText=`left:${fromRect.x}px;top:${fromRect.y}px;--dx:${to.x-fromRect.x}px;--dy:${to.y-fromRect.y}px`;document.body.append(el);setTimeout(()=>el.remove(),460);}
- if(r.event==='deliver'){rewardFlight(orderRect,$('#coinPill').getBoundingClientRect(),`+${r.coins} coins`);sfx('contract');$('#coinPill').classList.remove('bump');void $('#coinPill').offsetWidth;$('#coinPill').classList.add('bump');}
+ if(r.event==='deliver'){rewardFlight(orderRect,$('#coinPill').getBoundingClientRect(),`+${r.coins} coins`);sfx('contract');
+  if(r.materials){const t=TASKS[r.materials.id],u=t.stages[r.materials.stage-1];setTimeout(()=>moment('Materials in: '+t.name,`${u.name} can be built for ${u.cost} coins on the ${currentArea(state).name}.`),500);}$('#coinPill').classList.remove('bump');void $('#coinPill').offsetWidth;$('#coinPill').classList.add('bump');}
  if(r.event==='producerUp'){const src=state.board[r.index],next=nextKind(src.id),waiting=next&&src.level<UNLOCK_LEVEL&&!state.board.some(y=>y?.type==='source'&&y.id===next);
   moment(SOURCES[src.id].name+' · level '+src.level,LEVEL_GAIN[src.level]+(waiting?` Level ${UNLOCK_LEVEL} brings out the ${SOURCES[next].name}.`:''),src);tile?.classList.add('merge-pop');burst(tile?.getBoundingClientRect(),'gold',true);sfx('milestone');}
  if(r.event==='restore')showBeat(r.task,r.effects);
@@ -220,7 +221,7 @@ function run(a){
   // Crates that now touch open ground show their keys for the first time.
   for(const k of cargoKeys(state))if(!reachBefore.has(k.index))board.querySelector(`[data-index="${k.index}"]`)?.classList.add('newKey');}
  if(r.found?.length&&r.event!=='restore'){const k=r.found.at(-1),x=item(k.replace(/\d+$/,''),+k.match(/\d+$/)[0]);if(x.tier>=2)setTimeout(()=>moment('New: '+nameOf(x),(x.tier<maxTier(x.family)?'Next: '+CHAINS[x.family].names[x.tier+1]:'Top of the chain')+` · in the book: +${BOOK_COINS[x.tier]} coins`,x),r.levelUp?1600:0);}
- if(r.levelUp){const u=r.levelUp.at(-1);setTimeout(()=>{moment('Level '+u.level+'!',`Chest: +${r.levelUp.reduce((n,v)=>n+v.energy,0)} ϟ`+(u.generator?' · a second '+SOURCES[u.generator].name+' to merge':u.family?' · '+nameOf({type:'kit',family:u.family,size:1}):''),u.generator?{type:'source',id:u.generator}:u.family?{type:'kit',family:u.family,size:1,left:3}:null);sfx('milestone');$('#levelPill').classList.add('levelUp');setTimeout(()=>$('#levelPill').classList.remove('levelUp'),1400);},r.event==='restore'?0:400);}
+ if(r.levelUp){const u=r.levelUp.at(-1);setTimeout(()=>{moment('Level '+u.level+'!',`The crew is fired up: +${r.levelUp.reduce((n,v)=>n+v.energy,0)} ϟ`);sfx('milestone');$('#levelPill').classList.add('levelUp');setTimeout(()=>$('#levelPill').classList.remove('levelUp'),1400);},r.event==='restore'?0:400);}
  return r;
 }
 // Taps make, open and show; merging, opening cargo and moving are done by dragging only
@@ -365,11 +366,14 @@ function growScene(){
 function showMap(){
  const area=currentArea(state),open=new Map(upgrades(state).map(u=>[u.id,u]));
  const places=area.tasks.map(t=>{
-  const n=stageOf(state,t.id),u=open.get(t.id),afford=u&&state.coins>=u.cost;
+  const n=stageOf(state,t.id),u=open.get(t.id),afford=u?.materials&&state.coins>=u.cost;
   const status=n>=STAGES?'done':afford?'ready':u?'next':'locked';
   const now=n?t.stages[n-1].name:t.name;
-  const next=n>=STAGES?'Complete':!u?'Restore the place before it first':n?`Next: ${u.name}`:'Not restored yet';
-  return `<li class="place" data-status="${status}" data-place="${t.id}"><span class="placeIcon ${t.art&&!n?'unbuilt':''}">${placeArt(t,n)}</span><span><strong>${now}</strong>${pips(n)}<small>${next}</small></span>${n>=STAGES?`<button data-replay="${t.id}" aria-label="Replay ${t.name}">✓</button>`:u?`<button data-restore="${t.id}" ${afford?'':'disabled'} aria-label="${afford?`Upgrade for ${u.cost} coins`:`Needs ${u.cost-state.coins} more coins`}">${COIN} ${u.cost}${afford?'':`<small class="short">${u.cost-state.coins} more</small>`}</button>`:'<button disabled aria-label="Locked">🔒</button>'}</li>`;
+  // A stage needs its materials (its gold order delivered) and its coins (Build 41).
+  const stuff=u?(u.materials?' · materials ✓':' · needs its gold order'):'';
+  const next=n>=STAGES?'Complete':!u?'Restore the place before it first':(n?`Next: ${u.name}`:'Not restored yet')+stuff;
+  const short=!u?.materials?'<small class="short">gold order</small>':state.coins<u.cost?`<small class="short">${u.cost-state.coins} more</small>`:'';
+  return `<li class="place" data-status="${status}" data-place="${t.id}"><span class="placeIcon ${t.art&&!n?'unbuilt':''}">${placeArt(t,n)}</span><span><strong>${now}</strong>${pips(n)}<small>${next}</small></span>${n>=STAGES?`<button data-replay="${t.id}" aria-label="Replay ${t.name}">✓</button>`:u?`<button data-restore="${t.id}" ${afford?'':'disabled'} aria-label="${afford?`Upgrade for ${u.cost} coins`:!u.materials?`Needs its materials: deliver the gold order for ${t.name}`:`Needs ${u.cost-state.coins} more coins`}">${COIN} ${u.cost}${short}</button>`:'<button disabled aria-label="Locked">🔒</button>'}</li>`;
  }).join('');
  // Finished areas stay listed above the current one, the ones still to come below it.
  const before=AREAS.slice(0,state.area).map(a=>`<section class="mapArea done"><div class="mapHead"><img src="assets/premium/${a.picture}-vibrant.webp" alt=""><div><h2>${a.name}</h2><b>Complete ✓</b></div></div></section>`).join('');
