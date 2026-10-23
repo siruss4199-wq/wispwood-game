@@ -17,7 +17,7 @@ import {sound,reduced,burst,rewardFlight,moment as sharedMoment} from '../feedba
 function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el=document.querySelector('.moment');const top=[...document.querySelectorAll('dialog[open]')].pop();if(el&&top)top.append(el);if(!x||!el)return;const icon=document.createElement('span');icon.style.cssText='float:left;width:42px;height:42px;margin-right:10px';icon.innerHTML=draw(x);icon.firstElementChild.style.cssText='width:100%;height:100%';el.prepend(icon);}
 
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 36 · Lantern Kiln and order changes';
+export const BUILD='Build 37 · the coast comes back to colour';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
@@ -311,6 +311,22 @@ for(const d of document.querySelectorAll('dialog'))d.querySelector('.close')?.ad
 // ---------- the beach screen and story ----------
 // A full-screen view of the area: the picture with every place at its stage, and the list
 // of places with their next stage and its price. Coins are spent here only.
+// The area's picture changes with its stages (build 37, user: "bushiin zurgiin uurchlultiig hii"):
+// it starts storm-grey, and each place brings its own patch of colour back, wider at every stage
+// (REVEAL, in % of the picture's width), with a glow at stage 3, and the storm lifts a little
+// with every stage (--p); a finished area is in full colour. The stage just bought spreads its colour out from the old size.
+const REVEAL=[0,13,19,26];
+let lastStage=null;// {id,stage} of the upgrade being shown, so its patch can grow
+function sceneHtml(area){
+ const done=areaDone(state,area),vars=area.tasks.map((t,k)=>{const n=stageOf(state,t.id),grow=lastStage?.id===t.id;return `--r${k}:${REVEAL[grow?lastStage.stage-1:n]}`;}).join(';');
+ const masks=area.tasks.map((t,k)=>`radial-gradient(ellipse calc(var(--r${k})*1%) calc(var(--r${k})*2%) at ${t.at[0]}% ${t.at[1]}%,#000 40%,transparent 100%)`).join(',');
+ return `<div class="beachScene ${done?'complete':''}" data-built="${builtCount(state,area)}" style="--p:${(builtCount(state,area)/(area.tasks.length*STAGES)).toFixed(3)}"><img class="sceneBase" src="assets/premium/${area.picture}-vibrant.webp" alt="${area.name}, ${done?'fully restored':builtCount(state,area)+' of '+area.tasks.length*STAGES+' upgrades'}"><div class="sceneStorm" aria-hidden="true"></div><img class="sceneColor" src="assets/premium/${area.picture}-vibrant.webp" alt="" aria-hidden="true" style="${vars};-webkit-mask-image:${masks};mask-image:${masks}"><div class="restored">${placeIcons(area.tasks.filter(t=>stageOf(state,t.id)>0))}</div></div>`;
+}
+// After the picture is drawn with the old size, the new one is set so the colour spreads.
+function growScene(){
+ if(!lastStage)return;const area=currentArea(state),k=area.tasks.findIndex(t=>t.id===lastStage.id),img=$('#coastMap .sceneColor');lastStage=null;
+ if(!img||k<0)return;requestAnimationFrame(()=>requestAnimationFrame(()=>img.style.setProperty(`--r${k}`,REVEAL[stageOf(state,area.tasks[k].id)])));
+}
 function showMap(){
  const area=currentArea(state),open=new Map(upgrades(state).map(u=>[u.id,u]));
  const places=area.tasks.map(t=>{
@@ -324,14 +340,15 @@ function showMap(){
  const before=AREAS.slice(0,state.area).map(a=>`<section class="mapArea done"><div class="mapHead"><img src="assets/premium/${a.picture}-vibrant.webp" alt=""><div><h2>${a.name}</h2><b>Complete ✓</b></div></div></section>`).join('');
  const later=AREAS.slice(state.area+1).map(a=>`<section class="mapArea coming"><div class="mapHead"><img src="assets/premium/${a.picture}-vibrant.webp" alt=""><div><h2>${a.name}</h2><b>Next update</b></div></div></section>`).join('');
  $('#mapContent').innerHTML=`<div class="beachTop"><h2 id="mapTitle" class="mapTitle">${area.name}</h2><b class="beachCoins">${COIN} ${state.coins}</b></div>
-  <div class="beachScene"><img src="assets/premium/${area.picture}-vibrant.webp" alt="${area.name}"><div class="restored">${placeIcons(area.tasks.filter(t=>stageOf(state,t.id)>0))}</div></div>
+  ${sceneHtml(area)}
   <p class="beachCount">${builtCount(state)} / ${area.tasks.length*STAGES} upgrades${areaDone(state)?' · complete!':''}</p>
   <ol class="places">${places}</ol>${before}${later}
   <button class="primary backToBoard" type="button" data-back>Back to the board</button>`;
  if(!$('#coastMap').open)$('#coastMap').showModal();
+ if(!$('#beat').open)growScene();
 }
 $('#mapContent').addEventListener('click',e=>{
- const r=e.target.closest('[data-restore]');if(r){const res=run({type:'restore',id:r.dataset.restore});showMap();return;}
+ const r=e.target.closest('[data-restore]');if(r){const res=run({type:'restore',id:r.dataset.restore});if(res.ok&&!res.effects.nextArea)lastStage={id:res.task,stage:res.stage};showMap();return;}
  const p=e.target.closest('[data-replay]');if(p){showBeat(p.dataset.replay,{},STAGES);return;}
  if(e.target.closest('[data-back]'))$('#coastMap').close();
 });

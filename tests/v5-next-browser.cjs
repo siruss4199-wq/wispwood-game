@@ -63,6 +63,11 @@ async function perform(page,a){
    assert.equal(await page.locator('#coastMap .place .pips i.on').count(),Object.values(s.built).reduce((a,b)=>a+b,0),'the beach screen shows every stage');
    assert.equal(await page.locator('#coastMap .beachScene .restoredIcon').count(),Object.keys(s.built).length,'upgraded places stand on the beach picture');
    {const b=await page.locator('#coastMap').boundingBox();assert.ok(b.width>=width-1,'the beach is a full screen of its own');}
+   // Build 37: the picture starts storm-grey and each upgraded place brings back a patch of colour.
+   {const built=Object.values(s.built).reduce((a,b)=>a+b,0),p=+(await page.locator('#coastMap .beachScene').getAttribute('style')).match(/--p:([\d.]+)/)[1];
+    assert.ok(Math.abs(p-built/21)<.001,'the storm lifts with every stage');assert.equal(await page.locator('#coastMap .sceneBase').count(),1);
+    const mask=await page.locator('#coastMap .sceneColor').evaluate(e=>getComputedStyle(e).webkitMaskImage||getComputedStyle(e).maskImage);assert.match(mask,/radial-gradient/,'colour comes back around each place');
+    assert.equal(await page.locator('#coastMap .beachScene.complete').count(),0);}
    assert.equal(await page.evaluate(()=>document.querySelector('#coastMap').scrollWidth<=innerWidth),true,'no sideways scroll on the beach');
    await page.locator('#coastMap [data-back]').tap();assert.equal(await page.locator('#coastMap[open]').count(),0,'back to the board');
    await page.locator('#menuButton').tap();assert.equal(await page.locator('#classicLink').getAttribute('href'),'index.html');await page.locator('#menu .close').tap();

@@ -472,3 +472,22 @@ that is not ready → a bar under the orders offers **↻ New order** (3 free a 
 stands, so it asks for something else; the gold story order cannot be changed (it is the
 next stage of the coast). `swapOrder` action, `s.swaps={day,n,ads}`; older saves load with a
 full day of changes. The scripted player does not change orders, so pacing is unchanged.
+
+## Build 37 — the coast comes back to colour (user: "bushiin zurgiin uurchlultiig hii", proposal 1 of the build-35 review)
+The area picture used to stay the same for all 21 stages; only small place icons and pips
+changed. Now the picture itself changes with the stages, using the painted picture and no new
+art:
+- A new area starts **storm-grey** (the picture greyed, darkened and under a blue-grey haze;
+  the beach's intro already says the storm left it).
+- Every place that has a stage brings back a **patch of colour** around it, wider at each
+  stage (13 / 19 / 26 % of the picture's width; `REVEAL` in `v5/next/app.mjs`), soft-edged
+  (two stacked copies of the picture; the colour copy is masked by one radial gradient per
+  place).
+- The **storm lifts a little with every stage** across the whole picture (`--p`, the share of
+  the area's stages bought: less grey, brighter, thinner haze).
+- When an upgrade is bought the new colour **spreads out** from the old size after the
+  stage's story lines (registered CSS custom properties `--r0`…`--r6`, 1.4 s; instant with
+  reduced motion).
+- A finished area is in **full colour** with a warm light; the next area starts grey again.
+Checked at 390 px with 0, 7, 20 beach stages and the worksite's first stages; the browser
+test checks the grey base, the masks and `--p`. No rules or saves changed.

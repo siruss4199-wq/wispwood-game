@@ -249,3 +249,20 @@ img.art{-webkit-user-drag:none;user-select:none}
 .orderTools button small{display:block;font-size:10px;font-weight:700;opacity:.85}
 .orderTools button.adOffer{background:#2f6fd6;box-shadow:0 2px 0 #1d4f9e}
 .orderTools button:disabled{background:#e3e7f0;color:#8a96a8;box-shadow:none}
+/* Build 37: the area picture changes with its stages. It starts storm-grey; each place brings
+   back a patch of colour that widens at every stage; a finished area is in full colour. */
+@property --r0{syntax:'<number>';inherits:false;initial-value:0}
+@property --r1{syntax:'<number>';inherits:false;initial-value:0}
+@property --r2{syntax:'<number>';inherits:false;initial-value:0}
+@property --r3{syntax:'<number>';inherits:false;initial-value:0}
+@property --r4{syntax:'<number>';inherits:false;initial-value:0}
+@property --r5{syntax:'<number>';inherits:false;initial-value:0}
+@property --r6{syntax:'<number>';inherits:false;initial-value:0}
+.beachScene>img{position:absolute;inset:0}
+.beachScene .sceneBase{filter:grayscale(calc(.85 - .45*var(--p,0))) brightness(calc(.74 + .14*var(--p,0))) contrast(.94) sepia(.12)}
+.sceneStorm{position:absolute;inset:0;background:linear-gradient(180deg,#3f516880 0%,#56667a40 45%,#2a344466 100%);pointer-events:none;opacity:calc(1 - .6*var(--p,0));transition:opacity 1.4s}
+.beachScene .sceneColor{filter:saturate(1.12) brightness(1.04);transition:--r0 1.4s,--r1 1.4s,--r2 1.4s,--r3 1.4s,--r4 1.4s,--r5 1.4s,--r6 1.4s;transition-timing-function:cubic-bezier(.2,.8,.3,1)}
+.beachScene.complete .sceneColor{-webkit-mask-image:none!important;mask-image:none!important}
+.beachScene.complete .sceneStorm{opacity:0}
+.beachScene.complete::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 15% 0%,#fff6c855,transparent 55%);pointer-events:none}
+.beachScene .restored{z-index:1}
