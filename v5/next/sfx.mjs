@@ -72,8 +72,9 @@ function bell(t,f,peak=.12,d=.32){tone(t,{f,peak,d,a:.003});tone(t,{f:f*2.76,pea
 const CUES={
  merge(t,tier=0,gain=1){
   // the knock: a short low thump with a woody contact; the finish: one bright pentatonic note
-  tone(t,{f:260,to:150,glide:.07,peak:.42*gain,d:.09,a:.002});
-  tone(t,{type:'triangle',f:520,to:300,glide:.05,peak:.12*gain,d:.05,a:.002});
+  // (pitched for phone speakers, which drop most sound under ~300 Hz)
+  tone(t,{f:400,to:240,glide:.06,peak:.34*gain,d:.08,a:.002});
+  tone(t,{type:'triangle',f:800,to:460,glide:.05,peak:.1*gain,d:.045,a:.002});
   grain(t,{f:1100,q:1.6,peak:.22*gain,d:.028});
   const f=SCALE[Math.max(0,Math.min(SCALE.length-1,tier-1))];
   tone(t+.022,{f,peak:.15*gain,d:.12,a:.004});tone(t+.022,{f:f*2,peak:.035*gain,d:.08,a:.003});
@@ -86,13 +87,13 @@ const CUES={
   tone(t+.05,{f:340,to:230,glide:.05,peak:.2,d:.06,a:.003});
  },
  crack(t){
-  grain(t,{filter:'highpass',f:3200,q:.8,peak:.34,d:.026});
-  grain(t+.016,{f:5200,q:3,peak:.16,d:.02});
+  grain(t,{f:3400,q:.9,peak:.55,d:.026});
+  grain(t+.016,{f:4800,q:3,peak:.14,d:.02});
   tone(t,{f:2600,to:1500,glide:.04,peak:.05,d:.045,a:.001});
  },
  shatter(t){
   CUES.crack(t);
-  [[.03,4200,.18],[.06,6100,.13],[.09,3600,.11],[.13,5200,.08],[.17,4600,.05]].forEach(([dt,f,p])=>grain(t+dt,{f,q:4,peak:p,d:.035}));
+  [[.03,3800,.18],[.06,5000,.12],[.09,3200,.11],[.13,4400,.08],[.17,3600,.05]].forEach(([dt,f,p])=>grain(t+dt,{f,q:4,peak:p,d:.035}));
   [[.05,2093],[.1,2637],[.16,3136]].forEach(([dt,f])=>tone(t+dt,{f,peak:.04,d:.08,a:.002}));
  },
  deliver(t){
@@ -103,7 +104,7 @@ const CUES={
  sparkle(t){[1568,2093,2637].forEach((f,k)=>tone(t+k*.04,{f,peak:.06,d:.12,a:.003}));},
  unseal(t){grain(t,{f:700,q:1,peak:.24,d:.06});tone(t+.03,{f:880,peak:.1,d:.18,a:.004});},
  tap(t){tone(t,{f:900,to:720,glide:.03,peak:.05,d:.035,a:.002});},
- error(t){tone(t,{f:300,to:250,glide:.06,peak:.1,d:.07,a:.003});tone(t+.09,{f:250,to:220,glide:.05,peak:.08,d:.07,a:.003});}
+ error(t){tone(t,{f:420,to:350,glide:.06,peak:.1,d:.07,a:.003});tone(t+.09,{f:350,to:310,glide:.05,peak:.08,d:.07,a:.003});}
 };
 // The game's old kinds keep working: rare → sparkle, contract → deliver.
 const ALIAS={rare:'sparkle',contract:'deliver'};
