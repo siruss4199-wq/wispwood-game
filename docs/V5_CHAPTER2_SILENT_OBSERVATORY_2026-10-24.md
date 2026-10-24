@@ -70,8 +70,8 @@ adds the CSS glow); the door in three stages (rings lit, then open) and its Vaul
 crossfade; the Vault Entrance and Observatory pictures; the harbour view.
 
 **Still missing / placeholder:** painted crew portraits; a production Observatory map with places
-drawn for it (the concept interior is used, dimmed, with the cut-out places on top); intermediate
-place stages (stage 2 and 3 share the restored art); a larger harbour view (the current one is
+drawn for it (the concept interior is used, dimmed, with the cut-out places on top); painted
+intermediate place stages (stage 2 is the restored art, darkened, until real art exists); a larger harbour view (the current one is
 upscaled from a small crop); a Signal reader that does not read as a telescope; Survey Worksite
 places are still the Build 39 renders.
 
