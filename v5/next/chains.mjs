@@ -5,13 +5,13 @@
 import {FAMILIES} from '../core.mjs';
 import {art,SPRITE_OVERRIDES} from '../art.mjs';
 import {MATERIALS} from '../objects.mjs';
-// Rendered 3D art (build 27): ray-marched in v5/assets/premium/coast/render.html, light from
-// the upper left like the painted parts, exported as 192 px WebP.
-const RENDER=f=>`assets/premium/coast/${f}.webp`;
-const img=(f,cls,art)=>`<img class="art ${cls}" src="${RENDER(f)}" alt="" aria-hidden="true" draggable="false" data-art="${art}">`;
+const img=(f,cls,art)=>`<img class="art ${cls}" src="assets/premium/coast/icons/${f}.webp" alt="" aria-hidden="true" draggable="false" data-art="${art}">`;
 const CARGO_FILE={crate:'cargo-crate',bundle:'cargo-bundle',barrel:'cargo-barrel',basket:'cargo-basket'};
 const KIT_FILE=['driftwood-crate','sea-chest','captains-trunk'];
-const RENDERED=new Set(['rope','shell','lamp']);
+// Build 41l (user: "ed nariin visual tuvshinuur hii", with a painted sheet): every generator, part,
+// cargo, crate, token and cog is a painted icon cut from that sheet (assets/premium/coast/icons).
+const RENDERED=new Set(['rig','chart','rope','shell','lamp']);
+const icon=(f,cls,art)=>`<img class="art ${cls}" src="assets/premium/coast/icons/${f}.webp" alt="" aria-hidden="true" draggable="false" data-art="${art}">`;
 
 export const CHAINS={
  rig:{gen:'rig',names:FAMILIES.rig.names},
@@ -88,10 +88,9 @@ export function draw(x,cls=''){
  if(x?.type==='glass')return draw({type:'item',family:x.family,tier:x.tier},(cls+' inGlass').trim())+'<svg class="glassShard" viewBox="0 0 100 100" aria-hidden="true"><path d="M14 22L40 8 78 14 92 46 82 86 44 94 10 72Z" fill="#9fe3e0" fill-opacity=".38" stroke="#e9fffd" stroke-width="3"/><path d="M40 8L50 40 92 46M50 40L44 94M50 40L10 72M14 22L50 40" stroke="#ffffff" stroke-opacity=".55" stroke-width="1.5" fill="none"/><path d="M22 30L34 22" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".8"/>'+(x.cracks?'<g class="crackLines" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M50 40L70 26 86 30M50 40L74 58 90 62M74 58L66 84M50 40L28 52 16 50M28 52L30 74" stroke="#1f5f5b" stroke-width="7"/><path d="M50 40L70 26 86 30M50 40L74 58 90 62M74 58L66 84M50 40L28 52 16 50M28 52L30 74" stroke="#ffffff" stroke-width="3"/></g>':'')+'</svg>';
  // Deep cargo (not yet touching open ground) keeps even its key hidden.
  if(x?.type==='cargo'){const look=CARGO_LOOK[x.key.family]??'basket';return img(CARGO_FILE[look],('cargoArt '+cls).trim(),'cargo-'+look)+'<span class="cargoQ" aria-hidden="true">?</span>'+(x.deep?'':`<span class="cargoKey" aria-hidden="true">${draw({type:'item',family:x.key.family,tier:x.key.tier})}</span>`);}
- // Build 41k: the Rope Winch, Shell Trap and Lantern Kiln and their parts are 3D renders
- // (render-parts.html) like the crates; the SVG shapes stay as the fallback for other chains.
- if(x?.type==='source'&&RENDERED.has(x.id))return img('gen-'+x.id,cls,'source-'+x.id);
- if(x?.type==='item'&&RENDERED.has(x.family)&&x.tier<=maxTier(x.family))return img(`part-${x.family}-${x.tier}`,cls,x.family+'-'+x.tier);
+ // Painted icons for every generator and part (Build 41l); the SVG shapes stay as the fallback.
+ if(x?.type==='source'&&RENDERED.has(x.id))return icon('gen-'+x.id,cls,'source-'+x.id);
+ if(x?.type==='item'&&RENDERED.has(x.family)&&x.tier<=maxTier(x.family))return icon(`${x.family}-${x.tier}`,cls,x.family+'-'+x.tier);
  if(x?.type==='source'&&GENERATOR_SHAPES[x.id])return `<svg class="art ${cls}" viewBox="0 0 100 100" aria-hidden="true" data-art="source-${x.id}">${MATERIALS}<g stroke-linejoin="round" stroke-linecap="round">${GENERATOR_SHAPES[x.id]}</g></svg>`;
  if(x?.type==='water')return x.find?draw(x.find,(cls+' submerged').trim()):'';
  // Tide token: a sea-glass coin with two curved arrows (it turns a part into another).

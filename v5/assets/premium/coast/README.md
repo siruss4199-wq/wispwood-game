@@ -53,3 +53,17 @@ shapes in `v5/next/chains.mjs` (kept as the fallback for other chains).
 | part-rope-0 … 5 | frayed twine · rope coil · fishing net with cork floats · pulley block · rope ladder · cargo hoist with a crate |
 | part-shell-0 … 5 | sand dollar · cockle shell · conch · pearl oyster · nautilus · coral crown |
 | part-lamp-0 … 4 | candle stub on a dish · tin lantern · storm lantern · signal lamp · beacon lens |
+
+**Painted icons (build 41l).** The user supplied a painted sheet of all 47 objects; `icons/` holds each one
+cut out (the sheet colour and the soft shadow made transparent by a flood fill from the cell's edge, large
+enclosed holes cleared, stray specks dropped, a one-pixel unmixed edge), framed square on the object and
+saved at 192 px WebP. They replace the 3D renders of build 41k (removed) and the crate, cargo, token and
+cog renders above for items on the board; place stages still use the renders.
+
+| Files | Objects |
+|---|---|
+| gen-rig, gen-chart, gen-rope, gen-shell, gen-lamp | Rivet Rover (drill crawler), Survey Kite, Rope Winch, Shell Trap, Lantern Kiln |
+| rig-0 … 7 | copper offcut (small wrench) · grip tool · split spanner · pocket winch · crawler jack · bridge rig · dune hauler · expedition crawler |
+| chart-0 … 7 | ink scrap · route fold · sight lens · survey scope · bearing dial · star chart · horizon model · sky atlas |
+| rope-0 … 5, shell-0 … 5, lamp-0 … 4 | as in build 41k |
+| cargo-crate, cargo-bundle, cargo-barrel, cargo-basket, driftwood-crate, sea-chest, captains-trunk, tide-token, brass-cog | cargo, crates 1–3, Tide token, Brass cog |
