@@ -63,7 +63,7 @@ cog renders above for items on the board; place stages still use the renders.
 | Files | Objects |
 |---|---|
 | gen-rig, gen-chart, gen-rope, gen-shell, gen-lamp | Rivet Rover (drill crawler), Survey Kite, Rope Winch, Shell Trap, Lantern Kiln |
-| rig-0 … 7 | copper offcut (small wrench) · grip tool · split spanner · pocket winch · crawler jack · bridge rig · dune hauler · expedition crawler |
+| rig-4 … 7 | crawler jack · bridge rig · dune hauler · expedition crawler (rig 0–3 keep the original painted Fieldworks art, `../copper-offcut-vibrant.webp` etc.) |
 | chart-0 … 7 | ink scrap · route fold · sight lens · survey scope · bearing dial · star chart · horizon model · sky atlas |
 | rope-0 … 5, shell-0 … 5, lamp-0 … 4 | as in build 41k |
 | cargo-crate, cargo-bundle, cargo-barrel, cargo-basket, driftwood-crate, sea-chest, captains-trunk, tide-token, brass-cog | cargo, crates 1–3, Tide token, Brass cog |

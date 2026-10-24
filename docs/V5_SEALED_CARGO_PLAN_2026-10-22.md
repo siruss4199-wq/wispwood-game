@@ -734,3 +734,5 @@ The Rivet Rover and Survey Kite chains already use painted art; the three later 
 
 ### Build 41l · painted icons for everything on the board (user: "ed nariin visual tuvshinuur hii", then a painted sheet)
 The user pointed at the painted Rover parts as the bar and then supplied a painted sheet of 47 objects (all five generators, all 33 parts, the four cargo looks, the three crates, the Tide token and the Brass cog). Each was cut out to a transparent 192 px WebP (`v5/assets/premium/coast/icons/`, 728 kB; method in its README) and `draw()` in `v5/next/chains.mjs` now uses them for Coast Camp; Classic V5 keeps its own art. The 20 ray-marched renders of 41k are removed. The sheet's first row had three wrenches and no copper curl: the smallest wrench is the Copper offcut, the teal-handled one the Grip tool, the adjustable one the Split spanner, and the drill crawler the Rivet Rover.
+
+**41l follow-up** (user: "ed nariig hevend ni uldee", on the Fieldworks page of the book): Copper offcut, Grip tool, Split spanner and Pocket winch keep their original painted art (`v5/assets/premium/*-vibrant.webp`); the sheet's three wrenches and winch are dropped.
