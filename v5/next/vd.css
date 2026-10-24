@@ -247,7 +247,10 @@ body.nextMode #board .tile.glassBreak{box-shadow:0 0 0 3px var(--ice-d)}
  body.nextMode .game>#message{grid-column:1;grid-row:7}
  body.nextMode .game>.dock{grid-column:1;grid-row:8;align-self:end}
  body.nextMode .game>footer{grid-column:1;grid-row:9}
- body.nextMode[data-art] .game>#board.board{grid-column:2;grid-row:1/-1;align-self:start;width:calc(100svh - 22px);margin-top:0}
+ /* Both sides set from one value (WebKit sized the rows from the square tiles and grew the
+    board past a 510 px window): bounded by the height and by the width left for the board. */
+ body.nextMode[data-art] .game>#board.board{--bs:min(calc(100svh - 22px),calc(100vw - 360px));grid-column:2;grid-row:1/-1;align-self:start;width:var(--bs);height:var(--bs);aspect-ratio:auto;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:repeat(7,minmax(0,1fr));margin-top:0}
+ body.nextMode[data-art] .game>#board.board .tile{aspect-ratio:auto;min-height:0;min-width:0}
  .nextMode .dock{margin:4px 0 0}
  body.nextMode .game>header{min-width:0}
  body.nextMode .game>header .brand{display:none}
