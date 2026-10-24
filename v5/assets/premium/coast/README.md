@@ -74,3 +74,9 @@ edge, shadow and glow kept, and placed on one shared 338 px square canvas (saved
 of every stage at the same point (50 %, 90 %), so an upgrade swaps the picture without moving it. They
 replace the ray-marched beach renders; the worksite places still use theirs. `../landing-map.webp` is the
 user's painted Landing Beach map (1024 px) that the places stand on.
+
+**Vault door layer (Build 42).** `vault-door-sealed.webp` and `vault-door-open.webp` are circular cut-outs
+(256 px, soft 4 px alpha edge, WebP quality 88) of the dial door in the existing paintings
+`../entrance-vibrant.webp` and `../vault-open-vibrant.webp` (centre 916,150, radius 140 px of the
+1200×400 pictures). The coast screen draws the sealed one as its own layer; the open one is used only
+when a Vault Entrance area with places is built, which no build has yet.
