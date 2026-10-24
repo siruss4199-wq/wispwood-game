@@ -65,7 +65,7 @@ async function perform(page,a){
    assert.match(await page.locator('#coastMap .beachScene.mapped .sceneBase').getAttribute('src'),/landing-map\.webp$/);
    for(const m of await page.locator('#coastMap .siteMarker').all()){const r=await m.boundingBox();assert.ok(r.width>=44&&r.height>=44,'marker touch target');}
    {const tops=new Set(await page.locator('#coastMap .places .place').evaluateAll(l=>l.map(e=>Math.round(e.getBoundingClientRect().top))));assert.equal(tops.size,1,'the places sit in one row');}
-   assert.equal(await page.locator('#coastMap details.mapFuture:not([open]) .mapArea.coming').count(),3,'coming areas are folded');
+   assert.equal(await page.locator('#coastMap details.mapFuture:not([open]) .mapArea.coming').count(),4,'coming areas are folded (worksite, Vault door, Observatory, harbour)');
    assert.equal(await page.locator('#coastMap .place .pips i.on').count(),Object.values(s.built).reduce((a,b)=>a+b,0),'the beach screen shows every stage');
    assert.equal(await page.locator('#coastMap .beachScene .restoredIcon').count(),Object.keys(s.built).length,'upgraded places stand on the beach picture');
    {const b=await page.locator('#coastMap').boundingBox();assert.ok(b.width>=width-1,'the beach is a full screen of its own');}
@@ -161,7 +161,7 @@ async function perform(page,a){
    // Build 33: the collection book. Parts already found wait in it; ticking one off pays its coins.
    {const st=await read(page),c=st.coins,n=st.found.filter(k=>/^(rig|chart|rope|shell|lamp)\d$/.test(k)&&!st.book.claimed.includes(k)).length;
     assert.ok(n>=1,'something waits in the book');assert.equal(await page.locator('#bookCount').textContent(),String(n));
-    await page.locator('#bookButton').tap();assert.equal(await page.locator('#book .bookPage').count(),5,'a page per generator chain');
+    await page.locator('#bookButton').tap();assert.equal(await page.locator('#book .bookPage').count(),6,'a page per generator chain (Chapter 2 adds the Lens Bench)');
     await page.locator('#book [data-key]').first().tap();
     await page.waitForFunction(c=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).coins>c,c,{timeout:4000});
     assert.equal((await read(page)).book.claimed.length,st.book.claimed.length+1);
@@ -209,7 +209,8 @@ async function perform(page,a){
    await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.coins=40;localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
    await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
    await page.locator('#mapButton').tap();await page.locator('#coastMap [data-restore="beach-path"]').tap();
-   assert.match(await page.locator('#beat .beatReceipt').textContent(),/−40 coins/);await closeBeats(page);await page.locator('#coastMap [data-back]').tap();
+   // Chapter 2: a stage's lines (and the coins it cost) are a bubble that does not stop play.
+   assert.match(await page.locator('#coastMap #bubble').textContent(),/−40 coins/);assert.equal(await page.locator('#beat[open]').count(),0);await closeBeats(page);await page.locator('#coastMap [data-back]').tap();
    // A full board with no twins and a full shed still has a way out.
    await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));let k=0;const fam=['rig','chart','rope','shell','lamp'];
     s.board=s.board.map(x=>x===null?{type:'item',family:fam[k%5],tier:Math.floor(k++/5)}:x);s.shed=s.shed.map((_,i)=>({type:'item',family:'rig',tier:i+1}));localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});

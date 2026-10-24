@@ -35,15 +35,15 @@ async function closeBeats(page){for(let n=0;n<8&&await page.locator('#beat[open]
    await page.locator('#playlog .close').tap();
    await page.reload();await page.waitForSelector('#board .tile');
    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast-playtest')).sessions.length>=2,null,{timeout:4000});
-   // The end of the prototype: buy the worksite's last stage.
+   // The end of the content (Chapter 2): buy the Observatory's last stage, the sea gate.
    await write(page,()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));
-    s.built={'beach-path':3,'beach-tent':3,'beach-mast':3,'beach-workshop':3,'beach-pier':3,'beach-beacon':3,'beach-cliff':3,'ws-camp':3,'ws-scope':3,'ws-ropes':3,'ws-steps':3,'ws-pool':3,'ws-hoist':3,'ws-door':2};
-    s.area=1;s.materials={'ws-door':3};s.coins=500;s.moves=Math.max(s.moves,50);s.daily={day:9e6,count:1};delete s.seenEnd;localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
+    s.built={'beach-path':3,'beach-tent':3,'beach-mast':3,'beach-workshop':3,'beach-pier':3,'beach-beacon':3,'beach-cliff':3,'ws-camp':3,'ws-scope':3,'ws-ropes':3,'ws-steps':3,'ws-pool':3,'ws-hoist':3,'ws-door':3,'vault-door':3,'obs-hall':3,'obs-desk':3,'obs-bench':3,'obs-array':3,'obs-passage':2};
+    s.area=3;s.orders=s.orders.map(o=>{delete o.story;return o;});s.materials={'obs-passage':3};s.coins=500;s.moves=Math.max(s.moves,50);s.daily={day:9e6,count:1};delete s.seenEnd;localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
    await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
    assert.equal(await page.locator('#endDialog[open]').count(),0,'not before the end');
-   await page.locator('#mapButton').tap();await page.locator('#coastMap [data-restore="ws-door"]').tap();await closeBeats(page);
+   await page.locator('#mapButton').tap();await page.locator('#coastMap [data-restore="obs-passage"]').tap();await page.waitForSelector('#beat[open]',{timeout:4000});await closeBeats(page);
    await page.waitForSelector('#endDialog[open]',{timeout:4000});
-   {const t=await page.locator('#endContent').textContent();assert.match(t,/Vault Entrance/);assert.match(t,/42 stages/);assert.doesNotMatch(t,/20\d\d|January|February|March|April|May|June|July|August|September|October|November|December/,'no release date');}
+   {const t=await page.locator('#endContent').textContent();assert.match(t,/CHAPTER 2 COMPLETE/);assert.match(t,/The Silent Observatory/);assert.match(t,/Chapter 3, The Hidden Harbour, is in development/);assert.doesNotMatch(t,/game (is )?(complete|over)|PROTOTYPE/i,'a chapter ends, not the game');assert.match(t,/60 stages/);assert.doesNotMatch(t,/20\d\d|January|February|March|April|May|June|July|August|September|October|November|December/,'no release date');}
    assert.equal(await page.locator('#endContent [data-keep]').count(),1);assert.equal(await page.locator('#endContent [data-feedback]').count(),1);
    await page.locator('#endContent [data-keep]').tap();assert.equal(await page.locator('#endDialog[open]').count(),0,'keep playing returns to the game');
    assert.equal((await read(page)).seenEnd,true);

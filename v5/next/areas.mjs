@@ -82,9 +82,56 @@ export const AREAS=[
     {name:'Light the door',cost:220,effect:{copy:'newest'},lines:[['tamsin','Lanterns all around the dial. The tideglass in it glows back at us.'],['tamsin','We will need lamps of our own up here. Packed with the lanterns: a copy of our newest generator.']]},
     {name:'Map the dial',cost:240,effect:{kit:['newest',3]},lines:[['neri','Every ring of the dial is mapped. Now we know how it opens.'],['bram','The worksite is done. Next: the Vault Entrance itself.']]}],'ws-door')
   ]},
- {id:'entrance',name:'Vault Entrance',picture:'entrance',coming:true,tasks:[]},
- {id:'vault',name:'The Vault',picture:'vault-open',coming:true,tasks:[]}
+ // Chapter 1's finale (Chapter 2 plan, D1): the mapped dial is turned ring by ring; the third
+ // ring opens the Vault. Its picture is the user's sealed-entrance concept; the door place stands on
+ // the painted door, ring by ring (place-vault-door-1..3, the third open).
+ {id:'entrance',name:'Vault Entrance',short:'DOOR',picture:'vault-gate',
+  intro:[['neri','The dial is mapped: three rings, each with its own mechanism.'],['ivo','Bring me the parts for each ring and we turn them one by one.']],
+  tasks:[
+   {marker:[80,24],...place('vault-door','lamp-3',[53.2,49.8],[
+    {name:'Turn the outer ring',cost:240,effect:{energy:10},lines:[['neri','The outer ring turns. Two to go.']]},
+    {name:'Turn the middle ring',cost:280,effect:{kit:['newest',3]},lines:[['tamsin','The middle ring is turning. The tideglass hums like the beacon crown.']]},
+    {name:'Turn the inner ring',cost:320,gold:[['lamp',3,1],['chart',4,1]],effect:{},lines:[['bram','The inner ring is set. Stand back.']]}],'vault-door')}
+  ]},
+ // Chapter 2, The Silent Observatory (docs/V5_CHAPTER2_SILENT_OBSERVATORY_2026-10-24.md): behind the
+ // door is the fleet's old observatory. The Lens Bench is earned here (copy:'optic'), and half of the
+ // everyday orders want its optics once it is out (focus).
+ {id:'vault',name:'The Silent Observatory',short:'VAULT',picture:'observatory',map:'observatory-map',focus:'optic',
+  intro:[['bram','Lamps first. Then we find out what this place was for.']],
+  tasks:[
+   place('obs-hall','lamp-1',[50,84],[
+    {name:'Light the entrance hall',cost:110,effect:{energy:8},lines:[['tamsin','These lamps were trimmed by hand, for years. Somebody worked here.']]},
+    {name:'Clear the fallen stones',cost:130,effect:{token:1},lines:[['ivo','Somebody built this hall to last. The stones came off the dome, nothing more.']]},
+    {name:'Hang the banners',cost:150,effect:{kit:['newest',2]},lines:[['neri','A compass and a crescent on every banner. That mark was on the door too.']]}],'obs-hall'),
+   place('obs-desk','chart-3',[22,64],[
+    {name:'Right the survey desk',cost:130,effect:{energy:8},lines:[['neri','Logbooks. Hundreds of them, all in the same hand.']]},
+    {name:'Unroll the old charts',cost:150,effect:{token:1},lines:[['neri','Every chart here carries the same mark: the fleet that no shipping register remembers.'],['bram','So they worked from here.']]},
+    {name:'Read the last logbook',cost:170,effect:{kit:['newest',2]},lines:[['tamsin','The last entry says: "Array silent. Lenses sent to the bench for regrinding." Then nothing.'],['neri','Then we start at the bench.']]}],'obs-desk'),
+   place('obs-bench','optic-2',[79,64],[
+    {name:'Clear the lens bench',cost:150,effect:{copy:'optic'},lines:[['ivo','A grinding wheel and a box of raw sea glass. We can make lenses again.']]},
+    {name:'Fit the grinding wheel',cost:170,effect:{copy:'optic'},lines:[['ivo','The wheel turns true. Merge the new bench with ours: twice the work.']]},
+    {name:'Polish the reading lens',cost:190,effect:{kit:['optic',2]},lines:[['neri','The big lens is clear again. Now the array can see.']]}],'obs-bench'),
+   place('obs-array','optic-3',[50,50],[
+    {name:'Reseat the array crystal',cost:170,gold:[['optic',2,1],['lamp',2,2]],effect:{energy:10},lines:[['tamsin','The crystal is cold. It needs focused light.']]},
+    {name:'Align the brass rings',cost:200,gold:[['optic',3,1],['chart',4,1]],effect:{cog:1},lines:[['neri','The rings are set to a bearing, not to a star.']]},
+    {name:'Wake the array',cost:230,gold:[['optic',4,1],['lamp',3,1]],effect:{kit:['optic',3]},lines:[['tamsin','It is waking.']]}],'obs-array'),
+   place('obs-passage','rope-4',[50,24],[
+    {name:'Unbar the inner passage',cost:190,effect:{energy:10},lines:[['bram','Cold air. This passage goes out to the sea.']]},
+    {name:'Shore up the tunnel',cost:220,effect:{cog:1},lines:[['ivo','Timber and brass. The same hands as the bench.']]},
+    {name:'Open the sea gate',cost:250,requires:{'obs-array':3},gold:[['optic',4,1],['rope',4,1]],effect:{},lines:[['neri','The bearing runs straight through there.']]}],'obs-passage')
+  ]},
+ // Chapter 3 is not built: listed as coming, never playable (no places).
+ {id:'harbour',name:'The Hidden Harbour',picture:'harbour',coming:true,tasks:[]}
 ];
+// Chapters group areas (append-only, like AREAS: saves keep the area index). A chapter whose
+// areas have no places is shown as "in development", never as a playable step.
+export const CHAPTERS=[
+ {id:'coast',title:'Coast Camp',n:1,areas:['beach','worksite','entrance']},
+ {id:'observatory',title:'The Silent Observatory',n:2,areas:['vault']},
+ {id:'harbour',title:'The Hidden Harbour',n:3,areas:['harbour']}
+];
+export const chapterOfArea=id=>CHAPTERS.find(c=>c.areas.includes(id));
+export const chapterAvailable=c=>c.areas.some(id=>AREAS.find(a=>a.id===id)?.tasks.length);
 // The next area opens when this one's last stage is bought (game.mjs restore and load).
 export const TASKS=Object.fromEntries(AREAS.flatMap(a=>a.tasks.map(t=>[t.id,{...t,area:a.id}])));
 export const STAGES=3;

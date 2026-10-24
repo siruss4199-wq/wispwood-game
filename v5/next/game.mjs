@@ -25,13 +25,16 @@ export const CHEST_ENERGY=15;
 // The camp shed (build 32, user: "aguulah bolon udur tutmiin shagnaliig nem"): four spaces off
 // the board for parts, crates, cogs and tokens. What is in the shed does not count for orders
 // or cargo; tap it to bring it back to the board.
-export const SHED_SLOTS=4,SHED_TYPES=['item','kit','cog','token'];
+// Chapter 2 (plan D4): a generator can be parked in the shed too, keeping its level. A parked
+// generator makes nothing and brings no new orders (its chain leaves openChains), so parking is
+// how a player keeps two or three chains active; at least one generator stays on the board.
+export const SHED_SLOTS=4,SHED_TYPES=['item','kit','cog','token','source'];
 // The daily gift: one a day, seven in a row then round again. A missed day does not reset it.
 // The collection book (build 33, user: "cugluulgiin nom nem"): every part found for the first
 // time pays a few coins once it is ticked off in the book, more for higher tiers; a chain's
 // whole page found and ticked gives a Brass cog.
 export const BOOK_COINS=[1,1,2,3,5,8,12,20];// kept small: bigger book coins undid build 31's energy tension (scripted player)
-export const BOOK_CHAINS=['rig','chart','rope','shell','lamp'];// the chains of GENERATOR_ORDER
+export const BOOK_CHAINS=['rig','chart','rope','shell','lamp','optic'];// the chains of NEWEST_ORDER
 export const bookKeys=family=>Array.from({length:maxTier(family)+1},(_,t)=>family+t);
 // Parts found but not yet ticked off in the book.
 export const bookReady=s=>s.found.filter(k=>!s.book.claimed.includes(k)&&BOOK_CHAINS.includes(k.replace(/\d+$/,'')));
@@ -71,6 +74,11 @@ export const MAX_GENERATOR_LEVEL=5;
 // Lantern Kiln. Cargo holds the copies and Brass cogs that level them.
 export const UNLOCK_LEVEL=3;
 export const nextKind=g=>GENERATOR_ORDER[GENERATOR_ORDER.indexOf(g)+1]??null;
+// Generators earned from places, not from the level-3 chain above (Chapter 2: the Lens Bench).
+// NEWEST_ORDER is every generator in the order a player meets them ("newest" rewards follow it).
+export const NEWEST_ORDER=[...GENERATOR_ORDER,'optic'];
+// A generator of this kind on the board or parked in the shed.
+export const hasGenerator=(s,id)=>s.board.some(x=>x?.type==='source'&&x.id===id)||s.shed.some(x=>x?.type==='source'&&x.id===id);
 export const generatorsMerge=(x,y)=>x?.type==='source'&&y?.type==='source'&&x.id===y.id&&producerLevel(x)===producerLevel(y)&&producerLevel(x)<MAX_GENERATOR_LEVEL;
 
 export const item=(family,tier)=>({type:'item',family,tier});
@@ -157,7 +165,7 @@ export function fresh(now=Date.now()){
  for(let i=0;i<BOARD_SIZE;i++)if(GLASS[i])board[i]=glass(...GLASS[i]);else if(!CAMP.includes(i))board[i]=cargoAt(i);
  const s={version:VERSION,board,energy:40,energyAt:now,coins:0,level:freshLevel(),taps:{},
   orders:[],slots:3,orderSeq:0,ordersDone:0,area:0,built:{},found:[],moves:0,merges:0,lastAt:now,
-  shed:Array(SHED_SLOTS).fill(null),daily:{day:-1,count:0},book:{claimed:[],pages:[]},shop:{day:-1,bought:{}},swaps:{day:-1,n:0,ads:0},materials:{}};
+  shed:Array(SHED_SLOTS).fill(null),daily:{day:-1,count:0},book:{claimed:[],pages:[]},shop:{day:-1,bought:{}},swaps:{day:-1,n:0,ads:0},materials:{},pending:[],seen:{}};
  for(const g of Object.keys(GENERATOR_CHAINS))s.taps[g]=0;
  for(let i=0;i<s.slots;i++)s.orders.push(makeOrder(s));
  note(s);return s;
@@ -172,7 +180,7 @@ export function fresh(now=Date.now()){
 // a Split spanner, then a Pocket winch, then two kinds at once, so taps alone fill none of them.
 const FIRST=[[['rig',2,1]],[['rig',3,1]],[['rig',2,1],['rig',1,2]]];
 function rand(n){let t=(n*2654435761+0x6D2B79F5)>>>0;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296;}
-const CREW_OF={rig:'ivo',rope:'ivo',chart:'neri',shell:'neri',flux:'tamsin',lamp:'tamsin'};
+const CREW_OF={rig:'ivo',rope:'ivo',chart:'neri',shell:'neri',flux:'tamsin',lamp:'tamsin',optic:'tamsin'};
 const crewFor=needs=>needs.length>1?'bram':CREW_OF[needs[0].family];
 // Coins an order pays: its parts' worth, half as much again for the story's (rounded to 5).
 export const priceOf=(needs,story=false)=>{const v=needs.reduce((v,r)=>v+r.count*COIN_VALUE[r.tier],0);return story?Math.round(v*1.5/5)*5:v;};
@@ -228,7 +236,9 @@ export function makeOrder(s){
   const range=fresh=>pool.flatMap(f=>{const hi=Math.max(lo,Math.min(role===2?top+1:top,reach(s,f)+1,maxTier(f)-1)),out=[];for(let t=lo;t<=hi;t++)if(!fresh||!live.has(f+t))out.push([f,t]);return out;}).sort((a,b)=>a[1]-b[1]);
   let cands=range(true),repeat=false;if(!cands.length){repeat=true;const all=range(false),least=Math.min(...all.map(([f,t])=>uses(f+t)));cands=all.filter(([f,t])=>uses(f+t)===least);}
   if(!story){const third=Math.ceil(cands.length/3),part=repeat?cands:role===0?cands.slice(0,third):role===2?cands.slice(-third):cands.slice(third,2*third);const pick=part.length?part:cands;[family,tier]=pick[Math.floor(rand(n*7)*pick.length)];}
-  if(story){needs=goldNeeds(s,families,family,low,n);return {id:'o'+n,who:crewFor(needs),needs,coins:priceOf(needs,true),story:story.id};}
+  // A stage may name its own materials (gold: [[chain, tier, count], ...]), e.g. the array's
+  // optics with a lamp; otherwise they follow the newest generator as above.
+  if(story){needs=story.gold?story.gold.map(([family,tier,count])=>({family,tier,count})):goldNeeds(s,families,family,low,n);return {id:'o'+n,who:crewFor(needs),needs,coins:priceOf(needs,true),story:story.id};}
   needs=[{family,tier,count:tier<=2&&rand(n*13)<.6?2:1}];
   if(repeat||rand(n*17)<Math.min(.6,.2+built*.02)){const other=secondChain(families,family,Math.max(1,tier-1),n*23+5)??family,t=Math.max(1,other===family?tier-1:Math.min(tier-1,reach(s,other)));if(other!==family||t!==tier)needs.push({family:other,tier:t,count:1});}
  }
@@ -244,6 +254,15 @@ export function orderProgress(s,o){return o.needs.map(r=>({...r,have:Math.min(r.
 
 // ---- board helpers ----
 const put=(s,x,near=0)=>{const i=nearestFree(s.board,near,cellPos);if(i>=0)s.board[i]=x;return i;};
+// A reward with no free space waits (Chapter 2 plan D6; before, it was lost): it lands next to the
+// Rover after the next action that leaves a space, like a released generator.
+const give=(s,x)=>{const i=put(s,x,ROVER);if(i<0)s.pending.push(x);return i;};
+function placePending(s){
+ const out=[];
+ // A waiting generator lands first: it is what the player is waiting for.
+ while(s.pending.length){const i=nearestFree(s.board,ROVER,cellPos);if(i<0)break;const k=Math.max(0,s.pending.findIndex(x=>x.type==='source')),[x]=s.pending.splice(k,1);s.board[i]=x;out.push({index:i,thing:x});}
+ return out;
+}
 // Cargo cell j opens: its find takes the space, or pays out and leaves it free.
 function reveal(s,j){
  const f=s.board[j].find;
@@ -259,7 +278,7 @@ function reveal(s,j){
 // Parts seen for the first time (for "New!" moments in the UI).
 function note(s){const fresh=[];for(const x of s.board)if(x?.type==='item'){const k=x.family+x.tier;if(!s.found.includes(k)){s.found.push(k);fresh.push(k);}}return fresh;}
 // The most recently found generator (for rewards that follow your newest chain).
-export const newestGenerator=s=>[...GENERATOR_ORDER].reverse().find(g=>sourceOpen(s,g))??'rig';
+export const newestGenerator=s=>[...NEWEST_ORDER].reverse().find(g=>sourceOpen(s,g))??'rig';
 // Only cargo touching open ground (an orthogonal neighbour that is not cargo) can be
 // opened, so the board opens outward from the camp one ring at a time; cargo
 // further in keeps even its key hidden.
@@ -280,7 +299,7 @@ function crack(s,i,power=Infinity){
 // (checked after every action, so a full board only delays it).
 function release(s){
  const out=[];
- for(const g of GENERATOR_ORDER){const n=nextKind(g);if(!n||s.board.some(x=>x?.type==='source'&&x.id===n))continue;
+ for(const g of GENERATOR_ORDER){const n=nextKind(g);if(!n||hasGenerator(s,n))continue;
   const up=s.board.findIndex(x=>x?.type==='source'&&x.id===g&&producerLevel(x)>=UNLOCK_LEVEL);if(up<0)continue;
   const i=nearestFree(s.board,up,cellPos);if(i<0)continue;s.board[i]=source(n);out.push({index:i,id:n,from:g});}
  return out;
@@ -311,8 +330,14 @@ export const stageOf=(s,id)=>s.built[id]??0;
 export function upgrades(s){
  const a=currentArea(s);if(!a)return [];
  return a.tasks.flatMap((t,k)=>{const n=stageOf(s,t.id);if(n>=STAGES||n===0&&k>0&&!stageOf(s,a.tasks[k-1].id))return [];
-  const st=t.stages[n];return [{id:t.id,stage:n+1,name:st.name,cost:st.cost,effect:st.effect,lines:st.lines,icon:t.icon,place:t.name,materials:(s.materials?.[t.id]??0)>n}];}).sort((x,y)=>x.cost-y.cost);
+  // A stage may wait for another place's stage (requires: {place: stage}), e.g. the sea gate
+  // opens only once the array is awake.
+  const st=t.stages[n];if(!stageReady(s,st))return [];
+  return [{id:t.id,stage:n+1,name:st.name,cost:st.cost,effect:st.effect,lines:st.lines,icon:t.icon,place:t.name,materials:(s.materials?.[t.id]??0)>n,...(st.gold?{gold:st.gold}:{})}];}).sort((x,y)=>x.cost-y.cost);
 }
+export const stageReady=(s,st)=>!st?.requires||Object.entries(st.requires).every(([id,n])=>stageOf(s,id)>=n);
+// The next stage of a place that waits for another place (for the card's explanation).
+export function blockedStage(s,id){const t=TASKS[id],n=stageOf(s,id),st=t?.stages[n];return st&&!stageReady(s,st)?{stage:n+1,name:st.name,requires:st.requires}:null;}
 // The cheapest upgrade whose materials are in (the one the main screen points to), and the
 // cheapest still waiting for them (the gold order is for that one).
 export const nextTask=s=>upgrades(s).find(u=>u.materials)??null;
@@ -326,17 +351,25 @@ export const totalBuilt=s=>Object.values(s.built).reduce((n,k)=>n+k,0);
 // When an area is complete the next one with places opens (build 31: the Survey Worksite).
 function advance(s){let next=null;while(areaDone(s)&&AREAS[s.area+1]?.tasks.length){s.area++;next=AREAS[s.area].id;}return next;}
 
+// A stage waiting for materials with no gold order live gets one at once: it takes the place of the
+// crew order the player has made least of (parts made stay on the board). Used after a purchase
+// (Build 41e) and when a save moves on to a new area as it loads (Chapter 2).
+function ensureGold(s){
+ if(s.orders.some(o=>o?.story)||!storyTarget(s))return null;
+ const made=o=>orderProgress(s,o).reduce((n,r)=>n+r.have/r.count,0),lane=s.orders.reduce((k,o,i)=>made(o)<made(s.orders[k])?i:k,0);
+ const o=makeOrder(s);if(!o.story)return null;s.orders[lane]=o;return o.id;
+}
 export function act(s,a,now=Date.now()){
  const wasFull=s.energy>=REFILL_CAP,r=step(s,a,now);
  if(!r.ok)return r;
  if(wasFull&&s.energy<REFILL_CAP)s.energyAt=now;
  s.moves++;s.lastAt=now;
- const released=release(s);
+ const released=release(s),arrived=placePending(s);
  const found=note(s),xp=r.xp??0,levelUp=xp?gainXp(s,xp):[];
  if(levelUp.length)found.push(...note(s));
  if(levelUp.length)released.push(...release(s));
  if(released.length)r.message+=released.map(n=>` · the ${SOURCES[n.id].name} comes out`).join('');
- return {...r,...(released.length?{released}:{}),...(found.length?{found}:{}),...(levelUp.length?{levelUp}:{})};
+ return {...r,...(released.length?{released}:{}),...(arrived.length?{arrived}:{}),...(found.length?{found}:{}),...(levelUp.length?{levelUp}:{})};
 }
 export function tick(s,now=Date.now()){return settleEnergy(s,now);}
 
@@ -432,23 +465,29 @@ function step(s,a,now){
   if(s.coins<t.cost)return fail(`${t.name} needs ${t.cost} coins. Deliver crew orders for coins.`);
   s.coins-=t.cost;s.built[t.id]=t.stage;const e=t.effect??{},effects={};
   if(e.energy){effects.energy=bonus(s,e.energy);}
-  if(e.copy){const id=e.copy==='newest'?newestGenerator(s):e.copy;effects.copy=put(s,source(id));effects.copyId=id;}
-  if(e.kit){const family=e.kit[0]==='newest'?newestGenerator(s):e.kit[0];effects.kit=put(s,kit(family,e.kit[1]));effects.kitFamily=family;}
-  if(e.token){effects.token=put(s,token());}
+  // Copies stay copies: two level-1 copies make a level 2 to merge on (plan D5 turned a copy above
+  // level 1 into a Brass cog, but the guard measured the Shell Trap out at 35 min instead of 152,
+  // so it was dropped; a copy that cannot merge yet can be parked in the shed).
+  if(e.copy){const id=e.copy==='newest'?newestGenerator(s):e.copy;effects.copy=give(s,source(id));effects.copyId=id;}
+  if(e.kit){const family=e.kit[0]==='newest'?newestGenerator(s):e.kit[0];effects.kit=give(s,kit(family,e.kit[1]));effects.kitFamily=family;}
+  if(e.token){effects.token=give(s,token());}
+  if(e.cog){effects.cog=give(s,cog());}
+  if(s.pending.length)effects.pending=s.pending.length;
   if(e.slots&&s.slots<e.slots){s.slots=e.slots;while(s.orders.length<s.slots)s.orders.push(makeOrder(s));effects.slots=e.slots;}
   if(areaDone(s)){effects.areaDone=AREAS[s.area].id;const next=advance(s);if(next)effects.nextArea=next;}
+  // A gold order for a place that needs no more materials (finished, or already supplied) is
+  // replaced (Chapter 2: a finished area must not leave a stale gold order behind).
+  for(let k=0;k<s.orders.length;k++){const o=s.orders[k];if(o?.story&&(stageOf(s,o.story)>=STAGES||(s.materials[o.story]??0)>stageOf(s,o.story))){s.orders[k]=null;s.orders[k]=makeOrder(s);}}
   // A stage that opens with no gold order live gets one at once (Build 41e): it takes the place
   // of the crew order the player has made least of (parts made stay on the board).
-  if(!s.orders.some(o=>o?.story)&&storyTarget(s)){
-   const made=o=>orderProgress(s,o).reduce((n,r)=>n+r.have/r.count,0),lane=s.orders.reduce((k,o,i)=>made(o)<made(s.orders[k])?i:k,0);
-   const o=makeOrder(s);if(o.story){s.orders[lane]=o;effects.goldOrder=o.id;}
-  }
+  const gold=ensureGold(s);if(gold)effects.goldOrder=gold;
   return {ok:true,event:'restore',task:t.id,stage:t.stage,effects,xp:XP.restore,message:t.name+(t.stage===1?' · restored':` · stage ${t.stage}`)};
  }
  // The shed: a part, crate, cog or token goes in the first free shed space, and back out to
  // the space asked for (or the nearest free one to the Rover).
  if(a.type==='store'){
-  const x=valid(a.index)?s.board[a.index]:null;if(!SHED_TYPES.includes(x?.type))return fail('Only parts, crates, cogs and tokens go in the shed.');
+  const x=valid(a.index)?s.board[a.index]:null;if(!SHED_TYPES.includes(x?.type))return fail('Only parts, crates, cogs, tokens and generators go in the shed.');
+  if(x.type==='source'&&s.board.filter(y=>y?.type==='source').length<2)return fail('Keep at least one generator on the board.');
   const k=Number.isInteger(a.slot)&&s.shed[a.slot]===null?a.slot:s.shed.indexOf(null);if(k<0)return fail('The shed is full. Take something out first.');
   s.shed[k]=x;s.board[a.index]=null;return {ok:true,event:'store',slot:k,message:nameOf(x)+' · in the shed'};
  }
@@ -516,6 +555,8 @@ function step(s,a,now){
  }
  // The prototype-complete screen has been seen (Build 41 M5): it shows once.
  if(a.type==='seenEnd'){if(!allDone(s)||s.seenEnd)return fail('Nothing to see yet.');s.seenEnd=true;return {ok:true,event:'seenEnd',message:'The coast so far is restored.'};}
+ // A story card or reveal the player has dismissed (Chapter 2 plan): it never plays again by itself.
+ if(a.type==='seen'){if(typeof a.id!=='string'||!/^[a-z0-9-]{1,40}$/.test(a.id))return fail('Unknown story card.');if(s.seen[a.id])return fail('Already seen.');s.seen[a.id]=true;return {ok:true,event:'seen',id:a.id,message:''};}
  if(a.type==='recycle'){
   const x=valid(a.index)?s.board[a.index]:null;if(x?.type!=='item')return fail('Only loose parts can be recycled.');
   s.board[a.index]=null;s.energy=Math.min(MAX_ENERGY,s.energy+1);
@@ -585,7 +626,12 @@ function toV4(s){
  for(const x of s.board)if(x?.type==='cargo'&&x.find?.type==='stars'&&integer(x.find.n,1,20))x.find={type:'coins',n:x.find.n*COIN_RATE};
  s.version=VERSION;
 }
-export function load(raw,now=Date.now()){
+// load() always returns a camp; loadChecked() also says whether the save was kept, so the app can
+// keep an unreadable save aside instead of losing it (Chapter 2 plan D7).
+export function load(raw,now=Date.now()){return loadChecked(raw,now).state;}
+export function loadChecked(raw,now=Date.now()){const s=parse(raw,now);return s?{state:s,kept:true}:{state:fresh(now),kept:false};}
+function parse(raw,now){
+ const fresh=()=>null;// below, fresh(now) means: this save cannot be read
  try{
   const s=JSON.parse(raw);
   if((s?.version===1||s?.version===2)&&Array.isArray(s.board)&&s.taps&&typeof s.taps==='object')upgrade(s);
@@ -597,6 +643,8 @@ export function load(raw,now=Date.now()){
   if(!Array.isArray(s.orders)||s.orders.length!==s.slots||!s.orders.every(validOrder))return fresh(now);
   if(!s.built||typeof s.built!=='object'||Array.isArray(s.built)||!Object.entries(s.built).every(([id,n])=>TASKS[id]&&integer(n,1,STAGES))||!Array.isArray(s.found))return fresh(now);
   for(const k of ['orderSeq','ordersDone','moves','merges'])if(!integer(s[k],0,1e9))return fresh(now);
+  // A generator added later (Chapter 2's Lens Bench) starts with no taps in an older save.
+  if(s.taps&&typeof s.taps==='object')for(const k of Object.keys(GENERATOR_CHAINS))s.taps[k]??=0;
   if(!s.taps||!Object.keys(GENERATOR_CHAINS).every(k=>integer(s.taps[k],0,1e9)))return fresh(now);
   // Build 32 added the shed and the daily gift; older saves get an empty shed and a gift today.
   s.shed??=Array(SHED_SLOTS).fill(null);s.daily??={day:-1,count:0};
@@ -618,10 +666,18 @@ export function load(raw,now=Date.now()){
   if(!s.book||!Array.isArray(s.book.claimed)||!Array.isArray(s.book.pages)||!s.book.claimed.every(k=>bookKey(k)&&s.found.includes(k))||new Set(s.book.claimed).size!==s.book.claimed.length||!s.book.pages.every(f=>BOOK_CHAINS.includes(f)&&bookKeys(f).every(k=>s.book.claimed.includes(k))))return fresh(now);
   if(!Array.isArray(s.shed)||s.shed.length!==SHED_SLOTS||!s.shed.every(x=>x===null||SHED_TYPES.includes(x?.type)&&validCell(x)))return fresh(now);
   if(!s.daily||!integer(s.daily.day,-1,1e7)||!integer(s.daily.count,0,1e7))return fresh(now);
+  // Chapter 2 added rewards waiting for space and dismissed story cards: absent means none.
+  s.pending??=[];s.seen??={};
+  if(!Array.isArray(s.pending)||s.pending.length>20||!s.pending.every(x=>x!==null&&validCell(x)&&!['cargo','glass'].includes(x.type)))return fresh(now);
+  if(!s.seen||typeof s.seen!=='object'||Array.isArray(s.seen)||!Object.entries(s.seen).every(([k,v])=>/^[a-z0-9-]{1,40}$/.test(k)&&v===true))return fresh(now);
   s.level=validLevel(s.level);
-  // Saves that finished the beach before the Survey Worksite existed go up the cliff.
-  advance(s);
+  // Saves that finished the beach before the Survey Worksite existed go up the cliff (and, since
+  // Chapter 2, a finished worksite goes on to the Vault door) with the next gold order ready.
+  if(advance(s))ensureGold(s);
   if(before41)for(const u of upgrades(s))s.materials[u.id]=u.stage;
+  // seenEnd marked the end of the content of its day; a camp with new places to build sees the
+  // end card again when it reaches the new end.
+  if(s.seenEnd&&!allDone(s))delete s.seenEnd;
   if(s.rationAt!==undefined&&!(Number.isFinite(s.rationAt)&&s.rationAt<=now))delete s.rationAt;
   if(!Number.isFinite(s.energyAt)||s.energyAt>now)s.energyAt=now;
   settleEnergy(s,now);

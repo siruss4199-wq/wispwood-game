@@ -80,3 +80,16 @@ user's painted Landing Beach map (1024 px) that the places stand on.
 `../entrance-vibrant.webp` and `../vault-open-vibrant.webp` (centre 916,150, radius 140 px of the
 1200×400 pictures). The coast screen draws the sealed one as its own layer; the open one is used only
 when a Vault Entrance area with places is built, which no build has yet.
+
+**Chapter 2 (Build 43).** Cut from the three concept sheets the user supplied on 2026-10-24 (not
+redrawn; they are review art until production art replaces them):
+
+| File | From | How |
+|---|---|---|
+| `icons/gen-optic.webp`, `icons/optic-0…5.webp` | optics sheet (real alpha) | objects found as connected components of solid alpha; stray low-alpha specks outside each object's dilated mask dropped; 192 px like the other icons |
+| `place-obs-{hall,desk,bench,array,passage}-{1,2,3}.webp` | five-location sheet | background removed by flood fill from the borders through near-background and pale near-grey pixels; there, the ground shadow kept dark and partly transparent; largest solid component per cell; both rows share one 360 px canvas, bottom-aligned. Stage 1 = neglected row, stages 2 and 3 = restored row (stage 3 adds the CSS glow) |
+| `place-vault-door-1…3.webp` | vault triptych, panels 1–2 | the dial door cut as a circle (centre 288,362, r 150 of the 541 px panel); rings 1 and 1–2 lit with a tideglass glow; stage 3 is the open door |
+| `vault-door-sealed.webp`, `vault-door-open.webp` | vault triptych | the same circles, used by the Vault layer on the beach and worksite (replace Build 42's cut-outs from `entrance-vibrant` / `vault-open-vibrant`, whose open door was a cosmic portal) |
+| `vault-reveal-sealed.webp`, `vault-reveal-open.webp` | vault triptych, panels 1–2 | the reveal card's crossfade |
+| `harbour-view.webp` | five-location sheet, the restored passage | the harbour seen through the sea gate (low resolution: placeholder) |
+| `../vault-gate-vibrant.webp`, `../observatory-map.webp`, `../observatory-vibrant.webp`, `../harbour-vibrant.webp` | triptych panels 1 and 3; location sheet | area pictures: the Vault Entrance (4:3 around the door), the Observatory map (square from the interior), thumbnails |

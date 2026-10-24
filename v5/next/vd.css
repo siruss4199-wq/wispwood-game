@@ -276,3 +276,63 @@ body.nextMode #board .tile.glassBreak{box-shadow:0 0 0 3px var(--ice-d)}
  #mapContent.entering .mapProgress i{animation:barGrow 1s cubic-bezier(.2,.8,.3,1) .4s both}
  #coastMap .cardButton.go::after{content:none}
 }
+
+/* ---------- Chapter 2: the Vault door, the Observatory, the story (docs/V5_CHAPTER2_SILENT_OBSERVATORY_2026-10-24.md) ---------- */
+/* The Vault door place stands on the door painted in the Vault Entrance picture, ring by ring. */
+#coastMap .restoredIcon[data-task="vault-door"]{width:55.5%;height:auto;aspect-ratio:1;transform:translate(-50%,-50%);filter:none}
+#coastMap .restoredIcon[data-task="vault-door"]::after,#coastMap .restoredIcon[data-task="vault-door"]::before{display:none}
+#coastMap .restoredIcon[data-task="vault-door"] .pips{bottom:2%}
+/* The Observatory's own picture sits back so the places on it read first. */
+#coastMap .beachScene.mapped[data-area="vault"] .sceneBase{filter:saturate(.85) brightness(.78)}
+/* Reveal frames: the sealed door crossfades to the open one (still with reduced motion). */
+.nextMode .revealPanel{position:relative;width:min(58vw,210px);aspect-ratio:432/704;max-height:44vh;margin:0 auto;border-radius:16px;overflow:hidden;box-shadow:0 0 0 3px #fff,0 0 0 5px var(--line-2),var(--sh-3)}
+.nextMode .revealPanel.single{aspect-ratio:300/480}
+.nextMode .revealPanel img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.nextMode .revealPanel .panelTo{opacity:1}
+.nextMode .revealPanel:not(.single) .panelFrom{opacity:0}
+@media(prefers-reduced-motion:no-preference){
+ .nextMode .revealPanel:not(.single) .panelFrom{opacity:1;animation:panelOut 1.4s .5s ease-in-out forwards}
+ .nextMode .revealPanel .panelTo{animation:panelIn 1.6s ease-out}
+ .nextMode .revealStage.signal .beam{animation:beamPulse 2.2s .4s ease-in-out 3}
+}
+@keyframes panelOut{to{opacity:0}}
+@keyframes panelIn{from{transform:scale(1.06)}to{transform:none}}
+@keyframes beamPulse{0%,100%{opacity:.35}20%,40%{opacity:1}60%{opacity:.5}}
+.nextMode .revealStage.signal{background:radial-gradient(circle at 50% 60%,#25707c,var(--ocean-900))}
+.nextMode .revealStage.signal .beam{position:absolute;left:50%;top:38%;width:70%;height:10px;transform-origin:0 50%;transform:rotate(-28deg);background:linear-gradient(90deg,#bff8f2,#7ee9e0 40%,transparent);border-radius:999px;opacity:.85;filter:blur(1px)}
+.nextMode .beat.vaultReveal .revealLine{display:flex;gap:10px;align-items:flex-start;text-align:left;background:var(--ivory-2);border-radius:var(--r-m);padding:10px 12px}
+.nextMode .beat.vaultReveal .revealLine svg{width:40px;height:40px;flex:none;border-radius:50%;background:var(--ivory);box-shadow:0 0 0 2px #fff}
+.nextMode .beat.vaultReveal .revealLine b{display:block;color:var(--turq-d);font-size:12px}
+/* Stage lines: a bubble that does not stop play. */
+/* At the top, and only its button takes taps: the screen under it stays usable. */
+.storyBubble{pointer-events:none}.storyBubble button{pointer-events:auto}
+.storyBubble{position:fixed;z-index:30;left:50%;top:calc(10px + env(safe-area-inset-top,0px));translate:-50% 0;width:min(calc(100vw - 24px),420px);display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:var(--r-l);background:var(--ivory);border:1px solid var(--line);box-shadow:var(--sh-3);color:var(--ink)}
+.storyBubble .bubbleLine{display:flex;gap:10px;align-items:flex-start}
+.storyBubble .bubbleLine svg{width:44px;height:44px;flex:none;border-radius:50%;background:var(--ivory-2);box-shadow:0 0 0 2px #fff,0 0 0 3px var(--line-2)}
+.storyBubble p{margin:0;font-size:14px;line-height:1.35}
+.storyBubble small{display:block;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);font-weight:800}
+.storyBubble b{display:block;color:var(--turq-d);font-size:12px}
+.storyBubble .bubbleNav{display:flex;justify-content:flex-end;align-items:center;gap:10px;font-size:12px;color:var(--ink-3)}
+.storyBubble .bubbleNav button{min-height:40px;min-width:64px;border-radius:999px;background:linear-gradient(var(--turq),var(--turq-d));color:#fff;font-weight:800;box-shadow:0 2px 0 #0a6f66}
+@media(prefers-reduced-motion:no-preference){.storyBubble{animation:bubbleIn .35s ease-out}}
+@keyframes bubbleIn{from{transform:translateY(-12px);opacity:0}}
+/* The journal and finished areas. */
+#coastMap .journal{margin:6px 10px 10px;border-radius:var(--r-l);background:#ffffff12;border:1px solid #ffffff2b;color:#e9fbf8}
+#coastMap .journal summary{list-style:none;cursor:pointer;padding:12px 16px;font-weight:900;font-size:13px;min-height:44px;display:flex;align-items:center;justify-content:space-between}
+#coastMap .journal summary::-webkit-details-marker{display:none}
+#coastMap .journal summary::after{content:"▾"}
+#coastMap .journal[open] summary::after{transform:rotate(180deg)}
+#coastMap .journal>ol{list-style:none;margin:0;padding:0 12px 12px;display:flex;flex-direction:column;gap:10px}
+#coastMap .journal h4{margin:0 0 4px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#bfe9e3}
+#coastMap .journal ol ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+#coastMap .journal ol ol li{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;padding:2px 0;border-bottom:1px solid #ffffff14}
+#coastMap .journal li.jReveal span{color:var(--gold-l);font-weight:800}
+#coastMap .journal button{min-height:36px;padding:0 12px;border-radius:999px;background:#ffffff1f;color:#e9fbf8;font-size:12px;font-weight:800;flex:none}
+#coastMap .mapArea.done .mapHead{position:relative}
+#coastMap .viewArea{position:absolute;top:10px;right:10px;z-index:1;min-height:40px;padding:0 14px;border-radius:999px;background:var(--ivory);color:var(--ink);font-weight:800;font-size:12px;border:1px solid var(--line)}
+/* Orders: a part two orders count, and a parked generator to bring out. */
+.nextMode #requests .requestItems .shared::after{content:"";position:absolute;top:-2px;left:-2px;width:9px;height:9px;border-radius:50%;background:var(--coral);box-shadow:0 0 0 1.5px #fff}
+.nextMode #requests .requestItems>span{position:relative}
+.nextMode .orderTools .unpark{min-height:36px;padding:0 12px;margin-left:auto;font-size:12px}
+/* A long status chip (a reward waiting) takes its own line instead of squeezing the hint. */
+.nextMode .boardHeading{flex-wrap:wrap}
