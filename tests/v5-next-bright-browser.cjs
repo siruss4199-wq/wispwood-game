@@ -1,0 +1,128 @@
+// Coast Camp, Build 44 (bright coast pass), in a real browser at 360×780, 390×844, 430×932 and
+// 907×510, Chromium and WebKit (ENGINES=chromium to run one): the layout fits, order cards say
+// who asks or what for with real counts and keep their places, tideglass shows its three hits,
+// the folded shed takes a dragged part, a delivery counts its coins and only then says "Ready",
+// the next-place chip opens the coast on that place, a build shows before → after and then the
+// next objective, sound and vibration have their own settings, and reduced motion skips the
+// flights without changing any result. Presentation only: the rules are checked by node tests.
+const assert=require('node:assert/strict');const pw=require('playwright');
+const URL='http://127.0.0.1:8080/v5/play.html';
+const KEY='vaultwake-v5-coast';
+const VIEWPORTS=[[360,780],[390,844],[430,932],[907,510]];
+const ENGINES=(process.env.ENGINES??'chromium,webkit').split(',');
+const read=page=>page.evaluate(k=>JSON.parse(localStorage.getItem(k)),KEY);
+async function closeBeats(page){for(let n=0;n<8&&await page.locator('#beat[open]').count();n++){await page.locator('#beatNext').click({force:true});await page.waitForTimeout(90);}}
+async function setState(page,fn,arg){await page.evaluate(([k,src,arg])=>{const s=JSON.parse(localStorage.getItem(k));(new Function('s','arg',src))(s,arg);localStorage.setItem(k,JSON.stringify(s));},[KEY,`(${fn})(s,arg)`,arg]);
+ await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);}
+async function drag(page,from,toSel){const a=await page.locator(`#board [data-index="${from}"]`).boundingBox(),b=await page.locator(toSel).boundingBox();
+ await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:8});await page.mouse.up();}
+// A camp one merge away from the beach's first stage: a gold order for the landing path that
+// wants a Split spanner, two Grip tools to merge into one, tideglass beside them on its last hit.
+function ready(s){s.daily={day:9e6,count:1};s.moves=5;s.merges=2;s.coins=15;
+ s.orders[0]={id:'o90',who:'ivo',needs:[{family:'rig',tier:2,count:1}],coins:30,story:'beach-path'};
+ s.board[15]={type:'item',family:'rig',tier:1};s.board[20]={type:'item',family:'rig',tier:1};s.board[16]={type:'glass',family:'rig',tier:1,cracks:2};}
+
+async function run(engine,W,H,motion){
+ const browser=await pw[engine].launch();
+ try{
+  const context=await browser.newContext({viewport:{width:W,height:H},isMobile:W<700&&engine==='chromium',hasTouch:W<700,reducedMotion:motion});
+  const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.goto(URL+'?new=1');await page.waitForSelector('#board .tile');await closeBeats(page);
+  await setState(page,s=>{s.daily={day:9e6,count:1};});
+  const tag=`${engine} ${W}×${H} ${motion}`;
+
+  // Layout: no sideways scroll, the whole board on screen, touch targets kept.
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,`${tag}: no sideways scroll`);
+  {const b=await page.locator('#board').boundingBox();assert.ok(b.y>=0&&b.y+b.height<=H+1,`${tag}: the board fits on screen (${Math.round(b.y)}–${Math.round(b.y+b.height)} of ${H})`);
+   const c=await page.locator('#board [data-index="0"]').boundingBox();assert.ok(c.width>=40,`${tag}: board cells ${c.width}px`);}
+  for(const sel of ['#mapButton','#menuButton','#shed .shedToggle','#requests .requestCard'])assert.ok((await page.locator(sel).first().boundingBox()).height>=38,`${tag}: ${sel} keeps its size`);
+  // No cell carries an order star or an energy tag any more; a level badge stays inside its cell.
+  assert.equal(await page.locator('#board .useBadge, #board .energyCue').count(),0);
+
+  // Order cards: who asks, real counts, progress, coins; Deliver only on a ready one.
+  {const s=await read(page),cards=page.locator('#requests .requestCard');assert.equal(await cards.count(),s.orders.length);
+   for(let k=0;k<s.orders.length;k++){const o=s.orders[k],card=cards.nth(k),text=await card.textContent();
+    assert.equal(await card.getAttribute('data-order'),o.id,`${tag}: cards stay in their lanes`);
+    assert.match(text,new RegExp(o.coins+'$|'+o.coins+'\\b'));for(const r of o.needs)assert.match(text,new RegExp(`\\d/${r.count}`));
+    assert.match(text,/Ivo|Neri|Tamsin|Bram|Materials/);assert.equal(await card.locator('.reqDeliver').count(),0,'nothing is ready yet');}}
+  // A tapped order explains its parts: generator first, then the chain up to the part.
+  {const id=(await read(page)).orders[1].id;await page.locator(`[data-order="${id}"]`).click();
+   assert.equal(await page.locator(`[data-order="${id}"].active`).count(),1);assert.ok(await page.locator('#orderTools .route .routeGen').count()>=1);
+   assert.match(await page.locator('#orderTools').textContent(),/Tap Rivet Rover/);await page.locator(`[data-order="${id}"]`).click();}
+
+  // Tideglass: three looks for three hits, then the part is free.
+  await setState(page,s=>{s.daily={day:9e6,count:1};s.board[15]={type:'glass',family:'rig',tier:0};s.board[16]={type:'glass',family:'rig',tier:0,cracks:1};s.board[20]={type:'glass',family:'rig',tier:0,cracks:2};});
+  for(const [i,k] of [[15,0],[16,1],[20,2]]){assert.equal(await page.locator(`#board [data-index="${i}"].ice${k}`).count(),1,`${tag}: ice${k}`);
+   assert.match(await page.locator(`#board [data-index="${i}"]`).getAttribute('aria-label'),new RegExp(`${3-k} hits? left`));}
+
+  // The gold order's card says what it is for; merging next to the last-hit tideglass breaks it.
+  await setState(page,ready);
+  {const gold=page.locator('[data-order="o90"]');assert.match(await gold.textContent(),/Clear the landing path|Materials · stage 1/);
+   const lanes=await page.locator('#requests .requestCard').evaluateAll(c=>c.map(x=>x.dataset.order));
+   await drag(page,20,'#board [data-index="15"]');
+   await page.waitForFunction(k=>JSON.parse(localStorage.getItem(k)).board[16]?.type==='item',KEY,{timeout:4000});
+   if(motion==='no-preference')assert.ok(await page.locator('#board [data-index="16"] .iceBurst').count()<=1);
+   assert.deepEqual(await page.locator('#requests .requestCard').evaluateAll(c=>c.map(x=>x.dataset.order)),lanes,`${tag}: a card that becomes ready does not move`);
+   assert.equal(await gold.locator('.reqDeliver').count(),1,'one Deliver on the ready card');
+   assert.equal(await page.locator('#hint:visible').filter({hasText:/Deliver/}).count(),0,'no second deliver button');
+   // Truthful: materials not in yet, so the chip is not "Ready".
+   assert.equal(await page.locator('#nextPlace.ready').count(),0);
+   await gold.click();}
+  if(motion==='no-preference')assert.ok(await page.locator('.coinFlight').count()>0,`${tag}: coins fly to the counter`);
+  else{assert.equal(await page.locator('.coinFlight,.deliveryPart').count(),0,`${tag}: no flights with reduced motion`);assert.equal(await page.locator('#coins').textContent(),'45');}
+  await page.waitForFunction(()=>document.querySelector('#coins').textContent==='45'&&document.querySelector('#nextPlace.ready'),null,{timeout:4000});
+  assert.match(await page.locator('#nextPlace').textContent(),/Ready to build/);
+  assert.equal((await read(page)).coins,45);
+  // Reload keeps all of it.
+  await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
+  assert.equal(await page.locator('#coins').textContent(),'45');assert.equal(await page.locator('#nextPlace.ready').count(),1);
+
+  // The chip opens the coast on that place; build; before → after; story; then the next objective.
+  await page.locator('#nextPlace').click();await page.waitForSelector('#coastMap[open]');
+  assert.equal(await page.locator('#mapCard').getAttribute('data-card'),'beach-path');
+  assert.equal(await page.locator('#coastMap .journey li.vault').count(),1,'the Vault is on the way');
+  if(motion==='no-preference')assert.equal(await page.locator('#coastMap .beachScene.focusIn').count(),1,`${tag}: the picture starts on the place`);
+  else assert.equal(await page.locator('#coastMap .beachScene.focusIn').count(),0);
+  await page.locator('#coastMap [data-restore="beach-path"]').click({force:true});
+  if(motion==='no-preference')await page.waitForSelector('#coastMap .mapFx.stageOld',{state:'attached',timeout:2500});// the old stage fades out
+  await page.waitForSelector('#beat[open]',{timeout:4000});await closeBeats(page);
+  await page.waitForFunction(()=>document.querySelector('#mapCard h3')?.textContent==='Lay a boardwalk',null,{timeout:4000});
+  assert.equal((await read(page)).built['beach-path'],1);assert.equal((await read(page)).coins,5);
+  await page.locator('#coastMap [data-back]').click({force:true});
+
+  // The folded shed: how full it is; a part dragged onto the row goes in; a tap opens it.
+  await setState(page,s=>{s.daily={day:9e6,count:1};s.board[15]={type:'item',family:'rig',tier:0};});
+  assert.match(await page.locator('#shed .shedToggle').textContent(),/0\/4/);assert.equal(await page.locator('#shed .shedSlots').isVisible(),false);
+  await drag(page,15,'#shed .shedToggle');
+  await page.waitForFunction(k=>JSON.parse(localStorage.getItem(k)).shed[0]?.family==='rig',KEY,{timeout:4000});
+  assert.match(await page.locator('#shed .shedToggle').textContent(),/1\/4/);
+  await page.locator('#shed .shedToggle').click();assert.equal(await page.locator('#shed .shedSlots').isVisible(),true);
+  await page.locator('#shed [data-slot="0"]').click();
+  await page.waitForFunction(k=>JSON.parse(localStorage.getItem(k)).shed.every(x=>!x),KEY,{timeout:4000});
+  assert.equal(await page.locator('#shed .shedSlots').isVisible(),false,'an empty shed folds again');
+
+  // A full board: the generator says so and nothing changes.
+  await setState(page,s=>{s.daily={day:9e6,count:1};s.board=s.board.map(x=>x??{type:'item',family:'chart',tier:0});});
+  {const before=(await read(page)).energy;await page.locator('#board .tile.source[data-family="rig"]').click();
+   await page.waitForFunction(()=>/board is full/i.test(document.querySelector('#message').textContent),null,{timeout:3000});assert.equal((await read(page)).energy,before);}
+
+  // Sound and vibration: separate settings; the vibration one only where the browser has it.
+  {const vib=await page.evaluate(()=>typeof navigator.vibrate==='function');
+   assert.equal(await page.locator('#hapticsButton').isVisible(),vib,`${tag}: vibration setting only where supported`);
+   if(vib){await page.locator('#hapticsButton').click();assert.equal(await page.evaluate(()=>localStorage.getItem('vaultwake-haptics')),'off');assert.match(await page.locator('#hapticsButton').textContent(),/off/);await page.locator('#hapticsButton').click();}
+   const sound=await page.locator('#soundButton').textContent();await page.locator('#soundButton').click();
+   assert.notEqual(await page.locator('#soundButton').textContent(),sound);assert.equal(await page.evaluate(()=>localStorage.getItem('vaultwake-sound')),sound==='Sound on'?'off':'on');
+   if(sound==='Sound off')await page.locator('#soundButton').click();
+   else await page.locator('#soundButton').click();
+   // Rapid play: a second merge cue inside 45 ms is dropped, not stacked.
+   const plays=await page.evaluate(async()=>{const {sfx}=await import('/v5/next/sfx.mjs');if(!sfx.enabled())sfx.toggle();return [sfx.play('merge',1),sfx.play('merge',1),sfx.play('produce'),sfx.play('nonsense')];});
+   if(plays[0])assert.deepEqual(plays,[true,false,true,false],`${tag}: repeats are throttled`);}
+
+  assert.deepEqual(errors,[],`${tag}: no page errors`);
+  console.log(`${tag}: layout, order cards, ice, delivery → ready → coast → build → next, shed, full board, settings passed`);
+  await context.close();
+ }finally{await browser.close();}
+}
+(async()=>{
+ for(const engine of ENGINES)for(const [W,H] of VIEWPORTS)for(const motion of W===390?['no-preference','reduce']:['no-preference'])await run(engine,W,H,motion);
+})().catch(e=>{console.error(e);process.exit(1);});

@@ -1,0 +1,56 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#9fdcf3"><title>Coast Camp — sound check</title>
+<style>
+:root{font-family:ui-rounded,'SF Pro Rounded',system-ui,-apple-system,sans-serif;color:#1f3a4d;background:#fbecd0}
+body{margin:0;padding:max(12px,env(safe-area-inset-top)) 14px 32px;max-width:560px;margin:auto}
+h1{font-size:22px;margin:6px 0 4px}p{font-size:14px;line-height:1.45;color:#4d6577;margin:6px 0}
+table{width:100%;border-collapse:separate;border-spacing:0 6px}td{background:#fffdf8;padding:8px 10px;font-size:13px;vertical-align:middle}
+td:first-child{border-radius:12px 0 0 12px}td:last-child{border-radius:0 12px 12px 0;white-space:nowrap;text-align:right}
+td b{display:block;font-size:14px}td small{color:#4d6577}
+button{font:inherit;font-weight:800;border:0;border-radius:999px;min-height:40px;padding:0 14px;margin-left:4px;cursor:pointer}
+.old{background:#e9e4d8;color:#4d6577}.new{background:linear-gradient(#2fc0b8,#16a6a0);color:#fff;box-shadow:0 2px 0 #0f8a85}
+.box{background:#fffdf8;border-radius:14px;padding:10px 12px;margin:10px 0;font-size:13px}
+a{color:#0f8a85;font-weight:800}
+</style></head><body>
+<h1>Sound check</h1>
+<p>Each row plays the cue as it was before Build 44 (<b>Old</b>) and as it is now (<b>New</b>). Use headphones and a phone speaker: phones cut most sound under ~300 Hz, so the new merge's low knock is mostly heard as its click and its bright note there. The game's own Sound setting is not changed by this page, but it must be on.</p>
+<div class="box" id="status"></div>
+<table id="rows"></table>
+<div class="box"><b>Vibration</b><p id="hapticsInfo"></p><button class="new" id="hapticTest">Try a merge pulse</button> <button class="new" id="hapticIce">Ice break</button> <button class="new" id="hapticRestore">Restoration</button></div>
+<p><a href="../play.html">Back to the Coast Camp</a></p>
+<script type="module">
+import {sfx} from './sfx.mjs';import {haptics} from './haptics.mjs';import {sound} from '../feedback.mjs';
+// The old cues, copied from v5/feedback.mjs as it was at e020a5f (sine pairs, upward glide).
+let ac=null;
+function oldPlay(kind,tier=0,at=0){
+ ac??=new (globalThis.AudioContext||globalThis.webkitAudioContext)();if(ac.state!=='running')ac.resume();
+ const notes=kind==='milestone'?[392,587,784]:kind==='contract'?[523,659]:kind==='rare'?[660,990]:kind==='merge'?[310+tier*55,470+tier*55]:[240];
+ notes.forEach((hz,i)=>{const o=ac.createOscillator(),g=ac.createGain(),t=ac.currentTime+.02+at+i*.058;o.type='sine';o.frequency.setValueAtTime(hz,t);o.frequency.exponentialRampToValueAtTime(hz*1.09,t+.12);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.025,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+.17);o.connect(g);g.connect(ac.destination);o.start(t);o.stop(t+.19);});
+}
+// [label, what it is for, old kind, old tier, new kind, new tier]
+const ROWS=[
+ ['Merge (small part)','Every merge','merge',1,'merge',1],
+ ['Merge (tier 3)','The finish note steps up a pentatonic scale','merge',3,'merge',3],
+ ['First find / tier 4+','A slightly richer chime','merge',5,'discovery',4],
+ ['Generator','Tap a generator (old: no sound at all)',null,0,'produce',0],
+ ['Ice crack','A merge beside tideglass (old: none until it broke)',null,0,'crack',0],
+ ['Ice break','The third hit frees the part','rare',0,'shatter',0],
+ ['Delivery','Coins for an order','contract',0,'deliver',0],
+ ['Restoration / level','A stage built, a new generator','milestone',0,'milestone',0],
+ ['Crate / cargo opened','Unsealing cargo','rare',0,'unseal',0],
+ ['Not allowed','An action the game refuses','tap',0,'error',0],
+];
+const rows=document.querySelector('#rows');
+rows.innerHTML=ROWS.map((r,k)=>`<tr><td><b>${r[0]}</b><small>${r[1]}</small></td><td>${r[2]?`<button class="old" data-old="${k}">Old</button>`:'<small>—</small>'}<button class="new" data-new="${k}">New</button></td></tr>`).join('')
+ +`<tr><td><b>Rapid play</b><small>Ten merges in 1.4 s: the new ones get softer, never louder; repeats closer than 45 ms are dropped</small></td><td><button class="old" data-rapid="old">Old</button><button class="new" data-rapid="new">New</button></td></tr>`;
+rows.addEventListener('click',e=>{const o=e.target.closest('[data-old]'),n=e.target.closest('[data-new]'),r=e.target.closest('[data-rapid]');
+ if(o){const x=ROWS[+o.dataset.old];oldPlay(x[2],x[3]);}
+ if(n){const x=ROWS[+n.dataset.new];sfx.play(x[4],x[5]);haptics.pulse(x[4]==='shatter'?'ice':x[4]==='milestone'?'restore':x[4]==='merge'||x[4]==='discovery'?'merge':'none');}
+ if(r){for(let k=0;k<10;k++){if(r.dataset.rapid==='old')oldPlay('merge',1+k%3,k*.14);else setTimeout(()=>sfx.play('merge',1+k%3),k*140);}}
+ status();});
+function status(){document.querySelector('#status').textContent=`Game sound is ${sound.enabled()?'on':'OFF (turn it on in the game first)'}.`;}
+status();
+document.querySelector('#hapticsInfo').textContent=haptics.method==='vibrate'?'This browser has the Vibration API: a merge gives one 12 ms pulse (only if the phone allows vibration).':haptics.method==='ios-switch'?'iPhone/iPad Safari has no Vibration API. The game uses the switch control’s system tap (iOS 18 and later); on older iOS nothing is felt. Please tell us whether you feel it.':'No vibration in this browser (desktop, or a browser without the Vibration API).';
+document.querySelector('#hapticTest').onclick=()=>haptics.pulse('merge');
+document.querySelector('#hapticIce').onclick=()=>haptics.pulse('ice');
+document.querySelector('#hapticRestore').onclick=()=>haptics.pulse('restore');
+</script></body></html>
