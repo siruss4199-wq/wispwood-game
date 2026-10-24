@@ -19,8 +19,11 @@ async function buy(page,id){await page.locator(`#coastMap .place[data-place="${i
 (async()=>{
  const engines=process.env.ENGINES?process.env.ENGINES.split(','):['chromium','webkit'];
  for(const engine of engines){
-  const browser=await {chromium,webkit}[engine].launch();
+  // A fresh browser for every screen size (WebKit crashed on CI after several contexts in one
+  // process); a failure still ends the run through the catch below.
+  const launch=()=>({chromium,webkit}[engine]).launch();let browser=null;
   try{for(const [width,height] of [[360,780],[390,844],[430,932],[907,510]]){
+   browser=await launch();
    const ctx=await browser.newContext({viewport:{width,height},isMobile:width<700&&engine==='chromium',hasTouch:width<700,reducedMotion:'reduce'});
    const page=await ctx.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));const at=`${engine} ${width}×${height}`;
    await page.goto(URL+'?new=1');await page.waitForSelector('#board .tile');await closeBeats(page);
@@ -117,8 +120,8 @@ async function buy(page,id){await page.locator(`#coastMap .place[data-place="${i
    await page.locator('#endContent [data-keep]').click();
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${at}: no sideways scroll`);
    assert.deepEqual(errors,[],`${at}: no page errors`);
-   await ctx.close();
+   await ctx.close();await browser.close();browser=null;
    console.log(`${at}: old save → Vault door → reveal once → Observatory, journal, beach view → Lens Bench waits on a full board → park and bring back → signal → harbour → Chapter 2 end passed`);
-  }}finally{await browser.close();}
+  }}finally{await browser?.close();}
  }
 })().catch(e=>{console.error(e);process.exit(1);});

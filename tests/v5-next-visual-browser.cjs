@@ -19,9 +19,12 @@ const shot=async(page,name)=>{if(process.env.SHOTS)await page.screenshot({path:`
 (async()=>{
  const engines=process.env.ENGINES?process.env.ENGINES.split(','):['chromium','webkit'];
  for(const engine of engines){
-  const browser=await {chromium,webkit}[engine].launch();
+  // A fresh browser for every screen size (WebKit crashed on CI after several contexts in one
+  // process); a failure still ends the run through the catch below.
+  const launch=()=>({chromium,webkit}[engine]).launch();let browser=null;
   try{for(const [width,height] of [[360,780],[390,844],[430,932],[907,510]]){
    for(const motion of ['reduce','no-preference']){
+   browser=await launch();
    const ctx=await browser.newContext({viewport:{width,height},isMobile:width<700&&engine==='chromium',hasTouch:width<700,reducedMotion:motion});
    const page=await ctx.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
    const at=`${engine} ${width}×${height} motion:${motion}`;
@@ -121,8 +124,8 @@ const shot=async(page,name)=>{if(process.env.SHOTS)await page.screenshot({path:`
     assert.match(await page.locator('#coastMap .vaultPlate').textContent(),/Sealed/);
     await page.locator('#coastMap [data-back]').click();}
    assert.deepEqual(errors,[],`${at}: no page errors`);
-   await ctx.close();
+   await ctx.close();await browser.close();browser=null;
    console.log(`${at}: ice states and break → hint/free → order route and Deliver → shed → Vault sealed → reveal once → door stages passed`);
-  }}}finally{await browser.close();}
+  }}}finally{await browser?.close();}
  }
 })().catch(e=>{console.error(e);process.exit(1);});
