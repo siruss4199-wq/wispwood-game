@@ -67,3 +67,29 @@ cog renders above for items on the board; place stages still use the renders.
 | chart-0 … 7 | ink scrap · route fold · sight lens · survey scope · bearing dial · star chart · horizon model · sky atlas |
 | rope-0 … 5, shell-0 … 5, lamp-0 … 4 | as in build 41k |
 | cargo-crate, cargo-bundle, cargo-barrel, cargo-basket, driftwood-crate, sea-chest, captains-trunk, tide-token, brass-cog | cargo, crates 1–3, Tide token, Brass cog |
+
+**Beach places from the user's sheet (build 41n).** `place-{path,tent,mast,workshop,pier,beacon,cliff}-{1,2,3}.webp`
+were cut from the user's painted sheet by each object's own connected pixels (no equal cells), with every
+edge, shadow and glow kept, and placed on one shared 338 px square canvas (saved at 360 px) with the ground
+of every stage at the same point (50 %, 90 %), so an upgrade swaps the picture without moving it. They
+replace the ray-marched beach renders; the worksite places still use theirs. `../landing-map.webp` is the
+user's painted Landing Beach map (1024 px) that the places stand on.
+
+**Vault door layer (Build 42).** `vault-door-sealed.webp` and `vault-door-open.webp` are circular cut-outs
+(256 px, soft 4 px alpha edge, WebP quality 88) of the dial door in the existing paintings
+`../entrance-vibrant.webp` and `../vault-open-vibrant.webp` (centre 916,150, radius 140 px of the
+1200×400 pictures). The coast screen draws the sealed one as its own layer; the open one is used only
+when a Vault Entrance area with places is built, which no build has yet.
+
+**Chapter 2 (Build 43).** Cut from the three concept sheets the user supplied on 2026-10-24 (not
+redrawn; they are review art until production art replaces them):
+
+| File | From | How |
+|---|---|---|
+| `icons/gen-optic.webp`, `icons/optic-0…5.webp` | optics sheet (real alpha) | objects found as connected components of solid alpha; stray low-alpha specks outside each object's dilated mask dropped; 192 px like the other icons |
+| `place-obs-{hall,desk,bench,array,passage}-{1,2,3}.webp` | five-location sheet | background removed by flood fill from the borders through near-background and pale near-grey pixels; there, the ground shadow kept dark and partly transparent; largest solid component per cell; both rows share one 360 px canvas, bottom-aligned. Stage 1 = neglected row; stage 2 = restored row before its lamps are lit (colour ×0.62, brightness ×0.8, a touch cooler); stage 3 = restored row (plus the CSS glow) |
+| `place-vault-door-1…3.webp` | vault triptych, panels 1–2 | the dial door cut as a circle (centre 288,362, r 150 of the 541 px panel); rings 1 and 1–2 lit with a tideglass glow; stage 3 is the open door |
+| `vault-door-sealed.webp`, `vault-door-open.webp` | vault triptych | the same circles, used by the Vault layer on the beach and worksite (replace Build 42's cut-outs from `entrance-vibrant` / `vault-open-vibrant`, whose open door was a cosmic portal) |
+| `vault-reveal-sealed.webp`, `vault-reveal-open.webp` | vault triptych, panels 1–2 | the reveal card's crossfade |
+| `harbour-view.webp` | five-location sheet, the restored passage | the harbour seen through the sea gate (low resolution: placeholder) |
+| `../vault-gate-vibrant.webp`, `../observatory-map.webp`, `../observatory-vibrant.webp`, `../harbour-vibrant.webp` | triptych panels 1 and 3; location sheet | area pictures: the Vault Entrance (4:3 around the door), the Observatory map (square from the interior), thumbnails |

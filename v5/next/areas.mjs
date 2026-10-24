@@ -10,34 +10,36 @@ const place=(id,icon,at,stages,art)=>({id,icon,at,name:stages[0].name,stages,...
 // art: a place drawn stage by stage on the area picture (v5/assets/premium/coast/place-<art>-<stage>.webp,
 // build 38); the others still show their icon.
 export const AREAS=[
- {id:'beach',name:'Landing Beach',short:'BEACH',picture:'landing',
+ // map (Build 41n): the coast screen's own picture, painted from above, with each place's stage
+ // drawn on it as a separate layer standing on its point (at = where its ground sits, in %).
+ {id:'beach',name:'Landing Beach',short:'BEACH',picture:'landing',map:'landing-map',
   intro:[['neri','The storm left us one beach and a lot of sand. Somewhere under the cliff is the Tideglass Vault.'],['ivo','First we make this beach a camp. Bring me parts and I will put them to work.']],
   tasks:[
-   place('beach-path','rock',[22,84],[
+   place('beach-path','rock',[27,86],[
     {name:'Clear the landing path',cost:40,effect:{kit:['rig',1]},lines:[['ivo','A path from the boats to dry ground. Now the crew can carry real loads.'],['ivo','Somebody left a driftwood crate on it: it is ours now.']]},
     {name:'Lay a boardwalk',cost:70,effect:{copy:'rig'},lines:[['ivo','Planks over the sand. The carts stop sinking.'],['ivo','A Rivet Rover was buried under the old planks! Merge it with yours.']]},
     {name:'Line the path with lanterns',cost:100,effect:{copy:'rig'},lines:[['neri','Lanterns all the way to the boats. Night shifts are safe now.'],['ivo','The first night shift dug up a Rivet Rover the storm had buried. Merge it with ours.']]}],'path'),
-   place('beach-tent','crate-salvage',[39,69],[
+   place('beach-tent','crate-salvage',[52,62],[
     {name:'Pitch the camp tent',cost:80,effect:{energy:8},lines:[['neri','Dry blankets and hot tea. Everyone works faster after a rest.'],['ivo','+8 energy for the crew.']]},
     {name:'Add bunks and a stove',cost:100,effect:{copy:'rig'},lines:[['neri','Bunks and a stove. Nobody sleeps on wet sand any more.'],['ivo','Under the old bunks: a rusted Rivet Rover. A little oil and it runs. Merge it with ours.']]},
     {name:'Raise the mess hall',cost:120,effect:{token:1},lines:[['bram','A real mess hall. The crew eats together and plans together.']]}],'tent'),
-   place('beach-mast','source-chart',[53,49],[
+   place('beach-mast','source-chart',[50,34],[
     {name:'Raise the signal mast',cost:100,effect:{slots:4},lines:[['neri','The mast is up. Camps along the reach can see our signal.'],['bram','More crews will send orders now: a fourth order card.']]},
     {name:'Hang the signal flags',cost:120,effect:{copy:'rig'},lines:[['neri','Flags for every crew along the reach. They know who we are.'],['bram','A neighbouring camp answered with a gift: another Rivet Rover.']]},
     {name:'Fit a lookout nest',cost:150,effect:{token:1},lines:[['tamsin','From the lookout I can see the cliff path, and something glinting beyond it.']]}],'mast'),
-   place('beach-workshop','workshop',[12,47],[
+   place('beach-workshop','workshop',[21,47],[
     {name:'Restore the Coastal Workshop',cost:100,effect:{copy:'newest'},lines:[['ivo','Tools on the wall, fire in the forge.'],['ivo','In the back of the Workshop: a copy of our newest generator. Merge it in for a stronger one.']]},
     {name:'Fire up the forge',cost:120,effect:{kit:['newest',2]},lines:[['ivo','The forge is hot again. Every tool in camp gets a fresh edge.']]},
     {name:'Open the parts store',cost:150,effect:{kit:['newest',2]},lines:[['ivo','Shelves for every part we make. The Workshop runs like a clock.']]}],'workshop'),
-   place('beach-pier','crate-survey',[80,78],[
+   place('beach-pier','crate-survey',[66,80],[
     {name:'Build the supply pier',cost:120,effect:{kit:['newest',2]},lines:[['bram','A pier means supply boats. The first one brought a sea chest for our newest generator.']]},
     {name:'Add a cargo crane',cost:150,effect:{copy:'newest'},lines:[['bram','A crane on the pier. Supply boats unload in half the time.'],['bram','The first load off the crane: a copy of our newest generator.']]},
     {name:'Moor the supply boat',cost:180,effect:{kit:['newest',3]},lines:[['bram','Our own boat, tied up and ready. The beach is joined to the world again.']]}],'pier'),
-   place('beach-beacon','flux-3',[67,34],[
+   place('beach-beacon','flux-3',[76,40],[
     {name:'Light the beacon',cost:140,effect:{energy:10},lines:[['tamsin','The beacon burns all night. Nobody gets lost on this beach again.'],['ivo','The crew is rested and proud: +10 energy.']]},
     {name:'Mirror the beacon',cost:170,effect:{copy:'newest'},lines:[['tamsin','Brass mirrors double the light. Ships see us from the open sea.'],['tamsin','A trader followed the light in and left us a copy of our newest generator.']]},
     {name:'Crown the beacon',cost:200,effect:{token:1},lines:[['tamsin','The beacon wears a crown of tideglass. It hums when the tide turns.']]}],'beacon'),
-   place('beach-cliff','chart-1',[89,37],[
+   place('beach-cliff','chart-1',[88,56],[
     {name:'Clear the cliff path',cost:160,effect:{energy:3},lines:[['neri','Rockfall cleared. The path climbs halfway up the cliff.']]},
     {name:'Rope the cliff steps',cost:200,effect:{copy:'newest'},lines:[['ivo','Ropes and pegs on every step. Even the carts can climb now.'],['neri','Halfway up we found an old cache: a copy of our newest generator.']]},
     {name:'Open the cliff gate',cost:230,effect:{kit:['newest',3]},lines:[['neri','The cliff gate is open. Up there, the survey worksite and the Vault beyond it.'],['ivo','The beach is a camp now. Good work, everyone.']]}],'cliff')
@@ -80,9 +82,56 @@ export const AREAS=[
     {name:'Light the door',cost:220,effect:{copy:'newest'},lines:[['tamsin','Lanterns all around the dial. The tideglass in it glows back at us.'],['tamsin','We will need lamps of our own up here. Packed with the lanterns: a copy of our newest generator.']]},
     {name:'Map the dial',cost:240,effect:{kit:['newest',3]},lines:[['neri','Every ring of the dial is mapped. Now we know how it opens.'],['bram','The worksite is done. Next: the Vault Entrance itself.']]}],'ws-door')
   ]},
- {id:'entrance',name:'Vault Entrance',picture:'entrance',coming:true,tasks:[]},
- {id:'vault',name:'The Vault',picture:'vault-open',coming:true,tasks:[]}
+ // Chapter 1's finale (Chapter 2 plan, D1): the mapped dial is turned ring by ring; the third
+ // ring opens the Vault. Its picture is the user's sealed-entrance concept; the door place stands on
+ // the painted door, ring by ring (place-vault-door-1..3, the third open).
+ {id:'entrance',name:'Vault Entrance',short:'DOOR',picture:'vault-gate',
+  intro:[['neri','The dial is mapped: three rings, each with its own mechanism.'],['ivo','Bring me the parts for each ring and we turn them one by one.']],
+  tasks:[
+   {marker:[80,24],...place('vault-door','lamp-3',[53.2,49.8],[
+    {name:'Turn the outer ring',cost:240,effect:{energy:10},lines:[['neri','The outer ring turns. Two to go.']]},
+    {name:'Turn the middle ring',cost:280,effect:{kit:['newest',3]},lines:[['tamsin','The middle ring is turning. The tideglass hums like the beacon crown.']]},
+    {name:'Turn the inner ring',cost:320,gold:[['lamp',3,1],['chart',4,1]],effect:{},lines:[['bram','The inner ring is set. Stand back.']]}],'vault-door')}
+  ]},
+ // Chapter 2, The Silent Observatory (docs/V5_CHAPTER2_SILENT_OBSERVATORY_2026-10-24.md): behind the
+ // door is the fleet's old observatory. The Lens Bench is earned here (copy:'optic'), and half of the
+ // everyday orders want its optics once it is out (focus).
+ {id:'vault',name:'The Silent Observatory',short:'VAULT',picture:'observatory',map:'observatory-map',focus:'optic',
+  intro:[['bram','Lamps first. Then we find out what this place was for.']],
+  tasks:[
+   place('obs-hall','lamp-1',[50,84],[
+    {name:'Light the entrance hall',cost:110,effect:{energy:8},lines:[['tamsin','These lamps were trimmed by hand, for years. Somebody worked here.']]},
+    {name:'Clear the fallen stones',cost:130,effect:{token:1},lines:[['ivo','Somebody built this hall to last. The stones came off the dome, nothing more.']]},
+    {name:'Hang the banners',cost:150,effect:{kit:['newest',2]},lines:[['neri','A compass and a crescent on every banner. That mark was on the door too.']]}],'obs-hall'),
+   place('obs-desk','chart-3',[22,64],[
+    {name:'Right the survey desk',cost:130,effect:{energy:8},lines:[['neri','Logbooks. Hundreds of them, all in the same hand.']]},
+    {name:'Unroll the old charts',cost:150,effect:{token:1},lines:[['neri','Every chart here carries the same mark: the fleet that no shipping register remembers.'],['bram','So they worked from here.']]},
+    {name:'Read the last logbook',cost:170,effect:{kit:['newest',2]},lines:[['tamsin','The last entry says: "Array silent. Lenses sent to the bench for regrinding." Then nothing.'],['neri','Then we start at the bench.']]}],'obs-desk'),
+   place('obs-bench','optic-2',[79,64],[
+    {name:'Clear the lens bench',cost:150,effect:{copy:'optic'},lines:[['ivo','A grinding wheel and a box of raw sea glass. We can make lenses again.']]},
+    {name:'Fit the grinding wheel',cost:170,effect:{copy:'optic'},lines:[['ivo','The wheel turns true. Merge the new bench with ours: twice the work.']]},
+    {name:'Polish the reading lens',cost:190,effect:{kit:['optic',2]},lines:[['neri','The big lens is clear again. Now the array can see.']]}],'obs-bench'),
+   place('obs-array','optic-3',[50,50],[
+    {name:'Reseat the array crystal',cost:170,gold:[['optic',2,1],['lamp',2,2]],effect:{energy:10},lines:[['tamsin','The crystal is cold. It needs focused light.']]},
+    {name:'Align the brass rings',cost:200,gold:[['optic',3,1],['chart',4,1]],effect:{cog:1},lines:[['neri','The rings are set to a bearing, not to a star.']]},
+    {name:'Wake the array',cost:230,gold:[['optic',4,1],['lamp',3,1]],effect:{kit:['optic',3]},lines:[['tamsin','It is waking.']]}],'obs-array'),
+   place('obs-passage','rope-4',[50,24],[
+    {name:'Unbar the inner passage',cost:190,effect:{energy:10},lines:[['bram','Cold air. This passage goes out to the sea.']]},
+    {name:'Shore up the tunnel',cost:220,effect:{cog:1},lines:[['ivo','Timber and brass. The same hands as the bench.']]},
+    {name:'Open the sea gate',cost:250,requires:{'obs-array':3},gold:[['optic',4,1],['rope',4,1]],effect:{},lines:[['neri','The bearing runs straight through there.']]}],'obs-passage')
+  ]},
+ // Chapter 3 is not built: listed as coming, never playable (no places).
+ {id:'harbour',name:'The Hidden Harbour',picture:'harbour',coming:true,tasks:[]}
 ];
+// Chapters group areas (append-only, like AREAS: saves keep the area index). A chapter whose
+// areas have no places is shown as "in development", never as a playable step.
+export const CHAPTERS=[
+ {id:'coast',title:'Coast Camp',n:1,areas:['beach','worksite','entrance']},
+ {id:'observatory',title:'The Silent Observatory',n:2,areas:['vault']},
+ {id:'harbour',title:'The Hidden Harbour',n:3,areas:['harbour']}
+];
+export const chapterOfArea=id=>CHAPTERS.find(c=>c.areas.includes(id));
+export const chapterAvailable=c=>c.areas.some(id=>AREAS.find(a=>a.id===id)?.tasks.length);
 // The next area opens when this one's last stage is bought (game.mjs restore and load).
 export const TASKS=Object.fromEntries(AREAS.flatMap(a=>a.tasks.map(t=>[t.id,{...t,area:a.id}])));
 export const STAGES=3;

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {cellPos} from '../v5/core.mjs';
 import {xpToNext} from '../v5/levels.mjs';
-import {allDone,secondChain,FREE_SWAPS,AD_SWAPS,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,priceOf,totalBuilt,ORDER_TOP,SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,storyTarget,makeOrder,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,glass,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
+import {allDone,NEWEST_ORDER,secondChain,FREE_SWAPS,AD_SWAPS,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,priceOf,totalBuilt,ORDER_TOP,SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,storyTarget,makeOrder,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,glass,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
 import {AREAS,TASKS} from '../v5/next/areas.mjs';
 import {primaryAction} from '../v5/next/guide.mjs';
 import {kit} from '../v5/kits.mjs';
@@ -382,8 +382,8 @@ test('the Survey Worksite: seven places in three stages, every stage a reward, t
  assert.ok(w.tasks.every(t=>t.stages[0].cost<t.stages[1].cost&&t.stages[1].cost<t.stages[2].cost),'each stage costs more');
  assert.ok(w.tasks.every(t=>t.stages.every(x=>Object.keys(x.effect).length===1&&x.lines.length>=1)),'every stage gives one reward and a line');
  assert.equal(w.tasks.flatMap(t=>t.stages.map(x=>x.cost)).reduce((a,b)=>a+b),3270);// Build 41h: ×2 (Build 41e: 1635)
- assert.equal(Object.keys(TASKS).length,14,'place ids are unique across areas');
- assert.ok(AREAS.slice(2).every(a=>a.coming&&!a.tasks.length),'later areas are still to come');
+ assert.equal(Object.keys(TASKS).length,20,'place ids are unique across areas (Chapter 2: the Vault door and five observatory places)');
+ assert.ok(AREAS.slice(4).every(a=>a.coming&&!a.tasks.length),'later areas are still to come');
  // Its stages are bought like the beach's and keep the beach's stages.
  const s=stock(fresh(0));s.area=1;s.built=beachDone();s.coins=5000;
  assert.equal(nextTask(s).id,'ws-camp');const r=ok(s,{type:'restore'});assert.equal(r.task,'ws-camp');assert.equal(r.effects.energy,Math.min(8,Math.max(0,50-40)));
@@ -417,7 +417,7 @@ test('a save that finished the beach before the worksite existed goes up the cli
  const back=load(JSON.stringify(s),5);assert.equal(back.area,1);assert.equal(back.moves,900);assert.equal(back.coins,40);assert.deepEqual(back.built,s.built);assert.equal(nextTask(back).id,'ws-camp');
  const t=fresh(0);t.built={...beachDone(),'beach-cliff':2};t.moves=500;const u=load(JSON.stringify(t),5);assert.equal(u.area,0);assert.equal(u.moves,500);
  // An area out of range still starts a new camp.
- const v=fresh(0);v.area=4;v.moves=3;assert.equal(load(JSON.stringify(v),5).moves,0);
+ const v=fresh(0);v.area=AREAS.length;v.moves=3;assert.equal(load(JSON.stringify(v),5).moves,0);
 });
 
 test('the economy is tight: energy runs out through both areas, and both still finish',()=>{
@@ -425,10 +425,10 @@ test('the economy is tight: energy runs out through both areas, and both still f
  const s=fresh(0);let now=0,waited=0,lowest=99,beach=null,shell=null,lamp=null;const STEP=4000;
  assert.equal(s.energy,40,'a new camp starts with 40 energy');
  let beachWait=0;
- while(!(s.area===1&&areaDone(s))&&now<48*3600e3){
+ while(!areaDone(s,AREAS[1])&&now<48*3600e3){
   // Build 41g: out of energy, a player buys the shop's Energy pack when coins allow.
   tick(s,now);const a=nextAction(s);if(!a&&s.energy<1&&act(s,{type:'buy',id:'energy',day:Math.floor(now/864e5)},now).ok)continue;if(!a){now+=30000;waited+=30000;continue;}
-  const r=ok(s,a,now);now+=STEP;if(r.effects?.nextArea){beach=now;beachWait=waited;}if(r.released?.some(n=>n.id==='shell'))shell=now;if(r.released?.some(n=>n.id==='lamp'))lamp=now;
+  const r=ok(s,a,now);now+=STEP;if(r.effects?.nextArea==='worksite'){beach=now;beachWait=waited;}if(r.released?.some(n=>n.id==='shell'))shell=now;if(r.released?.some(n=>n.id==='lamp'))lamp=now;
   if(beach&&now>beach+5*60000)lowest=Math.min(lowest,s.energy);
  }
  assert.ok(areaDone(s,AREAS[1]),'the worksite is finished');
@@ -483,12 +483,12 @@ test('saves from before the shed and the daily gift load with an empty shed and 
  const s=camp();ok(s,{type:'merge',from:14,to:16});s.moves=40;delete s.shed;delete s.daily;
  const back=load(JSON.stringify(s),5);assert.equal(back.moves,40);assert.deepEqual(back.shed,Array(SHED_SLOTS).fill(null));assert.deepEqual(back.daily,{day:-1,count:0});
  assert.equal(act(back,{type:'daily',day:100},5).ok,true,'the first gift is ready');
- for(const f of [x=>x.shed=[null],x=>x.shed[0]={type:'source',id:'rig'},x=>x.shed[1]=item('gold',1),x=>x.daily={day:'x',count:0},x=>x.daily.count=-1]){const t=fresh(0);t.moves=3;f(t);assert.equal(load(JSON.stringify(t),5).moves,0,f.toString());}
+ for(const f of [x=>x.shed=[null],x=>x.shed[0]={type:'jar',energy:5},x=>x.shed[1]=item('gold',1),x=>x.daily={day:'x',count:0},x=>x.daily.count=-1]){const t=fresh(0);t.moves=3;f(t);assert.equal(load(JSON.stringify(t),5).moves,0,f.toString());}
 });
 
 // Build 33: the collection book.
 test('the book: each part found pays its coins once when ticked off; a whole page gives a Brass cog',()=>{
- assert.deepEqual(BOOK_CHAINS,GENERATOR_ORDER,'one page per generator chain');assert.equal(BOOK_COINS.length,8);
+ assert.deepEqual(BOOK_CHAINS,NEWEST_ORDER,'one page per generator chain');assert.equal(BOOK_COINS.length,8);
  assert.equal(bookKeys('lamp').length,5);assert.equal(bookKeys('rig').length,8);
  const s=fresh(0);assert.deepEqual(s.book,{claimed:[],pages:[]});assert.deepEqual(bookReady(s),[]);
  const a=ok(s,{type:'produce',id:'rig'}),b=ok(s,{type:'produce',id:'rig'});assert.deepEqual(bookReady(s),['rig0']);

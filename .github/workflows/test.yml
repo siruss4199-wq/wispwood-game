@@ -99,7 +99,16 @@ jobs:
           node tests/v5-route-clarity-browser.cjs
           node tests/v45-browser.cjs
           node tests/v5-browser.cjs
+      # Coast Camp (v5/play.html) in Chromium and WebKit, as its own step so its result is
+      # reported even when a Classic V5 check above fails.
+      - name: Coast Camp browser tests (Chromium and WebKit)
+        if: ${{ !cancelled() }}
+        run: |
+          (python3 -m http.server 8080 > /tmp/coast-http.log 2>&1 &) ; sleep 1
           node tests/v5-next-browser.cjs
+          node tests/v5-next-playtest-browser.cjs
+          node tests/v5-next-visual-browser.cjs
+          node tests/v5-next-chapter2-browser.cjs
       # Preserve compact debugging evidence only. Playwright videos can be >100 MB
       # per run; keep them local to CI instead of uploading on every PR update.
       - name: Save compact V5 screenshots and traces

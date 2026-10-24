@@ -10,7 +10,7 @@ const CARGO_FILE={crate:'cargo-crate',bundle:'cargo-bundle',barrel:'cargo-barrel
 const KIT_FILE=['driftwood-crate','sea-chest','captains-trunk'];
 // Build 41l (user: "ed nariin visual tuvshinuur hii", with a painted sheet): every generator, part,
 // cargo, crate, token and cog is a painted icon cut from that sheet (assets/premium/coast/icons).
-const RENDERED=new Set(['rig','chart','rope','shell','lamp']);
+const RENDERED=new Set(['rig','chart','rope','shell','lamp','optic']);
 // The first four Rover parts keep their original painted art (user: "ed nariig hevend ni uldee").
 const KEEP={'rig-0':'copper-offcut','rig-1':'grip-tool','rig-2':'split-spanner','rig-3':'pocket-winch'};
 const icon=(f,cls,art)=>KEEP[f]?`<img class="art ${cls}" src="assets/premium/${KEEP[f]}-vibrant.webp" alt="" aria-hidden="true" draggable="false" data-art="${art}">`:`<img class="art ${cls}" src="assets/premium/coast/icons/${f}.webp" alt="" aria-hidden="true" draggable="false" data-art="${art}">`;
@@ -21,11 +21,14 @@ export const CHAINS={
  lamp:{gen:'lamp',names:['Candle stub','Tin lantern','Storm lantern','Signal lamp','Beacon lens']},
  chart:{gen:'chart',names:FAMILIES.chart.names},
  shell:{gen:'shell',names:['Sand dollar','Cockle shell','Conch','Pearl oyster','Nautilus','Coral crown']},
+ // Chapter 2 (The Silent Observatory): the Lens Bench grinds sea glass into the array's optics.
+ // Named apart from the Kite's Sight lens / Survey scope and the Kiln's Beacon lens.
+ optic:{gen:'optic',names:['Sea-glass chip','Polished blank','Ground lens','Brass-ringed lens','Focus barrel','Signal reader']},
  flux:{gen:'flux',names:FAMILIES.flux.names}
 };
 // Generator → its chain (the level column stays for saves and future use).
-export const GENERATOR_CHAINS={rig:[['rig',1]],chart:[['chart',1]],rope:[['rope',1]],shell:[['shell',1]],lamp:[['lamp',1]],flux:[['flux',1]]};
-export const GENERATOR_NAMES={rig:'Rivet Rover',chart:'Survey Kite',rope:'Rope Winch',shell:'Shell Trap',lamp:'Lantern Kiln',flux:'Echo Crucible'};
+export const GENERATOR_CHAINS={rig:[['rig',1]],chart:[['chart',1]],rope:[['rope',1]],shell:[['shell',1]],lamp:[['lamp',1]],flux:[['flux',1]],optic:[['optic',1]]};
+export const GENERATOR_NAMES={rig:'Rivet Rover',chart:'Survey Kite',rope:'Rope Winch',shell:'Shell Trap',lamp:'Lantern Kiln',flux:'Echo Crucible',optic:'Lens Bench'};
 // The three generators drawn for Coast Camp (Rover, Kite and Crucible keep their art).
 const GENERATOR_SHAPES={
  rope:'<ellipse cx="50" cy="84" rx="38" ry="8" fill="#6d4a26" opacity=".35"/><path d="M14 80L26 30H74L86 80Z" fill="#8a5a2e"/><path d="M20 78L30 36H70L80 78Z" fill="#b07a46"/><circle cx="50" cy="50" r="22" fill="#a87a45"/><circle cx="50" cy="50" r="18" fill="none" stroke="#e4bf82" stroke-width="6"/><circle cx="50" cy="50" r="10" fill="none" stroke="#c99a5e" stroke-width="6"/><circle cx="50" cy="50" r="4" fill="url(#vw-brass)"/><path d="M50 50L84 34" stroke="#8c9aa8" stroke-width="6" stroke-linecap="round"/><circle cx="86" cy="33" r="6" fill="url(#vw-coral)"/><path d="M72 64Q86 74 78 88" fill="none" stroke="#e4bf82" stroke-width="5" stroke-linecap="round"/>',
@@ -65,7 +68,7 @@ const SHAPES={
 };
 // Coast Camp's crates (generator boxes by size): driftwood crate, sea chest,
 // captain's trunk, with a tag in the colour of the generator they feed.
-const TAG={rig:'#f27755',chart:'#43bfe7',flux:'#ac83fa',rope:'#c9a36a',shell:'#ff9f8a',lamp:'#ffc93c'};
+const TAG={rig:'#f27755',chart:'#43bfe7',flux:'#ac83fa',rope:'#c9a36a',shell:'#ff9f8a',lamp:'#ffc93c',optic:'#2fc6c0'};
 // Sealed cargo shows a "?" with the part that opens it pinned to its corner, and looks
 // like who packed it (build 25, user: "uitgartai haragdaj baina"): Rover
 // parts open wooden crates, Kite parts canvas bundles, Rope Winch parts barrels, the rest
@@ -84,10 +87,26 @@ function genDeco(L){
  if(L>=5)g+='<path d="M34 14L38 2L46 10L50 0L54 10L62 2L66 14Z" fill="#ffd34d" stroke="#a8730a" stroke-width="2" stroke-linejoin="round"/><circle cx="50" cy="8" r="2.5" fill="#e0567a"/>';
  return `<svg class="genDeco lv${L}" viewBox="0 0 100 100" aria-hidden="true">${g}</svg>`;
 }
+// The ice over a tideglass part, by cracks taken (0, 1 or 2 of GLASS_HITS = 3).
+const ICE_BODY=['M20 6H80Q94 6 94 20V80Q94 94 80 94H20Q6 94 6 80V20Q6 6 20 6Z','M20 6H80Q94 6 94 20V80Q94 94 80 94H20Q6 94 6 80V20Q6 6 20 6Z',
+ 'M24 6H60L71 19L80 8Q94 10 94 24V54L82 64L94 74V80Q94 94 80 94H44L33 82L24 94H20Q6 94 6 80V40L18 29L6 18Q6 6 24 6Z'];
+const ICE_CRACK=['', 'M7 32L22 37L29 49L42 53',
+ 'M7 32L22 37L29 49L42 53M93 22L79 34L71 50L56 57M71 50L79 69L92 75M29 49L25 69L14 83M56 57L52 74'];
+function iceBlock(n){
+ const k=Math.max(0,Math.min(2,n));
+ return `<svg class="glassShard ice${k}" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="vwIce" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#eefaff" stop-opacity=".78"/><stop offset=".45" stop-color="#b5e1f2" stop-opacity=".42"/><stop offset="1" stop-color="#78c0da" stop-opacity=".62"/></linearGradient></defs>`
+  +`<path d="${ICE_BODY[k]}" fill="url(#vwIce)" stroke="#f4fcff" stroke-opacity=".85" stroke-width="2.5"/>`
+  +`<path d="M94 58V80Q94 94 80 94H58Z" fill="#5aa9c6" opacity=".16"/><path d="M17 31Q20 17 33 14" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".85"/><path d="M15 40V36" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".6"/>`
+  +(k?`<g fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="${ICE_CRACK[k]}" stroke="#2c7894" stroke-width="2.4" opacity=".75"/><path d="${ICE_CRACK[k]}" stroke="#fff" stroke-width="1" opacity=".9" transform="translate(.8 -.8)"/></g>`:'')
+  +(k===2?'<path d="M74 4L80 1L79 9Z M1 24L7 27L2 31Z M30 96L33 89L37 96Z" fill="#cfeaf5" stroke="#6fb9d3" stroke-width="1"/>':'')
+  +'</svg>';
+}
 export function draw(x,cls=''){
  if(x?.type==='source'&&(x.level??1)>1){const {level,...base}=x;return draw(base,cls)+genDeco(level);}
- // Tideglass: the part shows through a faceted sea-green shard; a merge beside it cracks it.
- if(x?.type==='glass')return draw({type:'item',family:x.family,tier:x.tier},(cls+' inGlass').trim())+'<svg class="glassShard" viewBox="0 0 100 100" aria-hidden="true"><path d="M14 22L40 8 78 14 92 46 82 86 44 94 10 72Z" fill="#9fe3e0" fill-opacity=".38" stroke="#e9fffd" stroke-width="3"/><path d="M40 8L50 40 92 46M50 40L44 94M50 40L10 72M14 22L50 40" stroke="#ffffff" stroke-opacity=".55" stroke-width="1.5" fill="none"/><path d="M22 30L34 22" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".8"/>'+(x.cracks?'<g class="crackLines" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M50 40L70 26 86 30M50 40L74 58 90 62M74 58L66 84M50 40L28 52 16 50M28 52L30 74" stroke="#1f5f5b" stroke-width="7"/><path d="M50 40L70 26 86 30M50 40L74 58 90 62M74 58L66 84M50 40L28 52 16 50M28 52L30 74" stroke="#ffffff" stroke-width="3"/></g>':'')+'</svg>';
+ // Tideglass (Build 42, approved visual direction): a clear ice block over the part, never a
+ // wireframe. It reads as intact, then one crack, then big fractures with chipped corners; the
+ // third hit breaks it (app.mjs throws the fragments). The part stays recognisable throughout.
+ if(x?.type==='glass')return draw({type:'item',family:x.family,tier:x.tier},(cls+' inGlass').trim())+iceBlock(x.cracks??0);
  // Deep cargo (not yet touching open ground) keeps even its key hidden.
  if(x?.type==='cargo'){const look=CARGO_LOOK[x.key.family]??'basket';return img(CARGO_FILE[look],('cargoArt '+cls).trim(),'cargo-'+look)+'<span class="cargoQ" aria-hidden="true">?</span>'+(x.deep?'':`<span class="cargoKey" aria-hidden="true">${draw({type:'item',family:x.key.family,tier:x.key.tier})}</span>`);}
  // Painted icons for every generator and part (Build 41l); the SVG shapes stay as the fallback.
