@@ -128,15 +128,16 @@ async function perform(page,a){
    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).board[21].level===3,null,{timeout:4000});
    assert.ok(!(await read(page)).board.some(x=>x?.type==='cog'),'the cog is used up');
    assert.equal(await page.locator('#board .source[data-family="chart"]').count(),1,'Rivet Rover level 3 brought out the Survey Kite');
-   // Build 32: the shed. Since Build 41 it shows when something is in it or the board is getting
-   // full; a part's own Shed button always stores it. Then drag a part onto a shed space; tap the
-   // space to bring it back.
+   // Build 32: the shed. Since Build 44 it is one folded row (how full it is) that opens on a tap,
+   // a drag or a part's own Shed button. Then drag a part onto a shed space; tap the space to
+   // bring it back.
    await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.board[14]={type:'item',family:'rig',tier:1};s.board[16]={type:'item',family:'chart',tier:0};for(const i of [26,28])if(s.board[i]?.type==='glass')s.board[i]=null;localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
    await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
-   assert.equal(await page.locator('#shed').isHidden(),true,'no shed on a roomy board');
+   assert.equal(await page.locator('#shed .shedToggle').isVisible(),true,'the folded shed row is always there');
+   assert.equal(await page.locator('#shed .shedSlots').isHidden(),true,'its spaces are folded away');
    await page.locator('#board [data-index="16"]').tap();await page.locator('#selection [data-action="store"]').tap();
    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).shed[0]?.family==='chart',null,{timeout:4000});
-   assert.equal(await page.locator('#shed').isVisible(),true,'the shed comes out with something in it');
+   assert.equal(await page.locator('#shed .shedSlots').isVisible(),true,'storing a part opens the shed');
    assert.equal(await page.locator('#shed .shedSlot').count(),4);
    {const a=await page.locator('#board [data-index="14"]').boundingBox(),b=await page.locator('#shed [data-slot="2"]').boundingBox();
     await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:8});await page.mouse.up();}
@@ -147,7 +148,8 @@ async function perform(page,a){
    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).shed[2]===null,null,{timeout:4000});
    await page.locator('#shed [data-slot="0"]').tap();
    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).shed.every(x=>x===null),null,{timeout:4000});
-   assert.equal(await page.locator('#shed').isHidden(),true,'an empty shed folds away again');
+   assert.equal(await page.locator('#shed .shedSlots').isHidden(),true,'an empty shed folds away again');
+   assert.match(await page.locator('#shed .shedToggle').textContent(),/0\/4/,'and shows it is empty');
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'no sideways scroll with the shed');
    // Build 33: the collection book. Parts already found wait in it; ticking one off pays its coins.
    {const st=await read(page),c=st.coins,n=st.found.filter(k=>/^(rig|chart|rope|shell|lamp)\d$/.test(k)&&!st.book.claimed.includes(k)).length;
