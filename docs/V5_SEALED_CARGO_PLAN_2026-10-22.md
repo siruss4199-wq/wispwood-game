@@ -725,3 +725,6 @@ Visual only (`v5/next/next.css`, `#backdrop` in `v5/play.html`, one line in `ren
 - The board sits in a sand tray with a white rim and a deep shadow; empty spaces are soft hollows.
 - The shed is a white glass panel; Shop, Book, Gift and the ad offer are round buttons with labels.
 - Motion stays under `prefers-reduced-motion: no-preference`. Item, crate and generator art are unchanged.
+
+### Build 41j · dialogs and crates in the same style (user: "shinechel")
+Visual only (`v5/next/next.css`): the shop, book, help, menu, daily gift, playtest log, end and ad dialogs get a teal title band with a white title and a round glass close button, a cream body and a blurred backdrop; primary buttons are orange pills like the coast screen's Build; shop rows, book pages and help steps are white cards (help steps numbered); shop prices are gold pills and free ad offers blue pills; the story is a speech bubble from a large round portrait with a gold ring, the area as a teal tag and the progress dots stretching; the selected-thing panel under the board is a glass card. Sealed cargo tiles share one sand colour with the key's colour as a stripe along the bottom (Rover orange, Kite teal, Winch coral, Shell and Kiln gold), so the board is calmer.

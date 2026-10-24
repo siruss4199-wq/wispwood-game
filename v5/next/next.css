@@ -479,3 +479,59 @@ body.nextMode #board .tile.empty{background:#ffffff73;box-shadow:inset 0 2px 4px
 .nextMode #energyPill #energyTimer{position:absolute;left:50%;bottom:-10px;translate:-50% 0;font-size:10px;line-height:15px;z-index:2;white-space:nowrap}
 .nextMode #requests{margin-top:8px}
 .nextMode .dock{align-items:flex-start}
+/* Build 41j: dialogs and crates in the same style (user: "shinechel"). Every dialog gets a teal
+   title band, a cream body, orange primary buttons and card rows; the story is a speech bubble
+   from a round portrait; cargo tiles share one sand colour with a coloured key stripe. */
+.nextMode dialog:is(#shop,#book,#help,#menu,#daily,#playlog,#endDialog,#adStandIn){border:0;border-radius:26px;padding:0 16px 18px;background:linear-gradient(180deg,#1f5e69 0,#2a7480 60px,#fffaf3 60px,#f6ecd6 100%);box-shadow:0 18px 40px #0d2c3a80;color:#203451}
+.nextMode dialog:is(#shop,#book,#help,#menu,#daily,#playlog,#endDialog,#adStandIn)::backdrop{background:#0d2c3aa6;backdrop-filter:blur(3px)}
+.nextMode :is(#shop .shopTop,#book #bookTitle,#help #helpTitle,#menu #menuTitle,#daily #dailyTitle,#playlog #playlogTitle,#endDialog #endTitle,#adStandIn #adTitle){min-height:60px;margin:0 0 14px;display:flex;align-items:center}
+.nextMode :is(#shop #shopTitle,#book #bookTitle,#help #helpTitle,#menu #menuTitle,#daily #dailyTitle,#playlog #playlogTitle,#endDialog #endTitle,#adStandIn #adTitle){color:#fff;font-size:21px;text-shadow:0 2px 0 #0004;padding-right:48px}
+.nextMode #shop .shopTop{padding-right:52px}.nextMode #shop .shopTop #shopTitle{min-height:0;margin:0}
+.nextMode #shop .beachCoins{display:inline-flex;align-items:center;gap:6px;background:#fff6dc;border:2px solid #f0c45a;border-radius:999px;padding:3px 10px 3px 5px;color:#5a3c06;box-shadow:0 2px 0 #c4901e}
+.nextMode dialog:is(#shop,#book,#help,#menu,#daily,#playlog) .close{position:absolute;top:8px;right:10px;width:44px;height:44px;border-radius:50%;background:#ffffff2e;color:#fff;font-size:22px;border:2px solid #ffffff55}
+.nextMode dialog .primary,.nextMode .beat .primary{background:linear-gradient(#ffb547,#f07f1c);color:#fff;text-shadow:0 1px 0 #a6500a;border-radius:999px;box-shadow:0 4px 0 #b85a10,0 8px 16px #f07f1c55;font-weight:900;font-size:16px;min-height:50px}
+.nextMode dialog .primary:disabled{background:#e6dfcf;color:#9a8f78;text-shadow:none;box-shadow:none}
+.nextMode dialog h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8a6a3a;margin:16px 0 8px}
+.nextMode dialog p{color:#4a5b6b}
+/* Shop rows. */
+.nextMode .shopItem{background:#fff;border-radius:18px;box-shadow:0 3px 0 #e6dcc4,0 6px 14px #0d2c3a14;padding:8px 10px}
+.nextMode .shopItem .buy{background:linear-gradient(#ffd66b,#f0a93b);color:#5a3c06;border-radius:999px;box-shadow:0 3px 0 #c47d12;font-weight:900}
+.nextMode .shopItem .buy:disabled{background:#eee7d6;color:#a39883;box-shadow:none}
+.nextMode .shopList .adOffer{background:linear-gradient(#5f9bff,#2f6fd6);border-radius:999px;box-shadow:0 3px 0 #1d4f9e}
+/* Book. */
+.nextMode .bookPage{border-radius:20px;box-shadow:0 3px 0 #e6dcc4,0 6px 14px #0d2c3a14}
+.nextMode .bookItem{border-radius:14px;background:#f8f3e6}
+.nextMode .bookItem.got{background:#e7f7ee;box-shadow:inset 0 0 0 2px #9fdcbc}
+.nextMode .bookItem.ready{background:linear-gradient(#fff8e2,#ffe9b0);box-shadow:0 0 0 2px #f0c45a,0 3px 0 #c4901e}
+@media(prefers-reduced-motion:no-preference){.nextMode .bookItem.ready{animation:readyBob 1.6s ease-in-out infinite}}
+/* Help: numbered cards. */
+.nextMode .helpList{list-style:none;padding:0;counter-reset:step;gap:8px}
+.nextMode .helpList li{counter-increment:step;position:relative;background:#fff;border-radius:16px;padding:10px 12px 10px 46px;box-shadow:0 2px 0 #e6dcc4;font-size:13.5px}
+.nextMode .helpList li::before{content:counter(step);position:absolute;left:10px;top:10px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(#2fb3a6,#16877e);color:#fff;font-size:13px;font-weight:900}
+/* Menu. */
+.nextMode .menuButton{background:linear-gradient(#2fb3a6,#16877e);border-radius:999px;box-shadow:0 3px 0 #0f5f58}
+.nextMode .menuButton.danger{background:#fff;color:#b5432b;box-shadow:inset 0 0 0 2px #f1c8bd}
+.nextMode .menuNote{color:#4a5b6b}
+/* Daily gift. */
+.nextMode .dailyDay{border-radius:16px;box-shadow:0 3px 0 #e6dcc4}
+.nextMode .dailyDay.today{background:linear-gradient(#fff8e2,#ffe9b0);box-shadow:0 0 0 3px #f0c45a,0 4px 0 #c4901e}
+/* The story: a speech bubble from a round portrait. */
+.nextMode #beat{border:0;border-radius:28px;background:linear-gradient(#fffaf3,#f6ecd6);box-shadow:0 18px 40px #0d2c3a80;padding:0}
+.nextMode #beat::backdrop{background:linear-gradient(#0d2c3a33,#0d2c3acc);backdrop-filter:blur(2px)}
+.nextMode .beat{padding:18px 16px 16px;gap:14px}
+.nextMode .beat small{align-self:flex-start;background:linear-gradient(#2fb3a6,#16877e);color:#fff;border-radius:999px;padding:4px 12px;letter-spacing:.08em}
+.nextMode .beatLine{grid-template-columns:76px minmax(0,1fr);gap:12px;align-items:end;background:none;padding:0}
+.nextMode .beatLine svg{width:76px;height:76px;border-radius:50%;background:#fff;box-shadow:0 0 0 3px #fff,0 0 0 6px #f0c45a,0 6px 14px #0003}
+.nextMode .beatLine p{position:relative;background:#fff;border-radius:20px 20px 20px 6px;padding:12px 14px;box-shadow:0 4px 0 #e6dcc4,0 8px 18px #0d2c3a1f;font-size:15.5px}
+.nextMode .beatLine p::before{content:"";position:absolute;left:-8px;bottom:8px;border:8px solid transparent;border-right-color:#fff;border-left:0}
+.nextMode .beatLine b{color:#e07a1c;font-size:12px;margin-bottom:2px}
+.nextMode .beatDots i.on{background:#f07f1c;width:20px;border-radius:999px}
+.nextMode .beatDots i{transition:width .25s}
+/* The selected thing, under the board. */
+.nextMode #selection{background:#ffffffd9;border:2px solid #fff;border-radius:18px;box-shadow:0 6px 14px #0d2c3a1f;padding:8px 10px;margin-top:8px}
+.nextMode #selection button{border-radius:999px}
+/* Crates: one sand colour, the key's colour as a stripe along the bottom. */
+#board .tile.cargo,#board .tile.cargo:is([data-key="chart"],[data-key="rope"],[data-key="shell"],[data-key="lamp"]){background:linear-gradient(160deg,#f3e8cf,#e4d3ae)}
+#board .tile.cargo{box-shadow:inset 0 -4px 0 var(--key,#e39a4d),inset 0 0 0 1px #fbf3df}
+#board .tile.cargo[data-key="chart"]{--key:#46b3a6}#board .tile.cargo[data-key="rope"]{--key:#e5785b}#board .tile.cargo:is([data-key="shell"],[data-key="lamp"]){--key:#e8b63e}
+#board .tile.cargo.deep,#board .tile.cargo.deep:is([data-key="chart"],[data-key="rope"]){background:linear-gradient(160deg,#ddcda9,#cbb487)}
