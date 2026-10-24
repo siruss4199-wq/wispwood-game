@@ -67,3 +67,10 @@ cog renders above for items on the board; place stages still use the renders.
 | chart-0 … 7 | ink scrap · route fold · sight lens · survey scope · bearing dial · star chart · horizon model · sky atlas |
 | rope-0 … 5, shell-0 … 5, lamp-0 … 4 | as in build 41k |
 | cargo-crate, cargo-bundle, cargo-barrel, cargo-basket, driftwood-crate, sea-chest, captains-trunk, tide-token, brass-cog | cargo, crates 1–3, Tide token, Brass cog |
+
+**Beach places from the user's sheet (build 41n).** `place-{path,tent,mast,workshop,pier,beacon,cliff}-{1,2,3}.webp`
+were cut from the user's painted sheet by each object's own connected pixels (no equal cells), with every
+edge, shadow and glow kept, and placed on one shared 338 px square canvas (saved at 360 px) with the ground
+of every stage at the same point (50 %, 90 %), so an upgrade swaps the picture without moving it. They
+replace the ray-marched beach renders; the worksite places still use theirs. `../landing-map.webp` is the
+user's painted Landing Beach map (1024 px) that the places stand on.
