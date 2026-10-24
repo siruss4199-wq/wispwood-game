@@ -715,3 +715,13 @@ Answers chosen: about 3–4 minutes a stage; make the gold order bigger; and, on
 **Measured** (shop-buying player, 8 speeds × 5 seeds): play per stage 2.8 / 3.6 / 5.6 / 6.9 min at 4 / 5 / 8 / 10 s/action; both areas in 118–288 min of play and 4.6–5.2 h of real time (5.6–6.8 h waiting alone); energy runs out at every speed; ~800 taps; first stages at 5 s: 1.5, 3.7, 6.1, 9.8, 12.6, 14.4 min (6 in the first 15 min; 41g: 9).
 
 **Guard rewritten** (`tests/v5-next-economy.test.mjs`): finishes within 8 h (10 h without the shop); 0.55–0.9 min of play per stage per s/action; energy runs out and waiting happens only without energy (never idle over 3 min at a time with energy in hand); orders and restorations keep coming; Kite ≤ 3 min per s/action; first 15 min: first merge ≤1, order ≤2.5, restoration ≤4.5, discovery ≤8 min, 3–6 restorations (8 at 4–4.5 s). The Build 40 comparison (±15 % session, idle ≤5 min) is retired: waiting for energy is now intended. Unit tests on beach and worksite pace now count minutes of play, not real time.
+
+### Build 41i · the board screen in the coast screen's style (user: "game visual heterhii huuchnii baigaad bainaa")
+Visual only (`v5/next/next.css`, `#backdrop` in `v5/play.html`, one line in `render()`):
+- The area's own picture, blurred and darkened at the top, sits behind the board screen and fades to warm sand below (worksite picture at the worksite).
+- Header: white glass pills for energy and coins (a gold bolt badge, the refill timer as a chip), the level as a teal badge in a gold XP ring, BEACH as an orange button like the coast screen's Build, the menu as a round glass button.
+- Orders: white cards with soft shadows, round portraits, gold reward chips, dark count chips; a ready order glows green and bobs; the gold order has a gold card and a GOLD tag.
+- The next-step bar is a rounded pill with a light sweep; the free-space count is a chip.
+- The board sits in a sand tray with a white rim and a deep shadow; empty spaces are soft hollows.
+- The shed is a white glass panel; Shop, Book, Gift and the ad offer are round buttons with labels.
+- Motion stays under `prefers-reduced-motion: no-preference`. Item, crate and generator art are unchanged.

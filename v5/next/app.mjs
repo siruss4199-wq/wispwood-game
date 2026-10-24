@@ -61,6 +61,8 @@ const wantedKeys=()=>new Set(state.orders.flatMap(o=>o.needs.map(r=>r.family+r.t
 function render(){
  const area=currentArea(state),total=area.tasks.length*STAGES;
  $('#areaBrand').textContent=area.name.toUpperCase();
+ // Build 41i: the area's own picture, blurred, behind the board screen.
+ {const bg=`url("assets/premium/${area.picture}-vibrant.webp")`;if($('#backdrop').style.backgroundImage!==bg)$('#backdrop').style.backgroundImage=bg;}
  $('#energy').innerHTML=`${state.energy}<span class="energyCap">/${REFILL_CAP}</span>`;
  $('#coins').textContent=state.coins;
  const lv=state.level;$('#levelNum').textContent=lv.level;$('#levelPill').style.setProperty('--p',Math.round(100*lv.xp/xpToNext(lv.level))+'%');$('#levelPill').setAttribute('aria-label',`Level ${lv.level}, ${lv.xp} of ${xpToNext(lv.level)} XP`);

@@ -415,3 +415,67 @@ body[data-art] .boardHeading #hint.primaryAction:before{content:none}
 @keyframes artPop{0%{transform:scale(.6) rotate(-6deg)}100%{transform:none}}
 @keyframes thump{0%{transform:none}25%{transform:translateY(5px) scale(.99)}60%{transform:translateY(-3px)}100%{transform:none}}
 @keyframes builtPop{0%{transform:translate(-50%,-50%) scale(.3);filter:brightness(2) drop-shadow(0 0 12px #fff)}55%{transform:translate(-50%,-50%) scale(1.25)}100%{transform:translate(-50%,-50%) scale(1)}}
+/* Build 41i: the board screen in the coast screen's style (user: "game visual heterhii huuchnii
+   baigaad bainaa"): the area's picture blurred behind everything, glass pills, white order
+   cards with round portraits, a sand tray for the board and a round-button dock. */
+#backdrop{position:fixed;inset:-24px;z-index:-2;background:#1f5160 center 30%/cover no-repeat;filter:blur(10px) saturate(1.15) brightness(.82);transform:scale(1.04)}
+:root:has(body.nextMode){background:#1f5160}
+body.nextMode{background:transparent}
+body.nextMode::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(180deg,#0d2c3a99 0,#0d2c3a33 38%,#f4e9d1d9 62%,#f3e6c8 100%)}
+body.nextMode .game{background:transparent}
+.nextMode header{background:transparent;box-shadow:none;padding-top:max(8px,env(safe-area-inset-top))}
+.nextMode header .brand b{color:#fff;text-shadow:0 2px 0 #0005}
+.nextMode header .brand span{color:#ffe08a}
+.nextMode header :is(.resource,.starPill){background:#ffffffeb;border:2px solid #fff;border-radius:999px;box-shadow:0 3px 0 #0002,0 6px 14px #0003;color:#203451}
+.nextMode #energyPill>i{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:linear-gradient(#ffd66b,#f0a93b);color:#fff;font-style:normal;text-shadow:0 1px 0 #a6500a;box-shadow:inset 0 -2px 0 #c47d12}
+.nextMode #energyTimer{background:#203451;color:#fff;border-radius:999px;padding:0 6px}
+.nextMode .levelPill{width:40px;height:40px;background:conic-gradient(#ffd66b var(--p),#ffffff55 0);box-shadow:0 3px 8px #0004}
+.nextMode .levelPill b{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:linear-gradient(#2fb3a6,#16877e);color:#fff;font-size:15px;box-shadow:inset 0 -2px 0 #0f5f58}
+.nextMode .mapButton{min-height:44px;padding:0 14px;border-radius:14px;background:linear-gradient(#ffb547,#f07f1c);color:#fff;text-shadow:0 1px 0 #a6500a;box-shadow:0 3px 0 #b85a10,0 6px 14px #f07f1c55;font-size:12px}
+.nextMode #menuButton{width:44px;height:44px;border-radius:50%;background:#ffffff38;border:2px solid #ffffff66;display:grid;place-items:center}
+.nextMode #menuButton .burger,.nextMode #menuButton .burger::before,.nextMode #menuButton .burger::after{display:block;width:18px;height:2.5px;border-radius:2px;background:#fff}
+.nextMode #menuButton .burger{position:relative}.nextMode #menuButton .burger::before,.nextMode #menuButton .burger::after{content:"";position:absolute;left:0}
+.nextMode #menuButton .burger::before{top:-6px}.nextMode #menuButton .burger::after{top:6px}
+/* Orders. */
+.nextMode #requests .requestCard{background:#fff;border:0;border-radius:18px;box-shadow:0 4px 0 #0001,0 8px 18px #0d2c3a40;padding:6px}
+.nextMode #requests .requestCrew svg{width:34px;height:34px;border-radius:50%;box-shadow:0 0 0 2px #fff,0 0 0 4px #e6eef0}
+.nextMode #requests .requestReward{background:linear-gradient(#fff6dc,#ffe7a8);border:1.5px solid #f0c45a;border-radius:999px;color:#5a3c06}
+.nextMode #requests .requestItems{background:radial-gradient(ellipse at 50% 60%,#eef6f6,transparent 70%);border-radius:12px}
+.nextMode #requests .requestItems b{background:#203451;color:#fff;border-radius:999px;padding:0 5px;font-size:10px}
+.nextMode #requests .requestCard.ready{background:linear-gradient(#f2fff4,#d9f6df);box-shadow:0 0 0 3px #3fcf8e,0 8px 18px #3fcf8e55}
+.nextMode #requests .requestCard.ready>strong{background:linear-gradient(#42d392,#1f9e68);border-radius:999px;box-shadow:0 2px 0 #157a50;letter-spacing:.04em}
+.nextMode #requests .requestCard.ready .requestItems b{background:#1f9e68}
+.nextMode #requests .requestCard.storyOrder:not(.ready){background:linear-gradient(170deg,#fffaf0,#ffe9b0);box-shadow:0 0 0 2.5px #f0c45a,0 8px 18px #f0a93b55}
+.nextMode #requests .requestCard.storyOrder::before{content:"GOLD";position:absolute;top:-7px;left:50%;translate:-50% 0;font-size:9px;font-weight:900;letter-spacing:.1em;color:#5a3c06;background:linear-gradient(#ffe08a,#f0b93b);border-radius:999px;padding:1px 7px;box-shadow:0 2px 0 #c4901e}
+.nextMode #requests .requestCard{position:relative}
+.nextMode #requests .requestCard.active{box-shadow:0 0 0 3px #43bfe7,0 8px 18px #43bfe755}
+@media(prefers-reduced-motion:no-preference){.nextMode #requests .requestCard.ready{animation:readyBob 1.6s ease-in-out infinite}@keyframes readyBob{50%{transform:translateY(-3px)}}}
+/* The one next step and the free-space chip. */
+body[data-art] .boardHeading #hint.primaryAction{border-radius:999px;padding:10px 16px;box-shadow:0 3px 0 #0f5f58,0 8px 16px #0d2c3a40;position:relative;overflow:hidden}
+body[data-art] .boardHeading #hint.primaryAction[data-kind="deliver"]{background:linear-gradient(#ffc75a,#f0a12b);box-shadow:0 3px 0 #c47d12,0 8px 16px #f0a93b55}
+body[data-art] .boardHeading #hint.primaryAction[data-kind="upgrade"]{background:linear-gradient(#ff8a5b,#e4572e);box-shadow:0 3px 0 #a63b1c,0 8px 16px #e4572e55}
+body[data-art] .boardHeading #hint.primaryAction:not([data-kind="deliver"]):not([data-kind="upgrade"]):not([data-kind="energy"]):not([data-kind="space"]):not([data-kind="orders"]):not([data-kind="level"]){background:linear-gradient(#2fb3a6,#16877e)}
+@media(prefers-reduced-motion:no-preference){body[data-art] .boardHeading #hint.primaryAction::after{content:"";position:absolute;top:0;bottom:0;width:30%;left:-40%;background:linear-gradient(100deg,transparent,#fff5,transparent);transform:skewX(-18deg);animation:btnShine 3.2s ease-in-out infinite}}
+.nextMode .boardHeading #free{background:#ffffffd9;border-radius:999px;padding:4px 10px;font-size:11px;color:#203451;box-shadow:0 2px 6px #0002;white-space:nowrap}
+/* The board: a sand tray. */
+body.nextMode[data-art] #board.board{background:linear-gradient(#fbf3e1,#efdfbd);border:4px solid #fff;border-radius:24px;box-shadow:0 6px 0 #d9c49b,0 14px 28px #0d2c3a55,inset 0 2px 6px #0000001a}
+body.nextMode #board .tile{border-radius:13px}
+body.nextMode #board .tile.empty{background:#ffffff73;box-shadow:inset 0 2px 4px #a8875022}
+/* Shed. */
+.nextMode #shed{background:#ffffffc7;border:2px solid #fff;border-radius:18px;box-shadow:0 6px 14px #0d2c3a26}
+.nextMode #shed .shedSlot{border-style:solid;border-color:#e6dcc4;background:#fbf6ea;border-radius:12px}
+.nextMode #shed .shedLabel{color:#8a6a3a}
+/* The dock: round buttons with a label. */
+.nextMode .dock{justify-content:center;gap:14px;margin:10px 0 6px}
+.nextMode .dock button{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:64px;padding:0;background:none!important;box-shadow:none!important;color:#5a4626;font-size:11px;font-weight:900;letter-spacing:.03em}
+.nextMode .dock button>b{display:grid;place-items:center;width:54px;height:54px;border-radius:50%;font-size:26px;background:#fff;border:3px solid #fff;box-shadow:0 4px 0 #d9c49b,0 8px 16px #0d2c3a33}
+.nextMode .dock #shopButton>b{background:linear-gradient(#e3f9ee,#bfeed5)}
+.nextMode .dock #bookButton>b{background:linear-gradient(#eaf2ff,#c9dcfb)}
+.nextMode .dock #dailyButton>b{background:linear-gradient(#fff2c9,#ffd66b)}
+.nextMode .dock #adEnergyButton>b{background:linear-gradient(#5f9bff,#2f6fd6);color:#fff;font-size:20px}
+.nextMode .dock #bookCount{top:-2px;right:4px}
+.nextMode footer{opacity:.75}
+.nextMode footer button{background:none;color:#5a4626}
+.nextMode #energyPill #energyTimer{position:absolute;left:50%;bottom:-10px;translate:-50% 0;font-size:10px;line-height:15px;z-index:2;white-space:nowrap}
+.nextMode #requests{margin-top:8px}
+.nextMode .dock{align-items:flex-start}
