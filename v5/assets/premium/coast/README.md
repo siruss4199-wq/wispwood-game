@@ -40,3 +40,16 @@ up), then exported at 256 px WebP (quality 88).
 | place-ws-door-1, -2, -3 | survey scaffold with a ladder · + lantern posts · + chart of the dial on an easel |
 
 Painted art from `docs/V5_COAST_ART_BRIEF_2026-10-23.md` can replace any file with the same name.
+
+**Rope Winch, Shell Trap and Lantern Kiln (build 41k).** `render-parts.html` draws the three generators
+and their 17 parts in the same light and grading (`render-shot.cjs twine coil … genlamp`). Each render
+is framed on the object's opaque pixels (side 1.12 × the larger dimension, the soft shadow faded out
+over the last 6 % of the frame), then exported at 192 px WebP (quality 88). They replace the flat SVG
+shapes in `v5/next/chains.mjs` (kept as the fallback for other chains).
+
+| File | Object |
+|---|---|
+| gen-rope, gen-shell, gen-lamp | rope drum with crank in a wooden frame · wicker trap with shells and a float · stone kiln with a glowing mouth |
+| part-rope-0 … 5 | frayed twine · rope coil · fishing net with cork floats · pulley block · rope ladder · cargo hoist with a crate |
+| part-shell-0 … 5 | sand dollar · cockle shell · conch · pearl oyster · nautilus · coral crown |
+| part-lamp-0 … 4 | candle stub on a dish · tin lantern · storm lantern · signal lamp · beacon lens |

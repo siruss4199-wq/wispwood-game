@@ -535,3 +535,4 @@ body.nextMode #board .tile.empty{background:#ffffff73;box-shadow:inset 0 2px 4px
 #board .tile.cargo{box-shadow:inset 0 -4px 0 var(--key,#e39a4d),inset 0 0 0 1px #fbf3df}
 #board .tile.cargo[data-key="chart"]{--key:#46b3a6}#board .tile.cargo[data-key="rope"]{--key:#e5785b}#board .tile.cargo:is([data-key="shell"],[data-key="lamp"]){--key:#e8b63e}
 #board .tile.cargo.deep,#board .tile.cargo.deep:is([data-key="chart"],[data-key="rope"]){background:linear-gradient(160deg,#ddcda9,#cbb487)}
+.nextMode #selection:not(:has(*)){background:none;border-color:transparent;box-shadow:none}
