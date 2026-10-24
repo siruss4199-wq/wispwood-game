@@ -1,0 +1,278 @@
+/* Build 42 — the approved visual direction (Board and Beach/Vault mockups), on top of next.css.
+   One system: deep ocean teal behind everything, warm ivory surfaces, turquoise for selection and
+   primary actions, gold only for coins, rewards and ready states, ice blue only for frozen cells,
+   coral sparingly. Thin borders, restrained shadows, one radius scale. Visual only: no rule,
+   price or save change lives here. */
+:root{
+ --ocean-950:#062229;--ocean-900:#082c35;--ocean-800:#0c3a45;--ocean-700:#125060;--ocean-600:#1a6676;
+ --ivory:#fbf6ea;--ivory-2:#f4ecda;--ivory-3:#ebe0c8;--line:#e2d4b4;--line-2:#d3c19b;
+ --ink:#16323a;--ink-2:#4a6168;--ink-3:#7c8f93;
+ --turq:#22c2b4;--turq-d:#0f8f84;--turq-l:#c9f3ee;
+ --gold:#f0b43a;--gold-d:#b57f14;--gold-l:#ffe9b0;
+ --ice:#cdeef8;--ice-d:#6fb9d3;--coral:#ec6b57;
+ --r-s:9px;--r-m:13px;--r-l:18px;--r-xl:24px;
+ --sh-1:0 1px 2px #04161c26;--sh-2:0 4px 12px #04161c33;--sh-3:0 10px 26px #04161c55;
+}
+:root:has(body.nextMode){background:var(--ocean-900)}
+body.nextMode{color:var(--ink)}
+/* Deep ocean behind the board; the area's picture only as a faint band behind the header. */
+body.nextMode #backdrop{inset:0;filter:none;transform:none;background:var(--ocean-900)!important}
+body.nextMode #backdrop::before{content:"";position:absolute;inset:0 0 auto;height:150px;background:inherit;opacity:0}
+body.nextMode::after{background:radial-gradient(120% 55% at 50% -8%,#1d6d7b 0,var(--ocean-800) 45%,transparent 75%),var(--ocean-900)}
+
+/* ---------- header ---------- */
+.nextMode header :is(.resource,.starPill){background:var(--ivory);border:1px solid #fff;box-shadow:var(--sh-2);color:var(--ink)}
+.nextMode #energyPill>i{background:linear-gradient(var(--turq),var(--turq-d));text-shadow:0 1px 0 #0a5d56;box-shadow:inset 0 -2px 0 #0a6f66}
+.nextMode #energyTimer{background:var(--ocean-700)}
+.nextMode .levelPill{background:conic-gradient(var(--turq) var(--p),#ffffff33 0);box-shadow:var(--sh-2)}
+.nextMode .levelPill b{background:var(--ocean-700);box-shadow:inset 0 -2px 0 var(--ocean-950)}
+.nextMode .mapButton{display:inline-flex;align-items:center;gap:6px;padding:0 11px 0 6px;flex:none;border-radius:999px;background:linear-gradient(var(--turq),var(--turq-d));color:#fff;text-shadow:0 1px 0 #0a5d5699;box-shadow:0 2px 0 #0a6f66,var(--sh-2);font-size:12px;letter-spacing:.06em}
+.nextMode .mapButton .navIcon{position:static;animation:none;width:30px;height:30px;border-radius:50%;background:var(--ocean-700) center/cover no-repeat;box-shadow:0 0 0 2px #ffffffcc;flex:none}
+.nextMode .mapButton #mapReady{background:var(--gold);box-shadow:0 0 0 2px #fff}
+.nextMode #menuButton{background:#ffffff1f;border:1px solid #ffffff4d}
+.nextMode header .brand b{text-shadow:none}
+
+/* ---------- orders: short cards, small portraits ---------- */
+.nextMode #requests{margin-top:6px}
+.nextMode #requests .requestShelf{gap:6px}
+.nextMode #requests .requestCard{grid-template-columns:auto 1fr;padding:5px 5px 6px;gap:2px 4px;border-radius:var(--r-m);background:var(--ivory);border:1px solid var(--line);box-shadow:var(--sh-2);transition:transform .15s,box-shadow .15s}
+.nextMode #requests .requestCrew svg,.nextMode #requests .storyBadge{width:24px;height:24px;border-radius:50%;box-shadow:0 0 0 1.5px #fff,0 0 0 2.5px var(--line-2)}
+.nextMode #requests .storyBadge .art,.nextMode #requests .storyBadge img{width:20px;height:20px}
+.nextMode #requests .requestReward{background:var(--gold-l);border:1px solid #e9c46a;color:#5d3d05;font-size:11.5px;padding:1px 6px 1px 4px;border-radius:999px}
+.nextMode #requests .requestReward .coinIcon{width:13px;height:13px}
+.nextMode #requests .requestItems{height:40px;background:none;gap:3px}
+.nextMode #requests .requestItems>span,.nextMode #requests .requestItems :is(svg,img){width:38px;height:38px}
+.nextMode #requests .requestItems:has(>span:nth-child(2))>span,.nextMode #requests .requestItems:has(>span:nth-child(2)) :is(svg,img){width:33px;height:33px}
+.nextMode #requests .requestItems b{background:var(--ink);font-size:9.5px;line-height:13px;padding:0 4px;bottom:-2px;right:-2px}
+.nextMode #requests .requestItems .met b{background:var(--turq-d)}
+/* Selected order: turquoise outline and a small lift; its parts are marked on the board. */
+.nextMode #requests .requestCard{outline:0}
+.nextMode #requests .requestCard.active{border-color:var(--turq);box-shadow:0 0 0 2px var(--turq),var(--sh-3);transform:translateY(-2px)}
+/* Gold order: a gold label, not a gold card (gold means "ready"). */
+.nextMode #requests .requestCard.storyOrder:not(.ready){background:var(--ivory);border-color:#e7c977;box-shadow:inset 0 3px 0 #f2cd6e,var(--sh-2)}
+.nextMode #requests .requestCard.storyOrder.active:not(.ready){box-shadow:0 0 0 2px var(--turq),inset 0 3px 0 #f2cd6e,var(--sh-3)}
+.nextMode #requests .requestCard.storyOrder::before{top:-6px;font-size:8.5px;padding:0 6px;background:var(--gold);color:#4a3003;box-shadow:none}
+.nextMode #requests .requestCard.storyOrder .requestReward{background:var(--gold-l)}
+/* Ready: a gold edge and the one Deliver button. */
+.nextMode #requests .requestCard.ready{background:#fffaf0;border-color:var(--gold);box-shadow:0 0 0 2px var(--gold),0 6px 16px #f0b43a40}
+.nextMode #requests .requestCard.ready>strong{display:block;grid-column:1/3;margin-top:3px;font-size:12px;line-height:24px;border-radius:999px;background:linear-gradient(var(--turq),var(--turq-d));color:#fff;letter-spacing:.03em;box-shadow:0 2px 0 #0a6f66}
+.nextMode #requests .requestCard.ready .requestItems b{background:var(--turq-d)}
+@media(prefers-reduced-motion:no-preference){.nextMode #requests .requestCard.ready{animation:none}.nextMode #requests .requestCard.ready>strong{animation:readyGlow 2.4s ease-in-out infinite}}
+@keyframes readyGlow{50%{box-shadow:0 2px 0 #0a6f66,0 0 0 4px #22c2b433}}
+/* The tapped order explained: generator → each merge → the part wanted. */
+.nextMode .orderTools{display:block;margin:8px 0 0;padding:8px 10px;border-radius:var(--r-m);background:var(--ivory);border:1px solid var(--line);box-shadow:var(--sh-2);color:var(--ink)}
+.nextMode .orderTools .routes{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.nextMode .orderTools .route{display:flex;align-items:center;gap:2px;flex-wrap:wrap;font-size:11px;color:var(--ink-2)}
+.nextMode .orderTools .route>span{width:26px;height:26px;display:grid;place-items:center;flex:none}
+.nextMode .orderTools .route :is(svg,img){width:26px;height:26px;object-fit:contain}
+.nextMode .orderTools .routeGen{border-radius:50%;background:var(--turq-l)}
+.nextMode .orderTools .routeStep.goal{border-radius:8px;background:var(--gold-l);box-shadow:0 0 0 1.5px #e9c46a}
+.nextMode .orderTools .routeArrow{width:8px;height:8px;border:solid var(--ink-3);border-width:2px 2px 0 0;transform:rotate(45deg) scale(.7);flex:none;margin:0 1px}
+.nextMode .orderTools .route small{flex-basis:100%;font-size:11px;line-height:1.3;color:var(--ink-2);font-weight:700}
+.nextMode .orderTools .route.sealed{opacity:.65}
+.nextMode .orderTools .toolRow{display:flex;align-items:center;gap:8px;justify-content:space-between;margin-top:6px;padding-top:6px;border-top:1px solid var(--ivory-3)}
+.nextMode .orderTools .toolNote{font-size:11.5px;color:var(--ink-2);font-weight:700}
+.nextMode .orderTools button{min-height:40px;border-radius:999px;padding:0 12px;background:var(--ocean-700);color:#fff;font-size:12px;font-weight:800;flex:none}
+.nextMode .orderTools button small{opacity:.8;font-weight:700}
+.nextMode .orderTools button:disabled{background:var(--ivory-3);color:var(--ink-3)}
+
+/* ---------- the compact contextual hint (no banner) ---------- */
+.nextMode .boardHeading{min-height:34px;margin-top:6px;padding:0 2px;gap:6px}
+body.nextMode[data-art] .boardHeading #hint.primaryAction,body.nextMode[data-art] .boardHeading #hint.primaryAction[data-kind]{flex:0 1 auto;min-height:34px;padding:6px 12px 6px 10px;border-radius:999px;background:#ffffff14!important;border:1px solid #ffffff33;color:#e9fbf8!important;font-size:12.5px;font-weight:750;line-height:1.25;box-shadow:none!important;text-shadow:none;display:flex;align-items:center;gap:7px;overflow:hidden}
+body.nextMode[data-art] .boardHeading #hint.primaryAction::after{content:none!important;animation:none!important}
+body.nextMode[data-art] .boardHeading #hint.primaryAction::before{content:""!important;display:block;width:7px;height:7px;border-radius:50%;flex:none;background:var(--turq);box-shadow:0 0 0 3px #22c2b433}
+body.nextMode[data-art] .boardHeading #hint.primaryAction:is([data-kind="deliver"],[data-kind="upgrade"])::before{background:var(--gold);box-shadow:0 0 0 3px #f0b43a33}
+body.nextMode[data-art] .boardHeading #hint.primaryAction:is([data-kind="space"],[data-kind="energy"])::before{background:var(--coral);box-shadow:0 0 0 3px #ec6b5733}
+.nextMode .boardHeading #free{margin-left:auto;background:#ec6b5726;color:#ffd9d1;border:1px solid #ec6b5766;box-shadow:none;font-size:11px;font-weight:800}
+.nextMode .boardHeading #free[hidden]{display:none}
+
+/* ---------- the board: as large as the screen allows ---------- */
+body.nextMode[data-art] #board.board{margin-top:6px;padding:5px;gap:3px;background:linear-gradient(#f7efdc,#ecdfc2);border:1px solid #fff9;border-radius:var(--r-xl);box-shadow:0 0 0 4px #ffffff14,var(--sh-3)}
+body.nextMode #board .tile{border-radius:var(--r-s);box-shadow:none}
+body.nextMode #board .tile.empty{background:#e9dcbd;box-shadow:inset 0 1px 3px #8c6a3022}
+body.nextMode #board .tile.item{background:#fffaf0;box-shadow:inset 0 -2px 0 #e7dcc3}
+/* Generators: a turquoise floor, no energy badge. */
+body.nextMode #board .tile.source{background:radial-gradient(70% 60% at 50% 62%,#d6f6f1,#b3e7e0);box-shadow:inset 0 -2px 0 #8fd2c9,inset 0 0 0 1px #e9fffb}
+body.nextMode #board .tile.source.locked{background:#d9d6cc;box-shadow:inset 0 -2px 0 #bdb6a6}
+/* Containers (crates of parts) and sealed cargo: sand, with their key's stripe. */
+body.nextMode #board .tile.kit{background:#f6e9cb;box-shadow:inset 0 -2px 0 #dcc597}
+body.nextMode #board .tile.kit .pulls{background:var(--ink);color:#fff;font-size:10px;min-width:17px;height:17px;line-height:17px;border-radius:999px;box-shadow:0 0 0 1.5px #fff}
+body.nextMode #board .tile.cargo{box-shadow:inset 0 -3px 0 var(--key,#e39a4d),inset 0 0 0 1px #fbf3df}
+/* Wanted parts: a soft gold floor instead of a star on every cell. */
+body.nextMode #board .tile.item.wanted{box-shadow:inset 0 -3px 0 #f0c45a}
+body.nextMode #board .tile.item.nextAction{background:#fff6dc;box-shadow:inset 0 0 0 2px var(--gold),inset 0 -3px 0 var(--gold)}
+body.nextMode #board .tile .useBadge,body.nextMode #board .tile .energyCue{display:none}
+body.nextMode #board .tile .srcLevel{background:var(--ocean-700);color:#fff;font-size:9px;line-height:14px;padding:0 4px;border-radius:999px;box-shadow:0 0 0 1.5px #fff}
+/* Selection and valid merge targets: turquoise. */
+body.nextMode #board .tile.selected{outline:3px solid var(--turq);outline-offset:-1px;z-index:3;box-shadow:0 0 0 5px #22c2b440}
+body.nextMode #board .tile.match{outline:2px dashed var(--turq-d);outline-offset:-3px;background:#e4f8f4}
+body.nextMode #board .tile.target{outline:3px solid var(--turq);outline-offset:-2px;background:#c9f3ee}
+body.nextMode #board .tile.orderSource{box-shadow:0 0 0 2px var(--turq),inset 0 -2px 0 #8fd2c9}
+body.nextMode #board .tile.hintPair{outline:2px dashed var(--gold);outline-offset:-3px}
+
+/* ---------- three-hit ice: intact → one crack → fractures and chips → break ---------- */
+body.nextMode #board .tile.glass{background:#fbf8f0;box-shadow:inset 0 -2px 0 #e7dcc3;overflow:visible}
+body.nextMode #board .tile.glass .art.inGlass{transform:scale(.8);opacity:.86;filter:saturate(.75) brightness(1.04)}
+body.nextMode #board .tile.glass.ice1 .art.inGlass{opacity:.92;filter:saturate(.85)}
+
+body.nextMode #board .tile.glass.ice2 .art.inGlass{transform:scale(.86);opacity:1;filter:none}
+body.nextMode #board .tile.glass .glassShard{inset:0;width:100%;height:100%;opacity:1}
+@media(prefers-reduced-motion:no-preference){
+ body.nextMode #board .tile.glass .glassShard{animation:none}
+ body.nextMode #board .tile.glassCrack{animation:iceHit .35s ease-out}
+ body.nextMode #board .tile.glassBreak{animation:none}
+ body.nextMode #board .tile.glassBreak>.art{animation:iceReveal .6s cubic-bezier(.2,1.4,.4,1)}
+}
+@keyframes iceHit{30%{transform:translateX(-2px)}65%{transform:translateX(2px)}}
+@keyframes iceReveal{0%{transform:scale(.8);filter:brightness(1.4)}100%{transform:none;filter:none}}
+/* The break, with reduced motion: a still ice-blue ring for a moment. */
+body.nextMode #board .tile.glassBreak{box-shadow:0 0 0 3px var(--ice-d)}
+.iceBurst{position:absolute;inset:0;pointer-events:none;z-index:4}
+.iceBurst i{position:absolute;left:50%;top:50%;width:11px;height:9px;margin:-4px -5px;background:linear-gradient(135deg,#ffffff,#bfe6f4);clip-path:polygon(0 30%,60% 0,100% 55%,35% 100%);opacity:0;animation:iceFrag .75s ease-out forwards}
+@keyframes iceFrag{0%{opacity:1;transform:rotate(var(--a)) translate(0) rotate(0)}100%{opacity:0;transform:rotate(var(--a)) translate(var(--d)) rotate(160deg) scale(.6)}}
+
+/* ---------- shed: a compact occupancy row, collapsed by default ---------- */
+.nextMode #shed.shed{display:block;margin:8px 0 0;padding:0;background:#ffffff12;border:1px solid #ffffff2b;border-radius:var(--r-m);box-shadow:none}
+.nextMode #shed .shedToggle{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;padding:0 12px;background:none;color:#e9fbf8;font-size:12px;font-weight:800;text-align:left}
+.nextMode #shed .shedToggle .shedLabel{width:auto;color:#e9fbf8;letter-spacing:.08em;text-transform:uppercase;font-size:11px}
+.nextMode #shed .shedToggle>b{font-size:12px;color:#bfe9e3}
+.nextMode #shed .shedPeek{display:flex;gap:4px;margin-left:auto}
+.nextMode #shed .shedPeek i{width:24px;height:24px;border-radius:7px;border:1px dashed #ffffff4d;display:grid;place-items:center}
+.nextMode #shed .shedPeek i.full{border:1px solid #fff9;background:var(--ivory)}
+.nextMode #shed .shedPeek :is(svg,img){width:20px;height:20px;object-fit:contain}
+.nextMode #shed .shedChevron{width:9px;height:9px;border:solid #e9fbf8;border-width:0 2px 2px 0;transform:rotate(45deg);margin:-4px 2px 0 4px;transition:transform .2s}
+.nextMode #shed.open .shedChevron{transform:rotate(-135deg);margin-top:4px}
+.nextMode #shed.open .shedPeek{display:none}
+.nextMode #shed .shedSlots{display:none;gap:8px;padding:0 10px 10px}
+.nextMode #shed.open .shedSlots{display:flex}
+.nextMode #shed .shedSlot{flex:1;max-width:none;min-width:44px;min-height:48px;aspect-ratio:auto;height:52px;border-radius:var(--r-s);border:1px dashed #ffffff59;background:#ffffff0d}
+.nextMode #shed .shedSlot.full{border:1px solid #fff;background:var(--ivory);box-shadow:var(--sh-1)}
+.nextMode #shed .shedSlot :is(svg,img){width:44px;height:44px}
+.nextMode #shed .shedSlot.target{outline:3px solid var(--turq);background:#22c2b433}
+
+/* ---------- selected item: one compact row under the board ---------- */
+.nextMode #selection{min-height:0;margin-top:8px;padding:6px 8px;gap:8px;align-items:center;background:var(--ivory);border:1px solid var(--line);border-radius:var(--r-m);box-shadow:var(--sh-2)}
+.nextMode #selection .preview{width:40px;height:40px;flex:none;display:grid;place-items:center;border-radius:var(--r-s);background:var(--ivory-2);position:relative}
+.nextMode #selection .preview :is(svg,img){width:36px;height:36px}
+.nextMode #selection .preview .glassShard{inset:0;width:100%;height:100%}
+.nextMode #selection .preview :is(.cargoKey,.kitTag,.cargoQ){display:none}
+.nextMode #selection .copy{flex:1;min-width:0}
+.nextMode #selection .copy b{display:block;font-size:13px;line-height:1.2;color:var(--ink)}
+.nextMode #selection .copy small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:11.5px;line-height:1.3;color:var(--ink-2)}
+.nextMode #selection .actionGroup{flex:none;max-width:none;display:flex;gap:6px}
+.nextMode #selection .actionGroup button{min-height:40px;min-width:44px;padding:0 12px;border-radius:999px;font-size:12px;font-weight:800;background:var(--ivory-2);color:var(--ink);border:1px solid var(--line)}
+.nextMode #selection .actionGroup button.accent{background:linear-gradient(var(--turq),var(--turq-d));color:#fff;border-color:transparent;box-shadow:0 2px 0 #0a6f66}
+.nextMode #selection:not(:has(*)){display:none}
+.nextMode #selection .hits{display:inline-flex;gap:3px;vertical-align:-1px;margin-right:2px}
+.nextMode #selection .hits i{width:9px;height:9px;border-radius:2px;transform:rotate(45deg);background:none;box-shadow:inset 0 0 0 1.5px #b9c6c8}
+.nextMode #selection .hits i.on{background:var(--ice-d);box-shadow:inset 0 0 0 1px #3f93b1}
+
+/* ---------- messages, dock, footer on the ocean ---------- */
+.nextMode .message{color:#cfe7e4;font-size:11.5px;min-height:20px}
+.nextMode .dock button,.nextMode .dock #shopButton,.nextMode .dock #bookButton,.nextMode .dock #bookButton.ready{color:#e9fbf8}
+.nextMode .dock button>b{width:48px;height:48px;font-size:22px;background:var(--ivory)!important;border:1px solid #fff;box-shadow:var(--sh-2)}
+.nextMode .dock #adEnergyButton>b{background:linear-gradient(var(--turq),var(--turq-d))!important;color:#fff}
+.nextMode .dock #dailyButton>b{box-shadow:0 0 0 2px var(--gold),var(--sh-2)}
+.nextMode .dock button.ready>b{box-shadow:0 0 0 2px var(--gold),var(--sh-2)}
+.nextMode footer,.nextMode footer button,.nextMode footer #build{color:#9fc4c2}
+.nextMode #rationButton{background:#ffffff14;border:1px solid #ffffff33;border-radius:999px;padding:4px 10px}
+
+/* ---------- crew portraits: one round ivory frame everywhere ---------- */
+.nextMode .beatLine svg{background:var(--ivory);box-shadow:0 0 0 2px #fff,0 0 0 3px var(--line-2),var(--sh-2)}
+
+/* ---------- dialogs: same tokens (teal band, ivory body, turquoise primary) ---------- */
+.nextMode dialog:is(#shop,#book,#help,#menu,#daily,#playlog,#endDialog,#adStandIn){background:linear-gradient(180deg,var(--ocean-700) 0,var(--ocean-600) 60px,var(--ivory) 60px,var(--ivory-2) 100%);color:var(--ink);box-shadow:var(--sh-3)}
+.nextMode dialog .primary,.nextMode .beat .primary{background:linear-gradient(var(--turq),var(--turq-d));text-shadow:0 1px 0 #0a5d5699;box-shadow:0 3px 0 #0a6f66,var(--sh-2)}
+.nextMode #beat{background:var(--ivory);box-shadow:var(--sh-3)}
+.nextMode .beat small{background:var(--ocean-700)}
+.nextMode .beatLine b{color:var(--turq-d)}
+.nextMode .beatDots i.on{background:var(--turq)}
+.nextMode .shopItem .buy{background:var(--gold-l);border:1px solid #e9c46a;box-shadow:none}
+.nextMode .menuButton{background:var(--ocean-700);box-shadow:none}
+.nextMode .helpList li::before{background:var(--turq-d)}
+
+/* ---------- the Vault: a sealed circular door as its own layer ---------- */
+.vaultLayer{position:absolute;width:14%;aspect-ratio:1;translate:-50% -50%;z-index:1;pointer-events:none}
+.beachScene:not(.mapped) .vaultLayer{width:11%}
+.vaultLayer img{width:100%;height:100%;display:block;filter:drop-shadow(0 4px 6px #04161c66) saturate(.9)}
+.beachScene:not(.mapped) .vaultLayer img{filter:drop-shadow(0 3px 5px #04161c66) grayscale(calc(.85 - .45*var(--p,0))) brightness(calc(.8 + .14*var(--p,0)))}
+.mapped .vaultLayer.sealed img{filter:drop-shadow(0 4px 6px #04161c66) saturate(.7) brightness(.92)}
+.vaultLayer::after{content:"";position:absolute;inset:9%;border-radius:50%;pointer-events:none}
+.vaultLayer.lit::after{box-shadow:0 0 14px 4px #ffd77a99,inset 0 0 12px #ffd77a66}
+.vaultLayer.mapped::after{box-shadow:0 0 14px 4px #7fe3dc99,inset 0 0 0 2px #bff5ef99,inset 0 0 0 9px #22c2b422}
+.vaultLayer.open::after{box-shadow:0 0 18px 6px #a7f0ffcc}
+.vaultPlate{position:absolute;left:50%;bottom:-6%;translate:-50% 0;display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:999px;background:var(--ocean-800);color:#e9fbf8;font-size:9px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;box-shadow:0 0 0 1px #ffffff55}
+.vaultLayer.open .vaultPlate{background:var(--turq-d)}
+.lockGlyph{position:relative;width:7px;height:6px;margin-top:3px;border-radius:1.5px;background:currentColor}
+.lockGlyph::before{content:"";position:absolute;left:1px;top:-4px;width:5px;height:5px;border:1.5px solid currentColor;border-bottom:0;border-radius:4px 4px 0 0;box-sizing:border-box}
+.vaultLayer.open .lockGlyph::before{left:3px}
+/* The reveal card (the cliff gate opens; the Vault stays sealed). */
+.nextMode .beat.vaultReveal{text-align:center;align-items:center}
+.nextMode .beat.vaultReveal small{align-self:center}
+.nextMode .beat.vaultReveal h3{margin:4px 0 0;font-size:20px;color:var(--ink);text-transform:none;letter-spacing:0}
+.nextMode .beat.vaultReveal p{margin:0;color:var(--ink-2);font-size:14px;line-height:1.4}
+.nextMode .beat.vaultReveal .revealNext{display:inline-flex;gap:8px;align-items:center;padding:6px 12px;border-radius:999px;background:var(--turq-l);color:var(--ink);font-weight:800;font-size:13px}
+.nextMode .beat.vaultReveal .revealNext b{color:var(--turq-d);text-transform:uppercase;font-size:11px;letter-spacing:.08em}
+.nextMode .beat.vaultReveal .primary{width:100%}
+.revealStage{position:relative;width:min(62vw,220px);aspect-ratio:1;margin:0 auto;border-radius:50%;overflow:hidden;background:radial-gradient(circle,#1d5c68,var(--ocean-900));box-shadow:0 0 0 3px #fff,0 0 0 5px var(--line-2),var(--sh-3)}
+.revealStage .revealDoor{position:absolute;inset:4%;width:92%;height:92%}
+.revealStage .gate{position:absolute;top:0;bottom:0;width:50%;background:repeating-linear-gradient(0deg,transparent 0 26px,#8f7a5266 26px 28px),repeating-linear-gradient(90deg,transparent 0 38px,#8f7a5244 38px 40px),linear-gradient(90deg,#e3d4b2,#c9b38a);display:none}
+.revealStage .gate::after{content:"";position:absolute;top:0;bottom:0;width:10px;background:linear-gradient(90deg,#b5862c,#f2cf7a,#b5862c)}
+.revealStage .gate.left::after{right:0}.revealStage .gate.right::after{left:0}
+.revealStage .gate.left{left:0;box-shadow:inset -3px 0 0 #8a7650}.revealStage .gate.right{right:0;box-shadow:inset 3px 0 0 #8a7650}
+@media(prefers-reduced-motion:no-preference){
+ .revealStage .gate{display:block;animation:gateLeft 1.1s .25s cubic-bezier(.6,0,.3,1) forwards}
+ .revealStage .gate.right{animation-name:gateRight}
+ .revealStage .revealDoor{animation:doorIn 1.4s ease-out}
+}
+@keyframes gateLeft{to{transform:translateX(-102%)}}
+@keyframes gateRight{to{transform:translateX(102%)}}
+@keyframes doorIn{0%{transform:scale(.92);filter:brightness(.6)}100%{transform:none;filter:none}}
+
+/* ---------- beach screen in the same tokens ---------- */
+.nextMode #coastMap.beachScreen{background:var(--ocean-900)}
+.nextMode #coastMap .mapCard{background:var(--ivory);border:1px solid var(--line);box-shadow:var(--sh-2)}
+.nextMode #coastMap .mapCard.ready{box-shadow:0 0 0 2px var(--gold),var(--sh-2)}
+.nextMode #coastMap .cardButton{background:linear-gradient(var(--turq),var(--turq-d));box-shadow:0 3px 0 #0a6f66;color:#fff}
+
+/* ---------- wide and short (a laptop, a phone on its side): board on the right, full height ---------- */
+@media (min-width:700px) and (orientation:landscape) and (max-height:620px){
+ body.nextMode .game{width:100%;max-width:980px;min-height:100svh;padding:8px 14px calc(8px + env(safe-area-inset-bottom));display:grid;grid-template-columns:minmax(300px,1fr) auto;grid-template-rows:auto auto auto auto auto auto auto 1fr auto;column-gap:16px;align-content:start}
+ body.nextMode .game>header{grid-column:1;grid-row:1}
+ body.nextMode .game>#requests{grid-column:1;grid-row:2}
+ body.nextMode .game>#orderTools{grid-column:1;grid-row:3}
+ body.nextMode .game>.boardHeading{grid-column:1;grid-row:4}
+ body.nextMode .game>#selection{grid-column:1;grid-row:5}
+ body.nextMode .game>#shed{grid-column:1;grid-row:6}
+ body.nextMode .game>#message{grid-column:1;grid-row:7}
+ body.nextMode .game>.dock{grid-column:1;grid-row:8;align-self:end}
+ body.nextMode .game>footer{grid-column:1;grid-row:9}
+ body.nextMode[data-art] .game>#board.board{grid-column:2;grid-row:1/-1;align-self:start;width:calc(100svh - 22px);margin-top:0}
+ .nextMode .dock{margin:4px 0 0}
+ body.nextMode .game>header{min-width:0}
+ body.nextMode .game>header .brand{display:none}
+}
+
+/* Beach markers, tiles and buttons in the same tokens: turquoise selection, gold for ready. */
+#coastMap .siteMarker.small>span{background:var(--ivory);border:2px solid #fff;color:var(--ink)}
+#coastMap .siteMarker.small.ready>span{background:linear-gradient(#ffd66b,var(--gold));border-color:#fff}
+#coastMap .siteMarker.small.selected>span{box-shadow:0 0 0 3px var(--turq),0 2px 6px #0006}
+#coastMap .siteMarker.selected::after{border-color:var(--turq)}
+#coastMap .siteMarker .mk{display:block;min-height:0;min-width:0;box-sizing:content-box;padding:0}
+#coastMap .siteMarker .mk.next{width:9px;height:9px;border-radius:50%;background:var(--turq-d);box-shadow:0 0 0 2px #fff}
+#coastMap .siteMarker .mk.up{width:0;height:0;border:6px solid transparent;border-bottom:9px solid #fff;border-top:0;filter:drop-shadow(0 1px 0 #b57f14)}
+#coastMap .place.selected>button{box-shadow:0 0 0 3px var(--turq),var(--sh-2)}
+#coastMap .tileBadge.ready{background:var(--gold);color:#4a3003}
+#coastMap .tileBadge.done{background:var(--turq-d)}
+#coastMap .mapFuture{background:#ffffff12;border:1px solid #ffffff2b;box-shadow:none}
+#coastMap .mapFuture summary{color:#e9fbf8}
+#coastMap .backToBoard{background:var(--ivory);color:var(--ink);box-shadow:var(--sh-2);border:1px solid var(--line)}
+.nextMode #coastMap .cardButton.build{background:linear-gradient(var(--turq),var(--turq-d));color:#fff;text-shadow:0 1px 0 #0a5d5699;box-shadow:0 3px 0 #0a6f66}
+.nextMode #coastMap .beachCoins{background:var(--gold-l);border:1px solid #e9c46a;box-shadow:none}
+@media(max-width:380px){.nextMode .mapButton{gap:4px;padding:0 8px 0 5px;letter-spacing:.02em;font-size:11px}.nextMode .mapButton .navIcon{width:26px;height:26px}}
+/* Restrained feedback: motion marks what changed or what is ready, nothing else loops. */
+@media(prefers-reduced-motion:no-preference){
+ #board .tile.source:not(.dragging)>.art,#board .tile.cargo.keyReady .art,#coastMap .siteMarker:not(.ready),#coastMap .tileBadge.ready,#coastMap .cardButton.build,#coastMap .need:not(.ok) .needParts i,#coastMap .mapProgress i,.nextMode .bookItem.ready,.cargoGlow{animation:none}
+ #mapContent.entering .mapProgress i{animation:barGrow 1s cubic-bezier(.2,.8,.3,1) .4s both}
+ #coastMap .cardButton.go::after{content:none}
+}
