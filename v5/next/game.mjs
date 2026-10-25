@@ -175,6 +175,10 @@ const FIRST=[[['rig',2,1]],[['rig',3,1]],[['rig',2,1],['rig',1,2]]];
 export const ROLES=['quick','pair','big'],ROLE_PAY={quick:1,pair:1.15,big:1.3},ROLE_TURN=['quick','pair','big','pair'];
 // How many of the last everyday orders a new one may not repeat (Build 44, s.recent).
 export const RECENT=6;
+// An everyday order's coins: its parts' worth times its kind's pay, rounded to 5. Rounding up
+// was tried (so every bonus shows) and measured: stages came sooner, and since order tiers
+// follow the stages built, orders outran the generators (taps 790 → 1,003, waiting ×4).
+export const rolePrice=(needs,role)=>Math.max(5,Math.round(priceOf(needs)*ROLE_PAY[role]/5)*5);
 // The kind of an order, also for saves made before Build 44 (which did not store one).
 export const roleOf=o=>o?.story?'gold':ROLES.includes(o?.role)?o.role:new Set(o?.needs?.map(r=>r.family)).size>1?'pair':o?.needs?.[0]?.tier>=3?'big':'quick';
 function rand(n){let t=(n*2654435761+0x6D2B79F5)>>>0;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296;}
@@ -267,7 +271,7 @@ export function makeOrder(s){
    needs=vary.find(v=>!bad(v))??vary.find(v=>!onBoard.has(key(v)))??needs;
   }
   recent.push(key(needs));if(recent.length>RECENT)recent.splice(0,recent.length-RECENT);
-  return {id:'o'+n,who:crewFor(needs),needs,coins:Math.max(5,Math.round(priceOf(needs)*ROLE_PAY[role]/5)*5),role};
+  return {id:'o'+n,who:crewFor(needs),needs,coins:rolePrice(needs,role),role};
  }
  return {id:'o'+n,who:crewFor(needs),needs,coins:priceOf(needs)};
 }

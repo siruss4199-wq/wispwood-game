@@ -169,3 +169,10 @@ Not better: boards whose everyday orders all start with the same chain went from
 the beach (only Rivet Rover and the Survey Kite are out for most of it); the median order is a
 little smaller (8 → 6 units) because quick jobs are meant to be quick, while big jobs are bigger.
 All 282 node tests pass, including the economy guard and first-15-minutes checks.
+
+**A finding for later.** Rounding the job bonus *up* (so every bonus shows on the card) was tried
+and measured worse everywhere: the whole chapter took 790 → 1,003 taps and four times the waiting.
+More coins bring stages sooner, and order tiers follow the number of stages built (`makeOrder`
+`low`/`top`), so orders outran the generators. Pay and difficulty are coupled: any future reward
+change should be measured with that in mind, or difficulty should follow generator levels instead
+(needs approval). The bonus stays rounded to 5; the card shows it only when it adds coins.

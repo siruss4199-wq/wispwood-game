@@ -1,6 +1,6 @@
 // Coast Camp: the new-loop page (v5/play.html). Same look as Classic V5, one loop:
 // generators → merge → crew orders → coins → upgrade the coast's places on the beach screen.
-import {allDone,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,newestGenerator,cog,token,SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,orderProgress,nextTask,currentArea,areaDone,upgrades,stageOf,builtCount,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys,reachable,generatorsMerge,MAX_GENERATOR_LEVEL,GLASS_HITS,nextKind,UNLOCK_LEVEL,GENERATOR_ORDER,storyTarget,roleOf,ROLE_PAY} from './game.mjs';
+import {allDone,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,newestGenerator,cog,token,SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,orderProgress,nextTask,currentArea,areaDone,upgrades,stageOf,builtCount,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys,reachable,generatorsMerge,MAX_GENERATOR_LEVEL,GLASS_HITS,nextKind,UNLOCK_LEVEL,GENERATOR_ORDER,storyTarget,roleOf,COIN_VALUE as COIN_VALUE_UI} from './game.mjs';
 import {AREAS,STAGES,TASKS} from './areas.mjs';
 import {primaryAction} from './guide.mjs';
 import {purposeOf} from './purposes.mjs';
@@ -136,7 +136,8 @@ function renderOrderTools(){
  const t=o.story&&TASKS[o.story],st=t&&t.stages[Math.min(STAGES,stageOf(state,t.id)+1)-1];
  const say=o.story?`<p class="orderSay"><b>${t.name} · materials</b>Delivering this brings the materials for <em>${st.name}</em>; then it can be built for ${st.cost} coins.</p>`
   :`<p class="orderSay"><b>${kind} · ${CREW[o.who].name}</b>“${why?.line??'Parts for the camp.'}”</p>`;
- const pays=!o.story&&n&&!n.ready?`<p class="orderPays">${COIN} +${o.coins}${ROLE_PAY[role]>1?` <small>(${role==='big'?'big job':'two crews'}: +${Math.round(100*(ROLE_PAY[role]-1))} %)</small>`:''} → <b>${n.u.name}</b> ${Math.min(n.u.cost,state.coins+o.coins)}/${n.u.cost}${n.u.materials?'':' · also needs its gold order'}</p>`:'';
+ const extra=o.story?0:o.coins-o.needs.reduce((v,r)=>v+r.count*COIN_VALUE_UI[r.tier],0);
+ const pays=!o.story&&n&&!n.ready?`<p class="orderPays">${COIN} +${o.coins}${extra>0?` <small>(${role==='big'?'big job':'two crews'}: +${extra})</small>`:''} → <b>${n.u.name}</b> ${Math.min(n.u.cost,state.coins+o.coins)}/${n.u.cost}${n.u.materials?'':' · also needs its gold order'}</p>`:'';
  bar.innerHTML=`${say}${pays}<ol class="routes" aria-label="Where the parts come from">${missing.map(chainRoute).join('')}</ol><div class="toolRow">${swap}</div>`;
 }
 function renderBoard(){
