@@ -116,7 +116,8 @@ body.nextMode #board .cargoKey{right:4%;top:4%;width:38%;height:38%}
 body.nextMode #board .tile.glass .art.inGlass{transform:scale(.74);filter:saturate(.85)}
 body.nextMode #board .tile.glass.ice1 .art.inGlass{filter:saturate(.9)}
 body.nextMode #board .tile.glass.ice2 .art.inGlass{transform:scale(.8);filter:none}
-body.nextMode #board.board .tile.tile.glass,body.nextMode #board.board .tile.tile.glass.odd{background:url('../assets/premium/coast/ui/cell.webp') center/100% 100% no-repeat}
+/* every ice cell the same pale ice blue under the painted ice (the player chose the blue, 45d) */
+body.nextMode #board.board .tile.tile.glass,body.nextMode #board.board .tile.tile.glass.odd{background:#ddf2f8}
 .iceArt{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;object-fit:contain}
 body.nextMode #board .glassShard{display:none}
 .selection .preview .iceArt,.dragGhost .iceArt{inset:0}
