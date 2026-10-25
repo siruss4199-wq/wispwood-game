@@ -84,25 +84,13 @@ function genDeco(L){
  if(L>=5)g+='<path d="M34 14L38 2L46 10L50 0L54 10L62 2L66 14Z" fill="#ffd34d" stroke="#a8730a" stroke-width="2" stroke-linejoin="round"/><circle cx="50" cy="8" r="2.5" fill="#e0567a"/>';
  return `<svg class="genDeco lv${L}" viewBox="0 0 100 100" aria-hidden="true">${g}</svg>`;
 }
-// The ice over a tideglass part, by cracks taken (0, 1 or 2 of GLASS_HITS = 3; the third breaks it).
-const ICE_BODY=['M18 5H82Q95 5 95 18V82Q95 95 82 95H18Q5 95 5 82V18Q5 5 18 5Z','M18 5H82Q95 5 95 18V82Q95 95 82 95H18Q5 95 5 82V18Q5 5 18 5Z',
- 'M22 5H58L68 16L78 6Q95 8 95 22V52L84 62L95 72V82Q95 95 82 95H46L36 84L27 95H18Q5 95 5 82V42L16 31L5 20Q5 5 22 5Z'];
-const ICE_CRACK=['','M8 34L22 38L30 50L44 54',
- 'M8 34L22 38L30 50L44 54M93 24L80 35L71 50L56 57M71 50L79 69L92 75M30 50L25 69L14 83M56 57L52 74'];
-function iceBlock(n){
- const k=Math.max(0,Math.min(2,n));
- return `<svg class="glassShard ice${k}" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="bcIce" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f4fdff" stop-opacity=".82"/><stop offset=".5" stop-color="#bfeaf7" stop-opacity=".38"/><stop offset="1" stop-color="#8fd6ec" stop-opacity=".6"/></linearGradient></defs>`
-  +`<path d="${ICE_BODY[k]}" fill="url(#bcIce)" stroke="#ffffff" stroke-opacity=".95" stroke-width="2.5"/>`
-  +`<path d="M95 58V82Q95 95 82 95H58Z" fill="#5fb8d6" opacity=".18"/><path d="M16 32Q19 17 33 13" fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round" opacity=".9"/><path d="M14 41V37" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".7"/>`
-  +(k?`<g fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="${ICE_CRACK[k]}" stroke="#2f86a6" stroke-width="2.6" opacity=".8"/><path d="${ICE_CRACK[k]}" stroke="#fff" stroke-width="1.1" opacity=".95" transform="translate(.9 -.9)"/></g>`:'')
-  +(k===2?'<path d="M72 3L79 0L78 9Z M0 23L7 26L2 31Z M30 98L33 90L38 98Z" fill="#dff4fb" stroke="#77c3dc" stroke-width="1"/>':'')
-  +'</svg>';
-}
 export function draw(x,cls=''){
  if(x?.type==='source'&&(x.level??1)>1){const {level,...base}=x;return draw(base,cls)+genDeco(level);}
  // Tideglass (Build 44, bright coast): a clear ice block over the part that shows each of the
  // GLASS_HITS cracks it has taken: intact, one crack, then fractures and chipped edges.
- if(x?.type==='glass')return draw({type:'item',family:x.family,tier:x.tier},(cls+' inGlass').trim())+iceBlock(x.cracks??0);
+ // Build 45: the painted ice (supplied art), one picture per hits left: intact (3), cracked (2),
+ // heavily cracked (1). The engine's crack count picks it; the third hit removes the ice.
+ if(x?.type==='glass')return draw({type:'item',family:x.family,tier:x.tier},(cls+' inGlass').trim())+`<img class="iceArt ice${Math.max(0,Math.min(2,x.cracks??0))}" src="assets/premium/coast/ui/ice-${Math.max(0,Math.min(2,x.cracks??0))}.webp" alt="" aria-hidden="true" draggable="false">`;
  // Deep cargo (not yet touching open ground) keeps even its key hidden.
  if(x?.type==='cargo'){const look=CARGO_LOOK[x.key.family]??'basket';return img(CARGO_FILE[look],('cargoArt '+cls).trim(),'cargo-'+look)+'<span class="cargoQ" aria-hidden="true">?</span>'+(x.deep?'':`<span class="cargoKey" aria-hidden="true">${draw({type:'item',family:x.key.family,tier:x.key.tier})}</span>`);}
  // Painted icons for every generator and part (Build 41l); the SVG shapes stay as the fallback.

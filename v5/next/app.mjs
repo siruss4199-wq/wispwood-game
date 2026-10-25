@@ -26,7 +26,7 @@ function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el
 let adPlaying=false;
 const sfx=(kind,tier=0)=>sounds.play(kind,tier,{muted:adPlaying||platform.muted()});
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 44 · bright coast';
+export const BUILD='Build 45 · coastal board';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
@@ -77,7 +77,8 @@ function render(){
  const area=currentArea(state),total=area.tasks.length*STAGES;
  $('#areaBrand').textContent=area.name.toUpperCase();
  // Build 41i: the area's own picture, blurred, behind the board screen.
- {const bg=`url("assets/premium/${area.picture}-vibrant.webp")`;if($('#backdrop').style.backgroundImage!==bg)$('#backdrop').style.backgroundImage=bg;}
+ // Build 45: the board screen stands on one bright coastal picture (coastal.css); each area's own
+ // picture is shown where it belongs, on the restoration strip and the coast screen.
  $('#energy').innerHTML=`${state.energy}<span class="energyCap">/${REFILL_CAP}</span>`;
  $('#coins').textContent=state.coins;
  const lv=state.level;$('#levelNum').textContent=lv.level;$('#levelPill').style.setProperty('--p',Math.round(100*lv.xp/xpToNext(lv.level))+'%');$('#levelPill').setAttribute('aria-label',`Level ${lv.level}, ${lv.xp} of ${xpToNext(lv.level)} XP`);
@@ -85,8 +86,6 @@ function render(){
  // The beach and its upgrades live on their own screen (user, 2026-10-22: "ene zaaval boardtai
  // neg delgetsend tsug baimaargui"); the board screen keeps only the BEACH button, whose dot
  // shows when an upgrade is affordable, and the coin count.
- $('#mapButton').setAttribute('aria-label',ready?`Go to the ${area.name}: an upgrade is ready`:`Go to the ${area.name} (${builtCount(state)} of ${total} upgrades)`);
- $('#mapButton span').textContent=area.short??'MAP';
  renderOrders();renderBoard();renderShed();renderSelection();renderHint();renderNextPlace();
  $('#dailyButton').hidden=!giftReady();
  $('#adEnergyButton').hidden=!(state.energy<5&&shopLeft(state,'adEnergy',today())>0);
@@ -102,6 +101,10 @@ function render(){
 // and stage its materials are for), the parts with their counts, the progress, the coins, and
 // DELIVER when it is ready. Cards keep their lane: nothing moves under the finger when one
 // becomes ready (they were sorted ready-first before).
+// Painted crew faces (Build 45, supplied art) for the crew who have one; the others keep the drawn
+// portrait until theirs is approved (Nara and Sela are prepared but not part of the game).
+const FACES={ivo:'crew-ivo',bram:'crew-bram'};
+const face=who=>FACES[who]?`<img class="art face" src="assets/premium/coast/ui/${FACES[who]}.webp" alt="" draggable="false">`:portrait(who);
 function renderOrders(){
  $('#requests').style.setProperty('--slots',state.orders.length);
  $('#requests').innerHTML=`<div class="requestShelf">${state.orders.map(o=>{
@@ -110,9 +113,13 @@ function renderOrders(){
   const got=p.reduce((n,r)=>n+r.have,0),want=p.reduce((n,r)=>n+r.count,0);
   const role=roleOf(o),why=place?null:purposeOf(o,role);
   const label=`${place?`Gold order: the materials for ${place.stages[stage-1].name} (${place.name}, stage ${stage}). `:`${who.name} the ${who.role}${why?`, ${why.short}`:''}${role==='big'?' (a big job)':''}: `}${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier))).join(', ')}. ${ready?'Ready: tap to deliver.':`${got} of ${want} parts on the board.`} Reward ${o.coins} coins`;
-  const head=place?`<span class="reqFace place">${placeArt(place,stage)}</span><span class="reqName"><b>${place.name}</b><small>Materials · stage ${stage}</small></span>`
-   :`<span class="reqFace">${portrait(o.who)}</span><span class="reqName"><b>${who.name}</b><small>${purposeOf(o,roleOf(o))?.short??who.role}</small></span>`;
-  return `<button class="requestCard ${ready?'ready':''} ${place?'storyOrder':''} ${focusOrder===o.id?'active':''}" data-order="${o.id}" data-role="${role}" aria-label="${label}">${role==='big'?'<i class="reqBig" aria-hidden="true">BIG JOB</i>':''}<span class="reqHead">${head}</span><span class="requestItems">${p.map(r=>`<span class="${r.have>=r.count?'met':''}">${draw(item(r.family,r.tier))}<b>${r.have}/${r.count}</b></span>`).join('')}</span><span class="reqFoot">${ready?'<strong class="reqDeliver">Deliver</strong>':`<span class="reqBar" aria-hidden="true"><i style="width:${Math.round(100*got/want)}%"></i></span>`}<span class="requestReward">${COIN}${o.coins}</span></span></button>`;
+  // Build 45 (coastal board design): a painted face where the crew member has one, the name, a
+  // kind tag only where it matters (a big job, the gold order's stage), the parts with have/need
+  // (✓ and green when there are enough), and the coins or, when ready, the one Deliver button.
+  const tag=place?`<i class="reqTag gold">Stage ${stage}</i>`:role==='big'?'<i class="reqTag big">Big job</i>':'';
+  const head=place?`<span class="reqFace place">${placeArt(place,stage)}</span><span class="reqName"><b>${place.name}</b>${tag}</span>`
+   :`<span class="reqFace">${face(o.who)}</span><span class="reqName"><b>${who.name}</b>${tag}</span>`;
+  return `<button class="requestCard ${ready?'ready':''} ${place?'storyOrder':''} ${focusOrder===o.id?'active':''}" data-order="${o.id}" data-role="${role}" aria-label="${label}"><span class="reqHead">${head}</span><span class="requestItems">${p.map(r=>`<span class="${r.have>=r.count?'met':''}">${draw(item(r.family,r.tier))}<b>${r.have>=r.count?'<i aria-hidden="true">✓</i>':''}${r.have}/${r.count}</b></span>`).join('')}</span><span class="reqFoot">${ready?`<strong class="reqDeliver">Deliver <em>+${o.coins}</em>${COIN}</strong>`:`<span class="requestReward">${COIN}${o.coins}</span>`}</span></button>`;
  }).join('')}</div>`;
  renderOrderTools();
 }
@@ -180,16 +187,26 @@ function nextPlace(){
  const ups=upgrades(state);const u=ups.find(canBuild)??ups.find(u=>u.materials)??storyTarget(state)??ups[0];
  if(!u)return null;const t=TASKS[u.id];return {u,t,ready:canBuild(u)};
 }
-// While a delivery's coins are in the air the chip keeps its old state; it changes as they land.
+// The restoration strip (Build 45): the board's one way to the coast. It shows the place the next
+// stage is for (its own picture), says "Ready to build" only when materials and coins are both in,
+// and otherwise the real next objective and what it still needs. Tapping it opens the coast on that
+// place; it never spends anything (the build is confirmed there). While a delivery's coins are in
+// the air it keeps its old state, and changes as they land.
 let holdPlace=0;
 function renderNextPlace(){
  if(holdPlace>performance.now())return;
- const el=$('#nextPlace'),n=nextPlace();
- if(!n){el.hidden=true;return;}
+ const el=$('#mapButton'),n=nextPlace(),area=currentArea(state);
+ if(!n){el.dataset.place='';el.dataset.ready='0';el.classList.remove('ready');
+  el.querySelector('.rsThumb').innerHTML=`<img class="art" src="assets/premium/${area.picture}-vibrant.webp" alt="">`;
+  el.querySelector('.rsText b').textContent=area.name;el.querySelector('.rsText small').textContent=areaDone(state)?'Every place is restored':'The next stages open as you build';
+  el.querySelector('.rsAction').textContent='View';el.setAttribute('aria-label',`Go to the ${area.name}`);return;}
  const {u,t,ready}=n,was=el.dataset.ready==='1';
- el.hidden=false;el.dataset.place=u.id;el.dataset.ready=ready?'1':'0';el.classList.toggle('ready',ready);
- el.setAttribute('aria-label',`${u.name} (${t.name}, stage ${u.stage}): ${ready?'ready to build. Go to the '+currentArea(state).name:`${u.materials?'materials in':'materials from the gold order'}, ${Math.min(state.coins,u.cost)} of ${u.cost} coins`}`);
- el.innerHTML=`<span class="npArt">${placeArt(t,u.stage)}</span><span class="npText"><b>${ready?'Ready to build':u.name}</b><small>${ready?u.name:`<i class="npMat ${u.materials?'ok':''}" aria-hidden="true">${u.materials?'✓':'◆'}</i>${COIN}${Math.min(state.coins,u.cost)}/${u.cost}`}</small></span>`;
+ el.dataset.place=u.id;el.dataset.ready=ready?'1':'0';el.classList.toggle('ready',ready);
+ el.querySelector('.rsThumb').innerHTML=placeArt(t,u.stage);
+ el.querySelector('.rsText b').textContent=ready?'Ready to build':u.name;
+ el.querySelector('.rsText small').innerHTML=ready?`${u.name} · ${COIN}${u.cost}`:`<i class="rsMat ${u.materials?'ok':''}" aria-hidden="true">${u.materials?'✓':'◆'}</i>${u.materials?'Materials':'Gold order'} · ${COIN}${Math.min(state.coins,u.cost)}/${u.cost}`;
+ el.querySelector('.rsAction').textContent=ready?'Build':'View';
+ el.setAttribute('aria-label',`${u.name} (${t.name}, stage ${u.stage}): ${ready?`ready to build for ${u.cost} coins. Open the ${area.name} to build it`:`${u.materials?'materials in':'needs its gold order'}, ${Math.min(state.coins,u.cost)} of ${u.cost} coins. Open the ${area.name}`}`);
  if(ready&&!was&&el.dataset.seen==='1'&&!reduced()){el.classList.remove('justReady');void el.offsetWidth;el.classList.add('justReady');}
  el.dataset.seen='1';
 }
@@ -211,7 +228,7 @@ function renderSelection(){
  }else if(x.type==='kit'){
   desc=`Tap again for a free part (${chainsOf(state,x.family).map(c=>CHAINS[c].names[0]).join(' or ')} chain) · ${x.left} of ${kitCapacity(x)} left.`+(kitFull(x)&&x.size<MAX_KIT_SIZE?` Or merge with a twin into a ${CRATES[x.size]} (${KIT_DROPS[x.size+1].length} better parts).`:'');
   buttons='<button class="accent" data-action="openKit">Take a part</button>';
-} else if(x.type==='glass'){const n=CHAINS[x.family].names,left=GLASS_HITS-(x.cracks??0);title=(x.cracks?'Cracked tideglass':'Tideglass')+` <span class="hits" aria-label="${left} of ${GLASS_HITS} hits left">${Array.from({length:GLASS_HITS},(_,k)=>`<i class="${k<left?'on':''}"></i>`).join('')}</span>`;desc=`A ${n[x.tier]} locked in tideglass. It takes no part: a merge in a space beside it that makes a ${n[x.tier]} or better (any chain) cracks it; ${GLASS_HITS} cracks break it and the ${n[x.tier]} is yours.`+(x.cracks?` ${GLASS_HITS-x.cracks} more merge${GLASS_HITS-x.cracks>1?'s':''} beside it.`:'');
+} else if(x.type==='glass'){const n=CHAINS[x.family].names,left=GLASS_HITS-(x.cracks??0);title=(x.cracks?'Cracked tideglass':'Tideglass')+` <span class="hits" aria-label="${left} of ${GLASS_HITS} hits left">${Array.from({length:GLASS_HITS},(_,k)=>`<i class="${k<left?'on':''}"></i>`).join('')}</span>`;desc=`${left} hit${left>1?'s':''} left. A ${n[x.tier]} locked in tideglass. It takes no part: a merge in a space beside it that makes a ${n[x.tier]} or better (any chain) cracks it; ${GLASS_HITS} cracks break it and the ${n[x.tier]} is yours.`+(x.cracks?` ${GLASS_HITS-x.cracks} more merge${GLASS_HITS-x.cracks>1?'s':''} beside it.`:'');
  } else if(x.type==='cargo'&&!reachable(state,selected)){title='Sealed cargo';desc='Buried deeper in the cargo. Open the crates around it first, and this one will show the part that opens it.'+(x.find?.type==='source'?' Something glows inside.':['cog','token'].includes(x.find?.type)?' Something gleams inside.':'');
  }else if(x.type==='cargo'){const k=CHAINS[x.key.family].names[x.key.tier],have=state.board.some(y=>matches(y,x.key)),gen=CHAINS[x.key.family].gen;
   title='Sealed cargo';desc=`Opens with a ${k}: lay one on it. What is inside is a surprise`+(x.find?.type==='source'?' — something glows in there.':['cog','token'].includes(x.find?.type)?' — something gleams in there.':'.')+(have?' You have one: drag it onto this cargo.':sourceOpen(state,gen)?` ${SOURCES[gen].name} makes them.`:` Its generator is still sealed somewhere on the board.`);}
@@ -334,7 +351,7 @@ function deliverSequence(r,taking,orderRect,coinsBefore,readyBefore){
   c.style.cssText=`left:${fx}px;top:${fy}px;--dx:${to.x+to.width*.25-fx}px;--dy:${to.y+to.height/2-fy}px;animation-delay:${300+k*45}ms`;document.body.append(c);setTimeout(()=>c.remove(),1000+k*45);}
  setTimeout(bump,760);
  // 3. the restoration's progress: the chip pulses, and says "Ready" only when it truly is.
- setTimeout(()=>{holdPlace=0;renderNextPlace();renderHint();$('#mapReady').hidden=!nextPlace()?.ready;calmBadges();const el=$('#nextPlace');if(!el||el.hidden)return;el.classList.remove('progressed');void el.offsetWidth;el.classList.add('progressed');},900);
+ setTimeout(()=>{holdPlace=0;renderNextPlace();renderHint();$('#mapReady').hidden=!nextPlace()?.ready;calmBadges();const el=$('#mapButton');el.classList.remove('progressed');void el.offsetWidth;el.classList.add('progressed');},900);
 }
 // Taps make, open and show; merging, opening cargo and moving are done by dragging only
 // (build 24, user: "touch-r mergelehgui, zuvhun drag hiij mergeldeg baiy").
@@ -367,11 +384,13 @@ document.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return
 document.addEventListener('pointercancel',endDrag);
 // iOS Safari can still start a scroll from a button; while dragging, the finger is ours.
 board.addEventListener('touchmove',e=>{if(drag?.moved)e.preventDefault();},{passive:false});
-$('#selection').addEventListener('click',e=>{const b=e.target.closest('[data-action]');if(!b)return;if(b.dataset.action==='store')shedOpen=true;const x=state.board[selected];run({type:b.dataset.action,index:selected,id:x?.id});});
+$('#selection').addEventListener('click',e=>{
+ // The panel keeps its text to two lines (Build 45); a tap on it shows the rest.
+ if(e.target.closest('.copy')){$('#selection').classList.toggle('open');return;}
+ const b=e.target.closest('[data-action]');if(!b)return;if(b.dataset.action==='store')shedOpen=true;const x=state.board[selected];run({type:b.dataset.action,index:selected,id:x?.id});});
 $('#requests').addEventListener('click',e=>{const c=e.target.closest('[data-order]');if(!c)return;const o=state.orders.find(o=>o.id===c.dataset.order);if(!o)return;if(orderItems(state,o)){run({type:'deliver',id:o.id});return;}focusOrder=focusOrder===o.id?null:o.id;render();$('#message').textContent=`${CREW[o.who].name} needs ${o.needs.map(r=>r.count+' × '+nameOf(item(r.family,r.tier))).join(' and ')}. Their parts are marked on the board.`;});
 // The upgrading happens on the beach screen (user: "tusdaa orchinruu ochij upgrade hiih").
-$('#mapButton').onclick=()=>{mapFocus=null;showMap();};
-$('#nextPlace').onclick=()=>{mapFocus=$('#nextPlace').dataset.place??null;showMap();};
+$('#mapButton').onclick=()=>{mapFocus=$('#mapButton').dataset.place||null;sfx('tap');showMap();};
 $('#rationButton').onclick=()=>run({type:'ration'});
 $('#shed').addEventListener('click',e=>{if(e.target.closest('[data-shed-toggle]')){shedOpen=!shedOpen;sfx('tap');renderShed();return;}const b=e.target.closest('[data-slot]');if(!b)return;if(state.shed[+b.dataset.slot])run({type:'unstore',slot:+b.dataset.slot});else $('#message').textContent='Drag a part, crate, cog or token here to keep it off the board.';});
 // ---------- the daily gift ----------
@@ -593,7 +612,7 @@ function showBeat(id,effects,stage=stageOf(state,id)){
 let receipt=null;
 function playLines(title,lines,done){
  let n=0;const dlg=$('#beat'),spent=receipt;receipt=null;
- const show=()=>{const [who,line]=lines[n];$('#beatContent').innerHTML=`<div class="beat"><small>${title}</small>${spent?`<b class="beatReceipt">−${spent} coins</b>`:''}<div class="beatLine">${portrait(who)}<p><b>${CREW[who].name}</b>${line}</p></div><div class="beatDots">${lines.map((_,k)=>`<i class="${k===n?'on':''}"></i>`).join('')}</div><button class="primary" id="beatNext">${n<lines.length-1?'Next':'Continue'}</button></div>`;
+ const show=()=>{const [who,line]=lines[n];$('#beatContent').innerHTML=`<div class="beat"><small>${title}</small>${spent?`<b class="beatReceipt">−${spent} coins</b>`:''}<div class="beatLine">${face(who)}<p><b>${CREW[who].name}</b>${line}</p></div><div class="beatDots">${lines.map((_,k)=>`<i class="${k===n?'on':''}"></i>`).join('')}</div><button class="primary" id="beatNext">${n<lines.length-1?'Next':'Continue'}</button></div>`;
   $('#beatNext').onclick=()=>{n++;if(n<lines.length)show();else{dlg.close();done?.();}};};
  show();if(!dlg.open)dlg.showModal();
 }

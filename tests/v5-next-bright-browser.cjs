@@ -52,13 +52,24 @@ async function run(engine,W,H,motion){
    // and says what it is for (Build 44): the kind of job, the crew member's reason in quotes.
    assert.match(await page.locator('#orderTools .orderSay').textContent(),/(Quick|Two-crew|Big) job · (Ivo|Neri|Tamsin|Bram)“.+”/);
    await page.locator(`[data-order="${id}"]`).click();}
-  // Each card names its reason (not just a role), and a big job is tagged.
-  for(const c of await page.locator('#requests .requestCard:not(.storyOrder) .reqName small').allTextContents())assert.ok(!/^(quartermaster|navigator|signal keeper|expedition lead)$/.test(c),`${tag}: a reason, not a role: ${c}`);
+  // Build 45 (coastal board design): a sideways rail of painted cards about 146 × 150 in their
+  // lanes; no progress bars or clipped subtitles; painted faces for Ivo and Bram; the HUD about
+  // 52 px; the restoration strip 52–56 px, saying View until it is truly ready.
+  {const card=await page.locator('#requests .requestCard').first().boundingBox();assert.ok(card.width>=140&&card.width<=156&&card.height>=140&&card.height<=156,`${tag}: card ${card.width}×${card.height}`);
+   if(W<700)assert.ok(await page.locator('#requests .requestShelf').evaluate(e=>e.scrollWidth>e.clientWidth),`${tag}: the rail scrolls sideways`);
+   assert.equal(await page.locator('#requests .reqBar:visible, #requests .reqName small:visible').count(),0,`${tag}: no progress bars or subtitles on cards`);
+   const faces=await page.locator('#requests img.face').evaluateAll(f=>f.map(x=>x.getAttribute('src')));assert.ok(faces.length>0&&faces.every(f=>/crew-(ivo|bram)\.webp$/.test(f)),`${tag}: painted faces ${faces}`);
+   const strip=await page.locator('#mapButton').boundingBox();assert.ok(strip.height>=52&&strip.height<=56&&strip.x>=0&&strip.x+strip.width<=W+1,`${tag}: strip ${strip.height}px`);
+   assert.match(await page.locator('#mapButton .rsAction').textContent(),/^View$/);
+   const hud=await page.locator('header').boundingBox();assert.ok(hud.height<=64,`${tag}: HUD ${hud.height}px`);}
 
   // Tideglass: three looks for three hits, then the part is free.
   await setState(page,s=>{s.daily={day:9e6,count:1};s.board[15]={type:'glass',family:'rig',tier:0};s.board[16]={type:'glass',family:'rig',tier:0,cracks:1};s.board[20]={type:'glass',family:'rig',tier:0,cracks:2};});
   for(const [i,k] of [[15,0],[16,1],[20,2]]){assert.equal(await page.locator(`#board [data-index="${i}"].ice${k}`).count(),1,`${tag}: ice${k}`);
+   assert.match(await page.locator(`#board [data-index="${i}"] img.iceArt`).getAttribute('src'),new RegExp(`ice-${k}\\.webp$`),`${tag}: painted ice ${k}`);
    assert.match(await page.locator(`#board [data-index="${i}"]`).getAttribute('aria-label'),new RegExp(`${3-k} hits? left`));}
+  // The panel says how many hits are left; the cells carry no numbers.
+  await page.locator('#board [data-index="20"]').click();assert.match(await page.locator('#selection').textContent(),/1 hit left/);await page.locator('#board [data-index="20"]').click();
 
   // The gold order's card says what it is for; merging next to the last-hit tideglass breaks it.
   await setState(page,ready);
@@ -71,19 +82,20 @@ async function run(engine,W,H,motion){
    assert.equal(await gold.locator('.reqDeliver').count(),1,'one Deliver on the ready card');
    assert.equal(await page.locator('#hint:visible').filter({hasText:/Deliver/}).count(),0,'no second deliver button');
    // Truthful: materials not in yet, so the chip is not "Ready".
-   assert.equal(await page.locator('#nextPlace.ready').count(),0);
+   assert.equal(await page.locator('#mapButton.ready').count(),0);
    await gold.click();}
   if(motion==='no-preference')assert.ok(await page.locator('.coinFlight').count()>0,`${tag}: coins fly to the counter`);
   else{assert.equal(await page.locator('.coinFlight,.deliveryPart').count(),0,`${tag}: no flights with reduced motion`);assert.equal(await page.locator('#coins').textContent(),'45');}
-  await page.waitForFunction(()=>document.querySelector('#coins').textContent==='45'&&document.querySelector('#nextPlace.ready'),null,{timeout:4000});
-  assert.match(await page.locator('#nextPlace').textContent(),/Ready to build/);
+  await page.waitForFunction(()=>document.querySelector('#coins').textContent==='45'&&document.querySelector('#mapButton.ready'),null,{timeout:4000});
+  assert.match(await page.locator('#mapButton').textContent(),/Ready to build/);assert.equal(await page.locator('#mapButton .rsAction').textContent(),'Build');
   assert.equal((await read(page)).coins,45);
   // Reload keeps all of it.
   await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
-  assert.equal(await page.locator('#coins').textContent(),'45');assert.equal(await page.locator('#nextPlace.ready').count(),1);
+  assert.equal(await page.locator('#coins').textContent(),'45');assert.equal(await page.locator('#mapButton.ready').count(),1);
 
   // The chip opens the coast on that place; build; before → after; story; then the next objective.
-  await page.locator('#nextPlace').click();await page.waitForSelector('#coastMap[open]');
+  await page.locator('#mapButton').click();await page.waitForSelector('#coastMap[open]');
+  assert.equal((await read(page)).coins,45,`${tag}: opening the coast spends nothing`);
   assert.equal(await page.locator('#mapCard').getAttribute('data-card'),'beach-path');
   assert.equal(await page.locator('#coastMap .journey li.vault').count(),1,'the Vault is on the way');
   if(motion==='no-preference')assert.equal(await page.locator('#coastMap .beachScene.focusIn').count(),1,`${tag}: the picture starts on the place`);
