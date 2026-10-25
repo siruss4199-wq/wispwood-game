@@ -52,11 +52,12 @@ async function run(engine,W,H,motion){
    // and says what it is for (Build 44): the kind of job, the crew member's reason in quotes.
    assert.match(await page.locator('#orderTools .orderSay').textContent(),/(Quick|Two-crew|Big) job · (Ivo|Neri|Tamsin|Bram)“.+”/);
    await page.locator(`[data-order="${id}"]`).click();}
-  // Build 45 (coastal board design): a sideways rail of painted cards about 146 × 150 in their
+  // Build 45 (coastal board design): a sideways rail of painted cards (112 × 118 since 45c) in their
   // lanes; no progress bars or clipped subtitles; painted faces for Ivo and Bram; the HUD about
   // 52 px; the restoration strip 52–56 px, saying View until it is truly ready.
-  {const card=await page.locator('#requests .requestCard').first().boundingBox();assert.ok(card.width>=140&&card.width<=156&&card.height>=140&&card.height<=156,`${tag}: card ${card.width}×${card.height}`);
-   if(W<700)assert.ok(await page.locator('#requests .requestShelf').evaluate(e=>e.scrollWidth>e.clientWidth),`${tag}: the rail scrolls sideways`);
+  {const card=await page.locator('#requests .requestCard').first().boundingBox();assert.ok(card.width>=104&&card.width<=120&&card.height>=110&&card.height<=124,`${tag}: card ${card.width}×${card.height}`);
+   // one row that scrolls sideways when the cards do not all fit (three fit at 390 px since 45c)
+   assert.ok(await page.locator('#requests .requestShelf').evaluate(e=>getComputedStyle(e).overflowX==='auto'&&new Set([...e.children].map(c=>Math.round(c.getBoundingClientRect().top))).size===1),`${tag}: the cards are one sideways rail`);
    assert.equal(await page.locator('#requests .reqBar:visible, #requests .reqName small:visible').count(),0,`${tag}: no progress bars or subtitles on cards`);
    const faces=await page.locator('#requests img.face').evaluateAll(f=>f.map(x=>x.getAttribute('src')));assert.ok(faces.length>0&&faces.every(f=>/crew-(ivo|bram)\.webp$/.test(f)),`${tag}: painted faces ${faces}`);
    const strip=await page.locator('#mapButton').boundingBox();assert.ok(strip.height>=52&&strip.height<=56&&strip.x>=0&&strip.x+strip.width<=W+1,`${tag}: strip ${strip.height}px`);
@@ -73,6 +74,9 @@ async function run(engine,W,H,motion){
   for(const [i,k] of [[15,0],[16,1],[20,2]]){assert.equal(await page.locator(`#board [data-index="${i}"].ice${k}`).count(),1,`${tag}: ice${k}`);
    assert.match(await page.locator(`#board [data-index="${i}"] img.iceArt`).getAttribute('src'),new RegExp(`ice-${k}\\.webp$`),`${tag}: painted ice ${k}`);
    assert.match(await page.locator(`#board [data-index="${i}"]`).getAttribute('aria-label'),new RegExp(`${3-k} hits? left`));}
+  // one kind of ice: every ice cell (odd or even) sits on the same painted cell as any part
+  {const bg=await page.evaluate(()=>[...document.querySelectorAll('#board .tile')].map(t=>[t.classList.contains('glass'),getComputedStyle(t).backgroundImage]));
+   const looks=new Set(bg.filter(([g])=>g).map(([,b])=>b));assert.equal(looks.size,1,`${tag}: ice cells look the same ${[...looks]}`);assert.match([...looks][0],/cell\.webp/,`${tag}: ice on the painted cell`);}
   // The panel says how many hits are left; the cells carry no numbers.
   await page.locator('#board [data-index="20"]').click();assert.match(await page.locator('#selection').textContent(),/1 hit left/);await page.locator('#board [data-index="20"]').click();
 

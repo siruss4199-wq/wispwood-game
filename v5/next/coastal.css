@@ -36,40 +36,41 @@ body.nextMode .levelPill{width:44px;height:44px;flex:none;border-radius:50%;back
 body.nextMode .levelPill b{width:auto;height:auto;background:none;box-shadow:none;color:#fff;font-size:18px;text-shadow:0 1px 0 #0b5f66}
 body.nextMode #menuButton{width:44px;height:44px;flex:none;border:0;border-radius:12px;background:url('../assets/premium/coast/ui/hud-menu.webp') center/contain no-repeat;box-shadow:none}
 body.nextMode #menuButton .burger{display:none}
-/* ---------- the order rail: painted cards, about 146 × 150, sideways, in their lanes ---------- */
+/* ---------- the order rail: painted cards, 112 × 118 (Build 45c: smaller, the next card peeks), sideways, in their lanes ---------- */
 body.nextMode #requests{margin-top:6px}
 body.nextMode #requests .requestShelf{display:flex;grid-template-columns:none;gap:8px;overflow-x:auto;overflow-y:visible;overscroll-behavior-x:contain;scroll-snap-type:x proximity;scrollbar-width:none;margin:0 calc(-1 * max(10px,env(safe-area-inset-left)));padding:4px max(10px,env(safe-area-inset-left)) 6px}
 body.nextMode #requests .requestShelf::-webkit-scrollbar{display:none}
-body.nextMode #requests .requestCard.requestCard{flex:0 0 146px;width:146px;height:150px;min-height:0;scroll-snap-align:start;position:relative;display:flex;flex-direction:column;align-items:stretch;gap:0;padding:0;border-radius:18px;background:none;box-shadow:none;transform:none;text-align:left;color:var(--cb-ink)}
-body.nextMode #requests .requestCard::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;border-style:solid;border-width:50px 16px 40px 50px;border-image:url('../assets/premium/coast/ui/order-card.webp') 95 30 75 95 fill stretch;filter:drop-shadow(0 3px 4px #0d5a6a40)}
+body.nextMode #requests .requestCard.requestCard{flex:0 0 112px;width:112px;height:118px;min-height:0;scroll-snap-align:start;position:relative;display:flex;flex-direction:column;align-items:stretch;gap:0;padding:0;border-radius:18px;background:none;box-shadow:none;transform:none;text-align:left;color:var(--cb-ink)}
+body.nextMode #requests .requestCard::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;border-style:solid;border-width:40px 13px 32px 40px;border-image:url('../assets/premium/coast/ui/order-card.webp') 95 30 75 95 fill stretch;filter:drop-shadow(0 2px 3px #0d5a6a40)}
 body.nextMode #requests .requestCard>*{position:relative;z-index:1}
-body.nextMode #requests .requestCard .reqHead{display:block;height:50px}
-body.nextMode #requests .reqFace{position:absolute;left:8px;top:7px;width:35px;height:35px;border-radius:50%;overflow:hidden;background:#d7f1f2;box-shadow:none}
+body.nextMode #requests .requestCard .reqHead{display:block;height:38px}
+body.nextMode #requests .reqFace{position:absolute;left:6px;top:5.5px;width:28px;height:28px;border-radius:50%;overflow:hidden;background:#d7f1f2;box-shadow:none}
 body.nextMode #requests .reqFace :is(img.face,svg){width:100%;height:100%;object-fit:cover;object-position:50% 12%;border-radius:0!important;box-shadow:none!important;transform:none}
 body.nextMode #requests .reqFace.place{background:radial-gradient(circle at 50% 35%,#d9f6f6,#8fd6dc);box-shadow:none}
 body.nextMode #requests .reqFace.place :is(img,.art){width:100%;height:100%;object-fit:contain;transform:scale(1.25) translateY(-6%)}
-body.nextMode #requests .reqName{position:absolute;left:50px;right:8px;top:9px;display:flex;flex-direction:column;align-items:flex-start;gap:2px;line-height:1.1}
-body.nextMode #requests .reqName b{font-size:13.5px;font-weight:900;color:var(--cb-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+body.nextMode #requests .reqName{position:absolute;left:39px;right:6px;top:6px;display:flex;flex-direction:column;align-items:flex-start;gap:2px;line-height:1.1}
+body.nextMode #requests .reqName b{font-size:12px;font-weight:900;color:var(--cb-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 body.nextMode #requests .reqName small{display:none}
-body.nextMode .reqTag{font-style:normal;font-size:9px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:1px 6px;color:#fff;white-space:nowrap}
+body.nextMode .reqTag{font-style:normal;font-size:8px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;border-radius:999px;padding:0 5px;color:#fff;white-space:nowrap}
 body.nextMode .reqTag.big{background:linear-gradient(#ff8a63,var(--cb-coral))}
 body.nextMode .reqTag.gold{background:linear-gradient(#ffd25a,#e7a21c);color:#5a3a02}
 body.nextMode .reqBig{display:none}
-body.nextMode #requests .requestItems{flex:1;display:flex;align-items:center;justify-content:center;gap:4px;height:auto;padding:0 8px;background:none}
-body.nextMode #requests .requestItems>span{position:relative;width:48px!important;height:48px!important}
-body.nextMode #requests .requestItems :is(svg,img){width:48px!important;height:48px!important;object-fit:contain}
-body.nextMode #requests .requestItems:has(>span:nth-child(2))>span,body.nextMode #requests .requestItems:has(>span:nth-child(2)) :is(svg,img){width:46px!important;height:46px!important}
-body.nextMode #requests .requestItems b{position:absolute;left:50%;right:auto;bottom:-6px;transform:translateX(-50%);display:inline-flex;align-items:center;gap:1px;font-size:11px;line-height:16px;padding:0 6px;border-radius:999px;background:var(--cb-ink);color:#fff;box-shadow:0 0 0 1.5px #fff;white-space:nowrap}
+body.nextMode #requests .requestItems{flex:1;display:flex;align-items:center;justify-content:center;gap:3px;height:auto;padding:0 6px 4px;background:none}
+body.nextMode #requests .requestItems>span{position:relative;width:38px!important;height:38px!important}
+body.nextMode #requests .requestItems :is(svg,img){width:38px!important;height:38px!important;object-fit:contain}
+body.nextMode #requests .requestItems:has(>span:nth-child(2))>span,body.nextMode #requests .requestItems:has(>span:nth-child(2)) :is(svg,img){width:34px!important;height:34px!important}
+body.nextMode #requests .requestItems:has(>span:nth-child(3))>span,body.nextMode #requests .requestItems:has(>span:nth-child(3)) :is(svg,img){width:28px!important;height:28px!important}
+body.nextMode #requests .requestItems b{position:absolute;left:50%;right:auto;bottom:-6px;transform:translateX(-50%);display:inline-flex;align-items:center;gap:1px;font-size:10px;line-height:14px;padding:0 5px;border-radius:999px;background:var(--cb-ink);color:#fff;box-shadow:0 0 0 1.5px #fff;white-space:nowrap}
 body.nextMode #requests .requestItems>span.met b{background:var(--cb-green)}
 body.nextMode #requests .requestItems b i{font-style:normal;font-size:10px}
 /* the footer band always holds one thing, so a card never jumps when it becomes ready */
-body.nextMode #requests .reqFoot{height:40px;display:flex;align-items:center;justify-content:center;padding:0 8px 4px;gap:0}
+body.nextMode #requests .reqFoot{height:32px;display:flex;align-items:center;justify-content:center;padding:0 6px 3px;gap:0}
 body.nextMode #requests .reqBar{display:none}
-body.nextMode #requests .requestReward{margin:0;padding:2px 10px 2px 4px;font-size:14px;font-weight:900;color:#6a4508;background:#fff3cf;box-shadow:inset 0 0 0 1.5px #f2cf7a;border-radius:999px;display:inline-flex;align-items:center;gap:3px}
-body.nextMode #requests .requestReward .coinIcon{font-size:17px}
-body.nextMode #requests .reqDeliver{flex:none;width:122px;height:31px;display:flex;align-items:center;justify-content:center;gap:3px;padding:0 0 2px;background:url('../assets/premium/coast/ui/deliver.webp') center/100% 100% no-repeat;box-shadow:none;border-radius:0;color:#fff;font-size:12.5px;font-weight:900;letter-spacing:0;text-transform:none;text-shadow:0 1px 0 #0b7a57;animation:none}
+body.nextMode #requests .requestReward{margin:0;padding:1px 8px 1px 3px;font-size:12.5px;font-weight:900;color:#6a4508;background:#fff3cf;box-shadow:inset 0 0 0 1.5px #f2cf7a;border-radius:999px;display:inline-flex;align-items:center;gap:3px}
+body.nextMode #requests .requestReward .coinIcon{font-size:14px}
+body.nextMode #requests .reqDeliver{flex:none;width:100px;height:26px;display:flex;align-items:center;justify-content:center;gap:3px;padding:0 0 2px;background:url('../assets/premium/coast/ui/deliver.webp') center/100% 100% no-repeat;box-shadow:none;border-radius:0;color:#fff;font-size:11px;font-weight:900;letter-spacing:0;text-transform:none;text-shadow:0 1px 0 #0b7a57;animation:none}
 body.nextMode #requests .reqDeliver em{font-style:normal}
-body.nextMode #requests .reqDeliver .coinIcon{font-size:14px}
+body.nextMode #requests .reqDeliver .coinIcon{font-size:12px}
 body.nextMode #requests .requestCard.ready{background:none;box-shadow:none}
 body.nextMode #requests .requestCard.ready::after,body.nextMode #requests .requestCard.active::after,body.nextMode #requests .requestCard.storyOrder::after{content:"";position:absolute;inset:3px 4px 6px 3px;border-radius:16px;pointer-events:none;z-index:2}
 body.nextMode #requests .requestCard.ready::after{box-shadow:inset 0 0 0 2.5px var(--cb-green)}
@@ -115,6 +116,7 @@ body.nextMode #board .cargoKey{right:4%;top:4%;width:38%;height:38%}
 body.nextMode #board .tile.glass .art.inGlass{transform:scale(.74);filter:saturate(.85)}
 body.nextMode #board .tile.glass.ice1 .art.inGlass{filter:saturate(.9)}
 body.nextMode #board .tile.glass.ice2 .art.inGlass{transform:scale(.8);filter:none}
+body.nextMode #board.board .tile.tile.glass,body.nextMode #board.board .tile.tile.glass.odd{background:url('../assets/premium/coast/ui/cell.webp') center/100% 100% no-repeat}
 .iceArt{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;object-fit:contain}
 body.nextMode #board .glassShard{display:none}
 .selection .preview .iceArt,.dragGhost .iceArt{inset:0}
