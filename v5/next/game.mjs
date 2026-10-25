@@ -171,6 +171,16 @@ export function fresh(now=Date.now()){
 // ehnii 3 task shuud bieleh hemjeend ochij bainshdee"): a short ladder instead of Grip tools,
 // a Split spanner, then a Pocket winch, then two kinds at once, so taps alone fill none of them.
 const FIRST=[[['rig',2,1]],[['rig',3,1]],[['rig',2,1],['rig',1,2]]];
+// Everyday order kinds (Build 44) and what each pays on top of its parts' worth.
+export const ROLES=['quick','pair','big'],ROLE_PAY={quick:1,pair:1.15,big:1.3},ROLE_TURN=['quick','pair','big','pair'];
+// How many of the last everyday orders a new one may not repeat (Build 44, s.recent).
+export const RECENT=6;
+// An everyday order's coins: its parts' worth times its kind's pay, rounded to 5. Rounding up
+// was tried (so every bonus shows) and measured: stages came sooner, and since order tiers
+// follow the stages built, orders outran the generators (taps 790 → 1,003, waiting ×4).
+export const rolePrice=(needs,role)=>Math.max(5,Math.round(priceOf(needs)*ROLE_PAY[role]/5)*5);
+// The kind of an order, also for saves made before Build 44 (which did not store one).
+export const roleOf=o=>o?.story?'gold':ROLES.includes(o?.role)?o.role:new Set(o?.needs?.map(r=>r.family)).size>1?'pair':o?.needs?.[0]?.tier>=3?'big':'quick';
 function rand(n){let t=(n*2654435761+0x6D2B79F5)>>>0;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296;}
 const CREW_OF={rig:'ivo',rope:'ivo',chart:'neri',shell:'neri',flux:'tamsin',lamp:'tamsin'};
 const crewFor=needs=>needs.length>1?'bram':CREW_OF[needs[0].family];
@@ -208,7 +218,6 @@ export function makeOrder(s){
   // One order at a time is the story's: the newest generator's best part, for the next beach
   // stage, paying half as much again.
   const story=!s.orders.some(o=>o?.story)&&storyTarget(s);
-  const live=new Set(s.orders.filter(Boolean).flatMap(o=>o.needs.map(r=>r.family+r.tier)));
   let family,tier;
   // The gold order holds back the stage, so it asks what the newest generator can reach: one
   // tier above its level (Build 41; it asked its chain's second-best part, a Star chart from a
@@ -217,20 +226,52 @@ export function makeOrder(s){
   // Half of an area's everyday orders want its focus chain once its generator is out (the
   // Survey Worksite's Rope Winch).
   const focus=currentArea(s)?.focus,pool=focus&&families.includes(focus)&&rand(n*19)<.5?[focus]:families;
-  // Everyday orders take turns being easy, middling and hard (Build 41g, user: "1-2 turliin
-  // oiroltsoo tuvshinii itemiin task tasraltgui garch ireed baina"): the parts not already
-  // asked for are sorted by tier and each turn draws from its third; an easy turn may ask one
-  // tier under the area's floor; none asks more than one tier past what its generator makes easily.
-  const role=n%3,lo=role===0?Math.max(1,low-1):low;
-  // A hard turn may go one tier over the area's top (still within reach). When every part is
-  // already asked for, the least-asked one repeats, paired with a second part so the card differs.
-  const uses=k=>s.orders.filter(o=>o&&!o.story&&o.needs.some(r=>r.family+r.tier===k)).length;
-  const range=fresh=>pool.flatMap(f=>{const hi=Math.max(lo,Math.min(role===2?top+1:top,reach(s,f)+1,maxTier(f)-1)),out=[];for(let t=lo;t<=hi;t++)if(!fresh||!live.has(f+t))out.push([f,t]);return out;}).sort((a,b)=>a[1]-b[1]);
-  let cands=range(true),repeat=false;if(!cands.length){repeat=true;const all=range(false),least=Math.min(...all.map(([f,t])=>uses(f+t)));cands=all.filter(([f,t])=>uses(f+t)===least);}
-  if(!story){const third=Math.ceil(cands.length/3),part=repeat?cands:role===0?cands.slice(0,third):role===2?cands.slice(-third):cands.slice(third,2*third);const pick=part.length?part:cands;[family,tier]=pick[Math.floor(rand(n*7)*pick.length)];}
   if(story){needs=goldNeeds(s,families,family,low,n);return {id:'o'+n,who:crewFor(needs),needs,coins:priceOf(needs,true),story:story.id};}
-  needs=[{family,tier,count:tier<=2&&rand(n*13)<.6?2:1}];
-  if(repeat||rand(n*17)<Math.min(.6,.2+built*.02)){const other=secondChain(families,family,Math.max(1,tier-1),n*23+5)??family,t=Math.max(1,other===family?tier-1:Math.min(tier-1,reach(s,other)));if(other!==family||t!==tier)needs.push({family:other,tier:t,count:1});}
+  // Build 44 (user, 2026-10-25: "orderuudiig utga uchirtai bolgoy"; docs/V5_ECONOMY_AUDIT_PROPOSAL,
+  // proposal A): everyday orders take turns being a quick job (one small part of one chain), a
+  // two-crew job (parts of two different chains) and a big job (one part a tier past what its
+  // generator makes easily). The first chain is one no other everyday order on the board starts
+  // with, when the area has one; only unlocked chains, never above maxTier − 1. Bigger jobs pay
+  // more for their parts (×1.15, ×1.3), so effort is worth it. Measured: orders already done on
+  // arrival 14 % → under 5 %, tiers spread 1–4, nobody waits longer for energy.
+  // Two of every four are two-crew jobs, so most cards mix chains once a second one is out.
+  const role=ROLE_TURN[(n-FIRST.length)%ROLE_TURN.length],others=s.orders.filter(o=>o&&!o.story),firsts=new Set(others.map(o=>o.needs[0].family));
+  // The camp remembers its last few everyday orders (s.recent, Build 44): a new one repeats
+  // neither those nor a card already on the board.
+  const recent=Array.isArray(s.recent)?s.recent:(s.recent=[]),key=ns=>ns.map(r=>r.family+r.tier+'x'+r.count).sort().join('+');
+  const avoid=new Set([...recent,...others.map(o=>key(o.needs))]),last=recent.at(-1)?.match(/^[a-z]+/)?.[0];
+  const freshChains=pool.filter(f=>!firsts.has(f)&&f!==last),from=freshChains.length?freshChains:pool.filter(f=>!firsts.has(f)).length?pool.filter(f=>!firsts.has(f)):pool;
+  const hi=f=>Math.max(1,Math.min(top,reach(s,f)+1,maxTier(f)-1)),floor=Math.max(1,low-1);
+  const build=f1=>{
+   // A quick job: one chain at the area's floor tier (one part, or two while they are small).
+   if(role==='quick'){const t=Math.max(1,Math.min(hi(f1),low));return [{family:f1,tier:t,count:t<=2&&rand(n*13)<.7?2:1}];}
+   if(role==='pair'){const t=Math.max(1,Math.min(hi(f1),low+1+Math.floor(rand(n*29)*2))),f2=secondChain(families,f1,Math.max(1,t-1),n*23+5);
+    return f2?[{family:f1,tier:t,count:1},{family:f2,tier:Math.max(1,Math.min(Math.max(1,t-1),reach(s,f2)+1,maxTier(f2)-1)),count:1}]:[{family:f1,tier:t,count:2}];}
+   // A big job: the part one tier past what its generator makes easily; while that is still a
+   // small part (not above the area's floor), three of them while tier 2 or under, else two, so
+   // it is the most work on the board.
+   const t=Math.max(2,Math.min(top+1,reach(s,f1)+1,maxTier(f1)-1));return [{family:f1,tier:t,count:t>Math.max(2,low)?1:t<=2?3:2}];
+  };
+  // A repeat, or an order already lying finished on the board, is varied: one more or one fewer
+  // of a small part, a tier up within reach, a tier down to the floor, or another open chain;
+  // the first that is new is kept.
+  const done=ns=>ns.every(r=>count(s,r)>=r.count),bad=ns=>avoid.has(key(ns))||done(ns);
+  const first=from[Math.floor(rand(n*7)*from.length)];needs=build(first);
+  if(bad(needs)){
+   const vary=[];const one=ns=>{const r=ns[0];return r;};
+   {const v=structuredClone(needs);if(v.length===1&&v[0].tier<=2){v[0].count=v[0].count===1?2:1;vary.push(v);}}
+   {const v=structuredClone(needs);if(one(v).tier<hi(one(v).family)){one(v).tier++;vary.push(v);}}
+   {const v=structuredClone(needs);if(one(v).tier>floor){one(v).tier--;vary.push(v);}}
+   {const v=structuredClone(needs);if(v[1]&&v[1].tier>1){v[1].tier--;vary.push(v);}}
+   {const v=structuredClone(needs);if(v[1]&&v[1].tier<hi(v[1].family)){v[1].tier++;vary.push(v);}}
+   {const v=structuredClone(needs);if(v.length===1&&v[0].count===1){v[0].count=2;vary.push(v);}}
+   for(const f of pool)if(f!==first)vary.push(build(f));
+   // Best: new to the camp and not already made; else at least not a card on the board.
+   const onBoard=new Set(others.map(o=>key(o.needs)));
+   needs=vary.find(v=>!bad(v))??vary.find(v=>!onBoard.has(key(v)))??needs;
+  }
+  recent.push(key(needs));if(recent.length>RECENT)recent.splice(0,recent.length-RECENT);
+  return {id:'o'+n,who:crewFor(needs),needs,coins:rolePrice(needs,role),role};
  }
  return {id:'o'+n,who:crewFor(needs),needs,coins:priceOf(needs)};
 }
@@ -606,6 +647,9 @@ export function load(raw,now=Date.now()){
   s.shop??={day:-1,bought:{}};
   // Build 36 added order changes.
   s.swaps??={day:-1,n:0,ads:0};
+  // Build 44 remembers the last everyday orders (to vary new ones); older or damaged saves start
+  // with none, which only means the next order may repeat an old one.
+  if(!Array.isArray(s.recent)||s.recent.length>RECENT||!s.recent.every(k=>typeof k==='string'&&k.length<=40))s.recent=[];
   // Build 41 added materials (stages whose gold order is delivered). An older save is not held
   // back: every stage it could buy before has its materials (set below, once its area is known).
   const before41=s.materials===undefined;s.materials??={};
