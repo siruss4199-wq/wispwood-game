@@ -10,34 +10,36 @@ const place=(id,icon,at,stages,art)=>({id,icon,at,name:stages[0].name,stages,...
 // art: a place drawn stage by stage on the area picture (v5/assets/premium/coast/place-<art>-<stage>.webp,
 // build 38); the others still show their icon.
 export const AREAS=[
- {id:'beach',name:'Landing Beach',short:'BEACH',picture:'landing',
+ // map (Build 41n): the coast screen's own picture, painted from above, with each place's stage
+ // drawn on it as a separate layer standing on its point (at = where its ground sits, in %).
+ {id:'beach',name:'Landing Beach',short:'BEACH',picture:'landing',map:'landing-map',
   intro:[['neri','The storm left us one beach and a lot of sand. Somewhere under the cliff is the Tideglass Vault.'],['ivo','First we make this beach a camp. Bring me parts and I will put them to work.']],
   tasks:[
-   place('beach-path','rock',[22,84],[
+   place('beach-path','rock',[27,86],[
     {name:'Clear the landing path',cost:40,effect:{kit:['rig',1]},lines:[['ivo','A path from the boats to dry ground. Now the crew can carry real loads.'],['ivo','Somebody left a driftwood crate on it: it is ours now.']]},
     {name:'Lay a boardwalk',cost:70,effect:{copy:'rig'},lines:[['ivo','Planks over the sand. The carts stop sinking.'],['ivo','A Rivet Rover was buried under the old planks! Merge it with yours.']]},
     {name:'Line the path with lanterns',cost:100,effect:{copy:'rig'},lines:[['neri','Lanterns all the way to the boats. Night shifts are safe now.'],['ivo','The first night shift dug up a Rivet Rover the storm had buried. Merge it with ours.']]}],'path'),
-   place('beach-tent','crate-salvage',[39,69],[
+   place('beach-tent','crate-salvage',[52,62],[
     {name:'Pitch the camp tent',cost:80,effect:{energy:8},lines:[['neri','Dry blankets and hot tea. Everyone works faster after a rest.'],['ivo','+8 energy for the crew.']]},
     {name:'Add bunks and a stove',cost:100,effect:{copy:'rig'},lines:[['neri','Bunks and a stove. Nobody sleeps on wet sand any more.'],['ivo','Under the old bunks: a rusted Rivet Rover. A little oil and it runs. Merge it with ours.']]},
     {name:'Raise the mess hall',cost:120,effect:{token:1},lines:[['bram','A real mess hall. The crew eats together and plans together.']]}],'tent'),
-   place('beach-mast','source-chart',[53,49],[
+   place('beach-mast','source-chart',[50,34],[
     {name:'Raise the signal mast',cost:100,effect:{slots:4},lines:[['neri','The mast is up. Camps along the reach can see our signal.'],['bram','More crews will send orders now: a fourth order card.']]},
     {name:'Hang the signal flags',cost:120,effect:{copy:'rig'},lines:[['neri','Flags for every crew along the reach. They know who we are.'],['bram','A neighbouring camp answered with a gift: another Rivet Rover.']]},
     {name:'Fit a lookout nest',cost:150,effect:{token:1},lines:[['tamsin','From the lookout I can see the cliff path, and something glinting beyond it.']]}],'mast'),
-   place('beach-workshop','workshop',[12,47],[
+   place('beach-workshop','workshop',[21,47],[
     {name:'Restore the Coastal Workshop',cost:100,effect:{copy:'newest'},lines:[['ivo','Tools on the wall, fire in the forge.'],['ivo','In the back of the Workshop: a copy of our newest generator. Merge it in for a stronger one.']]},
     {name:'Fire up the forge',cost:120,effect:{kit:['newest',2]},lines:[['ivo','The forge is hot again. Every tool in camp gets a fresh edge.']]},
     {name:'Open the parts store',cost:150,effect:{kit:['newest',2]},lines:[['ivo','Shelves for every part we make. The Workshop runs like a clock.']]}],'workshop'),
-   place('beach-pier','crate-survey',[80,78],[
+   place('beach-pier','crate-survey',[66,80],[
     {name:'Build the supply pier',cost:120,effect:{kit:['newest',2]},lines:[['bram','A pier means supply boats. The first one brought a sea chest for our newest generator.']]},
     {name:'Add a cargo crane',cost:150,effect:{copy:'newest'},lines:[['bram','A crane on the pier. Supply boats unload in half the time.'],['bram','The first load off the crane: a copy of our newest generator.']]},
     {name:'Moor the supply boat',cost:180,effect:{kit:['newest',3]},lines:[['bram','Our own boat, tied up and ready. The beach is joined to the world again.']]}],'pier'),
-   place('beach-beacon','flux-3',[67,34],[
+   place('beach-beacon','flux-3',[76,40],[
     {name:'Light the beacon',cost:140,effect:{energy:10},lines:[['tamsin','The beacon burns all night. Nobody gets lost on this beach again.'],['ivo','The crew is rested and proud: +10 energy.']]},
     {name:'Mirror the beacon',cost:170,effect:{copy:'newest'},lines:[['tamsin','Brass mirrors double the light. Ships see us from the open sea.'],['tamsin','A trader followed the light in and left us a copy of our newest generator.']]},
     {name:'Crown the beacon',cost:200,effect:{token:1},lines:[['tamsin','The beacon wears a crown of tideglass. It hums when the tide turns.']]}],'beacon'),
-   place('beach-cliff','chart-1',[89,37],[
+   place('beach-cliff','chart-1',[88,56],[
     {name:'Clear the cliff path',cost:160,effect:{energy:3},lines:[['neri','Rockfall cleared. The path climbs halfway up the cliff.']]},
     {name:'Rope the cliff steps',cost:200,effect:{copy:'newest'},lines:[['ivo','Ropes and pegs on every step. Even the carts can climb now.'],['neri','Halfway up we found an old cache: a copy of our newest generator.']]},
     {name:'Open the cliff gate',cost:230,effect:{kit:['newest',3]},lines:[['neri','The cliff gate is open. Up there, the survey worksite and the Vault beyond it.'],['ivo','The beach is a camp now. Good work, everyone.']]}],'cliff')

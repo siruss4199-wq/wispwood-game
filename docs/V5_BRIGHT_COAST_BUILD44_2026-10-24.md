@@ -1,7 +1,8 @@
 # Vaultwake V5 Coast Camp — Build 44, core play and bright coast pass (2026-10-24)
 
 Branch `claude/v5-bright-coast`, from `claude/v5-autonomous-rebuild` e020a5f (the latest verified
-gameplay build; PRs #78/#79/#80 are not included). Entry: `v5/play.html`. Review branch: not for
+gameplay build), with PR #78's painted Landing Beach map (Build 41n) merged in on 2026-10-25 after
+the player saw the coast screen fall back to the old grey picture. PRs #79 and #80 are not included. Entry: `v5/play.html`. Review branch: not for
 `main` or the gameplay branch.
 
 **Presentation and feedback only.** No rule, economy, drop-rate, order-generation, progression
