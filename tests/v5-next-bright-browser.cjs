@@ -61,7 +61,12 @@ async function run(engine,W,H,motion){
    const faces=await page.locator('#requests img.face').evaluateAll(f=>f.map(x=>x.getAttribute('src')));assert.ok(faces.length>0&&faces.every(f=>/crew-(ivo|bram)\.webp$/.test(f)),`${tag}: painted faces ${faces}`);
    const strip=await page.locator('#mapButton').boundingBox();assert.ok(strip.height>=52&&strip.height<=56&&strip.x>=0&&strip.x+strip.width<=W+1,`${tag}: strip ${strip.height}px`);
    assert.match(await page.locator('#mapButton .rsAction').textContent(),/^View$/);
-   const hud=await page.locator('header').boundingBox();assert.ok(hud.height<=64,`${tag}: HUD ${hud.height}px`);}
+   const hud=await page.locator('header').boundingBox();assert.ok(hud.height<=64,`${tag}: HUD ${hud.height}px`);
+   // the supplied painted energy and coin pills; the pale slot fills towards the next +1
+   const pills=await page.evaluate(()=>['#energyPill','#coinPill'].map(s=>getComputedStyle(document.querySelector(s),'::before').borderImageSource));
+   assert.ok(/hud-energy\.webp/.test(pills[0])&&/hud-coins\.webp/.test(pills[1]),`${tag}: painted pills ${pills}`);
+   const g=await page.evaluate(()=>+document.querySelector('#energyPill').style.getPropertyValue('--g'));assert.ok(g>=0&&g<=1,`${tag}: gauge ${g}`);
+   const menu=await page.locator('#menuButton').boundingBox();assert.ok(menu.x+menu.width<=W-4,`${tag}: menu inside the header`);}
 
   // Tideglass: three looks for three hits, then the part is free.
   await setState(page,s=>{s.daily={day:9e6,count:1};s.board[15]={type:'glass',family:'rig',tier:0};s.board[16]={type:'glass',family:'rig',tier:0,cracks:1};s.board[20]={type:'glass',family:'rig',tier:0,cracks:2};});

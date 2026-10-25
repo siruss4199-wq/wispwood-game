@@ -14,7 +14,7 @@ board size, item art and saves (`vaultwake-v5-coast`, `vaultwake-v5`) are as in 
 | Part | Build 45 | Where |
 |---|---|---|
 | Background | the supplied coastal picture (sea, sky, sand, palms at the edges), the same on every area; each area's own picture now lives on the restoration strip and the coast screen | `coastal.css`, `app.mjs` `render` |
-| HUD (52 px) | turquoise energy pill with the +1 timer, cream coin pill, the painted level badge (number live, progress as a thin ring), the painted menu button. No add/buy buttons. The BEACH button is gone from the header: the restoration strip is the way to the coast | `play.html`, `coastal.css` |
+| HUD (52 px) | the supplied painted energy pill (bolt, dark well with the live count, and its pale slot used as a gauge that fills towards the next +1, full when energy is full; the +1 timer stays under it) and painted shell-coin pill (Build 45b), the painted level badge (number live, progress as a thin ring), the painted menu button. No add/buy buttons. The BEACH button is gone from the header: the restoration strip is the way to the coast | `play.html`, `coastal.css` |
 | Order rail | a sideways rail of painted cards, 146 × 150 px, 8 px apart (two whole cards and part of the third at 390 px), in their lanes. Each card: a painted face for Ivo and Bram (the drawn portrait for Neri and Tamsin), the name, a "Big job" or "Stage n" tag inside the card, the real parts with have/need (green with ✓ when there are enough), and a footer that always holds one thing: the coins, or the painted Deliver button with live "Deliver +N". No progress bars, no clipped subtitles (the reason stays in the tapped order's panel) | `app.mjs` `renderOrders`, `coastal.css` |
 | Restoration strip (56 px) | the painted strip; its circle shows the place the next stage is for, its pill says **Build** (coral) only when materials and coins are both in, otherwise **View** (turquoise) with the real objective and what it still needs. Tapping it opens the coast on that place and spends nothing; the build is confirmed there | `app.mjs` `renderNextPlace`, `coastal.css` |
 | Board | uniform painted apricot cells, 3 px gaps, a shallow sand tray; no glows or gleams on cargo; a cargo's key stays small inside its cell; levels and crate counts stay small inside their cells | `coastal.css` |
@@ -39,6 +39,7 @@ the game) are in `docs/art-source/coastal-ui-2026-10-25/`.
 | `order-card.webp` | 276×330, 14 KB | order cards | nine-slice (`border-image` 95/30/75/95) so the face ring and the footer band keep their shape at 146 × 150 |
 | `deliver.webp` | 330×84, 4 KB | Deliver button | live text over it |
 | `restore-strip.webp` | 720×159, 24 KB | restoration strip | nine-slice (left 170 / right 215) at 56 px; the baked boardwalk in the circle is covered by the real place, the orange pill by a live label (turquoise when not ready) |
+| `hud-energy.webp`, `hud-coins.webp` | 476×121, 388×118, 13–15 KB | energy and coin pills (Build 45b) | three-slice (energy 150 / 105, coins 120 / 50) so the bolt, the coin and the end cap keep their shape and the middle grows with the number; bolt and coin overhang the 32 px pill |
 | `cell.webp` | 128×127, 2 KB | every board cell and the panel's tile | `100% 100%` |
 | `ice-0/1/2.webp` | 160×160, 11–20 KB | the three ice states | over the part |
 | `crew-ivo.webp`, `crew-bram.webp` | 160 px, 8–10 KB | Ivo and Bram | round 35 px faces |
@@ -82,6 +83,11 @@ follows generator levels instead of stages built (needs approval).
 | WebKit | not installable in this environment; runs in CI (Coast Camp step) |
 
 ## Remaining visual issues
+
+- The HUD coin is a shell coin; the coins that fly from deliveries and the order cards still use the
+  round coin icon.
+- At 360 px the HUD fits up to 4-digit coins (1234 measured, 4 px to spare); a 5-digit balance would
+  push the menu button past the header's edge.
 
 - Neri and Tamsin have no painted faces (needs the choice above).
 - The shed row has no painted art (the mockup's shed hut was not supplied).

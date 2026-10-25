@@ -14,13 +14,24 @@ body.nextMode::before{content:none}
 body.nextMode header{min-height:52px;gap:8px;padding-top:max(6px,env(safe-area-inset-top));padding-bottom:0;align-items:center}
 body.nextMode header .hudSpacer{flex:1}
 body.nextMode header .brand{display:none}
-body.nextMode header #energyPill{position:relative;min-height:36px;padding:0 12px 0 3px;gap:4px;border-radius:999px;background:linear-gradient(#41d3d8,var(--cb-turq));color:#fff;box-shadow:inset 0 2px 0 #ffffff66,0 2px 0 var(--cb-turq2),0 4px 8px #0d5a6a40;border:0}
-body.nextMode header #energyPill>i{width:30px;height:30px;font-size:17px}
-body.nextMode header #energyPill strong{color:#fff;font-size:16px;text-shadow:0 1px 0 #0b6f75}
-body.nextMode header #energyPill .energyCap{color:#e3fbfb;font-size:12px}
-body.nextMode header #coinPill{min-height:36px;padding:0 12px 0 4px;border-radius:999px;background:linear-gradient(#fffdf6,#f7ecd2);color:var(--cb-ink);box-shadow:inset 0 0 0 2px #f2cf7a,0 2px 0 #d9b25a,0 4px 8px #0d5a6a33;border:0}
-body.nextMode header #coinPill .coinIcon{font-size:24px}
-body.nextMode header #coinPill strong{font-size:16px}
+/* the supplied painted pills, three-sliced (bolt / coin and the end cap keep their shape, the
+   middle stretches with the number); the bolt and the coin stand a little proud of the pill */
+body.nextMode header :is(#energyPill,#coinPill){position:relative;height:32px;min-height:0;flex:none;gap:0;border:0;border-radius:0;background:none;box-shadow:none;isolation:isolate}
+body.nextMode header :is(#energyPill,#coinPill)::before{content:"";position:absolute;z-index:-1;left:0;right:0;pointer-events:none;border-style:solid;filter:drop-shadow(0 2px 3px #0d5a6a40)}
+body.nextMode header #energyPill{min-width:100px;padding:0 37px 0 44px;color:#fff}
+body.nextMode header #energyPill::before{top:-4.4px;bottom:-3.8px;border-width:0 35px 0 50px;border-image:url('../assets/premium/coast/ui/hud-energy.webp') 0 105 0 150 fill stretch}
+body.nextMode header #energyPill>i{display:none}
+body.nextMode header #energyPill strong{color:#fff;font-size:16px;text-shadow:0 1px 0 #064f5a}
+body.nextMode header #energyPill .energyCap{color:#bfeff3;font-size:12px}
+/* the pale slot in the painted well fills towards the next +1 (full when energy is full) */
+body.nextMode header #energyPill .energyGauge{position:absolute;right:9px;top:19.6px;width:25px;height:8.4px;border-radius:999px;overflow:hidden;pointer-events:none}
+body.nextMode header #energyPill .energyGauge::after{content:"";position:absolute;inset:1.2px auto 1.2px 1.2px;width:calc((100% - 2.4px) * var(--g,0));border-radius:999px;background:linear-gradient(#fff3a6,#ffc928);transition:width .4s}
+body.nextMode header #coinPill{min-width:70px;padding:0 18px 0 44px;color:var(--cb-ink)}
+body.nextMode header #coinPill::before{top:-3.8px;bottom:-3.6px;border-width:0 17px 0 40px;border-image:url('../assets/premium/coast/ui/hud-coins.webp') 0 50 0 120 fill stretch}
+body.nextMode header #coinPill .coinIcon{position:absolute;left:4px;top:0;width:32px;height:32px;font-size:0;opacity:0}
+body.nextMode header #coinPill strong{font-size:16px;color:#5a3a12}
+body.nextMode header #energyPill #energyTimer{left:calc(42px + (100% - 79px) / 2)}
+@media(max-width:380px){body.nextMode header{gap:6px}body.nextMode header #energyPill{padding:0 36px 0 42px}body.nextMode header #coinPill{padding:0 15px 0 42px}}
 body.nextMode .levelPill{width:44px;height:44px;flex:none;border-radius:50%;background:url('../assets/premium/coast/ui/hud-level.webp') center/88% no-repeat,conic-gradient(var(--cb-gold) var(--p),#ffffffa6 0);box-shadow:0 2px 6px #0d5a6a40}
 body.nextMode .levelPill b{width:auto;height:auto;background:none;box-shadow:none;color:#fff;font-size:18px;text-shadow:0 1px 0 #0b5f66}
 body.nextMode #menuButton{width:44px;height:44px;flex:none;border:0;border-radius:12px;background:url('../assets/premium/coast/ui/hud-menu.webp') center/contain no-repeat;box-shadow:none}

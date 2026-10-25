@@ -12,7 +12,7 @@ import {art,portrait} from '../art.mjs';
 import {enablePremium} from '../premium.mjs';
 import {kitsMerge,kitFull,kitDrop,kitCapacity,producerLevel,KIT_SIZES,KIT_DROPS,MAX_KIT_SIZE,MAX_PRODUCER_LEVEL} from '../kits.mjs';
 import {xpToNext} from '../levels.mjs';
-import {refillTimes,clock,REFILL_CAP,rationWait} from '../energy.mjs';
+import {refillTimes,clock,REFILL_CAP,REFILL_EVERY,rationWait} from '../energy.mjs';
 import {CREW} from '../crew.mjs';
 import {reduced,burst,rewardFlight,moment as sharedMoment} from '../feedback.mjs';
 import {sfx as sounds} from './sfx.mjs';
@@ -26,7 +26,7 @@ function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el
 let adPlaying=false;
 const sfx=(kind,tier=0)=>sounds.play(kind,tier,{muted:adPlaying||platform.muted()});
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 45 · coastal board';
+export const BUILD='Build 45b · coastal board';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
@@ -265,6 +265,7 @@ $('#hint').onclick=()=>{
 function header(){
  if(tick(state,Date.now())){persist();render();}
  const t=refillTimes(state,Date.now());$('#energyTimer').textContent=t?'+1 '+clock(t.next):'FULL';
+ $('#energyPill').style.setProperty('--g',t?(1-t.next/REFILL_EVERY).toFixed(3):1);
  $('#energy').innerHTML=`${state.energy}<span class="energyCap">/${REFILL_CAP}</span>`;
 }
 
