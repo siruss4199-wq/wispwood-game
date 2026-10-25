@@ -739,3 +739,34 @@ test('everyday orders are quick, two-crew and big jobs, vary, and old saves keep
  // A damaged recent list is dropped, not the camp.
  const bad=fresh(0);bad.recent=[1,2,3];bad.moves=7;const b2=load(JSON.stringify(bad),5);assert.equal(b2.moves,7);assert.deepEqual(b2.recent,[]);
 });
+
+// Audit 2026-10-25 (user: "buguding ni hii"): a delivery gives +1 energy; a crew order not ready
+// 200 moves after it came is "stuck" (its card suggests a new order), gold orders never; saves
+// made before this (orders with no born) load as they were; a damaged born is dropped.
+import {DELIVER_ENERGY,STUCK_MOVES,isStuck,MAX_ENERGY as MAX_E} from '../v5/next/game.mjs';
+test('audit fixes: delivery energy, stuck orders, old saves',()=>{
+ const t=fresh(0),i=[0,1,2,3].map(()=>act(t,{type:'produce',id:'rig'},0).index);
+ act(t,{type:'merge',from:i[0],to:i[1]},0);act(t,{type:'merge',from:i[3],to:i[1]},0);
+ const e=t.energy,d=act(t,{type:'deliver',id:'o0'},0);assert.ok(d.ok);assert.equal(DELIVER_ENERGY,1);assert.equal(d.energy,1);assert.equal(t.energy,e+1);assert.match(d.message,/\+1 energy/);
+ {const f=fresh(0);f.energy=MAX_E;const j=[0,1,2,3].map(()=>act(f,{type:'produce',id:'rig'},0).index);act(f,{type:'merge',from:j[0],to:j[1]},0);act(f,{type:'merge',from:j[3],to:j[1]},0);
+  act(f,{type:'deliver',id:'o0'},0);assert.ok(f.energy<=MAX_E,'never above the cap');}
+ // stuck
+ const s=fresh(0),o=s.orders[1];assert.ok(Number.isInteger(o.born));assert.equal(isStuck(s,o),false);
+ s.moves=o.born+STUCK_MOVES-1;assert.equal(isStuck(s,o),false);s.moves=o.born+STUCK_MOVES;assert.equal(isStuck(s,o),true);
+ s.orders[1]={...o,story:'beach-path'};assert.equal(isStuck(s,s.orders[1]),false,'a gold order is never stuck');
+ // an older save: no born on its orders, still loads, nothing stuck; a damaged born is dropped
+ const old=fresh(0);old.moves=900;for(const x of old.orders)delete x.born;
+ const back=load(JSON.stringify(old),5);assert.equal(back.moves,900);assert.deepEqual(back.orders,old.orders);assert.ok(back.orders.every(x=>!isStuck(back,x)));
+ const bad=fresh(0);bad.moves=50;bad.orders[0].born=-3;bad.orders[1].born=999;const b2=load(JSON.stringify(bad),5);
+ assert.equal(b2.moves,50);assert.equal(b2.orders[0].born,undefined);assert.equal(b2.orders[1].born,undefined);assert.equal(b2.orders[2].born,bad.orders[2].born);
+});
+// Everyday orders rarely ask the same parts as one of the last four (in any number): measured over
+// the scripted player's beach and worksite, 26 % before the audit, about 10 % after.
+test('audit fixes: few everyday orders repeat the parts of the last four',()=>{
+ const s=fresh(0);let now=0,repeats=0,n=0;const seen=new Set(),recent=[];
+ while(now<6*3600e3&&!(s.area===1&&areaDone(s))){tick(s,now);
+  for(const o of s.orders)if(!seen.has(o.id)){seen.add(o.id);if(o.story)continue;const k=o.needs.map(r=>r.family+r.tier).sort().join('+');n++;if(recent.slice(-4).includes(k))repeats++;recent.push(k);}
+  const a=nextAction(s);if(!a){if(s.energy<=3&&act(s,{type:'ration'},now).ok)continue;now+=10000;continue;}
+  assert.ok(act(s,a,now).ok);now+=6000;}
+ assert.ok(n>=30,`${n} orders`);assert.ok(repeats/n<=.15,`${repeats} of ${n} repeat`);
+});

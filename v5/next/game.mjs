@@ -172,6 +172,8 @@ export function fresh(now=Date.now()){
 // a Split spanner, then a Pocket winch, then two kinds at once, so taps alone fill none of them.
 const FIRST=[[['rig',2,1]],[['rig',3,1]],[['rig',2,1],['rig',1,2]]];
 // Everyday order kinds (Build 44) and what each pays on top of its parts' worth.
+// Energy a delivery gives back (Audit 2026-10-25).
+export const DELIVER_ENERGY=1;
 export const ROLES=['quick','pair','big'],ROLE_PAY={quick:1,pair:1.15,big:1.3},ROLE_TURN=['quick','pair','big','pair'];
 // How many of the last everyday orders a new one may not repeat (Build 44, s.recent).
 export const RECENT=6;
@@ -246,7 +248,9 @@ export function makeOrder(s){
    // A quick job: one chain at the area's floor tier (one part, or two while they are small).
    if(role==='quick'){const t=Math.max(1,Math.min(hi(f1),low));return [{family:f1,tier:t,count:t<=2&&rand(n*13)<.7?2:1}];}
    if(role==='pair'){const t=Math.max(1,Math.min(hi(f1),low+1+Math.floor(rand(n*29)*2))),f2=secondChain(families,f1,Math.max(1,t-1),n*23+5);
-    return f2?[{family:f1,tier:t,count:1},{family:f2,tier:Math.max(1,Math.min(Math.max(1,t-1),reach(s,f2)+1,maxTier(f2)-1)),count:1}]:[{family:f1,tier:t,count:2}];}
+    // With one generator out (the first quarter hour) a two-part job asks two tiers of its chain
+    // (Audit 2026-10-25: three in five orders there repeated one of the last four).
+    return f2?[{family:f1,tier:t,count:1},{family:f2,tier:Math.max(1,Math.min(Math.max(1,t-1),reach(s,f2)+1,maxTier(f2)-1)),count:1}]:t>=2?[{family:f1,tier:t,count:1},{family:f1,tier:t-1,count:2}]:[{family:f1,tier:t,count:2}];}
    // A big job: the part one tier past what its generator makes easily; while that is still a
    // small part (not above the area's floor), three of them while tier 2 or under, else two, so
    // it is the most work on the board.
@@ -255,9 +259,13 @@ export function makeOrder(s){
   // A repeat, or an order already lying finished on the board, is varied: one more or one fewer
   // of a small part, a tier up within reach, a tier down to the floor, or another open chain;
   // the first that is new is kept.
-  const done=ns=>ns.every(r=>count(s,r)>=r.count),bad=ns=>avoid.has(key(ns))||done(ns);
+  // Audit 2026-10-25 (user: "buguding ni hii"): the same parts in another number still read as
+  // the same job, so the last four everyday orders' parts are avoided too while there is
+  // anything else to ask (measured: repeats 24 % → see docs/V5_AUDIT_FIXES_2026-10-25.md).
+  const loose=ns=>ns.map(r=>r.family+r.tier).sort().join('+'),seen=new Set(recent.slice(-4).map(k=>k.replace(/x\d+/g,'')));
+  const done=ns=>ns.every(r=>count(s,r)>=r.count),bad=ns=>avoid.has(key(ns))||done(ns),stale=ns=>bad(ns)||seen.has(loose(ns));
   const first=from[Math.floor(rand(n*7)*from.length)];needs=build(first);
-  if(bad(needs)){
+  if(stale(needs)){
    const vary=[];const one=ns=>{const r=ns[0];return r;};
    {const v=structuredClone(needs);if(v.length===1&&v[0].tier<=2){v[0].count=v[0].count===1?2:1;vary.push(v);}}
    {const v=structuredClone(needs);if(one(v).tier<hi(one(v).family)){one(v).tier++;vary.push(v);}}
@@ -266,14 +274,16 @@ export function makeOrder(s){
    {const v=structuredClone(needs);if(v[1]&&v[1].tier<hi(v[1].family)){v[1].tier++;vary.push(v);}}
    {const v=structuredClone(needs);if(v.length===1&&v[0].count===1){v[0].count=2;vary.push(v);}}
    for(const f of pool)if(f!==first)vary.push(build(f));
+   // the area's focus chain gives way to another open chain before a job repeats (Audit 2026-10-25)
+   for(const f of families)if(f!==first&&!pool.includes(f))vary.push(build(f));
    // Best: new to the camp and not already made; else at least not a card on the board.
    const onBoard=new Set(others.map(o=>key(o.needs)));
-   needs=vary.find(v=>!bad(v))??vary.find(v=>!onBoard.has(key(v)))??needs;
+   needs=vary.find(v=>!stale(v))??(bad(needs)?vary.find(v=>!bad(v))??vary.find(v=>!onBoard.has(key(v))):null)??needs;
   }
   recent.push(key(needs));if(recent.length>RECENT)recent.splice(0,recent.length-RECENT);
-  return {id:'o'+n,who:crewFor(needs),needs,coins:rolePrice(needs,role),role};
+  return {id:'o'+n,who:crewFor(needs),needs,coins:rolePrice(needs,role),role,born:s.moves};
  }
- return {id:'o'+n,who:crewFor(needs),needs,coins:priceOf(needs)};
+ return {id:'o'+n,who:crewFor(needs),needs,coins:priceOf(needs),born:s.moves};
 }
 // Board cells an order would take: exact matches, lowest index first.
 export function orderItems(s,o){
@@ -281,6 +291,12 @@ export function orderItems(s,o){
  for(const r of o.needs){let left=r.count;for(let i=0;i<s.board.length&&left;i++)if(!used.has(i)&&matches(s.board[i],r)){used.add(i);take.push(i);left--;}if(left)return null;}
  return take;
 }
+// A crew order still not ready 200 moves after it came (Audit 2026-10-25: one in ten took over
+// an hour, mostly two-crew jobs) is "stuck": its card suggests a new order. Measured: half of
+// all crew orders are delivered within 60 moves, nine in ten within about 320. Gold orders
+// cannot be changed, so they are never stuck. Orders saved before this have no born and are not.
+export const STUCK_MOVES=200;
+export const isStuck=(s,o)=>!!o&&!o.story&&Number.isInteger(o.born)&&s.moves-o.born>=STUCK_MOVES&&!orderItems(s,o);
 export function orderProgress(s,o){return o.needs.map(r=>({...r,have:Math.min(r.count,count(s,r))}));}
 
 // ---- board helpers ----
@@ -456,14 +472,17 @@ function step(s,a,now){
   const take=orderItems(s,o);if(!take)return fail('Make the parts this order needs first.');
   for(const i of take)s.board[i]=null;
   // The lane is cleared first, so a delivered story order is followed by the next one.
-  s.coins+=o.coins;s.ordersDone++;s.orders[lane]=null;
+  // Audit 2026-10-25 (user: "buguding ni hii"): a delivery also gives the crew +1 energy, so a
+  // quick player waits less for energy (measured, chapter: 65 → 44 % of the time at 4 s an
+  // action, 44 → 29 % at 6 s; +2 or more left no waiting at all, so energy stopped mattering).
+  s.coins+=o.coins;s.ordersDone++;s.orders[lane]=null;s.energy=Math.min(MAX_ENERGY,s.energy+DELIVER_ENERGY);
   if(o.story&&TASKS[o.story]&&stageOf(s,o.story)<STAGES)s.materials[o.story]=stageOf(s,o.story)+1;
   s.orders[lane]=makeOrder(s);
   // A gold order is the materials for its place's next stage (Build 41, user: "story upgrade
   // shuud hurdan hiigdej baina"): the stage can be bought once they are delivered. Orders no
   // longer bring a driftwood crate every third time.
   const materials=o.story&&s.materials[o.story]>stageOf(s,o.story)?{id:o.story,stage:s.materials[o.story]}:null;
-  return {ok:true,event:'deliver',index:null,xp:Math.max(1,Math.round(o.coins/COIN_RATE)),coins:o.coins,box:-1,freed:take,...(materials?{materials}:{}),message:`+${o.coins} coins`+(materials?` · materials for ${TASKS[o.story].stages[materials.stage-1].name}`:'')};
+  return {ok:true,event:'deliver',index:null,xp:Math.max(1,Math.round(o.coins/COIN_RATE)),coins:o.coins,box:-1,freed:take,...(materials?{materials}:{}),energy:DELIVER_ENERGY,message:`+${o.coins} coins · +${DELIVER_ENERGY} energy`+(materials?` · materials for ${TASKS[o.story].stages[materials.stage-1].name}`:'')};
  }
  // Upgrade a place on the beach one stage (the action keeps its old name, 'restore').
  if(a.type==='restore'){
@@ -636,6 +655,7 @@ export function load(raw,now=Date.now()){
   // Build 30 could price a sixth-tier story order at NaN coins (saved as null): it is priced again.
   if(Array.isArray(s.orders))for(const o of s.orders)if(o&&o.coins===null&&Array.isArray(o.needs)&&o.needs.every(validNeed))o.coins=priceOf(o.needs,!!o.story);
   if(!Array.isArray(s.orders)||s.orders.length!==s.slots||!s.orders.every(validOrder))return fresh(now);
+  for(const o of s.orders)if(o.born!==undefined&&!integer(o.born,0,s.moves))delete o.born;
   if(!s.built||typeof s.built!=='object'||Array.isArray(s.built)||!Object.entries(s.built).every(([id,n])=>TASKS[id]&&integer(n,1,STAGES))||!Array.isArray(s.found))return fresh(now);
   for(const k of ['orderSeq','ordersDone','moves','merges'])if(!integer(s[k],0,1e9))return fresh(now);
   if(!s.taps||!Object.keys(GENERATOR_CHAINS).every(k=>integer(s.taps[k],0,1e9)))return fresh(now);

@@ -81,6 +81,12 @@ body.nextMode #requests .requestCard.storyOrder{--ring:#f2c23a}
 body.nextMode #requests .requestCard.ready{--ring:var(--cb-green)}
 body.nextMode #requests .requestCard.active{--ring:var(--cb-turq)}
 body.nextMode #requests .requestCard:is(.ready,.storyOrder,.active)::before{filter:drop-shadow(1.5px 0 0 var(--ring)) drop-shadow(-1.5px 0 0 var(--ring)) drop-shadow(0 1.5px 0 var(--ring)) drop-shadow(0 -1.5px 0 var(--ring)) drop-shadow(0 2px 3px #0d5a6a40)}
+/* nothing in the game is selected by a slide of the finger (Audit 2026-10-25: story text turned
+   blue); the playtest log stays selectable */
+body.nextMode{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body.nextMode :is(textarea,input){-webkit-user-select:text;user-select:text}
+/* a crew order taking long suggests a new one (Audit 2026-10-25) */
+body.nextMode #requests .reqStuck{position:absolute;right:6px;top:-9px;z-index:3;font-style:normal;font-size:9px;font-weight:900;line-height:16px;padding:0 6px;border-radius:999px;background:linear-gradient(#5b9cf6,#3f7be0);color:#fff;box-shadow:0 1px 0 #2c5fb5,0 0 0 1.5px #fff}
 /* ---------- the restoration strip: the board's way to the coast (52–56 px) ---------- */
 body.nextMode .restoreStrip{position:relative;display:flex;align-items:center;width:100%;height:56px;min-height:0;margin:6px 0 0;padding:0;border-style:solid;border-width:0 76px 0 60px;border-image:url('../assets/premium/coast/ui/restore-strip.webp') 0 215 0 170 fill / 0 76px 0 60px stretch;background:none;box-shadow:none;border-radius:0;color:var(--cb-ink);text-align:left;filter:drop-shadow(0 2px 3px #0d5a6a33)}
 body.nextMode .restoreStrip .rsThumb{position:absolute;left:-52.5px;top:5px;width:44px;height:44px;border-radius:50%;overflow:hidden;background:radial-gradient(circle at 50% 35%,#e3f8f8,#9fdde2)}
@@ -110,6 +116,10 @@ body[data-art].nextMode .boardHeading #hint.primaryAction:is([data-kind="upgrade
 body[data-art].nextMode .boardHeading:has(#hint[data-kind="upgrade"]) #hint{display:none}
 /* ---------- the board: uniform apricot cells, thin gaps, shallow depth ---------- */
 body.nextMode[data-art] #board.board{background:#efcf9c;border:0;border-radius:16px;padding:4px;gap:3px;margin-top:4px;box-shadow:inset 0 0 0 1.5px #f8e2bb,0 3px 0 #d3a76a,0 10px 22px #0d5a6a38}
+/* short phone screens (Audit 2026-10-25: Safari's bars hid the last row on an iPhone): the board
+   is no taller than the space under the orders, the strip and the hint (about 294 px) leaves,
+   with about 40 px to spare; on taller screens it keeps the full width */
+@media(orientation:portrait){body.nextMode[data-art] #board.board{width:min(100%,calc(100svh - 334px));margin-inline:auto}}
 body.nextMode #board.board .tile.tile,body.nextMode #board.board .tile.tile:is(.odd,.empty,.cargo,.glass,.deep,.cog,.token,.source){background:url('../assets/premium/coast/ui/cell.webp') center/100% 100% no-repeat;border-radius:9px;box-shadow:none;outline:0}
 body.nextMode #board.board .tile.tile.empty{opacity:.88}
 body.nextMode #board.board .tile.tile.cargo.deep{filter:saturate(.9) brightness(.94)}

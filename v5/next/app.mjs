@@ -1,6 +1,6 @@
 // Coast Camp: the new-loop page (v5/play.html). Same look as Classic V5, one loop:
 // generators → merge → crew orders → coins → upgrade the coast's places on the beach screen.
-import {allDone,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,newestGenerator,cog,token,SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,orderProgress,nextTask,currentArea,areaDone,upgrades,stageOf,builtCount,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys,reachable,generatorsMerge,MAX_GENERATOR_LEVEL,GLASS_HITS,nextKind,UNLOCK_LEVEL,GENERATOR_ORDER,storyTarget,roleOf,COIN_VALUE as COIN_VALUE_UI} from './game.mjs';
+import {isStuck,allDone,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,newestGenerator,cog,token,SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,orderProgress,nextTask,currentArea,areaDone,upgrades,stageOf,builtCount,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys,reachable,generatorsMerge,MAX_GENERATOR_LEVEL,GLASS_HITS,nextKind,UNLOCK_LEVEL,GENERATOR_ORDER,storyTarget,roleOf} from './game.mjs';
 import {AREAS,STAGES,TASKS} from './areas.mjs';
 import {primaryAction} from './guide.mjs';
 import {purposeOf} from './purposes.mjs';
@@ -26,7 +26,7 @@ function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el
 let adPlaying=false;
 const sfx=(kind,tier=0)=>sounds.play(kind,tier,{muted:adPlaying||platform.muted()});
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 45e · coastal board';
+export const BUILD='Build 46 · audit fixes';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
@@ -120,7 +120,9 @@ function renderOrders(){
   // the gold order is named as such (a place's name does not fit a card; the strip and the label carry it)
   const head=place?`<span class="reqFace place">${placeArt(place,stage)}</span><span class="reqName"><b>Gold order</b>${tag}</span>`
    :`<span class="reqFace">${face(o.who)}</span><span class="reqName"><b>${who.name}</b>${tag}</span>`;
-  return `<button class="requestCard ${ready?'ready':''} ${place?'storyOrder':''} ${focusOrder===o.id?'active':''}" data-order="${o.id}" data-role="${role}" aria-label="${label}"><span class="reqHead">${head}</span><span class="requestItems">${p.map(r=>`<span class="${r.have>=r.count?'met':''}">${draw(item(r.family,r.tier))}<b>${r.have>=r.count?'<i aria-hidden="true">✓</i>':''}${r.have}/${r.count}</b></span>`).join('')}</span><span class="reqFoot">${ready?`<strong class="reqDeliver">Deliver <em>+${o.coins}</em>${COIN}</strong>`:`<span class="requestReward">${COIN}${o.coins}</span>`}</span></button>`;
+  // A crew order taking long (Audit 2026-10-25) suggests a new one; the tapped card's panel has it.
+  const stuck=isStuck(state,o);
+  return `<button class="requestCard ${ready?'ready':''} ${place?'storyOrder':''} ${stuck?'stuck':''} ${focusOrder===o.id?'active':''}" data-order="${o.id}" data-role="${role}" aria-label="${label}${stuck?'. Taking long: tap it for a new order.':''}"><span class="reqHead">${head}</span>${stuck?'<i class="reqStuck" aria-hidden="true">↻ New?</i>':''}<span class="requestItems">${p.map(r=>`<span class="${r.have>=r.count?'met':''}">${draw(item(r.family,r.tier))}<b>${r.have>=r.count?'<i aria-hidden="true">✓</i>':''}${r.have}/${r.count}</b></span>`).join('')}</span><span class="reqFoot">${ready?`<strong class="reqDeliver">Deliver <em>+${o.coins}</em>${COIN}</strong>`:`<span class="requestReward">${COIN}${o.coins}</span>`}</span></button>`;
  }).join('')}</div>`;
  renderOrderTools();
 }
@@ -144,8 +146,9 @@ function renderOrderTools(){
  const t=o.story&&TASKS[o.story],st=t&&t.stages[Math.min(STAGES,stageOf(state,t.id)+1)-1];
  const say=o.story?`<p class="orderSay"><b>${t.name} · materials</b>Delivering this brings the materials for <em>${st.name}</em>; then it can be built for ${st.cost} coins.</p>`
   :`<p class="orderSay"><b>${kind} · ${CREW[o.who].name}</b>“${why?.line??'Parts for the camp.'}”</p>`;
- const extra=o.story?0:o.coins-o.needs.reduce((v,r)=>v+r.count*COIN_VALUE_UI[r.tier],0);
- const pays=!o.story&&n&&!n.ready?`<p class="orderPays">${COIN} +${o.coins}${extra>0?` <small>(${role==='big'?'big job':'two crews'}: +${extra})</small>`:''} → <b>${n.u.name}</b> ${Math.min(n.u.cost,state.coins+o.coins)}/${n.u.cost}${n.u.materials?'':' · also needs its gold order'}</p>`:'';
+ // Three lines (Audit 2026-10-25, user: "ene yu ve"): why, what it pays and where the coins go,
+ // how to make the parts; the bonus sums and the "100/100" progress (it read as done) are gone.
+ const pays=!o.story&&n&&!n.ready?`<p class="orderPays">${COIN} +${o.coins} → <b>${n.u.name}</b></p>`:'';
  bar.innerHTML=`${say}${pays}<ol class="routes" aria-label="Where the parts come from">${missing.map(chainRoute).join('')}</ol><div class="toolRow">${swap}</div>`;
 }
 function renderBoard(){
@@ -185,7 +188,10 @@ function renderShed(){
 // The next place (Build 44): a compact preview of the coast's next stage beside the guidance.
 // It says "Ready" only when the materials are in and the coins are there.
 function nextPlace(){
- const ups=upgrades(state);const u=ups.find(canBuild)??ups.find(u=>u.materials)??storyTarget(state)??ups[0];
+ // One goal at a time (Audit 2026-10-25): a stage ready to build, else the stage the live gold
+ // order is for (so the strip and the gold card name the same place), else as before.
+ const ups=upgrades(state),gold=state.orders.find(o=>o?.story)?.story;
+ const u=ups.find(canBuild)??ups.find(u=>u.id===gold)??ups.find(u=>u.materials)??storyTarget(state)??ups[0];
  if(!u)return null;const t=TASKS[u.id];return {u,t,ready:canBuild(u)};
 }
 // The restoration strip (Build 45): the board's one way to the coast. It shows the place the next
@@ -199,7 +205,11 @@ function renderNextPlace(){
  const el=$('#mapButton'),n=nextPlace(),area=currentArea(state);
  if(!n){el.dataset.place='';el.dataset.ready='0';el.classList.remove('ready');
   el.querySelector('.rsThumb').innerHTML=`<img class="art" src="assets/premium/${area.picture}-vibrant.webp" alt="">`;
-  el.querySelector('.rsText b').textContent=area.name;el.querySelector('.rsText small').textContent=areaDone(state)?'Every place is restored':'The next stages open as you build';
+  // After the last stage (Audit 2026-10-25: coins had no use) the strip says the chapter is done
+  // and that the coins crew orders keep paying carry over to the next area.
+  const next=AREAS.slice(state.area+1).find(a=>a.coming)?.name;
+  if(allDone(state)){el.querySelector('.rsText b').textContent='Chapter complete';el.querySelector('.rsText small').innerHTML=next?`Coins carry over to the ${next} · ${COIN}${state.coins}`:`${COIN}${state.coins} saved`;}
+  else{el.querySelector('.rsText b').textContent=area.name;el.querySelector('.rsText small').textContent=areaDone(state)?'Every place is restored':'The next stages open as you build';}
   el.querySelector('.rsAction').textContent='View';el.setAttribute('aria-label',`Go to the ${area.name}`);return;}
  const {u,t,ready}=n,was=el.dataset.ready==='1';
  el.dataset.place=u.id;el.dataset.ready=ready?'1':'0';el.classList.toggle('ready',ready);
@@ -301,6 +311,8 @@ function run(a){
  if(r.event==='produce'||r.event==='kit')sfx('produce');
  if((r.event==='produce'||r.event==='kit')&&fromRect&&tile&&!reduced()){const to=tile.getBoundingClientRect(),el=document.createElement('div');el.className='flight';el.innerHTML=draw(state.board[r.index]);el.style.cssText=`left:${fromRect.x}px;top:${fromRect.y}px;--dx:${to.x-fromRect.x}px;--dy:${to.y-fromRect.y}px`;document.body.append(el);setTimeout(()=>el.remove(),460);}
  if(r.event==='deliver'){deliverSequence(r,taking,orderRect,before.coins,readyBefore);sfx('deliver');
+  // the crew's +1 energy (Audit 2026-10-25) flies to the energy pill
+  if(r.energy&&orderRect)setTimeout(()=>rewardFlight(orderRect,$('#energyPill').getBoundingClientRect(),`+${r.energy} ϟ`),reduced()?0:420);
   if(r.materials){const t=TASKS[r.materials.id],u=t.stages[r.materials.stage-1],ok=state.coins>=u.cost;setTimeout(()=>moment(ok?'Ready to build: '+u.name:'Materials in: '+t.name,ok?`${t.name} · go to the ${currentArea(state).name} to build it (${u.cost} coins).`:`${u.name} also needs ${u.cost} coins: ${u.cost-state.coins} more from crew orders.`),reduced()?0:950);}}
  if(r.event==='producerUp'){const src=state.board[r.index],next=nextKind(src.id),waiting=next&&src.level<UNLOCK_LEVEL&&!state.board.some(y=>y?.type==='source'&&y.id===next);
   moment(SOURCES[src.id].name+' · level '+src.level,LEVEL_GAIN[src.level]+(waiting?` Level ${UNLOCK_LEVEL} brings out the ${SOURCES[next].name}.`:''),src);tile?.classList.add('merge-pop');burst(tile?.getBoundingClientRect(),'gold',true);sfx('milestone');}
@@ -650,6 +662,7 @@ function showEnd(){
  $('#endContent').innerHTML=`<small class="adTag">PROTOTYPE COMPLETE</small><h2 id="endTitle">The coast is restored — for now</h2>
   <p>You rebuilt Landing Beach and the Survey Worksite: <b>${stages} stages</b>, <b>${state.ordersDone} crew orders</b>, <b>${gens} generators</b>.</p>
   <p>Next on the coast: the Vault Entrance. The dial is mapped and the crew is working out the way in; it comes in a later update.</p>
+  <p>Crew orders keep coming. Their coins carry over to the Vault Entrance, and the shop takes them now.</p>
   <button class="primary" type="button" data-keep>Keep playing</button><button class="menuButton" type="button" data-feedback>Share feedback</button>`;
  $('#endDialog').showModal();
 }
