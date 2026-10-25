@@ -26,7 +26,7 @@ function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el
 let adPlaying=false;
 const sfx=(kind,tier=0)=>sounds.play(kind,tier,{muted:adPlaying||platform.muted()});
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 45d · coastal board';
+export const BUILD='Build 45e · coastal board';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
@@ -117,7 +117,8 @@ function renderOrders(){
   // kind tag only where it matters (a big job, the gold order's stage), the parts with have/need
   // (✓ and green when there are enough), and the coins or, when ready, the one Deliver button.
   const tag=place?`<i class="reqTag gold">Stage ${stage}</i>`:role==='big'?'<i class="reqTag big">Big job</i>':'';
-  const head=place?`<span class="reqFace place">${placeArt(place,stage)}</span><span class="reqName"><b>${place.name}</b>${tag}</span>`
+  // the gold order is named as such (a place's name does not fit a card; the strip and the label carry it)
+  const head=place?`<span class="reqFace place">${placeArt(place,stage)}</span><span class="reqName"><b>Gold order</b>${tag}</span>`
    :`<span class="reqFace">${face(o.who)}</span><span class="reqName"><b>${who.name}</b>${tag}</span>`;
   return `<button class="requestCard ${ready?'ready':''} ${place?'storyOrder':''} ${focusOrder===o.id?'active':''}" data-order="${o.id}" data-role="${role}" aria-label="${label}"><span class="reqHead">${head}</span><span class="requestItems">${p.map(r=>`<span class="${r.have>=r.count?'met':''}">${draw(item(r.family,r.tier))}<b>${r.have>=r.count?'<i aria-hidden="true">✓</i>':''}${r.have}/${r.count}</b></span>`).join('')}</span><span class="reqFoot">${ready?`<strong class="reqDeliver">Deliver <em>+${o.coins}</em>${COIN}</strong>`:`<span class="requestReward">${COIN}${o.coins}</span>`}</span></button>`;
  }).join('')}</div>`;

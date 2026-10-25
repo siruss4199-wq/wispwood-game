@@ -82,6 +82,16 @@ follows generator levels instead of stages built (needs approval).
 | `node tests/v5-next-bright-browser.cjs` | Chromium 360×780, 390×844 (+ reduced motion), 430×932, 907×510 pass; now also checks card size, the sideways rail, no bars or subtitles, painted faces, strip height and View/Build, the painted ice per state, "1 hit left", and that opening the coast spends nothing |
 | WebKit | not installable in this environment; runs in CI (Coast Camp step) |
 
+## Fixes after the player's screenshot (Build 45e)
+
+- The gold order's card had lost its painted frame (an older `bright.css` rule removed it) and an
+  older "GOLD" badge rule moved it sideways; its place picture rendered at 56 px inside the 28 px
+  circle, so only an empty corner showed. All three fixed; the card now reads "Gold order · Stage n"
+  (the place's name did not fit; the strip and the card's label carry it).
+- The ready / gold / tapped outlines were a fixed rectangle that did not follow the painted card;
+  they are now an outline drawn around the painted card itself.
+- The ✓ in a met count sat on the first digit; it now has its own space.
+
 ## Remaining visual issues
 
 - The HUD coin is a shell coin; the coins that fly from deliveries and the order cards still use the

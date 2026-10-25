@@ -82,7 +82,11 @@ async function run(engine,W,H,motion){
 
   // The gold order's card says what it is for; merging next to the last-hit tideglass breaks it.
   await setState(page,ready);
-  {const gold=page.locator('[data-order="o90"]');assert.match(await gold.textContent(),/Clear the landing path|Materials · stage 1/);
+  {const gold=page.locator('[data-order="o90"]');assert.match(await gold.textContent(),/Gold order\s*Stage 1/);assert.match(await gold.getAttribute('aria-label'),/Clear the landing path/);
+   // 45e: the gold card keeps the painted frame, its place picture fits the face circle, and its
+   // state ring follows the painted card (no rectangle)
+   const g=await gold.evaluate(c=>{const f=c.querySelector('.reqFace').getBoundingClientRect(),i=c.querySelector('.reqFace img').getBoundingClientRect();return {frame:getComputedStyle(c,'::before').content!=='none'&&getComputedStyle(c,'::before').borderImageSource,after:getComputedStyle(c,'::after').content,fit:i.width<=f.width*1.2&&Math.abs(i.left-f.left)<=f.width*.15}});
+   assert.ok(/order-card\.webp/.test(g.frame)&&g.after==='none'&&g.fit,`${tag}: gold card ${JSON.stringify(g)}`);
    const lanes=await page.locator('#requests .requestCard').evaluateAll(c=>c.map(x=>x.dataset.order));
    await drag(page,20,'#board [data-index="15"]');
    await page.waitForFunction(k=>JSON.parse(localStorage.getItem(k)).board[16]?.type==='item',KEY,{timeout:4000});

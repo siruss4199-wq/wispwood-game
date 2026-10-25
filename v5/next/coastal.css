@@ -40,14 +40,14 @@ body.nextMode #menuButton .burger{display:none}
 body.nextMode #requests{margin-top:6px}
 body.nextMode #requests .requestShelf{display:flex;grid-template-columns:none;gap:8px;overflow-x:auto;overflow-y:visible;overscroll-behavior-x:contain;scroll-snap-type:x proximity;scrollbar-width:none;margin:0 calc(-1 * max(10px,env(safe-area-inset-left)));padding:4px max(10px,env(safe-area-inset-left)) 6px}
 body.nextMode #requests .requestShelf::-webkit-scrollbar{display:none}
-body.nextMode #requests .requestCard.requestCard{flex:0 0 112px;width:112px;height:118px;min-height:0;scroll-snap-align:start;position:relative;display:flex;flex-direction:column;align-items:stretch;gap:0;padding:0;border-radius:18px;background:none;box-shadow:none;transform:none;text-align:left;color:var(--cb-ink)}
+body.nextMode #requests .requestCard.requestCard{border:0;flex:0 0 112px;width:112px;height:118px;min-height:0;scroll-snap-align:start;position:relative;display:flex;flex-direction:column;align-items:stretch;gap:0;padding:0;border-radius:18px;background:none;box-shadow:none;transform:none;text-align:left;color:var(--cb-ink)}
 body.nextMode #requests .requestCard::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;border-style:solid;border-width:40px 13px 32px 40px;border-image:url('../assets/premium/coast/ui/order-card.webp') 95 30 75 95 fill stretch;filter:drop-shadow(0 2px 3px #0d5a6a40)}
 body.nextMode #requests .requestCard>*{position:relative;z-index:1}
 body.nextMode #requests .requestCard .reqHead{display:block;height:38px}
 body.nextMode #requests .reqFace{position:absolute;left:6px;top:5.5px;width:28px;height:28px;border-radius:50%;overflow:hidden;background:#d7f1f2;box-shadow:none}
 body.nextMode #requests .reqFace :is(img.face,svg){width:100%;height:100%;object-fit:cover;object-position:50% 12%;border-radius:0!important;box-shadow:none!important;transform:none}
 body.nextMode #requests .reqFace.place{background:radial-gradient(circle at 50% 35%,#d9f6f6,#8fd6dc);box-shadow:none}
-body.nextMode #requests .reqFace.place :is(img,.art){width:100%;height:100%;object-fit:contain;transform:scale(1.25) translateY(-6%)}
+body.nextMode #requests .reqFace.place :is(img,.art){position:absolute;inset:0;width:100%!important;height:100%!important;max-width:none;object-fit:cover;transform:scale(1.15);filter:none}
 body.nextMode #requests .reqName{position:absolute;left:39px;right:6px;top:6px;display:flex;flex-direction:column;align-items:flex-start;gap:2px;line-height:1.1}
 body.nextMode #requests .reqName b{font-size:12px;font-weight:900;color:var(--cb-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 body.nextMode #requests .reqName small{display:none}
@@ -62,7 +62,7 @@ body.nextMode #requests .requestItems:has(>span:nth-child(2))>span,body.nextMode
 body.nextMode #requests .requestItems:has(>span:nth-child(3))>span,body.nextMode #requests .requestItems:has(>span:nth-child(3)) :is(svg,img){width:28px!important;height:28px!important}
 body.nextMode #requests .requestItems b{position:absolute;left:50%;right:auto;bottom:-6px;transform:translateX(-50%);display:inline-flex;align-items:center;gap:1px;font-size:10px;line-height:14px;padding:0 5px;border-radius:999px;background:var(--cb-ink);color:#fff;box-shadow:0 0 0 1.5px #fff;white-space:nowrap}
 body.nextMode #requests .requestItems>span.met b{background:var(--cb-green)}
-body.nextMode #requests .requestItems b i{font-style:normal;font-size:10px}
+body.nextMode #requests .requestItems b i{font-style:normal;font-size:9px;margin:0 2px 0 -1px;letter-spacing:0}
 /* the footer band always holds one thing, so a card never jumps when it becomes ready */
 body.nextMode #requests .reqFoot{height:32px;display:flex;align-items:center;justify-content:center;padding:0 6px 3px;gap:0}
 body.nextMode #requests .reqBar{display:none}
@@ -71,12 +71,16 @@ body.nextMode #requests .requestReward .coinIcon{font-size:14px}
 body.nextMode #requests .reqDeliver{flex:none;width:100px;height:26px;display:flex;align-items:center;justify-content:center;gap:3px;padding:0 0 2px;background:url('../assets/premium/coast/ui/deliver.webp') center/100% 100% no-repeat;box-shadow:none;border-radius:0;color:#fff;font-size:11px;font-weight:900;letter-spacing:0;text-transform:none;text-shadow:0 1px 0 #0b7a57;animation:none}
 body.nextMode #requests .reqDeliver em{font-style:normal}
 body.nextMode #requests .reqDeliver .coinIcon{font-size:12px}
-body.nextMode #requests .requestCard.ready{background:none;box-shadow:none}
-body.nextMode #requests .requestCard.ready::after,body.nextMode #requests .requestCard.active::after,body.nextMode #requests .requestCard.storyOrder::after{content:"";position:absolute;inset:3px 4px 6px 3px;border-radius:16px;pointer-events:none;z-index:2}
-body.nextMode #requests .requestCard.ready::after{box-shadow:inset 0 0 0 2.5px var(--cb-green)}
-body.nextMode #requests .requestCard.storyOrder:not(.ready)::after{box-shadow:inset 0 0 0 2px #f2c23a}
-body.nextMode #requests .requestCard.active::after{box-shadow:inset 0 0 0 3px var(--cb-turq)}
-body.nextMode #requests .requestCard.storyOrder:not(.ready){background:none;box-shadow:none}
+/* the card's state is an outline that follows the painted card (ready green, the gold order gold,
+   tapped turquoise), drawn by chained drop-shadows on the painted frame (45e: was a rectangle) */
+body.nextMode #requests .requestCard.requestCard:is(.ready,.storyOrder,.active){background:none;box-shadow:none;border:0}
+body.nextMode #requests .requestCard.requestCard.storyOrder::before{content:"";inset:0;translate:none;padding:0;background:none;box-shadow:none;border-radius:0;font-size:0}
+body.nextMode #requests .requestCard:is(.ready,.storyOrder,.active)::after{content:none}
+body.nextMode #requests .requestCard{--ring:transparent}
+body.nextMode #requests .requestCard.storyOrder{--ring:#f2c23a}
+body.nextMode #requests .requestCard.ready{--ring:var(--cb-green)}
+body.nextMode #requests .requestCard.active{--ring:var(--cb-turq)}
+body.nextMode #requests .requestCard:is(.ready,.storyOrder,.active)::before{filter:drop-shadow(1.5px 0 0 var(--ring)) drop-shadow(-1.5px 0 0 var(--ring)) drop-shadow(0 1.5px 0 var(--ring)) drop-shadow(0 -1.5px 0 var(--ring)) drop-shadow(0 2px 3px #0d5a6a40)}
 /* ---------- the restoration strip: the board's way to the coast (52–56 px) ---------- */
 body.nextMode .restoreStrip{position:relative;display:flex;align-items:center;width:100%;height:56px;min-height:0;margin:6px 0 0;padding:0;border-style:solid;border-width:0 76px 0 60px;border-image:url('../assets/premium/coast/ui/restore-strip.webp') 0 215 0 170 fill / 0 76px 0 60px stretch;background:none;box-shadow:none;border-radius:0;color:var(--cb-ink);text-align:left;filter:drop-shadow(0 2px 3px #0d5a6a33)}
 body.nextMode .restoreStrip .rsThumb{position:absolute;left:-52.5px;top:5px;width:44px;height:44px;border-radius:50%;overflow:hidden;background:radial-gradient(circle at 50% 35%,#e3f8f8,#9fdde2)}
