@@ -1,8 +1,9 @@
 // Coast Camp: the new-loop page (v5/play.html). Same look as Classic V5, one loop:
 // generators → merge → crew orders → coins → upgrade the coast's places on the beach screen.
-import {allDone,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,newestGenerator,cog,token,SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,orderProgress,nextTask,currentArea,areaDone,upgrades,stageOf,builtCount,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys,reachable,generatorsMerge,MAX_GENERATOR_LEVEL,GLASS_HITS,nextKind,UNLOCK_LEVEL,GENERATOR_ORDER,storyTarget} from './game.mjs';
+import {allDone,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,newestGenerator,cog,token,SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,orderProgress,nextTask,currentArea,areaDone,upgrades,stageOf,builtCount,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys,reachable,generatorsMerge,MAX_GENERATOR_LEVEL,GLASS_HITS,nextKind,UNLOCK_LEVEL,GENERATOR_ORDER,storyTarget,roleOf,ROLE_PAY} from './game.mjs';
 import {AREAS,STAGES,TASKS} from './areas.mjs';
 import {primaryAction} from './guide.mjs';
+import {purposeOf} from './purposes.mjs';
 import {createLog} from './playtest.mjs';
 import {rewardedAd,initPlatform,platform} from './platform-cg.mjs';
 import {cellPos} from '../core.mjs';
@@ -107,10 +108,11 @@ function renderOrders(){
   const p=orderProgress(state,o),ready=!!orderItems(state,o),who=CREW[o.who];
   const place=o.story&&AREAS[state.area]?.tasks.find(t=>t.id===o.story),stage=place?Math.min(STAGES,stageOf(state,place.id)+1):0;
   const got=p.reduce((n,r)=>n+r.have,0),want=p.reduce((n,r)=>n+r.count,0);
-  const label=`${place?`Gold order: the materials for ${place.stages[stage-1].name} (${place.name}, stage ${stage}). `:`${who.name} the ${who.role}: `}${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier))).join(', ')}. ${ready?'Ready: tap to deliver.':`${got} of ${want} parts on the board.`} Reward ${o.coins} coins`;
+  const role=roleOf(o),why=place?null:purposeOf(o,role);
+  const label=`${place?`Gold order: the materials for ${place.stages[stage-1].name} (${place.name}, stage ${stage}). `:`${who.name} the ${who.role}${why?`, ${why.short}`:''}${role==='big'?' (a big job)':''}: `}${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier))).join(', ')}. ${ready?'Ready: tap to deliver.':`${got} of ${want} parts on the board.`} Reward ${o.coins} coins`;
   const head=place?`<span class="reqFace place">${placeArt(place,stage)}</span><span class="reqName"><b>${place.name}</b><small>Materials · stage ${stage}</small></span>`
-   :`<span class="reqFace">${portrait(o.who)}</span><span class="reqName"><b>${who.name}</b><small>${who.role}</small></span>`;
-  return `<button class="requestCard ${ready?'ready':''} ${place?'storyOrder':''} ${focusOrder===o.id?'active':''}" data-order="${o.id}" aria-label="${label}"><span class="reqHead">${head}</span><span class="requestItems">${p.map(r=>`<span class="${r.have>=r.count?'met':''}">${draw(item(r.family,r.tier))}<b>${r.have}/${r.count}</b></span>`).join('')}</span><span class="reqFoot">${ready?'<strong class="reqDeliver">Deliver</strong>':`<span class="reqBar" aria-hidden="true"><i style="width:${Math.round(100*got/want)}%"></i></span>`}<span class="requestReward">${COIN}${o.coins}</span></span></button>`;
+   :`<span class="reqFace">${portrait(o.who)}</span><span class="reqName"><b>${who.name}</b><small>${purposeOf(o,roleOf(o))?.short??who.role}</small></span>`;
+  return `<button class="requestCard ${ready?'ready':''} ${place?'storyOrder':''} ${focusOrder===o.id?'active':''}" data-order="${o.id}" data-role="${role}" aria-label="${label}">${role==='big'?'<i class="reqBig" aria-hidden="true">BIG JOB</i>':''}<span class="reqHead">${head}</span><span class="requestItems">${p.map(r=>`<span class="${r.have>=r.count?'met':''}">${draw(item(r.family,r.tier))}<b>${r.have}/${r.count}</b></span>`).join('')}</span><span class="reqFoot">${ready?'<strong class="reqDeliver">Deliver</strong>':`<span class="reqBar" aria-hidden="true"><i style="width:${Math.round(100*got/want)}%"></i></span>`}<span class="requestReward">${COIN}${o.coins}</span></span></button>`;
  }).join('')}</div>`;
  renderOrderTools();
 }
@@ -128,7 +130,14 @@ function renderOrderTools(){
  const day=today(),free=swapsLeft(state,day),ads=adSwapsLeft(state,day),missing=o.needs.filter(r=>count(state,r)<r.count);
  bar.hidden=false;
  const swap=o.story?`<span class="toolNote">The gold order is the ${currentArea(state).name}'s next stage: it stays.</span>`:`<span class="toolNote">Stuck on ${CREW[o.who].name}'s order?</span>`+(free>0?`<button data-swap>↻ New order <small>${free} free today</small></button>`:ads>0?'<button class="adOffer" data-swap-ad>▶ New order</button>':'<button disabled>No more changes today</button>');
- bar.innerHTML=`<ol class="routes" aria-label="Where the parts come from">${missing.map(chainRoute).join('')}</ol><div class="toolRow">${swap}</div>`;
+ // What the order is for and where its coins go (Build 44): the crew member's reason, and the
+ // next stage the coins count toward (the gold order instead brings that stage's materials).
+ const role=roleOf(o),why=purposeOf(o,role),n=nextPlace(),kind={quick:'Quick job',pair:'Two-crew job',big:'Big job'}[role];
+ const t=o.story&&TASKS[o.story],st=t&&t.stages[Math.min(STAGES,stageOf(state,t.id)+1)-1];
+ const say=o.story?`<p class="orderSay"><b>${t.name} · materials</b>Delivering this brings the materials for <em>${st.name}</em>; then it can be built for ${st.cost} coins.</p>`
+  :`<p class="orderSay"><b>${kind} · ${CREW[o.who].name}</b>“${why?.line??'Parts for the camp.'}”</p>`;
+ const pays=!o.story&&n&&!n.ready?`<p class="orderPays">${COIN} +${o.coins}${ROLE_PAY[role]>1?` <small>(${role==='big'?'big job':'two crews'}: +${Math.round(100*(ROLE_PAY[role]-1))} %)</small>`:''} → <b>${n.u.name}</b> ${Math.min(n.u.cost,state.coins+o.coins)}/${n.u.cost}${n.u.materials?'':' · also needs its gold order'}</p>`:'';
+ bar.innerHTML=`${say}${pays}<ol class="routes" aria-label="Where the parts come from">${missing.map(chainRoute).join('')}</ol><div class="toolRow">${swap}</div>`;
 }
 function renderBoard(){
  const sel=state.board[selected],focus=state.orders.find(o=>o.id===focusOrder);
@@ -179,7 +188,7 @@ function renderNextPlace(){
  const {u,t,ready}=n,was=el.dataset.ready==='1';
  el.hidden=false;el.dataset.place=u.id;el.dataset.ready=ready?'1':'0';el.classList.toggle('ready',ready);
  el.setAttribute('aria-label',`${u.name} (${t.name}, stage ${u.stage}): ${ready?'ready to build. Go to the '+currentArea(state).name:`${u.materials?'materials in':'materials from the gold order'}, ${Math.min(state.coins,u.cost)} of ${u.cost} coins`}`);
- el.innerHTML=`<span class="npArt">${placeArt(t,u.stage)}</span><span class="npText"><b>${ready?'Ready to build':t.name}</b><small>${ready?u.name:`<i class="npMat ${u.materials?'ok':''}" aria-hidden="true">${u.materials?'✓':'◆'}</i>${COIN}${Math.min(state.coins,u.cost)}/${u.cost}`}</small></span>`;
+ el.innerHTML=`<span class="npArt">${placeArt(t,u.stage)}</span><span class="npText"><b>${ready?'Ready to build':u.name}</b><small>${ready?u.name:`<i class="npMat ${u.materials?'ok':''}" aria-hidden="true">${u.materials?'✓':'◆'}</i>${COIN}${Math.min(state.coins,u.cost)}/${u.cost}`}</small></span>`;
  if(ready&&!was&&el.dataset.seen==='1'&&!reduced()){el.classList.remove('justReady');void el.offsetWidth;el.classList.add('justReady');}
  el.dataset.seen='1';
 }

@@ -1,8 +1,10 @@
 # Vaultwake V5 Coast Camp — economy audit and proposal (2026-10-24)
 
-Branch `claude/v5-bright-coast` (from `claude/v5-autonomous-rebuild` e020a5f). **Nothing in this
-document is implemented.** Build 44 changes presentation only; the game's economy, drop rates,
-order generation and progression are exactly as at e020a5f. The proposal below waits for approval.
+Branch `claude/v5-bright-coast` (from `claude/v5-autonomous-rebuild` e020a5f).
+
+**Update 2026-10-25: order generation is now implemented** after the user asked for it
+("orderuudiig utga uchirtai bolgoy" — make the orders meaningful). See *Implemented (Build 44b)* at
+the end. Drop rates, energy, stage costs, generators, the gold order and progression are unchanged.
 
 Player feedback this answers: *orders complete too easily and feel repetitive*; *the
 energy/effort/reward relationship is unsatisfying*.
@@ -128,3 +130,42 @@ rules out. The level-up refill should stay as it is unless something else replac
 
 Raw JSON lines: run the audit command above on this branch (baseline) or on a copy of `v5/` with
 the patch applied.
+
+## Implemented (Build 44b, 2026-10-25)
+
+What was built, starting from proposal A and changed where the measurements said so:
+
+- **Three kinds of everyday job, in turns** (quick, two-crew, big, two-crew): a *quick job* is one
+  chain at the area's floor tier (often two parts); a *two-crew job* is parts of two different
+  chains (or two of one when only one chain is open); a *big job* is the part one tier past what
+  its generator makes easily (three or two of it while that part is still small), so it is always
+  the most work. Pay: ×1, ×1.15, ×1.3 of the parts' worth.
+- **Memory** (`s.recent`, the last six everyday orders; optional save field, an older or damaged
+  save starts with none): a new order repeats neither those nor a card on the board, and is never
+  already lying finished on the board. A repeat is varied (one more or fewer, a tier up within
+  reach, a tier down to the floor, another chain); a card on the board is never duplicated.
+- **A reason for every order** (`v5/next/purposes.mjs`, text only): the card says what the crew
+  member needs it for ("Cart wheel came loose", "Chart the reef channel"); tapped, it shows the
+  kind of job, their words, the coins with the bonus and the next stage they count toward
+  ("+25 → Lay a boardwalk 50/70"), or for the gold order which stage its materials unlock.
+- The first three orders of a new camp (the tutorial ladder) are unchanged.
+
+Measured (`node tests/v5-next-economy-audit.mjs . 3,5,8,12 1,2,3,4,5`), baseline → now:
+
+| Landing Beach | 3 s | 5 s | 8 s | 12 s |
+|---|---|---|---|---|
+| already done when they appear | 14 % → 5 % | 14 % → 5 % | 13 % → 5 % | 10 % → 5 % |
+| repeat one of the last four | 30 % → 24 % | 28 % → 24 % | 28 % → 24 % | 28 % → 27 % |
+| top tier 1 / 2 / 3 / 4 (%) | 14/45/12/29 → 14/48/24/14 | 9/55/14/23 → 14/48/24/14 | → 14/48/24/14 | → 15/55/20/10 |
+| median size (units) | 8 → 6 | 8 → 6 | 8 → 6 | 8 → 4 |
+| coins per unit | 2.72 → 3.05 | 2.73 → 3.05 | 2.72 → 3.05 | 2.73 → 3.12 |
+| waiting for energy (min) | 86 → 69 | 66 → 46 | 30 → 26 | 1 → 0 |
+| real minutes for the beach | 126 → 109 | 132 → 113 | 138 → 134 | 160 → 158 |
+
+Whole chapter: repeats 19–20 % → 14–16 %; already done 9–12 % → 4 %; two-part orders 48–57 % →
+34–44 %; waiting 257 / 192 / 133 / 37 → 247 / 193 / 119 / 28 minutes; taps ~790 → ~790.
+
+Not better: boards whose everyday orders all start with the same chain went from ~25 % to ~29 % on
+the beach (only Rivet Rover and the Survey Kite are out for most of it); the median order is a
+little smaller (8 → 6 units) because quick jobs are meant to be quick, while big jobs are bigger.
+All 282 node tests pass, including the economy guard and first-15-minutes checks.

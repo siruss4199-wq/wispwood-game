@@ -258,3 +258,18 @@ body.nextMode .moment small{color:var(--bc-ink2)}
 body[data-art].nextMode .boardHeading:has(.nextPlace.ready) #hint.primaryAction[data-kind="upgrade"]{display:none}
 body.nextMode .boardHeading:has(#hint[data-kind="upgrade"]) .nextPlace.ready{max-width:none;flex:1}
 body.nextMode .reqFace.place :is(img,.art){transform:scale(1.45)}
+/* What an order is for (Build 44): the reason on the card, the crew's words and where the coins
+   go when it is tapped; a big job carries a small tag. */
+body.nextMode .reqBig{position:absolute;top:-7px;right:8px;font-style:normal;font-size:8.5px;font-weight:900;letter-spacing:.08em;color:#fff;background:linear-gradient(#ff9a72,var(--bc-coral2));border-radius:999px;padding:1px 6px;box-shadow:0 1px 0 #b8432a}
+body.nextMode .orderTools .orderSay{margin:0;font-size:12px;line-height:1.35;color:var(--bc-ink)}
+body.nextMode .orderTools .orderSay b{display:block;font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--bc-turq2)}
+body.nextMode .orderTools .orderSay em{font-style:normal;font-weight:800}
+body.nextMode .orderTools .orderPays{display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin:0;font-size:11.5px;font-weight:800;color:#6a4508}
+body.nextMode .orderTools .orderPays small{font-weight:700;color:var(--bc-ink2)}
+body.nextMode .orderTools .orderPays .coinIcon{font-size:12px}
+/* the beach places stand low on a shared canvas (Build 41n): lift them into small round frames */
+body.nextMode :is(.reqFace.place,.npArt) :is(img,.art){transform:scale(1.5) translateY(-12%)}
+/* a sea-blue disc behind a place's picture, so pale sand places (the landing path) still read */
+body.nextMode .reqFace.place{background:radial-gradient(circle at 50% 35%,#d9f6f6,#8fd6dc);box-shadow:0 0 0 2px #f5c24e}
+body.nextMode .npArt{background:radial-gradient(circle at 50% 35%,#d9f6f6,#8fd6dc)}
+body.nextMode .reqFace.place :is(img,.art){transform:scale(1.2) translateY(-8%)}

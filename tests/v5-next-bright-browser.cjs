@@ -48,7 +48,12 @@ async function run(engine,W,H,motion){
   // A tapped order explains its parts: generator first, then the chain up to the part.
   {const id=(await read(page)).orders[1].id;await page.locator(`[data-order="${id}"]`).click();
    assert.equal(await page.locator(`[data-order="${id}"].active`).count(),1);assert.ok(await page.locator('#orderTools .route .routeGen').count()>=1);
-   assert.match(await page.locator('#orderTools').textContent(),/Tap Rivet Rover/);await page.locator(`[data-order="${id}"]`).click();}
+   assert.match(await page.locator('#orderTools').textContent(),/Tap Rivet Rover/);
+   // and says what it is for (Build 44): the kind of job, the crew member's reason in quotes.
+   assert.match(await page.locator('#orderTools .orderSay').textContent(),/(Quick|Two-crew|Big) job · (Ivo|Neri|Tamsin|Bram)“.+”/);
+   await page.locator(`[data-order="${id}"]`).click();}
+  // Each card names its reason (not just a role), and a big job is tagged.
+  for(const c of await page.locator('#requests .requestCard:not(.storyOrder) .reqName small').allTextContents())assert.ok(!/^(quartermaster|navigator|signal keeper|expedition lead)$/.test(c),`${tag}: a reason, not a role: ${c}`);
 
   // Tideglass: three looks for three hits, then the part is free.
   await setState(page,s=>{s.daily={day:9e6,count:1};s.board[15]={type:'glass',family:'rig',tier:0};s.board[16]={type:'glass',family:'rig',tier:0,cracks:1};s.board[20]={type:'glass',family:'rig',tier:0,cracks:2};});

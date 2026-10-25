@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {cellPos} from '../v5/core.mjs';
 import {xpToNext} from '../v5/levels.mjs';
-import {allDone,secondChain,FREE_SWAPS,AD_SWAPS,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,priceOf,totalBuilt,ORDER_TOP,SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,storyTarget,makeOrder,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,glass,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
+import {RECENT,ROLE_PAY,roleOf,allDone,secondChain,FREE_SWAPS,AD_SWAPS,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,priceOf,totalBuilt,ORDER_TOP,SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,storyTarget,makeOrder,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,glass,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
 import {AREAS,TASKS} from '../v5/next/areas.mjs';
 import {primaryAction} from '../v5/next/guide.mjs';
 import {kit} from '../v5/kits.mjs';
@@ -116,7 +116,8 @@ test('orders grow harder with the beach and the generators, never repeat a live 
   const o=s.orders[n%3];for(const r of o.needs)for(let k=0;k<r.count;k++){const i=s.board.indexOf(null);assert.ok(i>=0);s.board[i]=item(r.family,r.tier);}
   ok(s,{type:'deliver',id:o.id});
   assert.ok(s.orders.filter(x=>x.story).length<=1);
-  for(const x of s.orders)if(!x.story)assert.equal(x.coins,x.needs.reduce((v,r)=>v+r.count*COIN_VALUE[r.tier],0));
+  // Build 44: a bigger kind of job pays more for its parts (rounded to 5); the first three are the plain ladder.
+  for(const x of s.orders)if(!x.story)assert.equal(x.coins,x.role?Math.max(5,Math.round(x.needs.reduce((v,r)=>v+r.count*COIN_VALUE[r.tier],0)*ROLE_PAY[x.role]/5)*5):x.needs.reduce((v,r)=>v+r.count*COIN_VALUE[r.tier],0));
   s.board=s.board.map(x=>x?.type==='kit'||x?.type==='item'?null:x);s.board[15]??=source('chart');
  }
  assert.equal(s.ordersDone,60);
@@ -395,7 +396,7 @@ test('worksite orders lean on the Rope Winch, ask tier 3–5 and pay whole coins
  const main=[];for(let k=0;k<80;k++){const o=makeOrder(s);if(o.story){s.orders.push(o);continue;}main.push(o);}
  const rope=main.filter(o=>o.needs[0].family==='rope').length;
  assert.ok(rope/main.length>=.45,`rope orders ${rope}/${main.length}`);
- for(const o of main){assert.ok(o.needs.every(r=>r.tier>=1&&r.tier<=ORDER_TOP),JSON.stringify(o.needs));assert.ok(o.needs[0].tier>=2,'tier 3 and up, an easy turn one under');assert.ok(Number.isInteger(o.coins)&&o.coins>0);assert.equal(o.coins,priceOf(o.needs));}
+ for(const o of main){assert.ok(o.needs.every(r=>r.tier>=1&&r.tier<=ORDER_TOP),JSON.stringify(o.needs));assert.ok(o.needs[0].tier>=2,'tier 3 and up, an easy turn one under');assert.ok(Number.isInteger(o.coins)&&o.coins>0);assert.equal(o.coins,Math.max(5,Math.round(priceOf(o.needs)*ROLE_PAY[roleOf(o)]/5)*5));}
  // The beach alone has no focus: Rope Winch parts are one chain among the others there.
  const b=fresh(0);b.built=beachDone();b.board[15]=source('chart');b.board[16]=source('rope');b.board[ROVER].level=3;b.orderSeq=10;// the same generators
  const bm=[];for(let k=0;k<80;k++){const o=makeOrder(b);if(o.story)b.orders.push(o);else bm.push(o);}
@@ -713,4 +714,28 @@ test('the playtest log: sessions, milestones, bounds, storage failure and a clea
  assert.equal(q.flush(),false);assert.equal(q.off,true);q.event('order');assert.equal(q.flush(),false);
  // Clearing removes only the log.
  mem.other='keep';again.clear();assert.equal(mem[LOG_KEY],undefined);assert.equal(mem.other,'keep');
+});
+
+// Build 44 (user, 2026-10-25: "orderuudiig utga uchirtai bolgoy"): everyday orders take turns being
+// quick, two-crew and big jobs; a big job is the most work and pays the most per part; the camp
+// remembers its last orders (s.recent) and repeats neither those nor a card on the board.
+test('everyday orders are quick, two-crew and big jobs, vary, and old saves keep loading',()=>{
+ const s=fresh(0);s.board[15]=source('chart');s.built={'beach-path':2,'beach-tent':1};s.orderSeq=3;s.orders=[];s.recent=[];
+ const gold=makeOrder(s);assert.ok(gold.story);s.orders=[gold];
+ const made=[];for(let k=0;k<40;k++){const o=makeOrder(s);assert.ok(!o.story);made.push(o);
+  assert.ok(['quick','pair','big'].includes(o.role));
+  if(o.role==='pair')assert.ok(new Set(o.needs.map(r=>r.family)).size===2||o.needs[0].count===2,JSON.stringify(o.needs));
+  assert.ok(s.recent.length<=RECENT);
+  const key=x=>x.needs.map(r=>r.family+r.tier+'x'+r.count).sort().join('+');
+  assert.ok(!s.orders.some(x=>!x.story&&key(x)===key(o)),'not the same card as one on the board');
+  s.orders.push(o);if(s.orders.length>3)s.orders.splice(1,1);}
+ const units=o=>o.needs.reduce((n,r)=>n+r.count*2**r.tier,0),mean=f=>{const a=made.filter(o=>o.role===f);return a.reduce((n,o)=>n+units(o),0)/a.length;};
+ assert.ok(mean('big')>mean('quick'),'a big job is more work than a quick one');
+ for(const o of made)assert.equal(o.coins,Math.max(5,Math.round(priceOf(o.needs)*ROLE_PAY[o.role]/5)*5));
+ // An older save (no role on its orders, no recent list) loads as it was; its kinds are inferred.
+ const old=fresh(0);delete old.recent;for(const o of old.orders)delete o.role;
+ const back=load(JSON.stringify(old),5);assert.deepEqual(back.orders,old.orders);assert.deepEqual(back.recent,[]);
+ for(const o of back.orders)assert.ok(['quick','pair','big','gold'].includes(roleOf(o)));
+ // A damaged recent list is dropped, not the camp.
+ const bad=fresh(0);bad.recent=[1,2,3];bad.moves=7;const b2=load(JSON.stringify(bad),5);assert.equal(b2.moves,7);assert.deepEqual(b2.recent,[]);
 });

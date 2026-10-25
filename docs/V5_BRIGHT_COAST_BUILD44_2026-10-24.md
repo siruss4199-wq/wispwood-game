@@ -5,10 +5,13 @@ gameplay build), with PR #78's painted Landing Beach map (Build 41n) merged in o
 the player saw the coast screen fall back to the old grey picture. PRs #79 and #80 are not included. Entry: `v5/play.html`. Review branch: not for
 `main` or the gameplay branch.
 
-**Presentation and feedback only.** No rule, economy, drop-rate, order-generation, progression
-or save change: `v5/next/game.mjs`, `areas.mjs` and `guide.mjs` are untouched; save keys
-`vaultwake-v5-coast` and `vaultwake-v5` are unchanged. The economy audit and the proposal that
-waits for approval are in `docs/V5_ECONOMY_AUDIT_PROPOSAL_2026-10-24.md`.
+**Presentation and feedback**, plus, since 2026-10-25 at the user's request ("orderuudiig utga
+uchirtai bolgoy"), **order generation**: quick / two-crew / big jobs with a reason each, a memory of
+the last orders, bonus pay for bigger jobs (`game.mjs` `makeOrder`, `v5/next/purposes.mjs`). Drop
+rates, energy, stage costs, generators, the gold order and progression are unchanged. Save keys
+`vaultwake-v5-coast` and `vaultwake-v5` are unchanged; the one new save field (`recent`) is
+optional and an older save loads as it was (tested). Measurements:
+`docs/V5_ECONOMY_AUDIT_PROPOSAL_2026-10-24.md` (*Implemented*).
 
 ## What changed, by the player's feedback
 
@@ -18,7 +21,7 @@ waits for approval are in `docs/V5_ECONOMY_AUDIT_PROPOSAL_2026-10-24.md`.
 | — container badges | No order star or energy tag on any cell; a cargo's key sits *inside* its own cell; a small static gleam (inside the cell) replaces the pulsing glow on cargo with something special; what is inside is told by the panel when it is tapped | `app.mjs` `renderBoard`, `bright.css` |
 | — selection and targets | The selected cell gets a gold inner ring; only the parts it can merge with get a turquoise ring; the cell under a dragged part gets a solid ring | `bright.css` |
 | — ice | Tideglass is a clear ice block with three looks for its three hits: intact, one clear crack, fractured with chipped corners; the third hit bursts into shards, then the part is free. Triggers and hit count unchanged; each cell's label says how many hits are left, the panel shows them as pips | `chains.mjs` `iceBlock`, `app.mjs` |
-| 2. Orders too easy / repetitive | Not changed in code (needs approval): measured and proposed, see the economy document | — |
+| 2. Orders too easy / repetitive | Since 2026-10-25: quick, two-crew and big jobs in turns, none already finished on arrival (14 % → 5 %), fewer repeats (29 % → 24 %, chapter 19 % → 14 %), bigger jobs pay more; each order says what it is for and where its coins go | `game.mjs` `makeOrder`, `purposes.mjs`, `app.mjs` |
 | 3. Merge sound unpleasant | New cues (below) | `sfx.mjs` |
 | 4. Haptics | One short pulse on a merge; a different pattern for breaking ice and for a restoration; nothing while dragging; own setting | `haptics.mjs` |
 | 5. Order cards weak | Each card: the crew member's face, name and role — or, for the gold order, the place's picture, its name and "Materials · stage N"; the parts with have/need counts (green when met); a progress bar; the coins; and DELIVER when ready (the one deliver button: the guidance line steps aside). Cards keep their lanes (they were re-sorted ready-first before, which moved them under the finger) and never bob. A tapped card is lifted and ringed, and shows the route of its missing parts: generator → each tier of the real chain → the part, with "Tap Rivet Rover, then merge up 2 times" | `app.mjs` `renderOrders`, `chainRoute` |
