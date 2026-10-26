@@ -97,3 +97,52 @@ it made orders harder, not more interesting.
 | Repeats once two generators are out | 8 of 206 | 0 of 160 |
 | Low-energy moments with a free move (worst speed) | 89 % | 86 % |
 | Random actions / bugs | 160,000 / 0 | 160,000 / 0 (after the fix above) |
+
+## Generator level vs order tiers: measured, not changed (2026-10-26)
+
+**Finding**
+- `reach()` (`v5/next/game.mjs`) returns a generator's *level*. Orders cap their tier at
+  `reach + 1`, which treats that level as a part *tier*.
+- This only holds at levels 1–2. The best part a generator makes, by the produce rule (fourth-tap
+  bonus plus `levelLift`, capped at tier 3), is:
+
+  | Generator level | Lv1 | Lv2 | Lv3 | Lv4 | Lv5 |
+  |---|---|---|---|---|---|
+  | Best part tier | 1 | 2 | 2 | 2 | 3 |
+
+- So a level-3 generator still makes tier 2 at best, yet its chain's orders jump to tier 4.
+  - 62 % of those parts are two or more tiers past anything the generator makes.
+  - Energy per part rises 60 %, while the generator's output rises only 20 %.
+  - Level 3 is required, because it brings out the next generator.
+
+Scripted player (`tests/v5-next-policy.mjs`), 3 seeds, 12 h.
+
+**Energy per ordered part, by the generator's level**
+
+| | Lv1 | Lv2 | Lv3 |
+|---|---|---|---|
+| Build 46e (now) | 3.0 | 3.8 | 6.1 |
+| A: `reach` = best part tier | 3.0 | 3.7 | 3.2 |
+
+**Whole campaign, energy pacing harness** (minutes total / idle share / longest gap between
+restorations)
+
+| speed | 46e (now) | A | C: A plus more parts when the tier is cut |
+|---|---|---|---|
+| 4 s | 279 / 57 % / 39 | 215 / 49 % / 31 | 225 / 52 % / 36 |
+| 6 s | 233 / 29 % / 21 | 197 / 19 % / 27 | 226 / 30 % / 42 |
+| 8 s | 237 / 7 % / 12 | 228 / 6 % / 21 | 238 / 12 % / 32 |
+| 10 s | 274 / 0 % / 9 | 265 / 0 % / 13 | 263 / 0 % / 15 |
+
+**What each option does**
+- **A** fixes the mismatch and shortens waits for fast players.
+  - It fails the economy guard "energy runs out … at 10 s/action" (the Build 41g/41h free-to-play
+    pacing): the lowest energy is 3.
+  - It needs about 1.6× more orders.
+  - Late orders stop at Lv4 parts.
+  - Restorations come further apart for players at 6–10 s.
+- **C** keeps every test green, but nearly doubles the longest gap between restorations at 6–8 s.
+- Neither is clearly better than now for a release.
+
+**Decision:** the code stays as it is pending the director's decision. A real fix probably needs
+coin prices or stage costs re-tuned together with `reach`.
