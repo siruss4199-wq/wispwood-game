@@ -34,7 +34,7 @@ The design problems, measured with the scripted player (`tests/v5-next-economy-a
 | One goal | the strip shows a stage ready to build, else the stage of the live gold order, so it and the gold card name the same place | `app.mjs` `nextPlace` |
 | Order panel | three lines: why, "+N → place", how to make the parts, and New order (the bonus sums and the "n/m" are gone) | `app.mjs` `renderOrderTools` |
 | No text selection | nothing in the game is selected by a slide of the finger (the playtest log still is) | `coastal.css` |
-| Short screens | in portrait the board is no taller than the space under the orders leaves, with ~40 px to spare: 390 × 664 ends at 624 px (cells 43 px), 360 × 640 at 600 px (cells 40 px); taller screens unchanged | `coastal.css` |
+| Short screens | ~~the board shrank to fit above Safari's bottom bar~~ — undone in Build 46d (user, 2026-10-26: "Board hemjee jijig bolchihson baina"): the board keeps the full width (370 px at 390, cells 49 px) and the page scrolls for the last row | `coastal.css` |
 
 ## Measured after (same scripts, 5 seeds)
 
@@ -64,7 +64,7 @@ generators are unchanged.
 
 ## Limits
 
-- Not tested on a real iPhone: the short-screen fit is measured in Chromium at 390 × 664 and 360 × 640.
+- On an iPhone with Safari's bars the last board row can sit under the bottom bar; the page scrolls (the board was kept large on purpose, Build 46d).
 - Fun is not something the scripts measure; a few real players (with the playtest log) are the test.
 - The first quarter hour still repeats more than the rest (one generator, few parts): about one in
   four orders there.

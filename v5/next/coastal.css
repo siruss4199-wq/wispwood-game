@@ -115,10 +115,9 @@ body[data-art].nextMode .boardHeading #hint.primaryAction:is([data-kind="upgrade
 body[data-art].nextMode .boardHeading:has(#hint[data-kind="upgrade"]) #hint{display:none}
 /* ---------- the board: uniform apricot cells, thin gaps, shallow depth ---------- */
 body.nextMode[data-art] #board.board{background:#efcf9c;border:0;border-radius:16px;padding:4px;gap:3px;margin-top:4px;box-shadow:inset 0 0 0 1.5px #f8e2bb,0 3px 0 #d3a76a,0 10px 22px #0d5a6a38}
-/* short phone screens (Audit 2026-10-25: Safari's bars hid the last row on an iPhone): the board
-   is no taller than the space under the orders, the strip and the hint (about 294 px) leaves,
-   with about 40 px to spare; on taller screens it keeps the full width */
-@media(orientation:portrait){body.nextMode[data-art] #board.board{width:min(100%,calc(100svh - 334px));margin-inline:auto}}
+/* the board keeps the full width on every phone (2026-10-26, user: "Board hemjee jijig
+   bolchihson baina"): Build 46 shrank it on short screens to clear Safari's bottom bar, which
+   made it small on an iPhone; the page scrolls for the last row instead */
 body.nextMode #board.board .tile.tile,body.nextMode #board.board .tile.tile:is(.odd,.empty,.cargo,.glass,.deep,.cog,.token,.source){background:url('../assets/premium/coast/ui/cell.webp') center/100% 100% no-repeat;border-radius:9px;box-shadow:none;outline:0}
 body.nextMode #board.board .tile.tile.empty{opacity:.88}
 body.nextMode #board.board .tile.tile.cargo.deep{filter:saturate(.9) brightness(.94)}

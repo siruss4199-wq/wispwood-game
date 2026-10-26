@@ -157,7 +157,7 @@ async function run(engine,W,H,motion){
   // Audit fixes (Build 46): a crew order taking long suggests a new one; its tapped panel is three
   // short lines (no "n/m" progress, no bonus sums); nothing is selected by a slide of the finger;
   // after the last stage the strip says the chapter is done and the coins carry over; on a short
-  // phone screen (390 × 664) the whole board is above Safari's bottom bar.
+  // phone screen (390 × 664) the board keeps the full width (2026-10-26: shrinking it read as small).
   await setState(page,s=>{s.moves=900;for(const o of s.orders)if(!o.story)o.born=0;});
   {const stuck=page.locator('#requests .requestCard.stuck');const n=await stuck.count();
    const notReady=await page.locator('#requests .requestCard:not(.ready):not(.storyOrder)').count();assert.equal(n,notReady,`${tag}: every crew order not ready is stuck`);
@@ -168,8 +168,8 @@ async function run(engine,W,H,motion){
   await setState(page,s=>{s.area=1;s.built={'beach-path':3,'beach-tent':3,'beach-mast':3,'beach-workshop':3,'beach-pier':3,'beach-beacon':3,'beach-cliff':3,'ws-camp':3,'ws-scope':3,'ws-ropes':3,'ws-steps':3,'ws-pool':3,'ws-hoist':3,'ws-door':3};s.materials={...s.built};s.seenEnd=true;s.orders=s.orders.map(o=>{const x={...o};delete x.story;return x;});s.coins=123;});
   assert.match(await page.locator('#mapButton').textContent(),/Chapter complete.*Coins carry over to the Vault Entrance.*123/s,`${tag}: the chapter's end says where the coins go`);
   if(W===390&&motion==='no-preference'){await page.setViewportSize({width:390,height:664});await page.waitForTimeout(200);
-   const b=await page.locator('#board').boundingBox();assert.ok(b.y+b.height<=664-30,`${tag}: at 390×664 the board ends at ${Math.round(b.y+b.height)}`);
-   const c=await page.locator('#board [data-index="0"]').boundingBox();assert.ok(c.width>=40,`board cells ${c.width}px at 390×664`);await page.setViewportSize({width:W,height:H});}
+   const b=await page.locator('#board').boundingBox();assert.ok(b.width>=390-24,`${tag}: at 390×664 the board is ${Math.round(b.width)} px wide`);
+   const c=await page.locator('#board [data-index="0"]').boundingBox();assert.ok(c.width>=46,`board cells ${c.width}px at 390×664`);await page.setViewportSize({width:W,height:H});}
 
   assert.deepEqual(errors,[],`${tag}: no page errors`);
   console.log(`${tag}: layout, order cards, ice, delivery → ready → coast → build → next, shed, full board, settings passed`);
