@@ -59,7 +59,13 @@ async function run(engine,W,H,motion){
    // one row that scrolls sideways when the cards do not all fit (three fit at 390 px since 45c)
    assert.ok(await page.locator('#requests .requestShelf').evaluate(e=>getComputedStyle(e).overflowX==='auto'&&new Set([...e.children].map(c=>Math.round(c.getBoundingClientRect().top))).size===1),`${tag}: the cards are one sideways rail`);
    assert.equal(await page.locator('#requests .reqBar:visible, #requests .reqName small:visible').count(),0,`${tag}: no progress bars or subtitles on cards`);
-   const faces=await page.locator('#requests img.face').evaluateAll(f=>f.map(x=>x.getAttribute('src')));assert.ok(faces.length>0&&faces.every(f=>/crew-(ivo|bram)\.webp$/.test(f)),`${tag}: painted faces ${faces}`);
+   const faces=await page.locator('#requests img.face').evaluateAll(f=>f.map(x=>x.getAttribute('src')));assert.ok(faces.length>0&&faces.every(f=>/crew-(ivo|bram|nara|sela)\.webp$/.test(f)),`${tag}: painted faces ${faces}`);
+   assert.equal(await page.locator('#requests .reqFace:not(.place) svg').count(),0,`${tag}: every crew member has a painted face`);
+   // Neri and Tamsin wear the supplied Nara and Sela portraits (user, 2026-10-26)
+   {const before=await page.evaluate(k=>localStorage.getItem(k),KEY);
+    await setState(page,s=>{const crew=s.orders.filter(o=>!o.story);crew[0].who='neri';crew[1].who='tamsin';});
+    const src=await page.locator('#requests img.face').evaluateAll(f=>f.map(x=>x.getAttribute('src')).join(' '));assert.match(src,/crew-nara\.webp/);assert.match(src,/crew-sela\.webp/);
+    await page.evaluate(([k,v])=>localStorage.setItem(k,v),[KEY,before]);await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);}
    const strip=await page.locator('#mapButton').boundingBox();assert.ok(strip.height>=52&&strip.height<=56&&strip.x>=0&&strip.x+strip.width<=W+1,`${tag}: strip ${strip.height}px`);
    assert.match(await page.locator('#mapButton .rsAction').textContent(),/^View$/);
    const hud=await page.locator('header').boundingBox();assert.ok(hud.height<=64,`${tag}: HUD ${hud.height}px`);
