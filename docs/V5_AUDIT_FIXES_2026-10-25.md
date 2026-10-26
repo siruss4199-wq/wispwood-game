@@ -98,51 +98,72 @@ it made orders harder, not more interesting.
 | Low-energy moments with a free move (worst speed) | 89 % | 86 % |
 | Random actions / bugs | 160,000 / 0 | 160,000 / 0 (after the fix above) |
 
-## Generator level vs order tiers: measured, not changed (2026-10-26)
+## Build 46f: orders follow what the generators make (2026-10-26)
 
-**Finding**
-- `reach()` (`v5/next/game.mjs`) returns a generator's *level*. Orders cap their tier at
-  `reach + 1`, which treats that level as a part *tier*.
-- This only holds at levels 1–2. The best part a generator makes, by the produce rule (fourth-tap
-  bonus plus `levelLift`, capped at tier 3), is:
+### Problem
+- `reach()` (`v5/next/game.mjs`) returned a generator's *level*, and orders capped their tier at
+  `reach + 1`, as if that level were a part tier.
+- This held only at levels 1–2. The best part a generator makes (by the produce rule) is:
 
   | Generator level | Lv1 | Lv2 | Lv3 | Lv4 | Lv5 |
   |---|---|---|---|---|---|
   | Best part tier | 1 | 2 | 2 | 2 | 3 |
 
-- So a level-3 generator still makes tier 2 at best, yet its chain's orders jump to tier 4.
-  - 62 % of those parts are two or more tiers past anything the generator makes.
-  - Energy per part rises 60 %, while the generator's output rises only 20 %.
-  - Level 3 is required, because it brings out the next generator.
+- So a level-3 generator, which the player must reach to bring out the next generator, made its
+  chain's orders cost 60 % more energy per part for 20 % more output.
 
-Scripted player (`tests/v5-next-policy.mjs`), 3 seeds, 12 h.
+### The re-tune
+Three rules change together (`game.mjs`):
+1. **Order tiers follow the best part.** `reach()` is now that best part's tier (`bestTier`), so
+   no order asks more than one tier past what its generator makes.
+2. **Levels that make no better part pay coins instead.** An everyday part asked at its
+   generator's limit pays **40 % more** for each such level (`PAY_PER_LEVEL`, `orderPrice`).
+3. **The gold order gives no delivery energy.** Its reward is the stage's materials. Crew orders
+   still give +1.
 
-**Energy per ordered part, by the generator's level**
+### Candidates measured
+All on the economy guard's harness (8 speeds × 5 seeds, shop on). Columns are: minutes total /
+idle share / median gap / longest gap between restorations / share of low-energy moments with a
+free move.
 
-| | Lv1 | Lv2 | Lv3 |
-|---|---|---|---|
-| Build 46e (now) | 3.0 | 3.8 | 6.1 |
-| A: `reach` = best part tier | 3.0 | 3.7 | 3.2 |
+| speed | 46e (before) | **46f (chosen)** | A: rule 1 only | H30: rules 1 and 2 at 30 %, gold keeps energy |
+|---|---|---|---|---|
+| 4 s | 169 / 31 % / 3.0 / 18 / 99 % | 112 / 7 % / 2.6 / 19 / 89 % | 129 / 13 % / 2.5 / 23 / – | 108 / 4 % / 2.2 / 10 / 89 % |
+| 4.5 s | 129 / 3 % / 3.1 / 7 / 100 % | 145 / 17 % / 2.5 / 24 / 79 % | 127 / 1 % / 2.9 / 14 / – | 123 / 5 % / 2.8 / 13 / **43 %** |
+| 5 s | 139 / 0 % / 3.4 / 6 / 97 % | 127 / 0 % / 3.0 / 7 / 89 % | 141 / 1 % / 2.9 / 15 / – | 130 / 1 % / 3.0 / 7 / 79 % |
+| 6 s | 178 / 4 % / 4.1 / 13 / 100 % | 156 / 1 % / 3.4 / 11 / 92 % | 162 / 1 % / 3.3 / 11 / – | 148 / 0 % / 3.6 / 7 / 92 % |
+| 8 s | 222 / 0 % / 5.5 / 11 / 88 % | 200 / 0 % / 4.5 / 9 / 93 % | 222 / 0 % / 4.5 / 17 / – | 201 / 0 % / 4.6 / 10 / 57 % |
+| 10 s | 272 / 0 % / 6.7 / 10 / 86 % | 251 / 0 % / 5.6 / 15 / 56 % | 265 / 0 % / 5.5 / 14 / – | 252 / 0 % / 5.7 / 12 / 100 % |
 
-**Whole campaign, energy pacing harness** (minutes total / idle share / longest gap between
-restorations)
+What the other candidates did:
+- **A** (rule 1 only): energy never ran out at 10 s.
+- **H30**: energy never ran out at 9–10 s, and a 4.5 s player was often left with no energy and
+  nothing to merge (43 %, against a 50 % minimum).
+- **Also measured:**
+  - 30 % pay: 4.5 s stuck at 25 %;
+  - 0 %, 20 %, 50 % pay;
+  - +5 coins for Lv4 parts: far too fast;
+  - extra parts instead of pay: longest gaps up to 42 min;
+  - delivery energy only while energy is low: fast players waited 20–40 %;
+  - no delivery energy at all: 60 % waiting.
 
-| speed | 46e (now) | A | C: A plus more parts when the tier is cut |
-|---|---|---|---|
-| 4 s | 279 / 57 % / 39 | 215 / 49 % / 31 | 225 / 52 % / 36 |
-| 6 s | 233 / 29 % / 21 | 197 / 19 % / 27 | 226 / 30 % / 42 |
-| 8 s | 237 / 7 % / 12 | 228 / 6 % / 21 | 238 / 12 % / 32 |
-| 10 s | 274 / 0 % / 9 | 265 / 0 % / 13 | 263 / 0 % / 15 |
+### What 46f gives, against 46e
+**Better**
+- No order asks past the generator's best part plus one. At a level-3 generator, energy per
+  ordered part is 3.0 (it was 6.1).
+- Levelling up pays: those orders pay up to 40 % more.
+- The median gap between restorations is shorter at every speed.
+- A campaign takes 4–34 % less time, except at 4.5 s (+12 %).
+- The 4 s player waits 7 % of the time (it was 31 %).
+- Every economy guard passes, including energy running out at every speed.
 
-**What each option does**
-- **A** fixes the mismatch and shortens waits for fast players.
-  - It fails the economy guard "energy runs out … at 10 s/action" (the Build 41g/41h free-to-play
-    pacing): the lowest energy is 3.
-  - It needs about 1.6× more orders.
-  - Late orders stop at Lv4 parts.
-  - Restorations come further apart for players at 6–10 s.
-- **C** keeps every test green, but nearly doubles the longest gap between restorations at 6–8 s.
-- Neither is clearly better than now for a release.
+**Worse**
+- When energy runs out, a free merge is left less often: 56–93 %, against 86–100 %. Orders that
+  ask nearer the generator leave less merging per energy. That depth was part of what the old
+  mismatch gave.
+- The longest single gap is longer at 4.5 s (24 against 7 min) and 10 s (15 against 10).
+- About 1.6× more, smaller orders per campaign.
 
-**Decision:** the code stays as it is pending the director's decision. A real fix probably needs
-coin prices or stage costs re-tuned together with `reach`.
+### Saves
+- No state shape changes.
+- Orders already in a save keep their parts and price until delivered.

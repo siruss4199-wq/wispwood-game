@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {cellPos} from '../v5/core.mjs';
 import {xpToNext} from '../v5/levels.mjs';
-import {rolePrice,RECENT,ROLE_PAY,roleOf,allDone,secondChain,FREE_SWAPS,AD_SWAPS,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,priceOf,totalBuilt,ORDER_TOP,SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,storyTarget,makeOrder,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,glass,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
+import {rolePrice,orderPrice,bestTier,PAY_PER_LEVEL,RECENT,ROLE_PAY,roleOf,allDone,secondChain,FREE_SWAPS,AD_SWAPS,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,priceOf,totalBuilt,ORDER_TOP,SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,storyTarget,makeOrder,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,glass,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
 import {AREAS,TASKS} from '../v5/next/areas.mjs';
 import {primaryAction} from '../v5/next/guide.mjs';
 import {kit} from '../v5/kits.mjs';
@@ -397,7 +397,7 @@ test('worksite orders lean on the Rope Winch, ask tier 3–5 and pay whole coins
  const main=[];for(let k=0;k<80;k++){const o=makeOrder(s);if(o.story){s.orders.push(o);continue;}main.push(o);}
  const rope=main.filter(o=>o.needs[0].family==='rope').length;
  assert.ok(rope/main.length>=.45,`rope orders ${rope}/${main.length}`);
- for(const o of main){assert.ok(o.needs.every(r=>r.tier>=1&&r.tier<=ORDER_TOP),JSON.stringify(o.needs));assert.ok(o.needs[0].tier>=2,'tier 3 and up, an easy turn one under');assert.ok(Number.isInteger(o.coins)&&o.coins>0);assert.equal(o.coins,rolePrice(o.needs,roleOf(o)));}
+ for(const o of main){assert.ok(o.needs.every(r=>r.tier>=1&&r.tier<=ORDER_TOP),JSON.stringify(o.needs));assert.ok(o.needs[0].tier>=2,'tier 3 and up, an easy turn one under');assert.ok(Number.isInteger(o.coins)&&o.coins>0);assert.equal(o.coins,orderPrice(s,o.needs,roleOf(o)));}
  // The beach alone has no focus: Rope Winch parts are one chain among the others there.
  const b=fresh(0);b.built=beachDone();b.board[15]=source('chart');b.board[16]=source('rope');b.board[ROVER].level=3;b.orderSeq=10;// the same generators
  const bm=[];for(let k=0;k<80;k++){const o=makeOrder(b);if(o.story)b.orders.push(o);else bm.push(o);}
@@ -788,4 +788,27 @@ test('never two identical crew orders on the board under random play',()=>{
     a=t==='produce'?{type:t,id:src[R(src.length)][1]}:t==='merge'?{type:t,from:R(49),to:R(49)}:t==='deliver'||t==='swapOrder'?{type:t,id:s.orders[R(s.orders.length)].id,day,ad:true}:{type:t,index:R(49)};}
    act(s,a,now);const keys=s.orders.filter(o=>!o.story).map(key);
    assert.equal(new Set(keys).size,keys.length,`seed ${seed} step ${i}: ${keys}`);}}
+});
+
+// Build 46f: an order asks at most one tier past the best part its chain's generator makes (that
+// generator's level was used as a tier before, so a level-3 Rover's orders asked tier 4 while it
+// makes tier 2 at best); a part at that limit pays 40 % more per level that makes no better part.
+test('orders follow the best part a generator makes; levels with no better part pay instead',()=>{
+ assert.deepEqual([1,2,3,4,5].map(bestTier),[1,2,2,2,3]);
+ for(const L of [1,2,3,4,5]){
+  const s=fresh(0);s.built=beachDone();s.board[ROVER].level=L;s.board[15]=source('chart');s.board[15].level=L;s.orderSeq=10;
+  for(let k=0;k<60;k++){const o=makeOrder(s);if(o.story){s.orders.push(o);continue;}
+   for(const r of o.needs)assert.ok(r.tier<=bestTier(L)+1,`Lv${L}: ${JSON.stringify(r)} past the generator's best part`);
+   const atLimit=o.needs.filter(r=>r.tier===bestTier(L)+1).length,price=Math.round(rolePrice(o.needs,o.role)*(1+PAY_PER_LEVEL*atLimit*(L-bestTier(L)))/5)*5;
+   assert.equal(o.coins,price,`Lv${L}: ${JSON.stringify(o.needs)}`);
+   if(L<=2)assert.equal(o.coins,rolePrice(o.needs,o.role),'levels 1 and 2 pay as before');}
+ }
+});
+test('a gold order gives no energy; a crew order gives its delivery energy',()=>{
+ const s=fresh(0);s.energy=10;s.orders=[makeOrder(Object.assign(s,{orderSeq:10}))].filter(Boolean);
+ const gold=s.orders.find(o=>o.story);assert.ok(gold);for(const r of gold.needs)for(let k=0;k<r.count;k++)s.board[s.board.indexOf(null)]=item(r.family,r.tier);
+ const r=act(s,{type:'deliver',id:gold.id},0);assert.ok(r.ok);assert.equal(s.energy,10);assert.equal(r.energy,0);assert.doesNotMatch(r.message,/energy/);
+ const crew=s.orders.find(o=>o&&!o.story)??makeOrder(s);if(!s.orders.includes(crew))s.orders[s.orders.indexOf(null)>=0?s.orders.indexOf(null):0]=crew;
+ for(const q of crew.needs)for(let k=0;k<q.count;k++)s.board[s.board.indexOf(null)]=item(q.family,q.tier);
+ const e=s.energy,r2=act(s,{type:'deliver',id:crew.id},0);assert.ok(r2.ok,r2.message);assert.equal(s.energy,e+DELIVER_ENERGY);
 });

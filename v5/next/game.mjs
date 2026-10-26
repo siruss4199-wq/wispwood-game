@@ -197,9 +197,26 @@ export const priceOf=(needs,story=false)=>{const v=needs.reduce((v,r)=>v+r.count
 // The second part of an order comes from another open chain, chosen evenly by the order's own
 // seed (build 41: it was always the first open chain, so Rivet Rover filled most second parts).
 export function secondChain(families,main,tier,seed){const ok=families.filter(f=>f!==main&&tier<=maxTier(f));return ok.length?ok[Math.floor(rand(seed)*ok.length)]:null;}
-// A second part never asks more than its generator can reach easily: one tier above its level
-// (a new Lv1 generator: tier 2 at most), so fair chains do not mean dear parts.
-const reach=(s,chain)=>Math.max(1,...s.board.filter(x=>x?.type==='source'&&x.id===CHAINS[chain].gen).map(producerLevel));
+// A second part never asks more than its generator can reach easily: one tier above the best
+// part it makes (a new Lv1 generator: tier 2 at most), so fair chains do not mean dear parts.
+// Build 46f: reach is that best part's tier, read from the same rule produce uses (the fourth-tap
+// bonus plus levelLift, capped at tier 3). It was the generator's level, which matches the best
+// part only at levels 1 and 2: a level-3 generator still makes tier 2 at best, yet its orders
+// jumped to tier 4, so levelling up (which level 3 needs, for the next generator) made that
+// chain's orders cost 60 % more energy for 20 % more output.
+export const bestTier=level=>Math.max(...Array.from({length:12},(_,k)=>Math.min(3,((k+1)%4===0?1:0)+levelLift(level,k+1))));
+const level=(s,chain)=>Math.max(1,...s.board.filter(x=>x?.type==='source'&&x.id===CHAINS[chain].gen).map(producerLevel));
+const reach=(s,chain)=>bestTier(level(s,chain));
+// What levelling pays instead (Build 46f, re-tuned with the economy harness): levels 3 and 4 make
+// no better part than level 2, so an everyday part asked at its generator's limit pays 40 % more
+// for each such level. Measured with the economy harness against Build 46e (numbers in
+// docs/V5_AUDIT_FIXES_2026-10-25.md): 0 % left the late worksite stages slow, 30 % left a fast
+// player stuck with no energy and nothing to merge; 40 % passes every economy guard.
+export const PAY_PER_LEVEL=.4;
+export function orderPrice(s,needs,role){
+ const lift=needs.reduce((n,r)=>n+(r.tier>=reach(s,r.family)+1?level(s,r.family)-bestTier(level(s,r.family)):0),0);
+ return Math.round(rolePrice(needs,role)*(1+PAY_PER_LEVEL*lift)/5)*5;
+}
 // The gold order is a stage's materials, so it is the biggest order on the board (Build 41h,
 // user: "story upgrade task bielelt heterhii hurdan ... merge togloh medremj avch amjilgui",
 // with energy left to run out as in a classic free-to-play merge game): the newest generator's
@@ -287,7 +304,7 @@ export function makeOrder(s){
    if(onBoard.has(key(needs))){const alt=pool.flatMap(f=>Array.from({length:hi(f)},(_,k)=>[1,2].map(c=>[{family:f,tier:k+1,count:c}])).flat()).find(v=>!onBoard.has(key(v)));
     if(alt){needs=alt;role='quick';}}}
   recent.push(key(needs));if(recent.length>RECENT)recent.splice(0,recent.length-RECENT);
-  return {id:'o'+n,who:crewFor(needs),needs,coins:rolePrice(needs,role),role,born:s.moves};
+  return {id:'o'+n,who:crewFor(needs),needs,coins:orderPrice(s,needs,role),role,born:s.moves};
  }
  return {id:'o'+n,who:crewFor(needs),needs,coins:priceOf(needs),born:s.moves};
 }
@@ -481,14 +498,18 @@ function step(s,a,now){
   // Audit 2026-10-25 (user: "buguding ni hii"): a delivery also gives the crew +1 energy, so a
   // quick player waits less for energy (measured, chapter: 65 → 44 % of the time at 4 s an
   // action, 44 → 29 % at 6 s; +2 or more left no waiting at all, so energy stopped mattering).
-  s.coins+=o.coins;s.ordersDone++;s.orders[lane]=null;s.energy=Math.min(MAX_ENERGY,s.energy+DELIVER_ENERGY);
+  // Build 46f: the gold order gives no energy (its reward is the stage's materials); with orders
+  // asking what the generators make, a stage takes more crew orders and their energy alone kept
+  // slower players from ever running out.
+  const gain=o.story?0:DELIVER_ENERGY;
+  s.coins+=o.coins;s.ordersDone++;s.orders[lane]=null;s.energy=Math.min(MAX_ENERGY,s.energy+gain);
   if(o.story&&TASKS[o.story]&&stageOf(s,o.story)<STAGES)s.materials[o.story]=stageOf(s,o.story)+1;
   s.orders[lane]=makeOrder(s);
   // A gold order is the materials for its place's next stage (Build 41, user: "story upgrade
   // shuud hurdan hiigdej baina"): the stage can be bought once they are delivered. Orders no
   // longer bring a driftwood crate every third time.
   const materials=o.story&&s.materials[o.story]>stageOf(s,o.story)?{id:o.story,stage:s.materials[o.story]}:null;
-  return {ok:true,event:'deliver',index:null,xp:Math.max(1,Math.round(o.coins/COIN_RATE)),coins:o.coins,box:-1,freed:take,...(materials?{materials}:{}),energy:DELIVER_ENERGY,message:`+${o.coins} coins · +${DELIVER_ENERGY} energy`+(materials?` · materials for ${TASKS[o.story].stages[materials.stage-1].name}`:'')};
+  return {ok:true,event:'deliver',index:null,xp:Math.max(1,Math.round(o.coins/COIN_RATE)),coins:o.coins,box:-1,freed:take,...(materials?{materials}:{}),energy:gain,message:`+${o.coins} coins`+(gain?` · +${gain} energy`:'')+(materials?` · materials for ${TASKS[o.story].stages[materials.stage-1].name}`:'')};
  }
  // Upgrade a place on the beach one stage (the action keeps its old name, 'restore').
  if(a.type==='restore'){
