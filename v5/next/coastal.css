@@ -180,7 +180,10 @@ body.nextMode #requests .requestCard.requestCard.active{outline:0}
 .nextMode .beatLine img.face{width:76px;height:76px;border-radius:50%;object-fit:cover;object-position:50% 12%;background:#d7f1f2;box-shadow:0 0 0 3px #fff,0 0 0 6px #f0c45a,0 6px 14px #0003}
 
 /* no ad offers where ads are off (CrazyGames Basic Launch, data-ads="off") */
-[data-ads="off"] .adsOnly,[data-ads="off"] #adEnergyButton{display:none!important}
+:root:not([data-ads="on"]):not([data-dev="on"]) :is(.adsOnly,#adEnergyButton),[data-ads="off"] :is(.adsOnly,#adEnergyButton){display:none!important}
 /* on CrazyGames nothing leads out of the game: no Classic link, playtest log, sound check page or
    feedback export (data-platform="crazygames", tools/coast-crazygames.mjs) */
 [data-platform="crazygames"] :is(#classicLink,#classicNote,#playlogButton,a[href="next/sounds.html"],[data-feedback]){display:none!important}
+/* players see no developer tools: the Classic link, the playtest log, the sound check page, the
+   feedback export and the build name show only with ?dev=1 (2026-10-26) */
+:root:not([data-dev="on"]) :is(#classicLink,#classicNote,#playlogButton,a[href="next/sounds.html"],[data-feedback],#menu .menuNote,footer #build){display:none!important}

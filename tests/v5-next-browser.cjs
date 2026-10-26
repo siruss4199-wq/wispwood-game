@@ -4,7 +4,9 @@
 // Rivet Rover's camp sits in the middle; sealed cargo and tideglass cover the rest, and crates
 // touching open ground show the (well-merged) part that opens them.
 const assert=require('node:assert/strict');const {chromium,webkit}=require('playwright');
-const URL='http://127.0.0.1:8080/v5/play.html';
+// Developer mode (?dev=1): these tests also check the playtest log, the Classic link and the ad
+// stand-in, which players do not see (2026-10-26).
+const URL='http://127.0.0.1:8080/v5/play.html?dev=1';
 const read=page=>page.evaluate(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')));
 async function closeBeats(page){for(let n=0;n<6&&await page.locator('#beat[open]').count();n++){await page.locator('#beatNext').tap();await page.waitForTimeout(80);}}
 // Merging, opening cargo and moving are done by dragging only (build 24).
@@ -85,8 +87,8 @@ async function perform(page,a){
    assert.equal(await page.evaluate(()=>localStorage.getItem('vaultwake-v5')),classic,'Classic save untouched');
    assert.match(await page.locator('#build').textContent(),/BUILD \d/,'the footer names the build');
    // The playtest page's "start from the beginning" link starts a new camp and cleans the address.
-   await page.goto(URL+'?new=1');await page.waitForSelector('#board .tile');await closeBeats(page);
-   assert.equal((await read(page)).moves,0);assert.equal(new globalThis.URL(page.url()).search,'');
+   await page.goto(URL+'&new=1');await page.waitForSelector('#board .tile');await closeBeats(page);
+   assert.equal((await read(page)).moves,0);assert.equal(new globalThis.URL(page.url()).search,'?dev=1','new=1 is cleaned from the address, other parameters stay');
    assert.equal(await page.evaluate(()=>localStorage.getItem('vaultwake-v5')),classic,'Classic save still untouched');
    // Build 32: the daily gift opens by itself once the session is under way.
    await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.moves=5;localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});

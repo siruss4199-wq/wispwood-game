@@ -26,13 +26,13 @@ function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el
 let adPlaying=false;
 const sfx=(kind,tier=0)=>sounds.play(kind,tier,{muted:adPlaying||platform.muted()});
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 46d · audit fixes';
+export const BUILD='Build 46e · publish polish';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
 // ?new=1 (the playtest page's "start from the beginning" link) starts a new camp.
 const startNew=new URLSearchParams(location.search).has('new');
-if(startNew)history.replaceState(null,'',location.pathname);
+if(startNew){const q=new URLSearchParams(location.search);q.delete('new');history.replaceState(null,'',location.pathname+(q.size?'?'+q:''));}
 let state=startNew?fresh(Date.now()):load(storage.get(SAVE_KEY)??'',Date.now()),selected=null,focusOrder=null,drag=null,suppressClick=false;
 const persist=()=>storage.set(SAVE_KEY,JSON.stringify(state));
 // The local playtest log (Build 41 M6): this browser only, copied out by the player.
@@ -47,9 +47,12 @@ persist();
 const ICONS={rock:{type:'rock'},'crate-salvage':{type:'crate',kind:'salvage'},'crate-survey':{type:'crate',kind:'survey'},'source-chart':{type:'source',id:'chart'},'flux-3':item('flux',3),'chart-1':item('chart',1)};
 // A gold coin (orders pay coins; coins upgrade the beach).
 const COIN='<i class="coinIcon" aria-hidden="true"></i>';
-// Ads are off where the page says so (data-ads="off": CrazyGames' Basic Launch allows no ads or
-// rewarded-ad offers, docs/CRAZYGAMES_BASIC_LAUNCH.md): every ad offer is hidden, nothing else changes.
-const ADS=document.documentElement.dataset.ads!=='off';
+// Players see no developer tools and no ad offers (2026-10-26, user: "publish hiihed yu uldsen be
+// ... hurdan duusgay"): ?dev=1 shows the playtest log, the sound check, the Classic link, the
+// build name and the ad stand-in, as before; a page that has real ads says data-ads="on"
+// (CrazyGames after Full Launch). Without ads every ad offer is hidden; nothing else changes.
+const DEV=new URLSearchParams(location.search).has('dev');document.documentElement.dataset.dev=DEV?'on':'off';
+const ADS=document.documentElement.dataset.ads==='on'||DEV&&document.documentElement.dataset.ads!=='off';
 const pips=n=>`<span class="pips" aria-label="stage ${n} of ${STAGES}">${Array.from({length:STAGES},(_,k)=>`<i class="${k<n?'on':''}"></i>`).join('')}</span>`;
 // Places with stage art (build 38: workshop, pier, beacon) are drawn as they stand at their stage.
 const stageArt=(t,n)=>`<img class="art" src="assets/premium/coast/place-${t.art}-${Math.max(1,n)}.webp" alt="" draggable="false">`;
@@ -664,7 +667,7 @@ let adOffered=false;
 function showEnd(){
  if(!allDone(state)||state.seenEnd)return;run({type:'seenEnd'});playlog.flush();
  const gens=new Set(state.board.filter(x=>x?.type==='source').map(x=>x.id)).size,stages=Object.values(state.built).reduce((a,b)=>a+b,0);
- $('#endContent').innerHTML=`<small class="adTag">PROTOTYPE COMPLETE</small><h2 id="endTitle">The coast is restored — for now</h2>
+ $('#endContent').innerHTML=`<small class="adTag">CHAPTER COMPLETE</small><h2 id="endTitle">The coast is restored — for now</h2>
   <p>You rebuilt Landing Beach and the Survey Worksite: <b>${stages} stages</b>, <b>${state.ordersDone} crew orders</b>, <b>${gens} generators</b>.</p>
   <p>Next on the coast: the Vault Entrance. The dial is mapped and the crew is working out the way in; it comes in a later update.</p>
   <p>Crew orders keep coming. Their coins carry over to the Vault Entrance, and the shop takes them now.</p>

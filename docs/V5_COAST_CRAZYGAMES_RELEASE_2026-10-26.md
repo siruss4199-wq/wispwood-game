@@ -40,3 +40,29 @@ Target: Coast Camp (`v5/play.html`, `v5/next/`) Build 46d on `claude/v5-audit-fi
 
 After Full Launch is offered: turn ads on (drop `data-ads="off"` in `tools/coast-crazygames.mjs`;
 the rewarded-ad code and `platform-cg.mjs` are already in place) and validate in the QA tool.
+
+## Build 46e: what a player would have seen before publishing (2026-10-26)
+
+User: "Bi crazygamesd niitleh ajliig beld gej heleegui publish hiihed yu uldsen be tedgeeriig hurdan
+duusgay l gesen" — the remaining work for the game itself, wherever it is published.
+
+| Left in the game | Fixed |
+|---|---|
+| A fake 5-second "AD STAND-IN" (no ad network) behind "▶ New order", the shop's free offers and the energy ad button | ad offers show only where the page has real ads (`data-ads="on"`) or with `?dev=1` |
+| Developer tools in the menu: playtest log, sound check page, Play Classic, the "a new way to play" note | shown only with `?dev=1` |
+| The end screen said "PROTOTYPE COMPLETE" and offered "Share feedback" (the playtest export) | "CHAPTER COMPLETE"; feedback only with `?dev=1` |
+| The footer showed "COAST CAMP · BUILD 46D · AUDIT FIXES" | build name only with `?dev=1` |
+| Help still said "Go to the beach (BEACH button)": the button went in Build 45 | "Go to the coast (tap the strip under the orders)" |
+| No page icon or description | Rivet Rover icon and a one-line description |
+| `?new=1` cleaned every parameter from the address | only `new` is removed |
+
+Tests: the browser tests that check the developer tools run with `?dev=1`; the bright test checks a
+player sees none of them, no build name and no ad offer.
+
+## Still open before publishing (need a person, art or a decision)
+
+- Art: the shed row has no painted art; the coast (beach) screen keeps Build 44's look, not the
+  new board art; the cracked-ice step (2 hits left) reads weakly at phone size.
+- A real iPhone and Android check, and a human listen to the sounds.
+- Merging #81 → #82 → #83 and choosing where it goes live (the repository's root `index.html` is
+  not changed by Claude).
