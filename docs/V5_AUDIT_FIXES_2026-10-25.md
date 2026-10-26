@@ -68,3 +68,32 @@ generators are unchanged.
 - Fun is not something the scripts measure; a few real players (with the playtest log) are the test.
 - The first quarter hour still repeats more than the rest (one generator, few parts): about one in
   four orders there.
+
+## Build 46c: the big job is dropped (2026-10-26)
+
+The user asked whether the big job was needed ("2iin hoorond big job hereg baina uu ter
+tulhuurnuudee l hundruuleed yavchihiin bishuu orderuudaa saijruulaad") and chose to drop it. A big
+job was one part a tier past what its generator makes easily, paying ×1.3, with a "Big job" tag:
+it made orders harder, not more interesting.
+
+- Everyday orders are now quick jobs (one small part) and two-part jobs, two of every three
+  being two-part (`ROLE_TURN=['quick','pair','pair']`). Plain turns (quick, two-part) were
+  measured first: the board ran dry while energy was out (at 4.5 s an action only 45 % of
+  low-energy moments had a free move, against 86 % or more this way); two-part jobs keep
+  enough merging on the board.
+- No "Big job" tag; the order panel says "Quick job" or "Two-part job".
+- Orders saved as big jobs keep their coins and show as quick jobs (tested).
+- Random play then found two identical crew cards at once while only Rivet Rover was out (two-part
+  jobs of one chain ran out of new combinations): a new order that would match a card on the
+  board becomes a quick job that does not. A random-play test (12 seeds × 1,500 actions) guards it.
+
+| Chapter, 5 seeds | 46b (big job) | 46c |
+|---|---|---|
+| Waiting, 4 / 6 / 8 / 10 s an action | 54 / 27 / 3 / 0 % | 57 / 29 / 7 / 0 % |
+| Chapter length | 3.7–5.5 h | 3.8–5.4 h |
+| Highest tier asked (share of orders at tier 4) | 20–55 of ~150 | 14–16 of ~150 |
+| Coins per part | 3.1–3.3 | 3.0 |
+| Repeats of the last four (beach / chapter) | 10 / 6 % | 8 / 5 % |
+| Repeats once two generators are out | 8 of 206 | 0 of 160 |
+| Low-energy moments with a free move (worst speed) | 89 % | 86 % |
+| Random actions / bugs | 160,000 / 0 | 160,000 / 0 (after the fix above) |

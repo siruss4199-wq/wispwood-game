@@ -52,7 +52,6 @@ body.nextMode #requests .reqName{position:absolute;left:39px;right:6px;top:6px;d
 body.nextMode #requests .reqName b{font-size:12px;font-weight:900;color:var(--cb-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 body.nextMode #requests .reqName small{display:none}
 body.nextMode .reqTag{font-style:normal;font-size:8px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;border-radius:999px;padding:0 5px;color:#fff;white-space:nowrap}
-body.nextMode .reqTag.big{background:linear-gradient(#ff8a63,var(--cb-coral))}
 body.nextMode .reqTag.gold{background:linear-gradient(#ffd25a,#e7a21c);color:#5a3a02}
 body.nextMode .reqBig{display:none}
 body.nextMode #requests .requestItems{flex:1;display:flex;align-items:center;justify-content:center;gap:3px;height:auto;padding:0 6px 4px;background:none}

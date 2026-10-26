@@ -174,7 +174,13 @@ const FIRST=[[['rig',2,1]],[['rig',3,1]],[['rig',2,1],['rig',1,2]]];
 // Everyday order kinds (Build 44) and what each pays on top of its parts' worth.
 // Energy a delivery gives back (Audit 2026-10-25).
 export const DELIVER_ENERGY=1;
-export const ROLES=['quick','pair','big'],ROLE_PAY={quick:1,pair:1.15,big:1.3},ROLE_TURN=['quick','pair','big','pair'];
+// The big job (one part a tier past what its generator makes easily, ×1.3) was dropped on
+// 2026-10-26 (user: "big job hereg baina uu ... hundruuleed yavchihiin bishuu"): it only made orders
+// harder, not more interesting. Orders saved with role 'big' keep their coins and show as quick jobs.
+// Two of every three are two-part jobs: with quick and two-part jobs in plain turns, the board
+// ran dry while energy was out (measured: at 4.5 s an action, 45 % of low-energy moments had a
+// free move, against 86 % or more this way and with the big job).
+export const ROLES=['quick','pair'],ROLE_PAY={quick:1,pair:1.15},ROLE_TURN=['quick','pair','pair'];
 // How many of the last everyday orders a new one may not repeat (Build 44, s.recent).
 export const RECENT=6;
 // An everyday order's coins: its parts' worth times its kind's pay, rounded to 5. Rounding up
@@ -182,7 +188,7 @@ export const RECENT=6;
 // follow the stages built, orders outran the generators (taps 790 → 1,003, waiting ×4).
 export const rolePrice=(needs,role)=>Math.max(5,Math.round(priceOf(needs)*ROLE_PAY[role]/5)*5);
 // The kind of an order, also for saves made before Build 44 (which did not store one).
-export const roleOf=o=>o?.story?'gold':ROLES.includes(o?.role)?o.role:new Set(o?.needs?.map(r=>r.family)).size>1?'pair':o?.needs?.[0]?.tier>=3?'big':'quick';
+export const roleOf=o=>o?.story?'gold':ROLES.includes(o?.role)?o.role:o?.needs?.length>1?'pair':'quick';
 function rand(n){let t=(n*2654435761+0x6D2B79F5)>>>0;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296;}
 const CREW_OF={rig:'ivo',rope:'ivo',chart:'neri',shell:'neri',flux:'tamsin',lamp:'tamsin'};
 const crewFor=needs=>needs.length>1?'bram':CREW_OF[needs[0].family];
@@ -230,14 +236,12 @@ export function makeOrder(s){
   const focus=currentArea(s)?.focus,pool=focus&&families.includes(focus)&&rand(n*19)<.5?[focus]:families;
   if(story){needs=goldNeeds(s,families,family,low,n);return {id:'o'+n,who:crewFor(needs),needs,coins:priceOf(needs,true),story:story.id};}
   // Build 44 (user, 2026-10-25: "orderuudiig utga uchirtai bolgoy"; docs/V5_ECONOMY_AUDIT_PROPOSAL,
-  // proposal A): everyday orders take turns being a quick job (one small part of one chain), a
-  // two-crew job (parts of two different chains) and a big job (one part a tier past what its
-  // generator makes easily). The first chain is one no other everyday order on the board starts
-  // with, when the area has one; only unlocked chains, never above maxTier − 1. Bigger jobs pay
-  // more for their parts (×1.15, ×1.3), so effort is worth it. Measured: orders already done on
-  // arrival 14 % → under 5 %, tiers spread 1–4, nobody waits longer for energy.
-  // Two of every four are two-crew jobs, so most cards mix chains once a second one is out.
-  const role=ROLE_TURN[(n-FIRST.length)%ROLE_TURN.length],others=s.orders.filter(o=>o&&!o.story),firsts=new Set(others.map(o=>o.needs[0].family));
+  // proposal A): everyday orders take turns being a quick job (one small part of one chain) and a
+  // two-part job (parts of two different chains; pays ×1.15). The big job was dropped on 2026-10-26
+  // (see ROLES). The first chain is one no other everyday order on the board starts with, when the
+  // area has one; only unlocked chains, never above maxTier − 1. Two of every three orders are
+  // two-part jobs, so most cards mix chains once a second one is out.
+  let role=ROLE_TURN[(n-FIRST.length)%ROLE_TURN.length];const others=s.orders.filter(o=>o&&!o.story),firsts=new Set(others.map(o=>o.needs[0].family));
   // The camp remembers its last few everyday orders (s.recent, Build 44): a new one repeats
   // neither those nor a card already on the board.
   const recent=Array.isArray(s.recent)?s.recent:(s.recent=[]),key=ns=>ns.map(r=>r.family+r.tier+'x'+r.count).sort().join('+');
@@ -247,14 +251,11 @@ export function makeOrder(s){
   const build=f1=>{
    // A quick job: one chain at the area's floor tier (one part, or two while they are small).
    if(role==='quick'){const t=Math.max(1,Math.min(hi(f1),low));return [{family:f1,tier:t,count:t<=2&&rand(n*13)<.7?2:1}];}
-   if(role==='pair'){const t=Math.max(1,Math.min(hi(f1),low+1+Math.floor(rand(n*29)*2))),f2=secondChain(families,f1,Math.max(1,t-1),n*23+5);
+   // A two-part job: two chains, or two tiers of one while it is the only one out.
+   const t=Math.max(1,Math.min(hi(f1),low+1+Math.floor(rand(n*29)*2))),f2=secondChain(families,f1,Math.max(1,t-1),n*23+5);
     // With one generator out (the first quarter hour) a two-part job asks two tiers of its chain
     // (Audit 2026-10-25: three in five orders there repeated one of the last four).
-    return f2?[{family:f1,tier:t,count:1},{family:f2,tier:Math.max(1,Math.min(Math.max(1,t-1),reach(s,f2)+1,maxTier(f2)-1)),count:1}]:t>=2?[{family:f1,tier:t,count:1},{family:f1,tier:t-1,count:2}]:[{family:f1,tier:t,count:2}];}
-   // A big job: the part one tier past what its generator makes easily; while that is still a
-   // small part (not above the area's floor), three of them while tier 2 or under, else two, so
-   // it is the most work on the board.
-   const t=Math.max(2,Math.min(top+1,reach(s,f1)+1,maxTier(f1)-1));return [{family:f1,tier:t,count:t>Math.max(2,low)?1:t<=2?3:2}];
+    return f2?[{family:f1,tier:t,count:1},{family:f2,tier:Math.max(1,Math.min(Math.max(1,t-1),reach(s,f2)+1,maxTier(f2)-1)),count:1}]:t>=2?[{family:f1,tier:t,count:1},{family:f1,tier:t-1,count:2}]:[{family:f1,tier:t,count:2}];
   };
   // A repeat, or an order already lying finished on the board, is varied: one more or one fewer
   // of a small part, a tier up within reach, a tier down to the floor, or another open chain;
@@ -280,6 +281,11 @@ export function makeOrder(s){
    const onBoard=new Set(others.map(o=>key(o.needs)));
    needs=vary.find(v=>!stale(v))??(bad(needs)?vary.find(v=>!bad(v))??vary.find(v=>!onBoard.has(key(v))):null)??needs;
   }
+  // Never two identical cards (2026-10-26: with one generator out, two-part jobs of one chain could
+  // run out of new combinations): a quick job not on the board takes the place.
+  {const onBoard=new Set(others.map(o=>key(o.needs)));
+   if(onBoard.has(key(needs))){const alt=pool.flatMap(f=>Array.from({length:hi(f)},(_,k)=>[1,2].map(c=>[{family:f,tier:k+1,count:c}])).flat()).find(v=>!onBoard.has(key(v)));
+    if(alt){needs=alt;role='quick';}}}
   recent.push(key(needs));if(recent.length>RECENT)recent.splice(0,recent.length-RECENT);
   return {id:'o'+n,who:crewFor(needs),needs,coins:rolePrice(needs,role),role,born:s.moves};
  }
