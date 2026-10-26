@@ -739,3 +739,26 @@ test('everyday orders are quick, two-crew and big jobs, vary, and old saves keep
  // A damaged recent list is dropped, not the camp.
  const bad=fresh(0);bad.recent=[1,2,3];bad.moves=7;const b2=load(JSON.stringify(bad),5);assert.equal(b2.moves,7);assert.deepEqual(b2.recent,[]);
 });
+
+// Build 45g: an order's card pools needs that name the same part, so what it shows agrees with
+// delivery (orderItems takes a different piece per part). One Grip tool on the board was shown
+// as "1/1" beside "1/2" for an order wanting Grip tool ×1 + Grip tool ×2.
+import {needsOf,missingOf} from '../v5/next/needs.mjs';
+test('order needs pool the same part and agree with delivery on every board', () => {
+ const s=fresh(0),o={id:'t',who:'bram',needs:[{family:'rig',tier:1,count:1},{family:'rig',tier:1,count:2}],coins:10};
+ s.board=s.board.map(x=>x?.type==='item'?null:x);s.board[s.board.indexOf(null)]=item('rig',1);
+ assert.deepEqual(needsOf(s,o).map(r=>[r.family,r.tier,r.have,r.count,r.sibling]),[['rig',1,1,3,false]]);
+ // different tiers of one chain stay apart and are marked as siblings
+ const two={...o,needs:[{family:'rig',tier:2,count:1},{family:'rig',tier:1,count:2}]};
+ assert.deepEqual(needsOf(s,two).map(r=>[r.tier,r.have,r.count,r.sibling]),[[2,0,1,true],[1,1,2,true]]);
+ // shown complete exactly when delivery accepts, over many random boards and orders
+ let seed=7;const rnd=n=>{seed=(seed*1103515245+12345)%2147483648;return seed%n;};
+ for(let k=0;k<400;k++){
+  const t=fresh(0);t.board=t.board.map(()=>rnd(3)?null:item(['rig','chart'][rnd(2)],rnd(3)));
+  const ord={id:'r',who:'bram',needs:Array.from({length:1+rnd(3)},()=>({family:['rig','chart'][rnd(2)],tier:rnd(3),count:1+rnd(2)})),coins:5};
+  const shown=needsOf(t,ord);
+  assert.equal(shown.every(r=>r.have>=r.count),!!orderItems(t,ord),JSON.stringify(ord.needs));
+  assert.equal(shown.reduce((n,r)=>n+r.count,0),ord.needs.reduce((n,r)=>n+r.count,0));
+  assert.equal(missingOf(t,ord).length===0,!!orderItems(t,ord));
+ }
+});

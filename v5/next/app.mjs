@@ -1,8 +1,9 @@
 // Coast Camp: the new-loop page (v5/play.html). Same look as Classic V5, one loop:
 // generators → merge → crew orders → coins → upgrade the coast's places on the beach screen.
-import {allDone,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,newestGenerator,cog,token,SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,orderProgress,nextTask,currentArea,areaDone,upgrades,stageOf,builtCount,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys,reachable,generatorsMerge,MAX_GENERATOR_LEVEL,GLASS_HITS,nextKind,UNLOCK_LEVEL,GENERATOR_ORDER,storyTarget,roleOf,COIN_VALUE as COIN_VALUE_UI} from './game.mjs';
+import {allDone,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,newestGenerator,cog,token,SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,nextTask,currentArea,areaDone,upgrades,stageOf,builtCount,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys,reachable,generatorsMerge,MAX_GENERATOR_LEVEL,GLASS_HITS,nextKind,UNLOCK_LEVEL,GENERATOR_ORDER,storyTarget,roleOf,COIN_VALUE as COIN_VALUE_UI} from './game.mjs';
 import {AREAS,STAGES,TASKS} from './areas.mjs';
 import {primaryAction} from './guide.mjs';
+import {needsOf,missingOf,levelOf} from './needs.mjs';
 import {purposeOf} from './purposes.mjs';
 import {createLog} from './playtest.mjs';
 import {rewardedAd,initPlatform,platform} from './platform-cg.mjs';
@@ -26,7 +27,7 @@ function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el
 let adPlaying=false;
 const sfx=(kind,tier=0)=>sounds.play(kind,tier,{muted:adPlaying||platform.muted()});
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 45f · coastal board';
+export const BUILD='Build 45g · coastal board';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
@@ -67,10 +68,9 @@ const placeIcons=list=>list.map(t=>{const n=stageOf(state,t.id);return `<span cl
 // Worksite icons are Coast Camp parts ('rope-2') and generators ('source-rope'), drawn by draw().
 const iconArt=k=>{if(k==='workshop')return '<img class="art" src="assets/premium/workshop-operational.webp" alt="">';if(ICONS[k])return art(ICONS[k]);const g=k.match(/^source-(\w+)$/),p=k.match(/^(\w+)-(\d)$/);return draw(g?{type:'source',id:g[1]}:item(p[1],+p[2]));};
 // A part a Tide token can turn into one an order wants.
-const swappable=x=>state.orders.some(o=>o.needs.some(r=>r.tier===x.tier&&r.family!==x.family&&count(state,r)<r.count));
+const swappable=x=>state.orders.some(o=>missingOf(state,o).some(r=>r.tier===x.tier&&r.family!==x.family));
 // What each generator level does (v5/kits.mjs levelLift), said when it is reached.
 const LEVEL_GAIN={2:'Every third part comes out one tier higher.',3:'Every second part comes out one tier higher.',4:'Every part comes out one tier higher.',5:'Top level: every part one tier higher, every third two tiers.'};
-const wantedKeys=()=>new Set(state.orders.flatMap(o=>o.needs.map(r=>r.family+r.tier)));
 
 // ---------- rendering ----------
 function render(){
@@ -108,13 +108,14 @@ function render(){
 const FACES={ivo:'crew-ivo',bram:'crew-bram',neri:'crew-nara',tamsin:'crew-sela'};
 const face=who=>FACES[who]?`<img class="art face" src="assets/premium/coast/ui/${FACES[who]}.webp" alt="" draggable="false">`:portrait(who);
 function renderOrders(){
+ const held=state.board[selected],heldKey=held?.type==='item'?held.family+held.tier:null;
  $('#requests').style.setProperty('--slots',state.orders.length);
  $('#requests').innerHTML=`<div class="requestShelf">${state.orders.map(o=>{
-  const p=orderProgress(state,o),ready=!!orderItems(state,o),who=CREW[o.who];
+  const p=needsOf(state,o),ready=!!orderItems(state,o),who=CREW[o.who];
   const place=o.story&&AREAS[state.area]?.tasks.find(t=>t.id===o.story),stage=place?Math.min(STAGES,stageOf(state,place.id)+1):0;
   const got=p.reduce((n,r)=>n+r.have,0),want=p.reduce((n,r)=>n+r.count,0);
   const role=roleOf(o),why=place?null:purposeOf(o,role);
-  const label=`${place?`Gold order: the materials for ${place.stages[stage-1].name} (${place.name}, stage ${stage}). `:`${who.name} the ${who.role}${why?`, ${why.short}`:''}${role==='big'?' (a big job)':''}: `}${o.needs.map(r=>r.count+' '+nameOf(item(r.family,r.tier))).join(', ')}. ${ready?'Ready: tap to deliver.':`${got} of ${want} parts on the board.`} Reward ${o.coins} coins`;
+  const label=`${place?`Gold order: the materials for ${place.stages[stage-1].name} (${place.name}, stage ${stage}). `:`${who.name} the ${who.role}${why?`, ${why.short}`:''}${role==='big'?' (a big job)':''}: `}${p.map(r=>r.count+' '+nameOf(item(r.family,r.tier))+(r.sibling?` (level ${levelOf(r)})`:'')).join(', ')}. ${ready?'Ready: tap to deliver.':`${got} of ${want} parts on the board.`} Reward ${o.coins} coins`;
   // Build 45 (coastal board design): a painted face where the crew member has one, the name, a
   // kind tag only where it matters (a big job, the gold order's stage), the parts with have/need
   // (✓ and green when there are enough), and the coins or, when ready, the one Deliver button.
@@ -122,7 +123,7 @@ function renderOrders(){
   // the gold order is named as such (a place's name does not fit a card; the strip and the label carry it)
   const head=place?`<span class="reqFace place">${placeArt(place,stage)}</span><span class="reqName"><b>Gold order</b>${tag}</span>`
    :`<span class="reqFace">${face(o.who)}</span><span class="reqName"><b>${who.name}</b>${tag}</span>`;
-  return `<button class="requestCard ${ready?'ready':''} ${place?'storyOrder':''} ${focusOrder===o.id?'active':''}" data-order="${o.id}" data-role="${role}" aria-label="${label}"><span class="reqHead">${head}</span><span class="requestItems">${p.map(r=>`<span class="${r.have>=r.count?'met':''}">${draw(item(r.family,r.tier))}<b>${r.have>=r.count?'<i aria-hidden="true">✓</i>':''}${r.have}/${r.count}</b></span>`).join('')}</span><span class="reqFoot">${ready?`<strong class="reqDeliver">Deliver <em>+${o.coins}</em>${COIN}</strong>`:`<span class="requestReward">${COIN}${o.coins}</span>`}</span></button>`;
+  return `<button class="requestCard ${ready?'ready':''} ${place?'storyOrder':''} ${focusOrder===o.id?'active':''}" data-order="${o.id}" data-role="${role}" aria-label="${label}"><span class="reqHead">${head}</span><span class="requestItems">${p.map(r=>`<span class="${r.have>=r.count?'met':''} ${heldKey===r.family+r.tier?'held':''}" data-part="${r.family+r.tier}">${draw(item(r.family,r.tier))}${r.sibling?`<i class="reqLv" aria-hidden="true">Lv${levelOf(r)}</i>`:''}<b>${r.have>=r.count?'<i aria-hidden="true">✓</i>':''}${r.have}/${r.count}</b></span>`).join('')}</span><span class="reqFoot">${ready?`<strong class="reqDeliver">Deliver <em>+${o.coins}</em>${COIN}</strong>`:`<span class="requestReward">${COIN}${o.coins}</span>`}</span></button>`;
  }).join('')}</div>`;
  renderOrderTools();
 }
@@ -137,7 +138,7 @@ function chainRoute(r){
 function renderOrderTools(){
  const o=state.orders.find(o=>o.id===focusOrder),bar=$('#orderTools');
  if(!o||orderItems(state,o)){bar.hidden=true;bar.innerHTML='';return;}
- const day=today(),free=swapsLeft(state,day),ads=adSwapsLeft(state,day),missing=o.needs.filter(r=>count(state,r)<r.count);
+ const day=today(),free=swapsLeft(state,day),ads=adSwapsLeft(state,day),missing=missingOf(state,o);
  bar.hidden=false;
  const swap=o.story?`<span class="toolNote">The gold order is the ${currentArea(state).name}'s next stage: it stays.</span>`:`<span class="toolNote">Stuck on ${CREW[o.who].name}'s order?</span>`+(free>0?`<button data-swap>↻ New order <small>${free} free today</small></button>`:ads>0?'<button class="adOffer" data-swap-ad>▶ New order</button>':'<button disabled>No more changes today</button>');
  // What the order is for and where its coins go (Build 44): the crew member's reason, and the
@@ -152,9 +153,9 @@ function renderOrderTools(){
 }
 function renderBoard(){
  const sel=state.board[selected],focus=state.orders.find(o=>o.id===focusOrder);
- const focusKeys=new Set(focus?.needs.map(r=>r.family+r.tier)??[]);
+ const focusKeys=new Set(focus?.needs.map(r=>r.family+r.tier)??[]),focusMissing=focus?missingOf(state,focus):[];
  // The tapped order's generators glow too (Build 41 M3, from PR #77).
- const focusGens=new Set(focus?.needs.filter(r=>count(state,r)<r.count).map(r=>CHAINS[r.family].gen)??[]);
+ const focusGens=new Set(focusMissing.map(r=>CHAINS[r.family].gen));
  board.innerHTML=state.board.map((x,i)=>{
   const [r,c]=cellPos(i),locked=x?.type==='source'&&!sourceOpen(state,x.id);
   const twin=sel&&i!==selected&&(sel.type==='item'&&(x?.type==='item'&&matches(x,sel)&&sel.tier<maxTier(sel.family)||x?.type==='cargo'&&reachable(state,i)&&matches(sel,x.key))||sel.type==='kit'&&kitsMerge(sel,x)||generatorsMerge(sel,x)||sel.type==='cog'&&x?.type==='source'&&producerLevel(x)<MAX_GENERATOR_LEVEL||sel.type==='token'&&x?.type==='item'&&swappable(x)||sel.type==='cargo'&&matches(x,sel.key));
@@ -163,16 +164,21 @@ function renderBoard(){
   // left, a jar's energy, a small gleam on cargo with something special inside). What a thing
   // is and what is in it is told by the panel under the board when it is tapped.
   let badge='';
-  if(x?.type==='source')badge=locked?`<span class="lockedLabel">NEXT AREA</span>`:producerLevel(x)>1?`<span class="srcLevel">Lv${producerLevel(x)}</span>`:'';
+  // Build 45g: an open generator carries a small ϟ (it spends energy when tapped) and its level.
+  if(x?.type==='source')badge=locked?`<span class="lockedLabel">NEXT AREA</span>`:`<span class="genMark" aria-hidden="true">ϟ</span>`+(producerLevel(x)>1?`<span class="srcLevel">Lv${producerLevel(x)}</span>`:'');
   else if(x?.type==='kit')badge=`<span class="pulls">${x.left}</span>`;
   else if(x?.type==='jar')badge=`<span class="sealBadge">+${x.energy}ϟ</span>`;
   else if(x?.type==='cargo'&&(x.find?.type==='source'||x.find?.type==='cog'||x.find?.type==='token'))badge=`<span class="cargoGleam ${x.find.type!=='source'?'cogGleam':''}" aria-hidden="true"></span>`;
   const deep=x?.type==='cargo'&&!reachable(state,i),ready=x?.type==='cargo'&&!deep&&state.board.some(y=>matches(y,x.key));
+  // Build 45g: cargo shows the part that opens it only when that matters now (the part is on the
+  // board, the cargo or its key is selected); the tapped order also marks cargo holding a
+  // generator it still needs. The panel under the board tells the rest.
+  const holdsGen=x?.type==='cargo'&&x.find?.type==='source'&&focusGens.has(x.find.id);
   const ice=x?.type==='glass'?`ice${Math.min(2,x.cracks??0)}`:'';
-  return `<button class="tile ${x?.type??'empty'} ${ice} ${x?.cracks?'cracked':''} ${ready?'keyReady':''} ${deep?'deep':''} ${locked?'locked':''} ${selected===i?'selected':''} ${twin?'match':''} ${focused?'nextAction':''} ${x?.type==='source'&&focusGens.has(x.id)?'orderSource':''} ${(r+c)%2?'odd':''}" data-index="${i}" style="grid-row:${r+1};grid-column:${c+1}" ${x?.family||x?.id?`data-family="${x.family??x.id}"`:''} ${x?.type==='cargo'?`data-key="${x.key.family}"`:''} aria-label="${nameOf(x)}${x?.type==='glass'?` · ${GLASS_HITS-(x.cracks??0)} hit${GLASS_HITS-(x.cracks??0)>1?'s':''} left`:''}${locked?' · locked':''}. Space ${i+1}" aria-pressed="${selected===i}">${draw(deep?{...x,deep:true}:x)}${badge}</button>`;
+  return `<button class="tile ${x?.type??'empty'} ${ice} ${x?.cracks?'cracked':''} ${ready?'keyReady':''} ${deep?'deep':''} ${locked?'locked':''} ${selected===i?'selected':''} ${twin?'match':''} ${focused?'nextAction':''} ${x?.type==='source'&&focusGens.has(x.id)||holdsGen?'orderSource':''} ${(r+c)%2?'odd':''}" data-index="${i}" style="grid-row:${r+1};grid-column:${c+1}" ${x?.family||x?.id?`data-family="${x.family??x.id}"`:''} ${x?.type==='cargo'?`data-key="${x.key.family}"`:''} aria-label="${nameOf(x)}${x?.type==='glass'?` · ${GLASS_HITS-(x.cracks??0)} hit${GLASS_HITS-(x.cracks??0)>1?'s':''} left`:''}${locked?' · locked':''}${x?.type==='source'&&!locked?' · tap to make a part for 1 energy':''}. Space ${i+1}" aria-pressed="${selected===i}">${draw(deep?{...x,deep:true}:x)}${badge}</button>`;
  }).join('');
  // The free-space count shows only when space is getting short.
- const free=state.board.filter(x=>x===null).length;$('#free').textContent=free<=3?free+(free===1?' space':' spaces'):'';$('#free').hidden=free>3;
+ const free=state.board.filter(x=>x===null).length,f=$('#free');f.textContent=!free?'Board full':free+(free===1?' space left':' spaces left');f.hidden=free>3;f.classList.toggle('out',!free);
 }
 // The shed (build 32; Build 44: folded by default): one row with how full it is; a tap on the
 // row, a drag over it or the Shed button opens its four spaces. A drag dropped on the folded row
@@ -218,8 +224,11 @@ function renderSelection(){
  if(!x){$('#selection').innerHTML='';return;}
  title=nameOf(x);
  if(x.type==='item'){
+  title+=` <span class="lvTag">Lv${x.tier+1}</span>`;
   desc=x.tier<maxTier(x.family)?`Merge with a twin → ${CHAINS[x.family].names[x.tier+1]}. Made by ${SOURCES[CHAINS[x.family].gen].name}.`:'Top of its chain.';
-  if(wantedKeys().has(x.family+x.tier))desc='★ A crew order wants this. '+desc;
+  const wants=state.orders.filter(o=>o.needs.some(r=>matches(x,r)));
+  const who=[...new Set(wants.map(o=>o.story?'The gold order':CREW[o.who].name))];
+  if(who.length)desc=`★ ${who.join(' and ')} ${who.length>1?'need':'needs'} this. `+desc;
   // Clearing a part only appears when the board is nearly full (Build 41 M4): it is the way out of
   // a full board, not an everyday energy trick.
   if(state.board.filter(y=>y===null).length<=2)buttons='<button data-action="recycle">Clear space · +1 ϟ</button>';
@@ -227,7 +236,14 @@ function renderSelection(){
   const chain=CHAINS[GENERATOR_CHAINS[x.id][0][0]];
   const next=nextKind(x.id),waiting=next&&!state.board.some(y=>y?.type==='source'&&y.id===next);
   desc=(waiting?`Level ${UNLOCK_LEVEL} brings out the ${SOURCES[next].name}. `:'')+(sourceOpen(state,x.id)?`Level ${producerLevel(x)} · 1 energy a tap · ${chain.names.slice(0,4).join(' → ')} …`+(producerLevel(x)<MAX_GENERATOR_LEVEL?` Merge it with another level-${producerLevel(x)} ${SOURCES[x.id].name} (drag one onto the other) for level ${producerLevel(x)+1}.`:' Top level.'):'Wakes at the Survey Worksite (next area).');
-  if(sourceOpen(state,x.id))buttons=`<button class="accent" data-action="produce">Make · 1 ϟ</button>`;
+  if(sourceOpen(state,x.id)){
+   // What the next tap really makes: the engine's own produce on a copy of the state.
+   const trial=structuredClone(state),r=act(trial,{type:'produce',id:x.id,index:selected},Date.now()),made=r.ok?trial.board[r.index]:null;
+   const empty=state.energy<1,full=!state.board.includes(null);
+   const block=empty?`No energy · +1 in ${clock(refillTimes(state,Date.now())?.next??0)}`:full?'Board full':r.ok?'':r.message;
+   desc=(made?`Next tap: ${nameOf(made)} (Lv${made.tier+1}). `:empty?'Each part costs 1 energy; energy refills over time. ':full?'Merge, deliver or shed a part to make room. ':'')+desc;
+   buttons=block?`<button class="accent" data-action="produce" disabled aria-disabled="true">Make · 1 ϟ</button><span class="blockWhy">${block}</span>`:`<button class="accent" data-action="produce">Make · 1 ϟ</button>`;
+  }
  }else if(x.type==='kit'){
   desc=`Tap again for a free part (${chainsOf(state,x.family).map(c=>CHAINS[c].names[0]).join(' or ')} chain) · ${x.left} of ${kitCapacity(x)} left.`+(kitFull(x)&&x.size<MAX_KIT_SIZE?` Or merge with a twin into a ${CRATES[x.size]} (${KIT_DROPS[x.size+1].length} better parts).`:'');
   buttons='<button class="accent" data-action="openKit">Take a part</button>';
@@ -392,7 +408,7 @@ $('#selection').addEventListener('click',e=>{
  // The panel keeps its text to two lines (Build 45); a tap on it shows the rest.
  if(e.target.closest('.copy')){$('#selection').classList.toggle('open');return;}
  const b=e.target.closest('[data-action]');if(!b)return;if(b.dataset.action==='store')shedOpen=true;const x=state.board[selected];run({type:b.dataset.action,index:selected,id:x?.id});});
-$('#requests').addEventListener('click',e=>{const c=e.target.closest('[data-order]');if(!c)return;const o=state.orders.find(o=>o.id===c.dataset.order);if(!o)return;if(orderItems(state,o)){run({type:'deliver',id:o.id});return;}focusOrder=focusOrder===o.id?null:o.id;render();$('#message').textContent=`${CREW[o.who].name} needs ${o.needs.map(r=>r.count+' × '+nameOf(item(r.family,r.tier))).join(' and ')}. Their parts are marked on the board.`;});
+$('#requests').addEventListener('click',e=>{const c=e.target.closest('[data-order]');if(!c)return;const o=state.orders.find(o=>o.id===c.dataset.order);if(!o)return;if(orderItems(state,o)){run({type:'deliver',id:o.id});return;}focusOrder=focusOrder===o.id?null:o.id;render();$('#message').textContent=`${CREW[o.who].name} needs ${needsOf(state,o).map(r=>r.count+' × '+nameOf(item(r.family,r.tier))+(r.sibling?` (level ${levelOf(r)})`:'')).join(' and ')}. Their parts are marked on the board.`;});
 // The upgrading happens on the beach screen (user: "tusdaa orchinruu ochij upgrade hiih").
 $('#mapButton').onclick=()=>{mapFocus=$('#mapButton').dataset.place||null;sfx('tap');showMap();};
 $('#rationButton').onclick=()=>run({type:'ration'});
@@ -513,7 +529,7 @@ function mapCard(area,t,u){
  if(!u){const k=area.tasks.indexOf(t);return `<section id="mapCard" class="mapCard locked" data-card="${t.id}"><span class="cardArt unbuilt">${placeArt(t,0)}</span><div class="cardBody"><small class="cardPlace">Locked</small><h3>${t.name}</h3><p class="cardDone">Opens when ${area.tasks[k-1]?.name??'the place before it'} has its first stage.</p></div></section>`;}
  const order=state.orders.find(o=>o.story===t.id),coinsOk=state.coins>=u.cost;
  const stuff=u.materials?`<span class="need ok"><b class="needIcon">✓</b><span>Materials</span></span>`
-  :order?`<span class="need"><span class="needParts">${orderProgress(state,order).map(r=>`<i>${draw(item(r.family,r.tier))}<b>${r.have}/${r.count}</b></i>`).join('')}</span><span>Gold order</span></span>`
+  :order?`<span class="need"><span class="needParts">${needsOf(state,order).map(r=>`<i>${draw(item(r.family,r.tier))}${r.sibling?`<em class="needLv" aria-label="level ${levelOf(r)}">Lv${levelOf(r)}</em>`:''}<b>${r.have}/${r.count}</b></i>`).join('')}</span><span>Gold order</span></span>`
   :`<span class="need"><b class="needIcon">…</b><span>Gold order coming</span></span>`;
  const coins=`<span class="need ${coinsOk?'ok':''}"><b class="needIcon coinNeed">${COIN}</b><span><b>${Math.min(state.coins,u.cost)}</b>/${u.cost}</span></span>`;
  const button=canBuild(u)?`<button class="cardButton build" type="button" data-restore="${t.id}">Build · ${COIN} ${u.cost}</button>`
