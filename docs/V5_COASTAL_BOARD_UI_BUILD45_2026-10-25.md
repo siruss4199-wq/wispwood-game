@@ -15,7 +15,7 @@ board size, item art and saves (`vaultwake-v5-coast`, `vaultwake-v5`) are as in 
 |---|---|---|
 | Background | the supplied coastal picture (sea, sky, sand, palms at the edges), the same on every area; each area's own picture now lives on the restoration strip and the coast screen | `coastal.css`, `app.mjs` `render` |
 | HUD (52 px) | the supplied painted energy pill (bolt, dark well with the live count, and its pale slot used as a gauge that fills towards the next +1, full when energy is full; the +1 timer stays under it) and painted shell-coin pill (Build 45b), the painted level badge (number live, progress as a thin ring), the painted menu button. No add/buy buttons. The BEACH button is gone from the header: the restoration strip is the way to the coast | `play.html`, `coastal.css` |
-| Order rail | a sideways rail of painted cards, 112 × 118 px since Build 45c (146 × 150 before; the player found them too big), 8 px apart: three whole cards at 390 px, the fourth scrolls in; in their lanes. Each card: a painted face for Ivo and Bram (the drawn portrait for Neri and Tamsin), the name, a "Big job" or "Stage n" tag inside the card, the real parts with have/need (green with ✓ when there are enough), and a footer that always holds one thing: the coins, or the painted Deliver button with live "Deliver +N". No progress bars, no clipped subtitles (the reason stays in the tapped order's panel) | `app.mjs` `renderOrders`, `coastal.css` |
+| Order rail | a sideways rail of painted cards, 112 × 118 px since Build 45c (146 × 150 before; the player found them too big), 8 px apart: three whole cards at 390 px, the fourth scrolls in; in their lanes. Each card: a painted face for each crew member (Neri and Tamsin wear the Nara and Sela portraits since 45f), the name, a "Big job" or "Stage n" tag inside the card, the real parts with have/need (green with ✓ when there are enough), and a footer that always holds one thing: the coins, or the painted Deliver button with live "Deliver +N". No progress bars, no clipped subtitles (the reason stays in the tapped order's panel) | `app.mjs` `renderOrders`, `coastal.css` |
 | Restoration strip (56 px) | the painted strip; its circle shows the place the next stage is for, its pill says **Build** (coral) only when materials and coins are both in, otherwise **View** (turquoise) with the real objective and what it still needs. Tapping it opens the coast on that place and spends nothing; the build is confirmed there | `app.mjs` `renderNextPlace`, `coastal.css` |
 | Board | uniform painted apricot cells, 3 px gaps, a shallow sand tray; no glows or gleams on cargo; a cargo's key stays small inside its cell; levels and crate counts stay small inside their cells | `coastal.css` |
 | Selection | thin gold corner brackets; the twins it can merge with (engine rules) get a soft green ring; the cell under a dragged part a stronger one | `coastal.css` |
@@ -43,24 +43,18 @@ the game) are in `docs/art-source/coastal-ui-2026-10-25/`.
 | `cell.webp` | 128×127, 2 KB | every board cell and the panel's tile | `100% 100%` |
 | `ice-0/1/2.webp` | 160×160, 11–20 KB | the three ice states | over the part |
 | `crew-ivo.webp`, `crew-bram.webp` | 160 px, 8–10 KB | Ivo and Bram | round 35 px faces |
-| `crew-nara.webp`, `crew-sela.webp` | 160 px, 12–13 KB | **not used** (prepared only) | see below |
+| `crew-nara.webp`, `crew-sela.webp` | 160 px, 12–13 KB | Neri and Tamsin (Build 45f) | round 28 px faces |
 
 The supplied turquoise "beach" pill (with a baked beach picture) is not used: the restoration
 strip already is the way to the coast, and its picture would not match each objective.
 
-## Needs approval: Nara and Sela
+## Nara and Sela: faces for Neri and Tamsin (approved 2026-10-26)
 
-The game's crew is Ivo (quartermaster), Neri (navigator), Tamsin (signal keeper) and Bram
-(expedition lead); every order and story line names one of them. Nara and Sela are not in the game,
-so their portraits are prepared and not shown. Two ways forward, for the user to choose:
-
-1. **Faces for the existing crew**: use the Nara portrait for Neri and the Sela portrait for
-   Tamsin (or the other way round). No rule changes; only the pictures (and, if wanted, the names
-   in `v5/crew.mjs` text, which Classic V5 also uses, so the names would stay).
-2. **New crew members**: Nara and Sela as new characters would need an unlock moment, a share of
-   orders and story lines: a design proposal, not a UI change.
-
-Until then Neri and Tamsin keep their drawn portraits, which do not match the painted faces.
+The user chose option 1 ("Nara Sela-г Neri Tamsin-д ашигла"): the supplied Nara portrait is Neri's
+face and the Sela portrait is Tamsin's, on order cards and story cards (Build 45f). Only the
+pictures changed: the crew is still Ivo, Neri, Tamsin and Bram, with the same roles, orders and
+story lines (`v5/crew.mjs`, shared with Classic V5, is unchanged). Every crew member now has a
+painted face.
 
 ## Gameplay feedback (analysed separately, no change here)
 
@@ -99,7 +93,6 @@ follows generator levels instead of stages built (needs approval).
 - At 360 px the HUD fits up to 4-digit coins (1234 measured, 4 px to spare); a 5-digit balance would
   push the menu button past the header's edge.
 
-- Neri and Tamsin have no painted faces (needs the choice above).
 - The shed row has no painted art (the mockup's shed hut was not supplied).
 - The coast screen keeps Build 44's styling; it was not part of the supplied art.
 - The cracked ice (2 hits left) is a lighter change from intact at phone size than the other two
