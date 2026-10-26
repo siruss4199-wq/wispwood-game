@@ -47,6 +47,9 @@ persist();
 const ICONS={rock:{type:'rock'},'crate-salvage':{type:'crate',kind:'salvage'},'crate-survey':{type:'crate',kind:'survey'},'source-chart':{type:'source',id:'chart'},'flux-3':item('flux',3),'chart-1':item('chart',1)};
 // A gold coin (orders pay coins; coins upgrade the beach).
 const COIN='<i class="coinIcon" aria-hidden="true"></i>';
+// Ads are off where the page says so (data-ads="off": CrazyGames' Basic Launch allows no ads or
+// rewarded-ad offers, docs/CRAZYGAMES_BASIC_LAUNCH.md): every ad offer is hidden, nothing else changes.
+const ADS=document.documentElement.dataset.ads!=='off';
 const pips=n=>`<span class="pips" aria-label="stage ${n} of ${STAGES}">${Array.from({length:STAGES},(_,k)=>`<i class="${k<n?'on':''}"></i>`).join('')}</span>`;
 // Places with stage art (build 38: workshop, pier, beacon) are drawn as they stand at their stage.
 const stageArt=(t,n)=>`<img class="art" src="assets/premium/coast/place-${t.art}-${Math.max(1,n)}.webp" alt="" draggable="false">`;
@@ -88,7 +91,7 @@ function render(){
  // shows when an upgrade is affordable, and the coin count.
  renderOrders();renderBoard();renderShed();renderSelection();renderHint();renderNextPlace();
  $('#dailyButton').hidden=!giftReady();
- $('#adEnergyButton').hidden=!(state.energy<5&&shopLeft(state,'adEnergy',today())>0);
+ $('#adEnergyButton').hidden=!ADS||!(state.energy<5&&shopLeft(state,'adEnergy',today())>0);
  if(!$('#adEnergyButton').hidden&&!adOffered)playlog.event('adOffer',{id:'adEnergy'});adOffered=!$('#adEnergyButton').hidden;
  {const n=bookReady(state).length+BOOK_CHAINS.filter(f=>pageReady(state,f)).length;$('#bookCount').hidden=!n;$('#bookCount').textContent=n;$('#bookButton').classList.toggle('ready',n>0);}
  calmBadges();
@@ -141,7 +144,7 @@ function renderOrderTools(){
  if(!o||orderItems(state,o)){bar.hidden=true;bar.innerHTML='';return;}
  const day=today(),free=swapsLeft(state,day),ads=adSwapsLeft(state,day),missing=o.needs.filter(r=>count(state,r)<r.count);
  bar.hidden=false;
- const swap=o.story?`<span class="toolNote">The gold order is the ${currentArea(state).name}'s next stage: it stays.</span>`:`<span class="toolNote">Stuck on ${CREW[o.who].name}'s order?</span>`+(free>0?`<button data-swap>↻ New order <small>${free} free today</small></button>`:ads>0?'<button class="adOffer" data-swap-ad>▶ New order</button>':'<button disabled>No more changes today</button>');
+ const swap=o.story?`<span class="toolNote">The gold order is the ${currentArea(state).name}'s next stage: it stays.</span>`:`<span class="toolNote">Stuck on ${CREW[o.who].name}'s order?</span>`+(free>0?`<button data-swap>↻ New order <small>${free} free today</small></button>`:ADS&&ads>0?'<button class="adOffer" data-swap-ad>▶ New order</button>':'<button disabled>No more changes today</button>');
  // What the order is for and where its coins go (Build 44): the crew member's reason, and the
  // next stage the coins count toward (the gold order instead brings that stage's materials).
  const role=roleOf(o),why=purposeOf(o,role),n=nextPlace(),kind={quick:'Quick job',pair:'Two-part job'}[role];
@@ -457,7 +460,7 @@ function showShop(){
   return `<li class="shopItem"><span class="shopIcon">${x?draw(x):'<b class="bolt">ϟ</b>'}</span><span class="shopText"><b>${o.name}</b><small>${what}</small><small class="left">${left} of ${o.limit} left today</small></span>${btn}</li>`;};
  const ids=Object.keys(SHOP);
  $('#shopContent').innerHTML=`<div class="shopTop"><h2 id="shopTitle">Shop</h2><b class="beachCoins">${COIN} ${state.coins}</b></div><p>A little help for coins, a few of each a day; it restocks tomorrow. Coins spent here are not spent on the coast.</p>
-  <h3>Free with a short ad</h3><ol class="shopList">${ids.filter(id=>SHOP[id].ad).map(row).join('')}</ol>
+  ${ADS?`<h3>Free with a short ad</h3><ol class="shopList">${ids.filter(id=>SHOP[id].ad).map(row).join('')}</ol>`:''}
   <h3>For coins</h3><ol class="shopList">${ids.filter(id=>!SHOP[id].ad).map(row).join('')}</ol>`;
  if(!$('#shop').open)$('#shop').showModal();
 }
@@ -478,7 +481,7 @@ function adStandIn(){
 let adBusy=false;
 // The action is run only when the ad finished; today's day is filled in then.
 async function watchAd(action){
- if(adBusy)return;adBusy=true;const offer=action.type==='swapOrder'?'swap':action.id;playlog.event('ad',{id:offer,phase:'start'});
+ if(adBusy||!ADS)return;adBusy=true;const offer=action.type==='swapOrder'?'swap':action.id;playlog.event('ad',{id:offer,phase:'start'});
  const r=await rewardedAd({onStart(){adPlaying=true;},onEnd(){adPlaying=false;},standIn:adStandIn});
  adBusy=false;playlog.event('ad',{id:offer,phase:r});
  if(r==='finished')run({...action,day:today()});

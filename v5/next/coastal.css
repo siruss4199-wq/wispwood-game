@@ -178,3 +178,9 @@ body.nextMode #requests .requestCard:focus-visible{outline:2px solid var(--cb-tu
 body.nextMode #requests .requestCard.requestCard.active{outline:0}
 /* story cards use the painted faces too */
 .nextMode .beatLine img.face{width:76px;height:76px;border-radius:50%;object-fit:cover;object-position:50% 12%;background:#d7f1f2;box-shadow:0 0 0 3px #fff,0 0 0 6px #f0c45a,0 6px 14px #0003}
+
+/* no ad offers where ads are off (CrazyGames Basic Launch, data-ads="off") */
+[data-ads="off"] .adsOnly,[data-ads="off"] #adEnergyButton{display:none!important}
+/* on CrazyGames nothing leads out of the game: no Classic link, playtest log, sound check page or
+   feedback export (data-platform="crazygames", tools/coast-crazygames.mjs) */
+[data-platform="crazygames"] :is(#classicLink,#classicNote,#playlogButton,a[href="next/sounds.html"],[data-feedback]){display:none!important}
