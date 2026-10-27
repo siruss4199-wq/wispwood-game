@@ -80,9 +80,10 @@ async function run(engine,W,H,motion){
   for(const [i,k] of [[15,0],[16,1],[20,2]]){assert.equal(await page.locator(`#board [data-index="${i}"].ice${k}`).count(),1,`${tag}: ice${k}`);
    assert.match(await page.locator(`#board [data-index="${i}"] img.iceArt`).getAttribute('src'),new RegExp(`ice-${k}\\.webp$`),`${tag}: painted ice ${k}`);
    assert.match(await page.locator(`#board [data-index="${i}"]`).getAttribute('aria-label'),new RegExp(`${3-k} hits? left`));}
-  // one kind of ice: every ice cell (odd or even) is the same pale ice blue
+  // one kind of ice: every ice cell (odd or even) looks the same; since Build 45i it is the board's
+  // own sand cell with a cool tint inside the painted frame, not a separate pale card
   {const bg=await page.evaluate(()=>[...document.querySelectorAll('#board .tile')].map(t=>[t.classList.contains('glass'),getComputedStyle(t).backgroundImage+' '+getComputedStyle(t).backgroundColor]));
-   const looks=new Set(bg.filter(([g])=>g).map(([,b])=>b));assert.equal(looks.size,1,`${tag}: ice cells look the same ${[...looks]}`);assert.equal([...looks][0],'none rgb(221, 242, 248)',`${tag}: ice cells pale ice blue`);}
+   const looks=new Set(bg.filter(([g])=>g).map(([,b])=>b));assert.equal(looks.size,1,`${tag}: ice cells look the same ${[...looks]}`);assert.match([...looks][0],/^radial-gradient\(.*\), none rgb\(247, 231, 198\)$/,`${tag}: ice is a tint over the board's sand cell`);}
   // The panel says how many hits are left; the cells carry no numbers.
   await page.locator('#board [data-index="20"]').click();assert.match(await page.locator('#selection').textContent(),/1 hit left/);await page.locator('#board [data-index="20"]').click();
 
