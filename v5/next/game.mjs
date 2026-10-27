@@ -22,6 +22,14 @@ export const COIN_VALUE=[5,5,10,25,45,80,140,240];
 // Orders ask for tier 5 at most (build 31: a sixth-tier story order stalled the beach's end).
 export const ORDER_TOP=5;export const COIN_RATE=5;
 export const CHEST_ENERGY=15;
+// A harder start (Build 46k, user: "togloom ehneesee mash amarhan sanagdaad baigaa, toglogchid hetsuu
+// davan tuulj baigaa medremj uguhgui"; chose option A, docs/V5_HARDER_START_2026-10-27.md). Measured
+// before (scripted player, first 30 min): energy never ran out, a stage every 2.7 min, the first gold
+// order done in 1.5 min. A new camp starts with less energy, the first five levels give less, and the
+// first six stages' gold orders ask one part a level bigger, so the first energy squeeze comes at
+// about 12 min (5 s an action) and the first stages are goals that take planning.
+export const START_ENERGY=30,EARLY_LEVELS=5,EARLY_LEVEL_ENERGY=5,GOLD_LIFT=1,GOLD_LIFT_STAGES=6;
+export const levelEnergy=level=>level<=EARLY_LEVELS?EARLY_LEVEL_ENERGY:CHEST_ENERGY;
 // The level path (docs/V5_LEVEL_PATH_2026-10-27.md; user: "togloomond ashiglaad gameplayd sonirholtoi
 // zuilsee nemmeer baina"): the player level opens a merge rule and two kinds of crew order. The
 // level-up energy stays.
@@ -173,7 +181,7 @@ export function fresh(now=Date.now()){
  const board=Array(BOARD_SIZE).fill(null);
  board[ROVER]=source('rig');
  for(let i=0;i<BOARD_SIZE;i++)if(GLASS[i])board[i]=glass(...GLASS[i]);else if(!CAMP.includes(i))board[i]=cargoAt(i);
- const s={version:VERSION,board,energy:40,energyAt:now,coins:0,level:freshLevel(),taps:{},
+ const s={version:VERSION,board,energy:START_ENERGY,energyAt:now,coins:0,level:freshLevel(),taps:{},
   orders:[],slots:3,orderSeq:0,ordersDone:0,area:0,built:{},found:[],moves:0,merges:0,lastAt:now,
   shed:Array(SHED_SLOTS).fill(null),daily:{day:-1,count:0},book:{claimed:[],pages:[]},shop:{day:-1,bought:{}},swaps:{day:-1,n:0,ads:0},materials:{}};
  for(const g of Object.keys(GENERATOR_CHAINS))s.taps[g]=0;
@@ -241,7 +249,7 @@ export function orderPrice(s,needs,role){
 // part one tier past what it makes easily and two of a second chain's part (a third part was
 // measured too: three-part gold orders made the session 7 hours of waiting).
 function goldNeeds(s,families,family,low,n){
- const tier=Math.max(2,Math.min(maxTier(family)-1,reach(s,family)+1));
+ const tier=Math.max(2,Math.min(maxTier(family)-1,reach(s,family)+1+(totalBuilt(s)<GOLD_LIFT_STAGES?GOLD_LIFT:0)));
  const needs=[{family,tier,count:1}],other=secondChain(families,family,Math.max(1,low),n*29+3);
  needs.push(other?{family:other,tier:Math.max(1,Math.min(low+1,reach(s,other)+1,maxTier(other)-1)),count:2}:{family,tier:Math.max(1,tier-1),count:2});
  return needs;
@@ -408,7 +416,7 @@ function gainXp(s,amount){
   s.level.xp-=xpToNext(s.level.level);s.level.level++;
   // Energy only (Build 41, user: "ene hairtsagiig amarhan uguud baina"): level chests no longer
   // add a driftwood crate.
-  const energy=bonus(s,CHEST_ENERGY);
+  const energy=bonus(s,levelEnergy(s.level.level));
   const unlock=LEVEL_PATH.find(u=>u.level===s.level.level);
   if(unlock?.id==='token')s.pathNext='token';
   ups.push({level:s.level.level,energy,family:null,index:-1,...(unlock?{unlock:unlock.id}:{})});

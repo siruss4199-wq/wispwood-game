@@ -48,11 +48,16 @@ async function perform(page,a){
    // The daily gift is checked on its own below; here it is already open today so it never covers a tap.
    await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.daily={day:9e6,count:1};localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
    await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
-   let restores=0;
-   // Play on until two places are restored and the Survey Kite has come out of its cargo.
-   for(let n=0;n<400&&(restores<2||!(await read(page)).board.some(x=>x?.type==='source'&&x.id==='chart'));n++){
+   let restores=0,waits=0;
+   // Play on until two places are restored, the Survey Kite has come out and a cargo is opened
+   // (Build 46k: with less early energy the first cargo can come after the Kite).
+   for(let n=0;n<600&&(restores<2||!(await read(page)).board.some(x=>x?.type==='source'&&x.id==='chart')||(await read(page)).board.filter(x=>x?.type==='cargo').length>=27);n++){
     const a=await page.evaluate(async()=>{const {nextAction}=await import('/tests/v5-next-policy.mjs');return nextAction(JSON.parse(localStorage.getItem('vaultwake-v5-coast')));});
-    assert.ok(a,'the scripted player always has a move early on');
+    // Build 46k (a harder start): energy now runs out early, so with nothing to do the player waits:
+    // the save's refill clock is moved back 20 minutes (+10 energy), as a real wait would give.
+    if(!a){const e=await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.energyAt-=20*60*1000;localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));return s.energy;});
+     assert.ok(e<1,'the scripted player only runs out of moves when energy is out');waits++;assert.ok(waits<=20,'a few waits, not a stuck board');
+     await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);continue;}
     await perform(page,a);if(a.type==='restore')restores++;
    }
    assert.ok(restores>=2,'places restored through the UI');

@@ -180,3 +180,17 @@ The player level now opens gameplay, and keeps its +15 energy. Details are in
 | 8 | Crew favours: every sixth order asks one tier higher for a Sea chest, or a Brass cog at the worksite |
 
 All economy guards pass. Shell Trap timing and energy pressure hold at every speed.
+
+## Build 46k: a harder start (2026-10-27)
+
+The user said the game felt too easy from the start and chose option A (existing systems only).
+Details are in `docs/V5_HARDER_START_2026-10-27.md`.
+
+- **Changes:**
+  - a new camp starts with 30 energy (was 40);
+  - levels 2–5 give +5 energy (was +15);
+  - the first six stages' gold orders ask one part a level bigger.
+- **First energy squeeze:** at about 12 min (5 s an action) or 17 min (7 s). It used to be never in
+  the first 30.
+- **Pace:** a stage every ~4.3 min (was 2.7).
+- **Guards:** every economy guard passes.
