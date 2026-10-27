@@ -268,3 +268,12 @@ body.nextMode[data-art] #board.board .tile.tile.glass{background:radial-gradient
 body.nextMode #board .iceArt{opacity:.78}
 /* information badges are neutral slate; colour stays for the generator's action mark */
 body.nextMode #board .srcLevel,body.nextMode #board .tile.kit .pulls{background:#4b5964;color:#fff}
+/* Build 45m: the generator's energy mark is a drawn bolt (crisp at 15-17 px on every font), and
+   the generator's idle bob no longer runs on the compositor. Any transform animation (genBreathe's
+   scale, or even a whole-pixel translate) left the sprite 15-23 % softer than a still tile; a
+   stepped 1 px "top" bob repaints it at full sharpness, twice per 2.8 s cycle. */
+body.nextMode #board .genMark svg{display:block;width:72%;height:72%;fill:#6b3d00;stroke:#6b3d00;stroke-width:1.2;stroke-linejoin:round}
+@media(prefers-reduced-motion:no-preference){
+ body.nextMode #board .tile.source:not(.dragging)>.art{position:relative;animation:cbGenBob 2.8s infinite}
+}
+@keyframes cbGenBob{0%,100%{top:0;animation-timing-function:steps(2,jump-none)}50%{top:-1px;animation-timing-function:steps(2,jump-none)}}

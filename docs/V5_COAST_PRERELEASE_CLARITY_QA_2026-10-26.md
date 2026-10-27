@@ -484,3 +484,38 @@ whole pixels only.
   which was the earlier "Split spanner and Grip tool look alike" problem.
 - The Rover chain now goes from coral pliers (tier 1) and a blue wrench (tier 2) to the older
   painted pocket winch (tier 3). This is the style jump noted for 45k, one step later.
+
+## Build 45m: the generator's yellow mark and sharpness (2026-10-27)
+
+The user wrote: "generatoriin shar icon ontsgui bainaa" (the generator's yellow icon looks poor).
+
+### Energy mark
+
+- **Before:** the yellow badge on every generator showed the text glyph "ϟ" (`app.mjs`). At
+  15–17 px it rendered thin and crooked, and differently on every font.
+- **After:** it is a drawn SVG bolt (`BOLT` in `app.mjs`, styled in `coastal.css`). It is
+  centred, solid and the same on every device. Size, colour and position are unchanged.
+
+### Generator sharpness
+
+- **Before:** the idle bob was a transform animation, `genBreathe` (`next.css:143–146`). Measured
+  at 390×844@3 in Chromium, any transform animation leaves the sprite softer than a still tile:
+
+  | Bob | Sharpness vs still |
+  |---|---|
+  | `genBreathe` (scale) | 0.77–0.87 |
+  | whole-pixel `translateY` | 0.82–0.85 |
+
+- **After:** the bob is a stepped 1 px `top` offset (`cbGenBob`, in `coastal.css`). The sprite is
+  repainted twice per 2.8 s cycle at full sharpness: 1.00–1.01 of still at 360, 390 and 430 @3,
+  and at 907×510 @1 and @2.
+- Reduced motion still has no bob.
+- The source image is unchanged.
+
+### Verified (Chromium)
+
+- `node --test tests/v5-*.test.mjs`: 284/284.
+- `v5-next-browser`, bright and playtest suites pass.
+- The tool-placement, merge and reload check passes at 360×780 and 907×510.
+- The corner tap and drag check passes.
+- WebKit is not available locally; CI runs it.
