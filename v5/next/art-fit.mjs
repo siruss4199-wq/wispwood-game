@@ -14,6 +14,14 @@ import {ART_BOUNDS} from './art-bounds.mjs';
 const TARGET={item:[.72,.8],container:[.78,.84],generator:[.85,.88]};
 // Optical tuning that measurement cannot see, by sprite (multiplies the fit). Keep it short.
 const TUNE={};
+// Interim colour tone for containers whose painted material breaks the board's palette (Build 45j,
+// art direction: "containers: natural wood and canvas with small coloured accents"). The canvas
+// bundle (sealed Survey Kite cargo, often a third of the board) is painted turquoise, the same blue
+// as the sea, the ice and the map chain. No filter makes it natural canvas while keeping its rope
+// and brass (a hue turn makes the straps violet), so until it is repainted the board draws it as a
+// pale weathered canvas; its shape still tells it apart. The sea chest is rare and stays as painted.
+// Items are never toned: their colours belong to the art.
+const TONE={'cargo-bundle':'grayscale(.9) sepia(.6) saturate(.9) brightness(1.1)'};
 const kindOf=f=>/^gen-/.test(f)?'generator':/^cargo-|^(driftwood-crate|sea-chest|captains-trunk)$/.test(f)?'container':'item';
 export function artFit(file){
  const b=ART_BOUNDS[file];if(!b)return null;
@@ -24,4 +32,5 @@ export function artFit(file){
  return {fit:+fit.toFixed(3),dx:+(.5-cx).toFixed(3),dy:+(.5-cy).toFixed(3),target:+target.toFixed(3),kind:kindOf(file)};
 }
 // The style attribute the renderer puts on a sprite (empty for art with no measurements).
-export const fitStyle=file=>{const f=artFit(file);return f?` style="--fit:${f.fit};--dx:${f.dx};--dy:${f.dy}"`:'';};
+export const fitStyle=file=>{const f=artFit(file);return f?` style="--fit:${f.fit};--dx:${f.dx};--dy:${f.dy}${TONE[file]?`;--tone:${TONE[file]}`:''}"`:'';};
+export const toneOf=file=>TONE[file]??null;

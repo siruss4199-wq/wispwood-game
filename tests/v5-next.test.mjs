@@ -842,7 +842,7 @@ test('order needs pool the same part and agree with delivery on every board', ()
 // and the sprite inside its cell.
 import {readdirSync} from 'node:fs';
 import {ART_BOUNDS} from '../v5/next/art-bounds.mjs';
-import {artFit} from '../v5/next/art-fit.mjs';
+import {artFit,toneOf} from '../v5/next/art-fit.mjs';
 test('board art: every sprite is measured and drawn at its kind\'s size',async()=>{
  const {draw}=await import('../v5/next/chains.mjs');
  const icons=readdirSync(new URL('../v5/assets/premium/coast/icons/',import.meta.url)).filter(f=>f.endsWith('.webp')).map(f=>f.slice(0,-5));
@@ -855,6 +855,9 @@ test('board art: every sprite is measured and drawn at its kind\'s size',async()
  const s=f=>ART_BOUNDS[f][0]*artFit(f).fit;
  for(const m of ['copper-offcut','grip-tool','split-spanner'])assert.ok(s(m)<s('gen-rig')-.1,`${m} smaller than the Rivet Rover`);
  const c=['cargo-crate','cargo-barrel','cargo-bundle','cargo-basket','driftwood-crate'].map(s);assert.ok(Math.max(...c)-Math.min(...c)<=.04,`containers ${c.map(x=>x.toFixed(2))}`);
+ // colour tones are an interim for containers only (art direction 45j): no item, tool, map, light
+ // or generator is recoloured on the board, so order cards and the board show the same art
+ for(const f of Object.keys(ART_BOUNDS))if(toneOf(f))assert.equal(artFit(f).kind,'container',`${f} is toned but is not a container`);
  // the renderer puts the fit on the sprite
  assert.match(draw({type:'item',family:'rig',tier:0}),/style="--fit:0\.\d+;--dx:-?0(\.\d+)?;--dy:-?0(\.\d+)?"/);
 });

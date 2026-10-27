@@ -279,3 +279,50 @@ unchanged.
 These clash a little after normalising; none blocks release.
 - **`rope-0` (Frayed twine):** a thin squiggle with little visual weight even at 80 %.
 - **The four original Rover parts:** more saturated, with heavier outlines than the sheet icons.
+
+## Build 45j: breaking the blue/bronze monotony (2026-10-27)
+
+Art direction: the board overused turquoise (background, bags, ice) and bronze (cells, copper
+tools, wooden containers).
+
+### Done with board styling (no global filter on items)
+
+- **Board.** Pale, low-saturation sand cells (`#f3ede2`) on a grey-sand board (`#e2d9ca`), with a
+  thin rim. The orange cast is gone.
+- **Background.** The sea behind the board is less saturated, with a pale aqua wash around the
+  board.
+- **Ice.** A very pale translucent cyan inside, and the painted frame at 78 % opacity.
+- **Badges.** The level tag and the crate count are neutral slate. The generator's ϟ action mark
+  keeps its colour.
+- **Interim container tone.** `art-fit.mjs` `TONE` applies to containers only; a test enforces
+  that. The canvas bundle (sealed Survey Kite cargo, often a third of the board) is painted
+  turquoise. No filter makes it natural canvas while keeping its rope and brass: a hue turn makes
+  the straps violet. So the board draws it as a pale weathered canvas until it is repainted. This
+  is not a material fix, and the sea chest stays as painted.
+
+### Colour baked into the art: sprites that need repainting
+
+Measured share of each sprite's solid, saturated pixels (`turquoise` = hue 165–205°):
+
+| Sprite(s) | Now | Direction |
+|---|---|---|
+| `cargo-bundle` (interim tone above) | turquoise 50 % | natural canvas, small coloured accent |
+| `sea-chest` | turquoise 51 % | natural wood with a small accent |
+| `grip-tool`, `split-spanner` (`assets/premium/*-vibrant.webp`) | turquoise handles 19–23 % | coral handles, silver steel jaws |
+| `chart-0`…`chart-7`, `gen-chart` | turquoise 20–54 % | ocean blue, ivory map paper, restrained brass |
+| `lamp-0`…`lamp-4`, `gen-lamp` | copper/gold 36–66 % | sea-green, selective violet, pearl white |
+| `tide-token` | turquoise 77 % | shift off the ice/sea hue (sea-green) |
+
+Unchanged, and correct as they are:
+- `copper-offcut`, 85 % copper: copper should read as copper.
+- The rope chain: natural rope.
+- The shells: coral and peach.
+- The barrels and crates: wood.
+
+Until these are repainted, tools, maps and lights are only as distinct as their current paint.
+Order cards and the board show the same art.
+
+### Checked
+
+- Same save at 390 px, before (45h) and after: full screen and board. Also 360, 430 and 907×510.
+- Matching items are marked by the gold brackets and the green ring, not by colour alone.
