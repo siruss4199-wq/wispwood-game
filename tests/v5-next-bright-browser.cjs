@@ -52,17 +52,49 @@ async function run(engine,W,H,motion){
    // and says what it is for (Build 44): the kind of job, the crew member's reason in quotes.
    assert.match(await page.locator('#orderTools .orderSay').textContent(),/(Quick|Two-crew|Big) job · (Ivo|Neri|Tamsin|Bram)“.+”/);
    await page.locator(`[data-order="${id}"]`).click();}
-  // Each card names its reason (not just a role), and a big job is tagged.
-  for(const c of await page.locator('#requests .requestCard:not(.storyOrder) .reqName small').allTextContents())assert.ok(!/^(quartermaster|navigator|signal keeper|expedition lead)$/.test(c),`${tag}: a reason, not a role: ${c}`);
+  // Build 45 (coastal board design): a sideways rail of painted cards (112 × 118 since 45c) in their
+  // lanes; no progress bars or clipped subtitles; painted faces for Ivo and Bram; the HUD about
+  // 52 px; the restoration strip 52–56 px, saying View until it is truly ready.
+  {const card=await page.locator('#requests .requestCard').first().boundingBox();assert.ok(card.width>=104&&card.width<=120&&card.height>=110&&card.height<=124,`${tag}: card ${card.width}×${card.height}`);
+   // one row that scrolls sideways when the cards do not all fit (three fit at 390 px since 45c)
+   assert.ok(await page.locator('#requests .requestShelf').evaluate(e=>getComputedStyle(e).overflowX==='auto'&&new Set([...e.children].map(c=>Math.round(c.getBoundingClientRect().top))).size===1),`${tag}: the cards are one sideways rail`);
+   assert.equal(await page.locator('#requests .reqBar:visible, #requests .reqName small:visible').count(),0,`${tag}: no progress bars or subtitles on cards`);
+   const faces=await page.locator('#requests img.face').evaluateAll(f=>f.map(x=>x.getAttribute('src')));assert.ok(faces.length>0&&faces.every(f=>/crew-(ivo|bram|nara|sela)\.webp$/.test(f)),`${tag}: painted faces ${faces}`);
+   assert.equal(await page.locator('#requests .reqFace:not(.place) svg').count(),0,`${tag}: every crew member has a painted face`);
+   // Neri and Tamsin wear the supplied Nara and Sela portraits (user, 2026-10-26)
+   {const before=await page.evaluate(k=>localStorage.getItem(k),KEY);
+    await setState(page,s=>{const crew=s.orders.filter(o=>!o.story);crew[0].who='neri';crew[1].who='tamsin';});
+    const src=await page.locator('#requests img.face').evaluateAll(f=>f.map(x=>x.getAttribute('src')).join(' '));assert.match(src,/crew-nara\.webp/);assert.match(src,/crew-sela\.webp/);
+    await page.evaluate(([k,v])=>localStorage.setItem(k,v),[KEY,before]);await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);}
+   const strip=await page.locator('#mapButton').boundingBox();assert.ok(strip.height>=52&&strip.height<=56&&strip.x>=0&&strip.x+strip.width<=W+1,`${tag}: strip ${strip.height}px`);
+   assert.match(await page.locator('#mapButton .rsAction').textContent(),/^View$/);
+   const hud=await page.locator('header').boundingBox();assert.ok(hud.height<=64,`${tag}: HUD ${hud.height}px`);
+   // the supplied painted energy and coin pills; the pale slot fills towards the next +1
+   const pills=await page.evaluate(()=>['#energyPill','#coinPill'].map(s=>getComputedStyle(document.querySelector(s),'::before').borderImageSource));
+   assert.ok(/hud-energy\.webp/.test(pills[0])&&/hud-coins\.webp/.test(pills[1]),`${tag}: painted pills ${pills}`);
+   const g=await page.evaluate(()=>+document.querySelector('#energyPill').style.getPropertyValue('--g'));assert.ok(g>=0&&g<=1,`${tag}: gauge ${g}`);
+   const menu=await page.locator('#menuButton').boundingBox();assert.ok(menu.x+menu.width<=W-4,`${tag}: menu inside the header`);}
 
   // Tideglass: three looks for three hits, then the part is free.
   await setState(page,s=>{s.daily={day:9e6,count:1};s.board[15]={type:'glass',family:'rig',tier:0};s.board[16]={type:'glass',family:'rig',tier:0,cracks:1};s.board[20]={type:'glass',family:'rig',tier:0,cracks:2};});
   for(const [i,k] of [[15,0],[16,1],[20,2]]){assert.equal(await page.locator(`#board [data-index="${i}"].ice${k}`).count(),1,`${tag}: ice${k}`);
+   assert.match(await page.locator(`#board [data-index="${i}"] img.iceArt`).getAttribute('src'),new RegExp(`ice-${k}\\.webp$`),`${tag}: painted ice ${k}`);
    assert.match(await page.locator(`#board [data-index="${i}"]`).getAttribute('aria-label'),new RegExp(`${3-k} hits? left`));}
+  // one kind of ice: every ice cell (odd or even) looks the same; since Build 45i it is the board's
+  // own sand cell with a cool tint inside the painted frame, not a separate pale card
+  {const bg=await page.evaluate(()=>[...document.querySelectorAll('#board .tile')].map(t=>[t.classList.contains('glass'),getComputedStyle(t).backgroundImage+' '+getComputedStyle(t).backgroundColor]));
+   const looks=new Set(bg.filter(([g])=>g).map(([,b])=>b));assert.equal(looks.size,1,`${tag}: ice cells look the same ${[...looks]}`);const sand=await page.evaluate(()=>{const t=document.querySelector('#board .tile.empty')??document.querySelector('#board .tile:not(.glass)');return getComputedStyle(t).backgroundColor;});
+   assert.ok([...looks][0].startsWith('radial-gradient(')&&[...looks][0].endsWith(' '+sand),`${tag}: ice is a tint over the board's own sand cell (${[...looks][0]} / ${sand})`);}
+  // The panel says how many hits are left; the cells carry no numbers.
+  await page.locator('#board [data-index="20"]').click();assert.match(await page.locator('#selection').textContent(),/1 hit left/);await page.locator('#board [data-index="20"]').click();
 
   // The gold order's card says what it is for; merging next to the last-hit tideglass breaks it.
   await setState(page,ready);
-  {const gold=page.locator('[data-order="o90"]');assert.match(await gold.textContent(),/Clear the landing path|Materials · stage 1/);
+  {const gold=page.locator('[data-order="o90"]');assert.match(await gold.textContent(),/Gold order\s*Stage 1/);assert.match(await gold.getAttribute('aria-label'),/Clear the landing path/);
+   // 45e: the gold card keeps the painted frame, its place picture fits the face circle, and its
+   // state ring follows the painted card (no rectangle)
+   const g=await gold.evaluate(c=>{const f=c.querySelector('.reqFace').getBoundingClientRect(),i=c.querySelector('.reqFace img').getBoundingClientRect();return {frame:getComputedStyle(c,'::before').content!=='none'&&getComputedStyle(c,'::before').borderImageSource,after:getComputedStyle(c,'::after').content,fit:i.width<=f.width*1.2&&Math.abs(i.left-f.left)<=f.width*.15}});
+   assert.ok(/order-card\.webp/.test(g.frame)&&g.after==='none'&&g.fit,`${tag}: gold card ${JSON.stringify(g)}`);
    const lanes=await page.locator('#requests .requestCard').evaluateAll(c=>c.map(x=>x.dataset.order));
    await drag(page,20,'#board [data-index="15"]');
    await page.waitForFunction(k=>JSON.parse(localStorage.getItem(k)).board[16]?.type==='item',KEY,{timeout:4000});
@@ -71,19 +103,20 @@ async function run(engine,W,H,motion){
    assert.equal(await gold.locator('.reqDeliver').count(),1,'one Deliver on the ready card');
    assert.equal(await page.locator('#hint:visible').filter({hasText:/Deliver/}).count(),0,'no second deliver button');
    // Truthful: materials not in yet, so the chip is not "Ready".
-   assert.equal(await page.locator('#nextPlace.ready').count(),0);
+   assert.equal(await page.locator('#mapButton.ready').count(),0);
    await gold.click();}
   if(motion==='no-preference')assert.ok(await page.locator('.coinFlight').count()>0,`${tag}: coins fly to the counter`);
   else{assert.equal(await page.locator('.coinFlight,.deliveryPart').count(),0,`${tag}: no flights with reduced motion`);assert.equal(await page.locator('#coins').textContent(),'45');}
-  await page.waitForFunction(()=>document.querySelector('#coins').textContent==='45'&&document.querySelector('#nextPlace.ready'),null,{timeout:4000});
-  assert.match(await page.locator('#nextPlace').textContent(),/Ready to build/);
+  await page.waitForFunction(()=>document.querySelector('#coins').textContent==='45'&&document.querySelector('#mapButton.ready'),null,{timeout:4000});
+  assert.match(await page.locator('#mapButton').textContent(),/Ready to build/);assert.equal(await page.locator('#mapButton .rsAction').textContent(),'Build');
   assert.equal((await read(page)).coins,45);
   // Reload keeps all of it.
   await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
-  assert.equal(await page.locator('#coins').textContent(),'45');assert.equal(await page.locator('#nextPlace.ready').count(),1);
+  assert.equal(await page.locator('#coins').textContent(),'45');assert.equal(await page.locator('#mapButton.ready').count(),1);
 
   // The chip opens the coast on that place; build; before → after; story; then the next objective.
-  await page.locator('#nextPlace').click();await page.waitForSelector('#coastMap[open]');
+  await page.locator('#mapButton').click();await page.waitForSelector('#coastMap[open]');
+  assert.equal((await read(page)).coins,45,`${tag}: opening the coast spends nothing`);
   assert.equal(await page.locator('#mapCard').getAttribute('data-card'),'beach-path');
   assert.equal(await page.locator('#coastMap .journey li.vault').count(),1,'the Vault is on the way');
   if(motion==='no-preference')assert.equal(await page.locator('#coastMap .beachScene.focusIn').count(),1,`${tag}: the picture starts on the place`);
@@ -93,7 +126,13 @@ async function run(engine,W,H,motion){
   await page.waitForSelector('#beat[open]',{timeout:4000});await closeBeats(page);
   await page.waitForFunction(()=>document.querySelector('#mapCard h3')?.textContent==='Lay a boardwalk',null,{timeout:4000});
   assert.equal((await read(page)).built['beach-path'],1);assert.equal((await read(page)).coins,5);
+  // Build 45h (user: "item dutaj baigaa ni sain anzaaragdahgui"): the card names what the next
+  // stage's gold order still lacks, rings the missing parts, and the strip counts them.
+  {const g=(await read(page)).orders.find(o=>o?.story==='beach-path');
+   if(g){const t=await page.locator('#mapCard .needMissing').textContent();assert.match(t,/^Missing: \d+ × \S|^All parts are on the board/,`${tag}: the card says what the gold order lacks`);
+    if(/^Missing/.test(t)){assert.ok(await page.locator('#mapCard .needParts i.short').count()>=1,`${tag}: a missing part is marked`);assert.match(await page.locator('#mapCard [data-make]').textContent(),/^Make (the missing |\d+ missing parts)/);}}}
   await page.locator('#coastMap [data-back]').click({force:true});
+  {const g=(await read(page)).orders.find(o=>o?.story==='beach-path');if(g)assert.match(await page.locator('#mapButton .rsText small').textContent(),/\d+ parts? missing|Deliver gold order/,`${tag}: the strip counts the missing parts`);}
 
   // The folded shed: how full it is; a part dragged onto the row goes in; a tap opens it.
   await setState(page,s=>{s.daily={day:9e6,count:1};s.board[15]={type:'item',family:'rig',tier:0};});

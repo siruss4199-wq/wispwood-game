@@ -2,8 +2,9 @@
 // rewritten for Build 40): a ready order to deliver, else an affordable upgrade, else a pair to
 // merge toward what an order wants, else the generator that makes it, else any pair, else why
 // nothing can happen yet. Pure: the app draws it and the economy test checks it is never empty.
-import {cargoKeys,matches,orderItems,count,nextTask,currentArea,sourceOpen,SOURCES,nameOf,GENERATOR_ORDER,nextKind,UNLOCK_LEVEL} from './game.mjs';
+import {cargoKeys,matches,orderItems,nextTask,currentArea,sourceOpen,SOURCES,nameOf,GENERATOR_ORDER,nextKind,UNLOCK_LEVEL} from './game.mjs';
 import {CHAINS,maxTier} from './chains.mjs';
+import {missingOf} from './needs.mjs';
 
 const has=(s,id)=>s.board.some(x=>x?.type==='source'&&x.id===id);
 // Two identical parts, below a wanted tier of a wanted chain when needs are given.
@@ -21,10 +22,10 @@ export function primaryAction(s,focus=null){
  // Needs still missing, the tapped order's first.
  const first=focus??s.orders.find(o=>o.story)?.id;
  const orders=first?[s.orders.find(o=>o.id===first),...s.orders.filter(o=>o.id!==first)].filter(Boolean):s.orders;
- const needs=orders.flatMap(o=>o.needs.filter(r=>count(s,r)<r.count));
+ const needs=orders.flatMap(o=>missingOf(s,o));
  const merge=pair=>({kind:'merge',cells:pair,label:`Drag a ${nameOf(s.board[pair[0]])} onto its twin`});
  // Order by order, so the tapped (or first) order's pair comes first.
- for(const o of orders){const p=pairFor(s,o.needs.filter(r=>count(s,r)<r.count));if(p)return merge(p);}
+ for(const o of orders){const p=pairFor(s,missingOf(s,o));if(p)return merge(p);}
  const free=s.board.includes(null);
  const gen=needs.map(r=>CHAINS[r.family].gen).find(g=>sourceOpen(s,g))??GENERATOR_ORDER.find(g=>sourceOpen(s,g));
  if(gen&&free&&s.energy>=1){const index=s.board.findIndex(x=>x?.type==='source'&&x.id===gen);

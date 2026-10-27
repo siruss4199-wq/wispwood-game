@@ -223,7 +223,8 @@ async function perform(page,a){
    // Build 31: the beach's last stage opens the Survey Worksite, its intro and its screen.
    await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));s.built={'beach-path':3,'beach-tent':3,'beach-mast':3,'beach-workshop':3,'beach-pier':3,'beach-beacon':3,'beach-cliff':2};s.materials={'beach-cliff':3};s.coins=300;localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
    await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
-   assert.equal(await page.locator('#mapButton span').textContent(),'BEACH');
+   // Build 45: the restoration strip is the way to the coast; it names the area it opens.
+   assert.match(await page.locator('#mapButton').getAttribute('aria-label'),/Landing Beach/);
    await page.locator('#mapButton').tap();await page.locator('#coastMap [data-restore="beach-cliff"]').tap();await closeBeats(page);
    assert.equal((await read(page)).area,1,'the worksite is open');
    assert.equal(await page.locator('#coastMap #mapTitle').textContent(),'Survey Worksite');assert.equal(await page.locator('#coastMap .place').count(),7);
@@ -231,8 +232,8 @@ async function perform(page,a){
    assert.equal(await page.locator('#coastMap [data-place="ws-hoist"] .placeIcon img').getAttribute('src'),'assets/premium/coast/place-ws-hoist-1.webp','worksite places are drawn too (build 40)');assert.equal(await page.locator('#mapCard').getAttribute('data-card'),'ws-camp','the worksite card is its first place');
    assert.equal(await page.evaluate(()=>document.querySelector('#coastMap').scrollWidth<=innerWidth),true,'no sideways scroll at the worksite');
    await page.locator('#coastMap [data-back]').tap();
-   assert.equal(await page.locator('#mapButton span').textContent(),'SITE');assert.equal(await page.locator('#areaBrand').textContent(),'SURVEY WORKSITE');
-   {const b=await page.locator('#mapButton').boundingBox();assert.ok(b.x+b.width<=width,'the SITE button fits the header');}
+   assert.match(await page.locator('#mapButton').getAttribute('aria-label'),/Survey Worksite/);assert.equal(await page.locator('#areaBrand').textContent(),'SURVEY WORKSITE');
+   {const b=await page.locator('#mapButton').boundingBox();assert.ok(b.x>=0&&b.x+b.width<=width,'the restoration strip fits the screen');}
    assert.deepEqual(errors,[]);
    console.log(`${engine} ${width} Coast Camp: intro → orders → 2 restorations → reload → map → worksite → daily gift → shed → book → shop → order change passed`);
    await context.close();

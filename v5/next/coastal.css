@@ -1,0 +1,270 @@
+/* Coast Camp — coastal board design (Build 45). Loaded last; implements the supplied coastal
+   mockup with the supplied art (v5/assets/premium/coast/ui/): a bright sea background, a compact
+   HUD, a sideways order rail on painted cards, a restoration strip that is the board's way to the
+   coast, apricot cells and the three painted ice states. Live text, counts and states stay in
+   HTML; the pictures are frames only. Presentation only. */
+:root{--cb-ink:#173a52;--cb-ink2:#4a6375;--cb-turq:#14a9b0;--cb-turq2:#0d8a91;--cb-coral:#f2663e;--cb-gold:#f5b40a;--cb-green:#2fb877;--cb-green2:#1f8f5c;--cb-cream:#fffaf0}
+:root:has(body.nextMode){background:#5fd0dc}
+/* ---------- background: one bright coastal picture; scenery shows at the edges ---------- */
+body.nextMode #backdrop{inset:0;height:auto;background:#5fd0dc url('../assets/premium/coast/ui/coast-bg.webp') center top/cover no-repeat;filter:none;transform:none;-webkit-mask-image:none;mask-image:none}
+body.nextMode #backdrop::after{content:none}
+body.nextMode::after{background:linear-gradient(90deg,transparent 0,#ffffff1f 18%,#ffffff1f 82%,transparent 100%);z-index:-1}
+body.nextMode::before{content:none}
+/* ---------- HUD: about 52 px; energy, coins, level, menu ---------- */
+body.nextMode header{min-height:52px;gap:8px;padding-top:max(6px,env(safe-area-inset-top));padding-bottom:0;align-items:center}
+body.nextMode header .hudSpacer{flex:1}
+body.nextMode header .brand{display:none}
+/* the supplied painted pills, three-sliced (bolt / coin and the end cap keep their shape, the
+   middle stretches with the number); the bolt and the coin stand a little proud of the pill */
+body.nextMode header :is(#energyPill,#coinPill){position:relative;height:32px;min-height:0;flex:none;gap:0;border:0;border-radius:0;background:none;box-shadow:none;isolation:isolate}
+body.nextMode header :is(#energyPill,#coinPill)::before{content:"";position:absolute;z-index:-1;left:0;right:0;pointer-events:none;border-style:solid;filter:drop-shadow(0 2px 3px #0d5a6a40)}
+body.nextMode header #energyPill{min-width:100px;padding:0 37px 0 44px;color:#fff}
+body.nextMode header #energyPill::before{top:-4.4px;bottom:-3.8px;border-width:0 35px 0 50px;border-image:url('../assets/premium/coast/ui/hud-energy.webp') 0 105 0 150 fill stretch}
+body.nextMode header #energyPill>i{display:none}
+body.nextMode header #energyPill strong{color:#fff;font-size:16px;text-shadow:0 1px 0 #064f5a}
+body.nextMode header #energyPill .energyCap{color:#bfeff3;font-size:12px}
+/* the pale slot in the painted well fills towards the next +1 (full when energy is full) */
+body.nextMode header #energyPill .energyGauge{position:absolute;right:9px;top:19.6px;width:25px;height:8.4px;border-radius:999px;overflow:hidden;pointer-events:none}
+body.nextMode header #energyPill .energyGauge::after{content:"";position:absolute;inset:1.2px auto 1.2px 1.2px;width:calc((100% - 2.4px) * var(--g,0));border-radius:999px;background:linear-gradient(#fff3a6,#ffc928);transition:width .4s}
+body.nextMode header #coinPill{min-width:70px;padding:0 18px 0 44px;color:var(--cb-ink)}
+body.nextMode header #coinPill::before{top:-3.8px;bottom:-3.6px;border-width:0 17px 0 40px;border-image:url('../assets/premium/coast/ui/hud-coins.webp') 0 50 0 120 fill stretch}
+body.nextMode header #coinPill .coinIcon{position:absolute;left:4px;top:0;width:32px;height:32px;font-size:0;opacity:0}
+body.nextMode header #coinPill strong{font-size:16px;color:#5a3a12}
+body.nextMode header #energyPill #energyTimer{left:calc(42px + (100% - 79px) / 2)}
+@media(max-width:380px){body.nextMode header{gap:6px}body.nextMode header #energyPill{padding:0 36px 0 42px}body.nextMode header #coinPill{padding:0 15px 0 42px}}
+body.nextMode .levelPill{width:44px;height:44px;flex:none;border-radius:50%;background:url('../assets/premium/coast/ui/hud-level.webp') center/88% no-repeat,conic-gradient(var(--cb-gold) var(--p),#ffffffa6 0);box-shadow:0 2px 6px #0d5a6a40}
+body.nextMode .levelPill b{width:auto;height:auto;background:none;box-shadow:none;color:#fff;font-size:18px;text-shadow:0 1px 0 #0b5f66}
+body.nextMode #menuButton{width:44px;height:44px;flex:none;border:0;border-radius:12px;background:url('../assets/premium/coast/ui/hud-menu.webp') center/contain no-repeat;box-shadow:none}
+body.nextMode #menuButton .burger{display:none}
+/* ---------- the order rail: painted cards, 112 × 118 (Build 45c: smaller, the next card peeks), sideways, in their lanes ---------- */
+body.nextMode #requests{margin-top:6px}
+body.nextMode #requests .requestShelf{display:flex;grid-template-columns:none;gap:8px;overflow-x:auto;overflow-y:visible;overscroll-behavior-x:contain;scroll-snap-type:x proximity;scrollbar-width:none;margin:0 calc(-1 * max(10px,env(safe-area-inset-left)));padding:4px max(10px,env(safe-area-inset-left)) 6px}
+body.nextMode #requests .requestShelf::-webkit-scrollbar{display:none}
+body.nextMode #requests .requestCard.requestCard{border:0;flex:0 0 112px;width:112px;height:118px;min-height:0;scroll-snap-align:start;position:relative;display:flex;flex-direction:column;align-items:stretch;gap:0;padding:0;border-radius:18px;background:none;box-shadow:none;transform:none;text-align:left;color:var(--cb-ink)}
+body.nextMode #requests .requestCard::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;border-style:solid;border-width:40px 13px 32px 40px;border-image:url('../assets/premium/coast/ui/order-card.webp') 95 30 75 95 fill stretch;filter:drop-shadow(0 2px 3px #0d5a6a40)}
+body.nextMode #requests .requestCard>*{position:relative;z-index:1}
+body.nextMode #requests .requestCard .reqHead{display:block;height:38px}
+body.nextMode #requests .reqFace{position:absolute;left:6px;top:5.5px;width:28px;height:28px;border-radius:50%;overflow:hidden;background:#d7f1f2;box-shadow:none}
+body.nextMode #requests .reqFace :is(img.face,svg){width:100%;height:100%;object-fit:cover;object-position:50% 12%;border-radius:0!important;box-shadow:none!important;transform:none}
+body.nextMode #requests .reqFace.place{background:radial-gradient(circle at 50% 35%,#d9f6f6,#8fd6dc);box-shadow:none}
+body.nextMode #requests .reqFace.place :is(img,.art){position:absolute;inset:0;width:100%!important;height:100%!important;max-width:none;object-fit:cover;transform:scale(1.15);filter:none}
+body.nextMode #requests .reqName{position:absolute;left:39px;right:6px;top:6px;display:flex;flex-direction:column;align-items:flex-start;gap:2px;line-height:1.1}
+body.nextMode #requests .reqName b{font-size:12px;font-weight:900;color:var(--cb-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+body.nextMode #requests .reqName small{display:none}
+body.nextMode .reqTag{font-style:normal;font-size:8px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;border-radius:999px;padding:0 5px;color:#fff;white-space:nowrap}
+body.nextMode .reqTag.big{background:linear-gradient(#ff8a63,var(--cb-coral))}
+body.nextMode .reqTag.gold{background:linear-gradient(#ffd25a,#e7a21c);color:#5a3a02}
+body.nextMode .reqBig{display:none}
+body.nextMode #requests .requestItems{flex:1;display:flex;align-items:center;justify-content:center;gap:3px;height:auto;padding:0 6px 4px;background:none}
+body.nextMode #requests .requestItems>span{position:relative;width:38px!important;height:38px!important}
+body.nextMode #requests .requestItems :is(svg,img){width:38px!important;height:38px!important;object-fit:contain}
+body.nextMode #requests .requestItems:has(>span:nth-child(2))>span,body.nextMode #requests .requestItems:has(>span:nth-child(2)) :is(svg,img){width:34px!important;height:34px!important}
+body.nextMode #requests .requestItems:has(>span:nth-child(3))>span,body.nextMode #requests .requestItems:has(>span:nth-child(3)) :is(svg,img){width:28px!important;height:28px!important}
+body.nextMode #requests .requestItems b{position:absolute;left:50%;right:auto;bottom:-6px;transform:translateX(-50%);display:inline-flex;align-items:center;gap:1px;font-size:10px;line-height:14px;padding:0 5px;border-radius:999px;background:var(--cb-ink);color:#fff;box-shadow:0 0 0 1.5px #fff;white-space:nowrap}
+body.nextMode #requests .requestItems>span.met b{background:var(--cb-green)}
+body.nextMode #requests .requestItems b i{font-style:normal;font-size:9px;margin:0 2px 0 -1px;letter-spacing:0}
+/* the footer band always holds one thing, so a card never jumps when it becomes ready */
+body.nextMode #requests .reqFoot{height:32px;display:flex;align-items:center;justify-content:center;padding:0 6px 3px;gap:0}
+body.nextMode #requests .reqBar{display:none}
+body.nextMode #requests .requestReward{margin:0;padding:1px 8px 1px 3px;font-size:12.5px;font-weight:900;color:#6a4508;background:#fff3cf;box-shadow:inset 0 0 0 1.5px #f2cf7a;border-radius:999px;display:inline-flex;align-items:center;gap:3px}
+body.nextMode #requests .requestReward .coinIcon{font-size:14px}
+body.nextMode #requests .reqDeliver{flex:none;width:100px;height:26px;display:flex;align-items:center;justify-content:center;gap:3px;padding:0 0 2px;background:url('../assets/premium/coast/ui/deliver.webp') center/100% 100% no-repeat;box-shadow:none;border-radius:0;color:#fff;font-size:11px;font-weight:900;letter-spacing:0;text-transform:none;text-shadow:0 1px 0 #0b7a57;animation:none}
+body.nextMode #requests .reqDeliver em{font-style:normal}
+body.nextMode #requests .reqDeliver .coinIcon{font-size:12px}
+/* the card's state is an outline that follows the painted card (ready green, the gold order gold,
+   tapped turquoise), drawn by chained drop-shadows on the painted frame (45e: was a rectangle) */
+body.nextMode #requests .requestCard.requestCard:is(.ready,.storyOrder,.active){background:none;box-shadow:none;border:0}
+body.nextMode #requests .requestCard.requestCard.storyOrder::before{content:"";inset:0;translate:none;padding:0;background:none;box-shadow:none;border-radius:0;font-size:0}
+body.nextMode #requests .requestCard:is(.ready,.storyOrder,.active)::after{content:none}
+body.nextMode #requests .requestCard{--ring:transparent}
+body.nextMode #requests .requestCard.storyOrder{--ring:#f2c23a}
+body.nextMode #requests .requestCard.ready{--ring:var(--cb-green)}
+body.nextMode #requests .requestCard.active{--ring:var(--cb-turq)}
+body.nextMode #requests .requestCard:is(.ready,.storyOrder,.active)::before{filter:drop-shadow(1.5px 0 0 var(--ring)) drop-shadow(-1.5px 0 0 var(--ring)) drop-shadow(0 1.5px 0 var(--ring)) drop-shadow(0 -1.5px 0 var(--ring)) drop-shadow(0 2px 3px #0d5a6a40)}
+/* ---------- the restoration strip: the board's way to the coast (52–56 px) ---------- */
+body.nextMode .restoreStrip{position:relative;display:flex;align-items:center;width:100%;height:56px;min-height:0;margin:6px 0 0;padding:0;border-style:solid;border-width:0 76px 0 60px;border-image:url('../assets/premium/coast/ui/restore-strip.webp') 0 215 0 170 fill / 0 76px 0 60px stretch;background:none;box-shadow:none;border-radius:0;color:var(--cb-ink);text-align:left;filter:drop-shadow(0 2px 3px #0d5a6a33)}
+body.nextMode .restoreStrip .rsThumb{position:absolute;left:-52.5px;top:5px;width:44px;height:44px;border-radius:50%;overflow:hidden;background:radial-gradient(circle at 50% 35%,#e3f8f8,#9fdde2)}
+body.nextMode .restoreStrip .rsThumb :is(img,.art){width:100%;height:100%;object-fit:cover;transform:scale(1.15)}
+body.nextMode .restoreStrip .rsText{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;padding:0 8px 2px 10px;line-height:1.15}
+body.nextMode .restoreStrip .rsText b{font-size:14px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.nextMode .restoreStrip .rsText small{display:flex;align-items:center;gap:3px;font-size:11.5px;font-weight:700;color:var(--cb-ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.nextMode .restoreStrip .rsText small .coinIcon{font-size:12px}
+body.nextMode .restoreStrip .rsMat{font-style:normal;font-size:9px;width:14px;height:14px;border-radius:50%;display:inline-grid;place-items:center;background:#efe2c8;color:#a07a3c;flex:none}
+body.nextMode .restoreStrip .rsMat.ok{background:var(--cb-green);color:#fff}
+/* the pill on the picture: coral "Build" when it is truly ready, otherwise a turquoise "View" */
+body.nextMode .restoreStrip .rsAction{position:absolute;left:calc(100% + 6px);top:10px;width:65.5px;height:35.5px;display:grid;place-items:center;border-radius:999px;color:#fff;font-size:12.5px;font-weight:900;text-shadow:0 1px 0 #0006;background:linear-gradient(#3fd0d6,var(--cb-turq2));box-shadow:inset 0 1px 0 #ffffff80}
+body.nextMode .restoreStrip.ready .rsAction{background:none;box-shadow:none}
+body.nextMode .restoreStrip.ready .rsText b{color:#b8430e}
+body.nextMode .restoreStrip #mapReady{display:none}
+@media(prefers-reduced-motion:no-preference){
+ body.nextMode .restoreStrip.justReady{animation:cbStripReady .9s cubic-bezier(.2,1.4,.4,1)}
+ body.nextMode .restoreStrip.progressed .rsThumb{animation:cbThumb .6s ease-out}
+}
+@keyframes cbStripReady{0%{transform:scale(.97)}40%{transform:scale(1.03)}100%{transform:none}}
+@keyframes cbThumb{40%{transform:scale(1.15)}}
+/* ---------- guidance: one small info line ---------- */
+body.nextMode .boardHeading{min-height:30px;margin-top:4px;justify-content:center}
+body[data-art].nextMode .boardHeading #hint.primaryAction{flex:0 1 auto;min-height:28px;padding:4px 12px 4px 30px;border-radius:999px;background:#ffffffd9!important;color:var(--cb-ink)!important;font-size:12.5px;box-shadow:0 1px 3px #0d5a6a33}
+body[data-art].nextMode .boardHeading #hint.primaryAction::before{width:16px;height:16px;margin-top:-8px;left:8px;background:var(--cb-turq);box-shadow:none;content:"i";color:#fff;font:italic 900 11px/16px Georgia,serif;text-align:center}
+body[data-art].nextMode .boardHeading #hint.primaryAction:is([data-kind="upgrade"]){background:#ffffffd9;color:var(--cb-ink);box-shadow:0 1px 3px #0d5a6a33}
+body[data-art].nextMode .boardHeading:has(#hint[data-kind="upgrade"]) #hint{display:none}
+/* ---------- the board: uniform apricot cells, thin gaps, shallow depth ---------- */
+body.nextMode[data-art] #board.board{background:#efcf9c;border:0;border-radius:16px;padding:4px;gap:3px;margin-top:4px;box-shadow:inset 0 0 0 1.5px #f8e2bb,0 3px 0 #d3a76a,0 10px 22px #0d5a6a38}
+body.nextMode #board.board .tile.tile,body.nextMode #board.board .tile.tile:is(.odd,.empty,.cargo,.glass,.deep,.cog,.token,.source){background:url('../assets/premium/coast/ui/cell.webp') center/100% 100% no-repeat;border-radius:9px;box-shadow:none;outline:0}
+body.nextMode #board.board .tile.tile.empty{opacity:.88}
+body.nextMode #board.board .tile.tile.cargo.deep{filter:saturate(.9) brightness(.94)}
+body.nextMode #board .tile>:is(.art,img.art,svg.art){width:90%;height:90%}
+body.nextMode #board .cargoGleam,body.nextMode #board .cargoGlow{display:none}
+body.nextMode #board .cargoKey{right:4%;top:4%;width:38%;height:38%}
+/* ice: the painted block over the part, one picture per hits left */
+body.nextMode #board .tile.glass .art.inGlass{transform:scale(.74);filter:saturate(.85)}
+body.nextMode #board .tile.glass.ice1 .art.inGlass{filter:saturate(.9)}
+body.nextMode #board .tile.glass.ice2 .art.inGlass{transform:scale(.8);filter:none}
+/* every ice cell the same pale ice blue under the painted ice (the player chose the blue, 45d) */
+body.nextMode #board.board .tile.tile.glass,body.nextMode #board.board .tile.tile.glass.odd{background:#ddf2f8}
+.iceArt{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;object-fit:contain}
+body.nextMode #board .glassShard{display:none}
+.selection .preview .iceArt,.dragGhost .iceArt{inset:0}
+/* selection: thin gold corner brackets; valid twins: a soft green ring (engine rules only) */
+body.nextMode #board.board .tile.tile.selected{box-shadow:none}
+body.nextMode #board.board .tile.tile.selected::after{content:"";position:absolute;inset:1px;border-radius:9px;pointer-events:none;z-index:3;
+ background:linear-gradient(var(--cb-gold),var(--cb-gold)) left top/13px 3px,linear-gradient(var(--cb-gold),var(--cb-gold)) left top/3px 13px,
+ linear-gradient(var(--cb-gold),var(--cb-gold)) right top/13px 3px,linear-gradient(var(--cb-gold),var(--cb-gold)) right top/3px 13px,
+ linear-gradient(var(--cb-gold),var(--cb-gold)) left bottom/13px 3px,linear-gradient(var(--cb-gold),var(--cb-gold)) left bottom/3px 13px,
+ linear-gradient(var(--cb-gold),var(--cb-gold)) right bottom/13px 3px,linear-gradient(var(--cb-gold),var(--cb-gold)) right bottom/3px 13px;background-repeat:no-repeat;filter:drop-shadow(0 0 1px #8a5a00)}
+body.nextMode #board.board .tile.tile.match{box-shadow:inset 0 0 0 2px #46c98c,inset 0 0 12px #7fe3b8b3;animation:none}
+body.nextMode #board.board .tile.tile.target{box-shadow:inset 0 0 0 3px var(--cb-green2),inset 0 0 14px #7fe3b8}
+body.nextMode #board.board .tile.tile.nextAction{box-shadow:inset 0 0 0 2px #f2c23a}
+body.nextMode #board.board .tile.tile.orderSource{box-shadow:inset 0 0 0 2px var(--cb-turq)}
+body.nextMode #board.board .tile.tile.hintPair{box-shadow:inset 0 0 0 2.5px var(--cb-gold)}
+body.nextMode #board .tile.dragging>:is(.art,img){opacity:.35}
+@media(prefers-reduced-motion:no-preference){body.nextMode #board.board .tile.tile.match{animation:cbMatch 1.3s ease-in-out infinite}}
+@keyframes cbMatch{50%{box-shadow:inset 0 0 0 2px #46c98c,inset 0 0 16px #7fe3b8}}
+/* merge: a brief squash and pop (about 200 ms) */
+@media(prefers-reduced-motion:no-preference){body.nextMode #board .tile.merge-pop>:is(.art,img){animation:cbPop .2s cubic-bezier(.3,1.6,.5,1)!important}}
+@keyframes cbPop{0%{transform:scale(.82,.9)}60%{transform:scale(1.12)}100%{transform:none}}
+/* ---------- selected thing: a compact cream card; tap it for the full text ---------- */
+body.nextMode #selection{display:grid;grid-template-columns:52px minmax(0,1fr) auto;align-items:center;gap:10px;margin-top:8px;padding:8px 10px;border-radius:16px;background:var(--cb-cream);box-shadow:0 2px 0 #e6d3ab,0 6px 14px #0d5a6a2e;cursor:pointer}
+body.nextMode #selection .preview{width:52px;height:52px;border-radius:12px;background:url('../assets/premium/coast/ui/cell.webp') center/100% 100%;display:grid;place-items:center;position:relative;overflow:hidden}
+body.nextMode #selection .preview>:is(.art,img,svg){width:88%;height:88%}
+body.nextMode #selection .copy b{font-size:15px;color:var(--cb-ink)}
+body.nextMode #selection .copy small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:12px;line-height:1.3;color:var(--cb-ink2)}
+body.nextMode #selection.open .copy small{display:block;-webkit-line-clamp:unset}
+body.nextMode #selection .actionGroup{display:flex;gap:6px}
+body.nextMode #selection button{min-height:40px;padding:0 14px;border-radius:999px;font-weight:900;background:linear-gradient(#3fd0d6,var(--cb-turq2));color:#fff;box-shadow:0 2px 0 #0a6b70}
+body.nextMode #selection button.accent{background:linear-gradient(#ff8a63,var(--cb-coral));box-shadow:0 2px 0 #b8432a}
+/* ---------- shed, message, dock ---------- */
+body.nextMode #shed{background:var(--cb-cream);box-shadow:0 2px 0 #e6d3ab,0 6px 14px #0d5a6a2e}
+body.nextMode .message{background:#ffffffb3;border-radius:999px;padding:2px 10px;margin:6px auto 0;width:fit-content;max-width:100%}
+body.nextMode .message:empty{display:none}
+body.nextMode footer{background:#ffffffb3;border-radius:14px;margin:8px 0 0}
+/* the delivery's coins and parts keep their Build 44 motion (about 500 ms) */
+/* ---------- landscape: the rail and the strip sit in the left column ---------- */
+@media(orientation:landscape) and (min-width:700px) and (max-height:620px){
+ body.nextMode #requests .requestShelf{margin:0;padding:4px 0 6px}
+ body.nextMode .restoreStrip{grid-column:1}
+}
+/* keyboard focus on a card: a thin ring inside its painted edge; none after a tap */
+body.nextMode #requests .requestCard:focus{outline:none}
+body.nextMode #requests .requestCard:focus-visible{outline:2px solid var(--cb-turq2);outline-offset:-5px}
+body.nextMode #requests .requestCard.requestCard.active{outline:0}
+/* story cards use the painted faces too */
+.nextMode .beatLine img.face{width:76px;height:76px;border-radius:50%;object-fit:cover;object-position:50% 12%;background:#d7f1f2;box-shadow:0 0 0 3px #fff,0 0 0 6px #f0c45a,0 6px 14px #0003}
+/* ---------- Build 45g: pre-release clarity pass ---------- */
+/* HUD numbers: one size and weight for energy and coins, a firm dark edge on the energy so it
+   reads on the bright painted well; the cap is lighter but still readable */
+body.nextMode header :is(#energyPill,#coinPill) strong{font-size:17px;font-weight:900;letter-spacing:-.2px}
+body.nextMode header #energyPill strong{text-shadow:0 1px 0 #04404a,0 0 1px #04404a,0 0 3px #04404acc}
+body.nextMode header #energyPill .energyCap{color:#eafcfd;font-weight:800;text-shadow:0 1px 0 #04404a,0 0 2px #04404a}
+body.nextMode header #energyPill .energyGauge{background:#0a6f7a59}
+/* orders: a part whose chain also appears at another level in the same order carries its level */
+body.nextMode #requests .requestItems .reqLv{position:absolute;left:-3px;top:-4px;bottom:auto;right:auto;width:auto;height:auto;color:var(--cb-ink);z-index:2;font-style:normal;font-size:9.5px;font-weight:900;line-height:13px;padding:0 3px;border-radius:5px;background:#fff;color:var(--cb-ink);box-shadow:0 0 0 1.5px var(--cb-turq)}
+/* the part held on the board lights the card entry it fills */
+body.nextMode #requests .requestItems>span.held{border-radius:10px;box-shadow:0 0 0 2px var(--cb-gold),0 0 8px #f5b40a80}
+body.nextMode #selection .lvTag{display:inline-block;vertical-align:2px;margin-left:4px;font-size:10.5px;font-weight:900;line-height:15px;padding:0 5px;border-radius:6px;background:#e3f6f7;color:var(--cb-turq2)}
+/* board: no question mark on every crate; the opening part shows only where it matters now */
+body.nextMode #board .cargoQ{display:none}
+body.nextMode #board .tile.cargo .cargoKey{visibility:hidden}
+body.nextMode #board .tile.cargo:is(.keyReady,.selected,.match,.orderSource) .cargoKey{visibility:visible}
+/* generators: a small lightning mark (they spend energy) */
+body.nextMode #board .genMark{position:absolute;right:4%;bottom:4%;z-index:2;width:17px;height:17px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:900;line-height:1;color:#7a4a00;background:radial-gradient(circle at 40% 35%,#fff6c4,#ffcb2e);box-shadow:0 0 0 1.5px #fff,0 1px 2px #0004;pointer-events:none}
+body.nextMode #board .tile.locked .genMark{display:none}
+/* selection: a blocked Make says why, beside the button */
+body.nextMode #selection button:disabled{filter:grayscale(.75);opacity:.7;cursor:default}
+body.nextMode #selection .blockWhy{align-self:center;max-width:8.5em;text-align:right;font-size:11.5px;font-weight:800;line-height:1.2;color:#b8432a}
+body.nextMode #selection .actionGroup:has(.blockWhy){flex-direction:column-reverse;align-items:flex-end;gap:3px}
+/* mobile space: tighter gaps between the rail, the strip, the guidance line and the board */
+body.nextMode #requests{margin-top:4px}
+body.nextMode #requests .requestShelf{padding-bottom:2px}
+body.nextMode .restoreStrip{margin-top:4px}
+body.nextMode .boardHeading{position:relative;min-height:28px;margin-top:3px}
+body.nextMode[data-art] #board.board{margin-top:2px}
+/* the free-space count is a small tab on the board's bottom-right rim, beside the shed it can
+   be emptied into, not a second item in the guidance line */
+body.nextMode #free.freeTab{display:block;width:fit-content;position:relative;z-index:3;margin:-9px 12px -7px auto;padding:1px 8px;font-size:11px;line-height:16px;font-weight:900;color:#8a5a12;background:#fff3d6;border-radius:999px;box-shadow:0 0 0 1.5px #f5cd62,0 1px 3px #0d5a6a33}
+body.nextMode #free.freeTab[hidden]{display:none}
+body.nextMode #free.freeTab.out{color:#fff;background:var(--cb-coral);box-shadow:0 0 0 1.5px #fff,0 1px 3px #0d5a6a33}
+/* landscape: the same tab on the board's bottom-right rim (the board's size is bright.css's --bs) */
+@media(orientation:landscape) and (min-width:700px) and (max-height:620px){body.nextMode #free.freeTab{--bs:min(calc(100svh - max(16px,env(safe-area-inset-top)) - 8px),calc(100vw - 340px));grid-column:2;grid-row:1 / span 12;align-self:start;justify-self:end;margin:calc(var(--bs) - 10px) 12px -10px 0}}
+#coastMap .needParts i .needLv{position:absolute;left:-4px;top:-5px;font-style:normal;font-size:9px;font-weight:900;line-height:12px;padding:0 3px;border-radius:5px;background:#fff;color:#173a52;box-shadow:0 0 0 1.5px #14a9b0}
+/* Build 45h: the coast card shows what the gold order still lacks at a glance: a missing part has
+   a coral ring and count, a part on the board a green ✓, and a line names what is missing */
+#coastMap .need.gold .needParts{gap:6px}
+#coastMap .needParts i.short{border-radius:9px;box-shadow:0 0 0 2px var(--cb-coral),0 0 8px #f2663e55;background:#fff}
+#coastMap .needParts i.short b{background:var(--cb-coral);color:#fff;font-weight:900}
+#coastMap .needParts i.got b{background:var(--cb-green);color:#fff;font-weight:900}
+#coastMap .needMissing{margin:7px 0 0;font-size:13px;font-weight:800;line-height:1.3;color:#b8432a}
+#coastMap .needMissing b{font-weight:900}
+#coastMap .needMissing.ready{color:var(--cb-green2)}
+/* ---------- Build 45i: board art consistency pass ---------- */
+/* One quiet surface for every cell: warm sand, a 1 px highlight on top and a 1.5 px darker line at
+   the bottom for shallow depth, drawn as background layers so state rings (selection, twins, the
+   tapped order) keep box-shadow to themselves. No painted bevel, no per-kind colours: empty cells
+   are the same sand without the depth line; ice is its frame drawn over the same sand. */
+:root{--cell:#f7e7c6;--cell-top:#fff5df;--cell-edge:#e2c58e;--board:#e8cd9c;--board-rim:#d8b479}
+body.nextMode[data-art] #board.board{background:var(--board);padding:4px;gap:3px;border-radius:14px;box-shadow:0 0 0 1.5px var(--board-rim),0 6px 16px #0d5a6a2e}
+body.nextMode[data-art] #board.board .tile.tile,body.nextMode[data-art] #board.board .tile.tile:is(.odd,.item,.source,.cargo,.kit,.glass,.deep,.cog,.token,.jar,.match,.selected,.target,.nextAction,.orderSource,.keyReady,.locked){
+ background:linear-gradient(var(--cell-top),var(--cell-top)) top/100% 1px no-repeat,linear-gradient(var(--cell-edge),var(--cell-edge)) bottom/100% 1.5px no-repeat,var(--cell);border-radius:8px;filter:none;opacity:1}
+body.nextMode[data-art] #board.board .tile.tile.empty{background:var(--cell);opacity:.8}
+/* the sprite: its own fit from art-fit.mjs, centred on its visible object; a selected or matching
+   part is drawn exactly like its twins (the corner brackets and the ring say it is selected) */
+body.nextMode[data-art] #board.board .tile.tile>:is(.art,img.art,svg.art){width:calc(var(--fit,.8) * 100%);height:calc(var(--fit,.8) * 100%);translate:calc(var(--dx,0) * 100%) calc(var(--dy,0) * 100%);object-fit:contain;filter:drop-shadow(0 1px 1px #7a4e1e26)}
+body.nextMode[data-art] #board.board .tile.tile:is(.selected,.match,.target,.nextAction,.picked)>:is(.art,img.art){transform:none;filter:drop-shadow(0 1px 1px #7a4e1e26)}
+body.nextMode[data-art] #board.board .tile.kit>.crateArt{transform:none}
+body.nextMode[data-art] #board.board .tile.cargo.deep>.cargoArt{filter:brightness(.88) saturate(.82)}
+body.nextMode[data-art] #board.board .tile.locked>.art{filter:grayscale(.6) opacity(.7)}
+/* ice: the part sits inside the frame at one size for all three states; the frame lies over the
+   same sand with a faint cool tint inside, not on its own pale card */
+body.nextMode[data-art] #board.board .tile.tile.glass{background:radial-gradient(closest-side,#e4f5f9cc,#d6eef5b3),var(--cell)}
+body.nextMode[data-art] #board.board .tile.glass>.art.inGlass,body.nextMode[data-art] #board.board .tile.glass:is(.ice1,.ice2)>.art.inGlass{transform:scale(.86);filter:none}
+body.nextMode #board .iceArt{inset:1px;width:calc(100% - 2px);height:calc(100% - 2px)}
+/* badges: one size (15 px, 17 px on the big landscape board), one white ring, inside their corner */
+body.nextMode #board :is(.genMark,.pulls){position:absolute;right:2px;bottom:2px;left:auto;top:auto;width:15px;height:15px;min-width:0;padding:0;border-radius:50%;display:grid;place-items:center;font-size:9.5px;line-height:1;font-weight:900;transform:none;box-shadow:0 0 0 1.5px #fff;z-index:2}
+body.nextMode #board .genMark{color:#7a4a00;background:#ffcf3f}
+body.nextMode #board .tile.kit .pulls{color:#fff;background:var(--cb-turq2)}
+body.nextMode #board .srcLevel{position:absolute;left:2px;top:2px;height:15px;padding:0 4px;border-radius:7px;display:grid;place-items:center;font-size:9px;line-height:1;font-weight:900;color:#fff;background:var(--cb-turq2);box-shadow:0 0 0 1.5px #fff;z-index:2}
+body.nextMode #board .kitTag{left:3px;top:3px;right:auto;bottom:auto;width:8px;height:8px;border-width:1.5px;box-shadow:none}
+body.nextMode #board .tile.cargo .cargoKey{right:2px;top:2px;width:17px;height:17px;box-shadow:0 0 0 1.5px #fff}
+body.nextMode #board .sealBadge{bottom:2px;height:15px;line-height:15px;font-size:9px;padding:0 4px;box-shadow:0 0 0 1.5px #fff}
+@media(orientation:landscape) and (min-width:700px) and (max-height:620px){
+ body.nextMode #board :is(.genMark,.pulls){width:17px;height:17px;font-size:10.5px}
+ body.nextMode #board .srcLevel{height:17px;font-size:10px}
+}
+/* a twin of the selected part: a plain ring, no inner glow */
+body.nextMode[data-art] #board.board .tile.tile.match{box-shadow:inset 0 0 0 2px #3fbf86;animation:none}
+/* ---------- Build 45j: break the blue/bronze monotony (art direction) ---------- */
+/* the board is a quiet, pale, low-saturation sand: no orange cast; the rim is a thin grey-sand */
+:root{--cell:#f3ede2;--cell-top:#fbf8f2;--cell-edge:#ded3c1;--board:#e2d9ca;--board-rim:#cbbfa9}
+/* the sea behind the board is softer: less saturation, and a pale aqua wash around the board */
+body.nextMode #backdrop{filter:saturate(.78) brightness(1.04)}
+body.nextMode #backdrop::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 85% 55% at 50% 58%,#eef8f7d9,#e6f5f480 62%,#e6f5f41a)}
+/* containers toned toward natural canvas and wood where their paint is turquoise (art-fit.mjs TONE) */
+body.nextMode[data-art] #board.board .tile.tile>:is(.art,img.art){filter:var(--tone,) drop-shadow(0 1px 1px #6b5a4226)}
+body.nextMode[data-art] #board.board .tile.tile:is(.selected,.match,.target,.nextAction,.picked)>:is(.art,img.art){filter:var(--tone,) drop-shadow(0 1px 1px #6b5a4226)}
+body.nextMode[data-art] #board.board .tile.cargo.deep>.cargoArt{filter:var(--tone,) brightness(.88) saturate(.82)}
+body.nextMode #selection .preview>.art{filter:var(--tone,)}
+/* ice: a very pale translucent cyan inside a softer frame */
+body.nextMode[data-art] #board.board .tile.tile.glass{background:radial-gradient(closest-side,#f1fafccc,#e7f6f9a6),var(--cell)}
+body.nextMode #board .iceArt{opacity:.78}
+/* information badges are neutral slate; colour stays for the generator's action mark */
+body.nextMode #board .srcLevel,body.nextMode #board .tile.kit .pulls{background:#4b5964;color:#fff}

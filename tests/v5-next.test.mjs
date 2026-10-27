@@ -739,3 +739,60 @@ test('everyday orders are quick, two-crew and big jobs, vary, and old saves keep
  // A damaged recent list is dropped, not the camp.
  const bad=fresh(0);bad.recent=[1,2,3];bad.moves=7;const b2=load(JSON.stringify(bad),5);assert.equal(b2.moves,7);assert.deepEqual(b2.recent,[]);
 });
+
+// Build 45g: an order's card pools needs that name the same part, so what it shows agrees with
+// delivery (orderItems takes a different piece per part). One Grip tool on the board was shown
+// as "1/1" beside "1/2" for an order wanting Grip tool ×1 + Grip tool ×2.
+import {needsOf,missingOf} from '../v5/next/needs.mjs';
+test('order needs pool the same part and agree with delivery on every board', () => {
+ const s=fresh(0),o={id:'t',who:'bram',needs:[{family:'rig',tier:1,count:1},{family:'rig',tier:1,count:2}],coins:10};
+ s.board=s.board.map(x=>x?.type==='item'?null:x);s.board[s.board.indexOf(null)]=item('rig',1);
+ assert.deepEqual(needsOf(s,o).map(r=>[r.family,r.tier,r.have,r.count,r.sibling]),[['rig',1,1,3,false]]);
+ // different tiers of one chain stay apart and are marked as siblings
+ const two={...o,needs:[{family:'rig',tier:2,count:1},{family:'rig',tier:1,count:2}]};
+ assert.deepEqual(needsOf(s,two).map(r=>[r.tier,r.have,r.count,r.sibling]),[[2,0,1,true],[1,1,2,true]]);
+ // shown complete exactly when delivery accepts, over many random boards and orders
+ let seed=7;const rnd=n=>{seed=(seed*1103515245+12345)%2147483648;return seed%n;};
+ for(let k=0;k<400;k++){
+  const t=fresh(0);t.board=t.board.map(()=>rnd(3)?null:item(['rig','chart'][rnd(2)],rnd(3)));
+  const ord={id:'r',who:'bram',needs:Array.from({length:1+rnd(3)},()=>({family:['rig','chart'][rnd(2)],tier:rnd(3),count:1+rnd(2)})),coins:5};
+  const shown=needsOf(t,ord);
+  assert.equal(shown.every(r=>r.have>=r.count),!!orderItems(t,ord),JSON.stringify(ord.needs));
+  assert.equal(shown.reduce((n,r)=>n+r.count,0),ord.needs.reduce((n,r)=>n+r.count,0));
+  assert.equal(missingOf(t,ord).length===0,!!orderItems(t,ord));
+ }
+});
+
+// Build 45i: one presentation map sizes every board sprite by its measured visible object, so a
+// copper offcut no longer outweighs the generator that makes it. Every painted board icon has
+// measured bounds (tools/measure-art-fit.py), and each fit keeps its object inside its kind's range
+// and the sprite inside its cell.
+import {readdirSync} from 'node:fs';
+import {ART_BOUNDS} from '../v5/next/art-bounds.mjs';
+import {artFit,toneOf,TARGET_OF} from '../v5/next/art-fit.mjs';
+test('board art: every sprite is measured and drawn at its kind\'s size',async()=>{
+ const {draw}=await import('../v5/next/chains.mjs');
+ const icons=readdirSync(new URL('../v5/assets/premium/coast/icons/',import.meta.url)).filter(f=>f.endsWith('.webp')).map(f=>f.slice(0,-5));
+ for(const f of [...icons,'copper-offcut','grip-tool','split-spanner','pocket-winch'])assert.ok(ART_BOUNDS[f],`${f}: run tools/measure-art-fit.py`);
+ const RANGE={item:[.72,.8],container:[.78,.84],generator:[.85,.88]};
+ for(const f of Object.keys(ART_BOUNDS)){const a=artFit(f),[lo,hi]=RANGE[a.kind];
+  assert.ok(a.fit>0&&a.fit<=1,`${f}: fit ${a.fit}`);
+  const shown=ART_BOUNDS[f][0]*a.fit;
+  if(TARGET_OF[f])assert.ok(Math.abs(shown-TARGET_OF[f])<.005,`${f}: pilot target ${TARGET_OF[f]}, shown ${shown.toFixed(3)}`);
+  else assert.ok(shown>=lo-.005&&shown<=hi+.005,`${f}: ${a.kind} shown at ${shown.toFixed(3)} of the cell`);}
+ // what the user saw: materials no longer outweigh generators; containers agree with each other
+ // (the files the board draws now: Build 45k pilot art for the Grip tool, the Rover and the bundle)
+ const s=f=>ART_BOUNDS[f][0]*artFit(f).fit;
+ for(const m of ['copper-offcut','grip-tool-pilot','split-spanner'])assert.ok(s(m)<=s('gen-rig-pilot')-.05,`${m} smaller than the Rivet Rover`);
+ const c=['cargo-crate','cargo-barrel','cargo-bundle-pilot','cargo-basket','driftwood-crate'].map(s);assert.ok(Math.max(...c)-Math.min(...c)<=.05,`containers ${c.map(x=>x.toFixed(2))}`);
+ // the pilot art replaces exactly its three identities, and keeps its colours on the board
+ assert.match(draw({type:'item',family:'rig',tier:1}),/grip-tool-pilot\.webp/);assert.match(draw({type:'item',family:'rig',tier:2}),/split-spanner-vibrant\.webp/);
+ assert.match(draw({type:'source',id:'rig',level:3}),/gen-rig-pilot\.webp/);assert.match(draw({type:'source',id:'rope'}),/gen-rope\.webp/);
+ assert.match(draw({type:'cargo',key:{family:'chart',tier:2}}),/cargo-bundle-pilot\.webp/);assert.match(draw({type:'cargo',key:{family:'rope',tier:2}}),/cargo-barrel\.webp/);
+ for(const f of Object.keys(TARGET_OF))assert.equal(toneOf(f),null,`${f} is never toned`);
+ // colour tones are an interim for containers only (art direction 45j): no item, tool, map, light
+ // or generator is recoloured on the board, so order cards and the board show the same art
+ for(const f of Object.keys(ART_BOUNDS))if(toneOf(f))assert.equal(artFit(f).kind,'container',`${f} is toned but is not a container`);
+ // the renderer puts the fit on the sprite
+ assert.match(draw({type:'item',family:'rig',tier:0}),/style="--fit:0\.\d+;--dx:-?0(\.\d+)?;--dy:-?0(\.\d+)?"/);
+});
