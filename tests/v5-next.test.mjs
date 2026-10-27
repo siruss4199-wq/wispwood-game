@@ -115,7 +115,7 @@ test('orders grow harder with the beach and the generators, never repeat a live 
  // dropped on 2026-10-26).
  const d=fresh(0);d.orderSeq=10;d.board[ROVER].level=3;{const t=tiers(d);assert.ok(t.includes(3)&&Math.max(...t)===3,`the lifted top is reached, not passed: ${[...new Set(t)]}`);}
  // The story's order: one at a time, for the next beach stage, the newest generator's best part, half as much again.
- const e=fresh(0);e.orderSeq=10;e.orders=[];const so=makeOrder(e);assert.equal(so.story,'beach-path');assert.equal(so.needs[0].family,'rig');assert.equal(so.needs[0].tier,2);
+ const e=fresh(0);e.orderSeq=10;e.orders=[];const so=makeOrder(e);assert.equal(so.story,'beach-path');assert.equal(so.needs[0].family,'rig');assert.equal(so.needs[0].tier,3,'Build 46k: the first six stages\' gold orders ask a level bigger');
  assert.equal(so.coins,Math.round(so.needs.reduce((v,r)=>v+r.count*COIN_VALUE[r.tier],0)*1.5/5)*5);
  e.orders.push(so);assert.equal(makeOrder(e).story,undefined,'only one story order at a time');
  // Delivering it brings the next story order; normal orders pay by tier and never repeat a live need.
@@ -153,9 +153,10 @@ test('orders pay coins, no box; boxes and generator levels work here too',()=>{
 test('levels give energy, no crate',()=>{
  const s=camp();s.level.xp=19;const e=s.energy,r=ok(s,{type:'merge',from:14,to:16});
  assert.equal(r.levelUp[0].level,2);assert.equal(r.levelUp[0].family,null);assert.ok(!s.board.some(x=>x?.type==='kit'),'no crate');assert.equal(s.board.filter(x=>x?.type==='cargo').length,27);
- assert.equal(CHEST_ENERGY,15);assert.equal(s.energy,Math.min(50,e+15),'up to the refill cap');
+ // Build 46k (a harder start): levels 2-5 give +5, later levels +15 (CHEST_ENERGY)
+ assert.equal(CHEST_ENERGY,15);assert.equal(s.energy,Math.min(50,e+5),'up to the refill cap');
  // Build 41g: level energy tops up to 50 and no further; bought energy above it is kept.
- for(const [start,end] of [[30,45],[45,50],[60,60]]){const t=camp();t.level.xp=19;t.energy=start;ok(t,{type:'merge',from:14,to:16});assert.equal(t.energy,end,`${start} → ${end}`);}
+ for(const [start,end] of [[30,35],[47,50],[60,60]]){const t=camp();t.level.xp=19;t.energy=start;ok(t,{type:'merge',from:14,to:16});assert.equal(t.energy,end,`${start} → ${end}`);}
 });
 
 test('energy refills over time and a low-energy ration helps once an hour',()=>{
@@ -185,7 +186,9 @@ test('a scripted player upgrades Landing Beach (21 stages) in 45–110 minutes o
    for(const u of r.levelUp??[])levels.push(now);
   }
   assert.ok(areaDone(s,AREAS[0]),'area complete');
-  assert.ok(firstRestore<3*60*1000,'first upgrade within 3 minutes');
+  // Build 46k (a harder start): the first gold order asks a part a level bigger, so the first stage
+  // takes longer (it was within 3 minutes)
+  assert.ok(firstRestore<6*60*1000,`first upgrade within 6 minutes (${(firstRestore/60000).toFixed(1)})`);
   const play=now-waited;assert.ok(play>=45*60000&&play<=110*60000,`area 1 took ${(play/60000).toFixed(1)} min of play`);
   assert.ok(waited>0,'energy ran out');assert.ok(now<=4*3600e3,`and the beach is done within ${(now/3600e3).toFixed(1)} h of real time`);
   assert.ok(levels.length>=4,'several level-ups');
@@ -433,7 +436,7 @@ test('a save that finished the beach before the worksite existed goes up the cli
 test('the economy is tight: energy runs out through both areas, and both still finish',()=>{
  // A quick player (an action every 4 s) runs out of energy and buys packs when coins allow.
  const s=fresh(0);let now=0,waited=0,lowest=99,beach=null,shell=null,lamp=null;const STEP=4000;
- assert.equal(s.energy,40,'a new camp starts with 40 energy');
+ assert.equal(s.energy,30,'a new camp starts with 30 energy (Build 46k; was 40)');
  let beachWait=0;
  while(!(s.area===1&&areaDone(s))&&now<48*3600e3){
   // Build 41g: out of energy, a player buys the shop's Energy pack when coins allow.
@@ -921,7 +924,7 @@ test('level path: crew orders pay Tide tokens from level 5 and Brass cogs (favou
 test('level path: level-ups name their unlock, keep their energy; older saves load, bad bonuses do not',async()=>{
  const G=await import('../v5/next/game.mjs');
  const s=fresh(0);s.level={version:1,level:2,xp:xpToNext(2)-1};s.energy=10;s.board[15]=item('rig',0);s.board[27]=item('rig',0);
- const r=ok(s,{type:'merge',from:27,to:15});assert.equal(r.levelUp[0].level,3);assert.equal(r.levelUp[0].unlock,'triple');assert.equal(r.levelUp[0].energy,G.CHEST_ENERGY);
+ const r=ok(s,{type:'merge',from:27,to:15});assert.equal(r.levelUp[0].level,3);assert.equal(r.levelUp[0].unlock,'triple');assert.equal(r.levelUp[0].energy,G.levelEnergy(3));
  // a Build 46i save (orders without bonus) loads unchanged; an order with an unknown bonus is a damaged save
  const old=fresh(0);old.level={version:1,level:9,xp:3};const back=load(JSON.stringify(old),1);assert.equal(back.level.level,9);assert.deepEqual(back.orders,old.orders);
  const bad=fresh(0);bad.orders[0].bonus='gem';assert.equal(load(JSON.stringify(bad),1).level.level,1,'rejected');
@@ -959,4 +962,17 @@ test('tideglass hint: "too small" agrees with crack()',async()=>{
    assert.equal(weak,!cracked,`glass ${k} (tier ${G.GLASS[k][1]}), merge to tier ${tier+1} at ${to}`);checked++;}
  }
  assert.ok(checked>100,`checked ${checked} merges`);
+});
+
+// Build 46k (user: "togloom ehneesee mash amarhan ... hetsuu davan tuulj baigaa medremj uguhgui"; option A,
+// docs/V5_HARDER_START_2026-10-27.md): less energy to start, less from the first levels, bigger first gold
+// orders; from the seventh stage the gold order is as before.
+test('a harder start: 30 energy, +5 for levels up to 5, the first six stages\' gold orders a level bigger',async()=>{
+ const G=await import('../v5/next/game.mjs');
+ assert.equal(fresh(0).energy,30);assert.deepEqual([2,5,6,9].map(G.levelEnergy),[5,5,15,15]);
+ const gold=built=>{const s=fresh(0);s.orderSeq=10;s.orders=[];let k=0;for(const t of Object.keys(TASKS))if(k<built&&AREAS[0].tasks.some(a=>a.id===t)){const add=Math.min(3,built-k);s.built[t]=add;k+=add;}
+  const o=makeOrder(s);return o.story?o.needs[0]:null;};
+ const early=gold(0),later=gold(6);assert.ok(early&&later,'gold orders at 0 and 6 stages');
+ assert.equal(early.tier,3,'one level bigger than before (tier 2)');
+ assert.deepEqual(later,{family:'rig',tier:2,count:1},'from the seventh stage as before');
 });

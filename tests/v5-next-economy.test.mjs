@@ -59,9 +59,11 @@ test('first 15 minutes: first merge, order, restoration and discovery come early
   const r=simulate(game,nextAction,sp,sd,{firstOnly:true,onStep,shop:true}),at=`${sp} s seed ${sd}`;
   assert.ok(r.first.merge<=1*MIN,`${at}: first merge ${(r.first.merge/MIN).toFixed(1)} min`);
   assert.ok(r.first.order<=2.5*MIN,`${at}: first order ${(r.first.order/MIN).toFixed(1)} min`);
-  assert.ok(r.first.restore<=4.5*MIN,`${at}: first restoration ${(r.first.restore/MIN).toFixed(1)} min`);
-  assert.ok(r.first.discovery<=8*MIN,`${at}: first cargo or generator merge ${(r.first.discovery/MIN).toFixed(1)} min`);
-  assert.ok(r.first15.orders>=8,`${at}: ${r.first15.orders} orders in 15 min`);
+  // Build 46k (a harder start): bigger first gold orders and less early energy make the first stage
+  // a goal (first restoration was ≤ 4.5 min, first discovery ≤ 8, 8+ orders in 15 min)
+  assert.ok(r.first.restore<=6*MIN,`${at}: first restoration ${(r.first.restore/MIN).toFixed(1)} min`);
+  assert.ok(r.first.discovery<=9.5*MIN,`${at}: first cargo or generator merge ${(r.first.discovery/MIN).toFixed(1)} min`);
+  assert.ok(r.first15.orders>=4,`${at}: ${r.first15.orders} orders in 15 min`);
   assert.ok(r.first15.restores>=3&&r.first15.restores<=(sp<=4.5?8:6),`${at}: ${r.first15.restores} restorations in 15 min`);}
 });
 

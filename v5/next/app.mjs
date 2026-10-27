@@ -4,7 +4,7 @@ import {isStuck,allDone,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAI
 import {AREAS,STAGES,TASKS} from './areas.mjs';
 import {primaryAction} from './guide.mjs';
 import {needsOf,missingOf,levelOf} from './needs.mjs';
-import {LEVEL_PATH,BONUS_NAMES,CHEST_ENERGY} from './game.mjs';
+import {LEVEL_PATH,BONUS_NAMES,CHEST_ENERGY,EARLY_LEVELS,EARLY_LEVEL_ENERGY} from './game.mjs';
 import {kit} from '../kits.mjs';
 import {iceNeed,weakIceBeside} from './ice.mjs';
 import {purposeOf} from './purposes.mjs';
@@ -30,7 +30,7 @@ function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el
 let adPlaying=false;
 const sfx=(kind,tier=0)=>sounds.play(kind,tier,{muted:adPlaying||platform.muted()});
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 46j+45o · preview';
+export const BUILD='Build 46k+45o · preview';
 // The level path (docs/V5_LEVEL_PATH_2026-10-27.md): a crew order that pays a tool on top shows it
 // beside its coins (a Tide token; a favour's Sea chest or Brass cog).
 const bonusThing=o=>o.bonus==='cog'?cog():o.bonus==='chest'?kit(newestGenerator(state),2):o.bonus==='token'?token():null;
@@ -425,7 +425,7 @@ function clickTile(i){
 // The click a drag ends with is not a tap; the next press clears the flag if no click came.
 // The level badge shows the level path: what is open and what each next level brings.
 {const pill=$('#levelPill');pill.setAttribute('role','button');pill.tabIndex=0;
- const show=()=>{const lv=state.level.level;moment(`Level ${lv} · the level path`,LEVEL_PATH.map(u=>`${lv>=u.level?'✓':'Level '+u.level+':'} ${u.name}${lv>=u.level?'':': '+u.text}`).join('\n')+`\nEvery level: +${CHEST_ENERGY} ϟ.`);document.querySelector('.moment')?.classList.add('pathMoment');sfx('tap');};
+ const show=()=>{const lv=state.level.level;moment(`Level ${lv} · the level path`,LEVEL_PATH.map(u=>`${lv>=u.level?'✓':'Level '+u.level+':'} ${u.name}${lv>=u.level?'':': '+u.text}`).join('\n')+`\nEvery level: energy (+${EARLY_LEVEL_ENERGY} ϟ up to level ${EARLY_LEVELS}, then +${CHEST_ENERGY} ϟ).`);document.querySelector('.moment')?.classList.add('pathMoment');sfx('tap');};
  pill.addEventListener('click',show);pill.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();show();}});}
 board.addEventListener('click',e=>{if(suppressClick){suppressClick=false;return;}const t=e.target.closest('[data-index]');if(t)clickTile(+t.dataset.index);});
 // Drag to merge (build 23, user: "merge hiih uildel drag hiij zuuj bolohgui baina"): every
