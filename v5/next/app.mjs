@@ -28,7 +28,7 @@ function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el
 let adPlaying=false;
 const sfx=(kind,tier=0)=>sounds.play(kind,tier,{muted:adPlaying||platform.muted()});
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 45n · coastal board';
+export const BUILD='Build 45o · coastal board';
 // The generator's energy mark (Build 45m): a drawn bolt; the old "ϟ" text glyph rendered thin and
 // crooked at badge size, differently on every font.
 const BOLT='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 1.5 4.5 13.5H11L9.5 22.5 19.5 10H13Z"/></svg>';
@@ -171,8 +171,6 @@ function renderBoard(){
   // Build 45g: an open generator carries a small ϟ (it spends energy when tapped) and its level.
   if(x?.type==='source')badge=locked?`<span class="lockedLabel">NEXT AREA</span>`:`<span class="genMark" aria-hidden="true">${BOLT}</span>`+(producerLevel(x)>1?`<span class="srcLevel">Lv${producerLevel(x)}</span>`:'');
   else if(x?.type==='kit')badge=`<span class="pulls">${x.left}</span>`;
-  // Build 45n: tideglass that a small merge cannot crack shows the level a merge beside it must make.
-  else if(iceNeed(x))badge=`<span class="iceNeed" aria-hidden="true">Lv${iceNeed(x)}+</span>`;
   else if(x?.type==='jar')badge=`<span class="sealBadge">+${x.energy}ϟ</span>`;
   else if(x?.type==='cargo'&&(x.find?.type==='source'||x.find?.type==='cog'||x.find?.type==='token'))badge=`<span class="cargoGleam ${x.find.type!=='source'?'cogGleam':''}" aria-hidden="true"></span>`;
   const deep=x?.type==='cargo'&&!reachable(state,i),ready=x?.type==='cargo'&&!deep&&state.board.some(y=>matches(y,x.key));
@@ -322,8 +320,8 @@ function run(a){
  if(r.event==='swap'){tile?.classList.add('merge-pop');burst(tile?.getBoundingClientRect(),'gold');sfx('rare');}
  if(r.event==='merge'){const m=state.board[r.index],first=m?.type==='item'&&r.found?.includes(m.family+m.tier);tile?.classList.add('merge-pop');burst(tile?.getBoundingClientRect(),m?.family,first||m?.tier>=4);
   if(!r.broken?.length){sfx(first&&m.tier>=2||m?.tier>=4?'discovery':'merge',m?.tier??0);haptics.pulse('merge');}for(const d of r.dug??[])board.querySelector(`[data-index="${d.index}"]`)?.classList.add('unlocked');
-  // Build 45n: a merge too small for the tideglass beside it says so (the glass shrugs, its level
-  // mark pulses) instead of doing nothing silently.
+  // Build 45n/45o: a merge too small for the tideglass beside it says so (the glass shrugs and
+  // flashes; no level is written on the ice, user: "hagrahgui tohioldold l heley").
   const weak=weakIceBeside(state.board,r.index);
   if(weak.length){for(const j of weak)board.querySelector(`[data-index="${j}"]`)?.classList.add('iceWeak');
    const need=Math.min(...weak.map(j=>iceNeed(state.board[j])??state.board[j].tier+1));

@@ -805,8 +805,8 @@ test('board art: every sprite is measured and drawn at its kind\'s size',async()
 // Build 45n (user: "zarimdaa merge hiihed musuu tsohihgui baih shig baina"): the tideglass hint
 // agrees with the rules. Every glass on a new board, every merge size in each space beside it:
 // the hint calls the merge too small exactly when the reducer leaves that glass uncracked, and
-// the level mark appears exactly on glass that some merge cannot crack.
-test('tideglass hint: the level mark and "too small" agree with crack()',async()=>{
+// iceNeed (the level the message names) is set exactly on glass that some merge cannot crack.
+test('tideglass hint: "too small" agrees with crack()',async()=>{
  const {iceNeed,weakIceBeside,besideOf}=await import('../v5/next/ice.mjs');
  const G=await import('../v5/next/game.mjs');
  let checked=0;

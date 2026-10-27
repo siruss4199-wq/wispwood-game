@@ -562,3 +562,18 @@ nothing, with no sign why.
   - no console errors.
 - **Suites:** `v5-next-browser`, bright and playtest pass in Chromium. WebKit is not available
   locally; CI runs it.
+
+### Build 45o: no level written on the ice
+
+The user wrote: "Leveliin too bichee hereggui yum baina musun deer… Hagrahgui tohioldold l
+heley" (no level number on the ice; only tell me when it does not break).
+
+- The "Lv3+" / "Lv4+" marks are removed; tideglass looks as it did before 45n.
+- **Kept:** only when a merge is too small, the glass beside it flashes an orange outline and
+  shrugs (no shrug under reduced motion), and the message line names the level that would crack
+  it. The tile's screen-reader label still says it.
+- **Verified:**
+  - `node --test tests/v5-*.test.mjs`: 285/285.
+  - Ice check at 360, 390, 430 and 907×510: no marks on the ice, a too-small merge gives the
+    cue with no crack, and a level 3 merge cracks it; no errors.
+  - `v5-next-browser`, bright and playtest pass in Chromium.
