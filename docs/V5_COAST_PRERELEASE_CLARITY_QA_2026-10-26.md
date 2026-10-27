@@ -192,3 +192,23 @@ Already known, not from this change:
 - The shed and some coast places still use earlier art.
 - Classic V5 CI is red, for reasons that predate this work.
 - PRs #82 and #83 are still open drafts and not merged.
+
+## Build 45h: the gold order's missing parts are obvious (2026-10-27)
+
+User, with an iPhone screenshot of the coast card ("item dutaj baigaa ni sain anzaaragdahgui"):
+the card showed the coins as a green 70/70, but the missing part only as a small "1/2". It read as
+if nothing was missing.
+
+**Coast card** (`mapCard`)
+- A missing part gets a coral ring and a coral count. A part already on the board gets a green
+  "✓ 1/1".
+- A line under the needs names what is missing, for example "Missing: 1 × Grip tool", or says
+  "All parts are on the board: deliver the gold order".
+- The button names the part: "Make the missing Grip tool", or "Make N missing parts".
+
+**Strip** on the board: "◆ 1 part missing · 🪙70/70" (it said "Gold order"). The strip's spoken
+label names the parts.
+
+Tested in `tests/v5-next-bright-browser.cjs`, after the first build: the card's "Missing:" line,
+the ringed part, the button wording and the strip's count, at all five viewports. Presentation
+only.
