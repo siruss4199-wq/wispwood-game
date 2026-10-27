@@ -6,8 +6,15 @@ import {FAMILIES} from '../core.mjs';
 import {art,SPRITE_OVERRIDES} from '../art.mjs';
 import {MATERIALS} from '../objects.mjs';
 import {fitStyle} from './art-fit.mjs';
+// Build 45k three-asset visual pilot (art direction, 2026-10-27): new painted art for exactly these
+// identities, wherever draw() shows them (board, orders, selection panel, book, cargo previews):
+// the sealed canvas bundle (cargo opened by a Survey Kite part), the Grip tool (Rivet Rover part,
+// tier 1) and the Rivet Rover generator (every level; the level overlay stays). The previous
+// files are untouched (Classic V5 still uses grip-tool-vibrant): delete an entry to roll it back.
+// Masters: docs/art-source/coastal-pilot-2026-10-27/.
+const PILOT={'cargo-bundle':'cargo-bundle-pilot','rig-1':'grip-tool-pilot','gen-rig':'gen-rig-pilot'};
 // Every painted sprite carries its board fit (art-fit.mjs); only the board's CSS reads it.
-const img=(f,cls,art)=>`<img class="art ${cls}" src="assets/premium/coast/icons/${f}.webp" alt="" aria-hidden="true" draggable="false" data-art="${art}"${fitStyle(f)}>`;
+const img=(f0,cls,art)=>{const f=PILOT[f0]??f0;return `<img class="art ${cls}" src="assets/premium/coast/icons/${f}.webp" alt="" aria-hidden="true" draggable="false" data-art="${art}"${fitStyle(f)}>`;};
 const CARGO_FILE={crate:'cargo-crate',bundle:'cargo-bundle',barrel:'cargo-barrel',basket:'cargo-basket'};
 const KIT_FILE=['driftwood-crate','sea-chest','captains-trunk'];
 // Build 41l (user: "ed nariin visual tuvshinuur hii", with a painted sheet): every generator, part,
@@ -15,7 +22,7 @@ const KIT_FILE=['driftwood-crate','sea-chest','captains-trunk'];
 const RENDERED=new Set(['rig','chart','rope','shell','lamp']);
 // The first four Rover parts keep their original painted art (user: "ed nariig hevend ni uldee").
 const KEEP={'rig-0':'copper-offcut','rig-1':'grip-tool','rig-2':'split-spanner','rig-3':'pocket-winch'};
-const icon=(f,cls,art)=>KEEP[f]?`<img class="art ${cls}" src="assets/premium/${KEEP[f]}-vibrant.webp" alt="" aria-hidden="true" draggable="false" data-art="${art}"${fitStyle(KEEP[f])}>`:`<img class="art ${cls}" src="assets/premium/coast/icons/${f}.webp" alt="" aria-hidden="true" draggable="false" data-art="${art}"${fitStyle(f)}>`;
+const icon=(f,cls,art)=>PILOT[f]?img(f,cls,art):KEEP[f]?`<img class="art ${cls}" src="assets/premium/${KEEP[f]}-vibrant.webp" alt="" aria-hidden="true" draggable="false" data-art="${art}"${fitStyle(KEEP[f])}>`:`<img class="art ${cls}" src="assets/premium/coast/icons/${f}.webp" alt="" aria-hidden="true" draggable="false" data-art="${art}"${fitStyle(f)}>`;
 
 export const CHAINS={
  rig:{gen:'rig',names:FAMILIES.rig.names},

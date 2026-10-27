@@ -326,3 +326,58 @@ Order cards and the board show the same art.
 
 - Same save at 390 px, before (45h) and after: full screen and board. Also 360, 430 and 907×510.
 - Matching items are marked by the gold brackets and the green ring, not by colour alone.
+
+## Build 45k: three-asset visual pilot (2026-10-27)
+
+Three supplied transparent PNGs replace the art of exactly three identities. Nothing else is
+redrawn or recoloured, and gameplay, item IDs and saves are unchanged.
+
+### Mapping
+
+`PILOT` in `v5/next/chains.mjs`:
+
+| Supplied image | Identity | Old file (kept) | New runtime file |
+|---|---|---|---|
+| Supply bag (green flap, canvas, coral straps) | sealed cargo with the bundle look (`CARGO_LOOK.chart`, opened by a Survey Kite part) | `coast/icons/cargo-bundle.webp` | `coast/icons/cargo-bundle-pilot.webp` |
+| Grip pliers (steel, coral/navy handles) | item `rig` tier 1, "Grip tool" | `premium/grip-tool-vibrant.webp` (Classic V5 still uses it) | `coast/icons/grip-tool-pilot.webp` |
+| Drill rover (yellow, coral, navy tracks) | generator `rig`, "Rivet Rover" | `coast/icons/gen-rig.webp` | `coast/icons/gen-rig-pilot.webp` |
+
+- The Rivet Rover has one image for all its levels; the level overlay stays. Other generators
+  keep their art.
+- `draw()` is the only renderer, so the same art appears on the board, the order cards, the
+  selection panel, the collection book and the cargo previews. A browser check confirmed this, and
+  that no old file appears anywhere in Coast Camp.
+- **Rollback:** delete an entry from `PILOT`.
+- **Masters:** `docs/art-source/coastal-pilot-2026-10-27/` (the full-resolution PNGs).
+
+### Runtime files
+
+- Each image is trimmed to its drawn object, padded so the solid object fills about 92 % of a
+  square canvas (like the other icons), and saved as a 192 px WebP: 11–19 KB, against 14–17 KB for
+  the files they replace. Transparency and edges are kept.
+- Their measured bounds are in `art-bounds.mjs`.
+- The art direction's optical targets are set centrally in `art-fit.mjs` `TARGET_OF`: bag 76 %,
+  pliers 78 %, generator 84 % of the cell, as the longest visible side.
+- None of the three is toned. In its normal state the art has only the board's 1 px contact
+  shadow. Deep (unreachable) cargo keeps its mild darkening as a state.
+
+### Checked at real size (390 px, 1×)
+
+- The pliers' jaws and handles are clear.
+- The drill rover's body and drill read clearly.
+- Pliers under ice stay visible.
+- Nothing spills into the next cell.
+- The selected and unselected pliers are the same size.
+- A corner tap still selects and a corner-to-corner drag still merges.
+
+### Judgement
+
+- **The three work together.** Their style is cleaner and higher in contrast than the older
+  painted icons, and the pliers and the rover now read at a glance.
+- **The bag is now the loudest object on the board.** Sealed bundles often fill a third of the
+  board, so its saturated green, yellow and coral repeats about a dozen times.
+- **A merge chain now jumps in style.** Grip tool (coral, pilot) → Split spanner (turquoise, old
+  art).
+
+A wider pass should repaint the rest of the Rover chain together, and decide whether the bag's
+colour should step down for cargo that fills the board.
