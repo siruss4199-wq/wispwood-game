@@ -762,3 +762,26 @@ test('order needs pool the same part and agree with delivery on every board', ()
   assert.equal(missingOf(t,ord).length===0,!!orderItems(t,ord));
  }
 });
+
+// Build 45i: one presentation map sizes every board sprite by its measured visible object, so a
+// copper offcut no longer outweighs the generator that makes it. Every painted board icon has
+// measured bounds (tools/measure-art-fit.py), and each fit keeps its object inside its kind's range
+// and the sprite inside its cell.
+import {readdirSync} from 'node:fs';
+import {ART_BOUNDS} from '../v5/next/art-bounds.mjs';
+import {artFit} from '../v5/next/art-fit.mjs';
+test('board art: every sprite is measured and drawn at its kind\'s size',async()=>{
+ const {draw}=await import('../v5/next/chains.mjs');
+ const icons=readdirSync(new URL('../v5/assets/premium/coast/icons/',import.meta.url)).filter(f=>f.endsWith('.webp')).map(f=>f.slice(0,-5));
+ for(const f of [...icons,'copper-offcut','grip-tool','split-spanner','pocket-winch'])assert.ok(ART_BOUNDS[f],`${f}: run tools/measure-art-fit.py`);
+ const RANGE={item:[.72,.8],container:[.78,.84],generator:[.85,.88]};
+ for(const f of Object.keys(ART_BOUNDS)){const a=artFit(f),[lo,hi]=RANGE[a.kind];
+  assert.ok(a.fit>0&&a.fit<=1,`${f}: fit ${a.fit}`);
+  const shown=ART_BOUNDS[f][0]*a.fit;assert.ok(shown>=lo-.005&&shown<=hi+.005,`${f}: ${a.kind} shown at ${shown.toFixed(3)} of the cell`);}
+ // what the user saw: materials no longer outweigh generators; containers agree with each other
+ const s=f=>ART_BOUNDS[f][0]*artFit(f).fit;
+ for(const m of ['copper-offcut','grip-tool','split-spanner'])assert.ok(s(m)<s('gen-rig')-.1,`${m} smaller than the Rivet Rover`);
+ const c=['cargo-crate','cargo-barrel','cargo-bundle','cargo-basket','driftwood-crate'].map(s);assert.ok(Math.max(...c)-Math.min(...c)<=.04,`containers ${c.map(x=>x.toFixed(2))}`);
+ // the renderer puts the fit on the sprite
+ assert.match(draw({type:'item',family:'rig',tier:0}),/style="--fit:0\.\d+;--dx:-?0(\.\d+)?;--dy:-?0(\.\d+)?"/);
+});
