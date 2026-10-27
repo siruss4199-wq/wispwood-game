@@ -850,7 +850,7 @@ test('order needs pool the same part and agree with delivery on every board', ()
 // and the sprite inside its cell.
 import {readdirSync} from 'node:fs';
 import {ART_BOUNDS} from '../v5/next/art-bounds.mjs';
-import {artFit,toneOf} from '../v5/next/art-fit.mjs';
+import {artFit,toneOf,TARGET_OF} from '../v5/next/art-fit.mjs';
 test('board art: every sprite is measured and drawn at its kind\'s size',async()=>{
  const {draw}=await import('../v5/next/chains.mjs');
  const icons=readdirSync(new URL('../v5/assets/premium/coast/icons/',import.meta.url)).filter(f=>f.endsWith('.webp')).map(f=>f.slice(0,-5));
@@ -858,11 +858,24 @@ test('board art: every sprite is measured and drawn at its kind\'s size',async()
  const RANGE={item:[.72,.8],container:[.78,.84],generator:[.85,.88]};
  for(const f of Object.keys(ART_BOUNDS)){const a=artFit(f),[lo,hi]=RANGE[a.kind];
   assert.ok(a.fit>0&&a.fit<=1,`${f}: fit ${a.fit}`);
-  const shown=ART_BOUNDS[f][0]*a.fit;assert.ok(shown>=lo-.005&&shown<=hi+.005,`${f}: ${a.kind} shown at ${shown.toFixed(3)} of the cell`);}
+  const shown=ART_BOUNDS[f][0]*a.fit;
+  if(TARGET_OF[f])assert.ok(Math.abs(shown-TARGET_OF[f])<.005,`${f}: pilot target ${TARGET_OF[f]}, shown ${shown.toFixed(3)}`);
+  else assert.ok(shown>=lo-.005&&shown<=hi+.005,`${f}: ${a.kind} shown at ${shown.toFixed(3)} of the cell`);}
  // what the user saw: materials no longer outweigh generators; containers agree with each other
+ // (the files the board draws now: Build 45k pilot art for the Rover and the bundle, the tool art
+ // integration's -v2 Grip tool and Split spanner)
  const s=f=>ART_BOUNDS[f][0]*artFit(f).fit;
- for(const m of ['copper-offcut','grip-tool','split-spanner'])assert.ok(s(m)<s('gen-rig')-.1,`${m} smaller than the Rivet Rover`);
- const c=['cargo-crate','cargo-barrel','cargo-bundle','cargo-basket','driftwood-crate'].map(s);assert.ok(Math.max(...c)-Math.min(...c)<=.04,`containers ${c.map(x=>x.toFixed(2))}`);
+ for(const m of ['copper-offcut','grip-tool-v2','split-spanner-v2'])assert.ok(s(m)<=s('gen-rig-pilot')-.05,`${m} smaller than the Rivet Rover`);
+ const c=['cargo-crate','cargo-barrel','cargo-bundle-pilot','cargo-basket','driftwood-crate'].map(s);assert.ok(Math.max(...c)-Math.min(...c)<=.05,`containers ${c.map(x=>x.toFixed(2))}`);
+ // the new art replaces exactly its identities, and keeps its colours on the board
+ assert.match(draw({type:'item',family:'rig',tier:1}),/grip-tool-v2\.webp/);assert.match(draw({type:'item',family:'rig',tier:2}),/split-spanner-v2\.webp/);
+ assert.match(draw({type:'item',family:'rig',tier:0}),/copper-offcut-vibrant\.webp/);assert.match(draw({type:'item',family:'rig',tier:3}),/pocket-winch-vibrant\.webp/);
+ assert.match(draw({type:'glass',family:'rig',tier:2}),/split-spanner-v2\.webp/);
+ // the two tools are balanced against each other (the art direction's 78-80 % start)
+ for(const m of ['grip-tool-v2','split-spanner-v2'])assert.ok(s(m)>=.74&&s(m)<=.8,`${m} shown at ${s(m).toFixed(3)}`);
+ assert.match(draw({type:'source',id:'rig',level:3}),/gen-rig-pilot\.webp/);assert.match(draw({type:'source',id:'rope'}),/gen-rope\.webp/);
+ assert.match(draw({type:'cargo',key:{family:'chart',tier:2}}),/cargo-bundle-pilot\.webp/);assert.match(draw({type:'cargo',key:{family:'rope',tier:2}}),/cargo-barrel\.webp/);
+ for(const f of Object.keys(TARGET_OF))assert.equal(toneOf(f),null,`${f} is never toned`);
  // colour tones are an interim for containers only (art direction 45j): no item, tool, map, light
  // or generator is recoloured on the board, so order cards and the board show the same art
  for(const f of Object.keys(ART_BOUNDS))if(toneOf(f))assert.equal(artFit(f).kind,'container',`${f} is toned but is not a container`);
@@ -924,4 +937,26 @@ test('level path: the first crew order after level 5 pays its Tide token at once
  assert.ok(s.orders[0].story||o.bonus==='token'||s.orders[0].bonus==='token','the next everyday order pays the token');assert.equal(s.pathNext,undefined);
  // a damaged value is dropped, the save is kept
  const bad=fresh(0);bad.pathNext='gold';assert.equal(load(JSON.stringify(bad),1).pathNext,undefined);
+});
+
+// Build 45n (user: "zarimdaa merge hiihed musuu tsohihgui baih shig baina"): the tideglass hint
+// agrees with the rules. Every glass on a new board, every merge size in each space beside it:
+// the hint calls the merge too small exactly when the reducer leaves that glass uncracked, and
+// iceNeed (the level the message names) is set exactly on glass that some merge cannot crack.
+test('tideglass hint: "too small" agrees with crack()',async()=>{
+ const {iceNeed,weakIceBeside,besideOf}=await import('../v5/next/ice.mjs');
+ const G=await import('../v5/next/game.mjs');
+ let checked=0;
+ for(const k of Object.keys(G.GLASS).map(Number)){
+  const g0=G.fresh().board[k];
+  assert.equal(iceNeed(g0)!==null,g0.tier>=2,`glass ${k} mark`);
+  for(const to of besideOf(k))for(let tier=0;tier<4;tier++){
+   const s=G.fresh();if(s.board[to]?.type==='glass'||s.board[to]?.type==='source')continue;
+   const from=s.board.findIndex((x,i)=>i!==to&&i!==k&&x?.type!=='glass'&&x?.type!=='source');
+   s.board[to]=item('rig',tier);s.board[from]=item('rig',tier);s.board[k]={...s.board[k],cracks:0};
+   const r=G.act(s,{type:'merge',from,to});if(!r.ok)continue;
+   const weak=weakIceBeside(s.board,to).includes(k),cracked=(s.board[k]?.cracks??0)>0||s.board[k]?.type!=='glass';
+   assert.equal(weak,!cracked,`glass ${k} (tier ${G.GLASS[k][1]}), merge to tier ${tier+1} at ${to}`);checked++;}
+ }
+ assert.ok(checked>100,`checked ${checked} merges`);
 });
