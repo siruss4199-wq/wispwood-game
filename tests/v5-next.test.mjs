@@ -801,3 +801,25 @@ test('board art: every sprite is measured and drawn at its kind\'s size',async()
  // the renderer puts the fit on the sprite
  assert.match(draw({type:'item',family:'rig',tier:0}),/style="--fit:0\.\d+;--dx:-?0(\.\d+)?;--dy:-?0(\.\d+)?"/);
 });
+
+// Build 45n (user: "zarimdaa merge hiihed musuu tsohihgui baih shig baina"): the tideglass hint
+// agrees with the rules. Every glass on a new board, every merge size in each space beside it:
+// the hint calls the merge too small exactly when the reducer leaves that glass uncracked, and
+// the level mark appears exactly on glass that some merge cannot crack.
+test('tideglass hint: the level mark and "too small" agree with crack()',async()=>{
+ const {iceNeed,weakIceBeside,besideOf}=await import('../v5/next/ice.mjs');
+ const G=await import('../v5/next/game.mjs');
+ let checked=0;
+ for(const k of Object.keys(G.GLASS).map(Number)){
+  const g0=G.fresh().board[k];
+  assert.equal(iceNeed(g0)!==null,g0.tier>=2,`glass ${k} mark`);
+  for(const to of besideOf(k))for(let tier=0;tier<4;tier++){
+   const s=G.fresh();if(s.board[to]?.type==='glass'||s.board[to]?.type==='source')continue;
+   const from=s.board.findIndex((x,i)=>i!==to&&i!==k&&x?.type!=='glass'&&x?.type!=='source');
+   s.board[to]=item('rig',tier);s.board[from]=item('rig',tier);s.board[k]={...s.board[k],cracks:0};
+   const r=G.act(s,{type:'merge',from,to});if(!r.ok)continue;
+   const weak=weakIceBeside(s.board,to).includes(k),cracked=(s.board[k]?.cracks??0)>0||s.board[k]?.type!=='glass';
+   assert.equal(weak,!cracked,`glass ${k} (tier ${G.GLASS[k][1]}), merge to tier ${tier+1} at ${to}`);checked++;}
+ }
+ assert.ok(checked>100,`checked ${checked} merges`);
+});

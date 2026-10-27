@@ -519,3 +519,46 @@ The user wrote: "generatoriin shar icon ontsgui bainaa" (the generator's yellow 
 - The tool-placement, merge and reload check passes at 360×780 and 907×510.
 - The corner tap and drag check passes.
 - WebKit is not available locally; CI runs it.
+
+## Build 45n: tideglass hints (2026-10-27)
+
+The user wrote: "zarimdaa merge hiihed musuu tsohihgui baih shig baina" (sometimes a merge does
+not seem to crack the ice). They chose option A, presentation only. The rule in `game.mjs`
+`crack()` is unchanged.
+
+### The rule, as found
+
+A merge cracks tideglass only when all three are true:
+- the glass is directly beside the space the merge lands on (above, below, left or right; not
+  diagonal);
+- the merge lands there (the space the part was dragged from does not count);
+- what the merge makes is at least the level of the part inside the glass.
+
+On a new board, 11 of 17 glass hold a level 1 or 2 part, and any merge beside them cracks them. 4
+need a level 3 or better merge and 2 need a level 4 or better. A smaller merge beside those did
+nothing, with no sign why.
+
+### Change
+
+- **Level mark:** glass that a merge can be too small for carries "Lv3+" or "Lv4+" in the
+  bottom-right badge corner (slate, like the other information badges). The tile's label says the
+  same.
+- **Too-small merge:** when a merge is too small for glass beside it:
+  - that glass shrugs (a short side shake, none under reduced motion);
+  - its mark pulses orange;
+  - the message line says "too small for the tideglass: merge a level N or better beside it".
+- The logic is in `v5/next/ice.mjs`; `app.mjs` and `coastal.css` draw it.
+
+### Verified
+
+- **Unit test:** a new test in `tests/v5-next.test.mjs` places every glass on a new board, every
+  space beside it and merge results from level 2 to level 5. The hint calls a merge too small
+  exactly when the reducer leaves that glass uncracked. `node --test tests/v5-*.test.mjs`:
+  285/285.
+- **Browser (Chromium, 360, 390, 430 and 907×510):**
+  - six marks on a new board;
+  - a level 2 merge beside "Lv3+" glass shows the message and the shrug, with no crack;
+  - a level 3 merge on the same space cracks it;
+  - no console errors.
+- **Suites:** `v5-next-browser`, bright and playtest pass in Chromium. WebKit is not available
+  locally; CI runs it.
