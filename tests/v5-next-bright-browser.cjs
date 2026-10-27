@@ -124,7 +124,13 @@ async function run(engine,W,H,motion){
   await page.waitForSelector('#beat[open]',{timeout:4000});await closeBeats(page);
   await page.waitForFunction(()=>document.querySelector('#mapCard h3')?.textContent==='Lay a boardwalk',null,{timeout:4000});
   assert.equal((await read(page)).built['beach-path'],1);assert.equal((await read(page)).coins,5);
+  // Build 45h (user: "item dutaj baigaa ni sain anzaaragdahgui"): the card names what the next
+  // stage's gold order still lacks, rings the missing parts, and the strip counts them.
+  {const g=(await read(page)).orders.find(o=>o?.story==='beach-path');
+   if(g){const t=await page.locator('#mapCard .needMissing').textContent();assert.match(t,/^Missing: \d+ × \S|^All parts are on the board/,`${tag}: the card says what the gold order lacks`);
+    if(/^Missing/.test(t)){assert.ok(await page.locator('#mapCard .needParts i.short').count()>=1,`${tag}: a missing part is marked`);assert.match(await page.locator('#mapCard [data-make]').textContent(),/^Make (the missing |\d+ missing parts)/);}}}
   await page.locator('#coastMap [data-back]').click({force:true});
+  {const g=(await read(page)).orders.find(o=>o?.story==='beach-path');if(g)assert.match(await page.locator('#mapButton .rsText small').textContent(),/\d+ parts? missing|Deliver gold order/,`${tag}: the strip counts the missing parts`);}
 
   // The folded shed: how full it is; a part dragged onto the row goes in; a tap opens it.
   await setState(page,s=>{s.daily={day:9e6,count:1};s.board[15]={type:'item',family:'rig',tier:0};});

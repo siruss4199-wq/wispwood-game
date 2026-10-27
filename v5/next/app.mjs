@@ -27,7 +27,7 @@ function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el
 let adPlaying=false;
 const sfx=(kind,tier=0)=>sounds.play(kind,tier,{muted:adPlaying||platform.muted()});
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 46f · orders follow the generators';
+export const BUILD='Build 46g · orders follow the generators';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
@@ -229,9 +229,9 @@ function renderNextPlace(){
  el.dataset.place=u.id;el.dataset.ready=ready?'1':'0';el.classList.toggle('ready',ready);
  el.querySelector('.rsThumb').innerHTML=placeArt(t,u.stage);
  el.querySelector('.rsText b').textContent=ready?'Ready to build':u.name;
- el.querySelector('.rsText small').innerHTML=ready?`${u.name} · ${COIN}${u.cost}`:`<i class="rsMat ${u.materials?'ok':''}" aria-hidden="true">${u.materials?'✓':'◆'}</i>${u.materials?'Materials':'Gold order'} · ${COIN}${Math.min(state.coins,u.cost)}/${u.cost}`;
+ el.querySelector('.rsText small').innerHTML=ready?`${u.name} · ${COIN}${u.cost}`:`<i class="rsMat ${u.materials?'ok':''}" aria-hidden="true">${u.materials?'✓':'◆'}</i>${u.materials?'Materials':(g=>!g?'Gold order':g.parts?`${g.parts} part${g.parts>1?'s':''} missing`:'Deliver gold order')(goldShort(u.id))} · ${COIN}${Math.min(state.coins,u.cost)}/${u.cost}`;
  el.querySelector('.rsAction').textContent=ready?'Build':'View';
- el.setAttribute('aria-label',`${u.name} (${t.name}, stage ${u.stage}): ${ready?`ready to build for ${u.cost} coins. Open the ${area.name} to build it`:`${u.materials?'materials in':'needs its gold order'}, ${Math.min(state.coins,u.cost)} of ${u.cost} coins. Open the ${area.name}`}`);
+ el.setAttribute('aria-label',`${u.name} (${t.name}, stage ${u.stage}): ${ready?`ready to build for ${u.cost} coins. Open the ${area.name} to build it`:`${u.materials?'materials in':(g=>g?.parts?`gold order missing ${missText(g.miss)}`:'needs its gold order')(goldShort(u.id))}, ${Math.min(state.coins,u.cost)} of ${u.cost} coins. Open the ${area.name}`}`);
  if(ready&&!was&&el.dataset.seen==='1'&&!reduced()){el.classList.remove('justReady');void el.offsetWidth;el.classList.add('justReady');}
  el.dataset.seen='1';
 }
@@ -541,20 +541,28 @@ function growScene(){
 // chosen place says what its next stage needs (its gold order's parts, its coins) with one big
 // button; the places sit below as a grid of tiles to choose from.
 let mapFocus=null;
+// What a place's gold order still lacks (Build 45h, user: "item dutaj baigaa ni sain
+// anzaaragdahgui"): the parts not yet on the board, each with how many more, so the card and the
+// strip can name them instead of a small "1/2".
+const goldShort=id=>{const o=state.orders.find(o=>o.story===id);if(!o)return null;const miss=missingOf(state,o).map(r=>({...r,more:r.count-r.have}));return {o,miss,parts:miss.reduce((n,r)=>n+r.more,0)};};
+const missText=miss=>miss.map(r=>`${r.more} × ${nameOf(item(r.family,r.tier))}`).join(', ');
 function mapCard(area,t,u){
  const n=stageOf(state,t.id);
  if(n>=STAGES)return `<section id="mapCard" class="mapCard done" data-card="${t.id}"><span class="cardArt">${placeArt(t,n)}</span><div class="cardBody"><small class="cardPlace">${t.name}</small><h3>${t.stages[STAGES-1].name}</h3>${pips(n)}<p class="cardDone">Fully restored ✓</p></div><button class="cardButton replay" type="button" data-replay="${t.id}">Replay its story</button></section>`;
  if(!u){const k=area.tasks.indexOf(t);return `<section id="mapCard" class="mapCard locked" data-card="${t.id}"><span class="cardArt unbuilt">${placeArt(t,0)}</span><div class="cardBody"><small class="cardPlace">Locked</small><h3>${t.name}</h3><p class="cardDone">Opens when ${area.tasks[k-1]?.name??'the place before it'} has its first stage.</p></div></section>`;}
  const order=state.orders.find(o=>o.story===t.id),coinsOk=state.coins>=u.cost;
  const stuff=u.materials?`<span class="need ok"><b class="needIcon">✓</b><span>Materials</span></span>`
-  :order?`<span class="need"><span class="needParts">${needsOf(state,order).map(r=>`<i>${draw(item(r.family,r.tier))}${r.sibling?`<em class="needLv" aria-label="level ${levelOf(r)}">Lv${levelOf(r)}</em>`:''}<b>${r.have}/${r.count}</b></i>`).join('')}</span><span>Gold order</span></span>`
+  :order?`<span class="need gold"><span class="needParts">${needsOf(state,order).map(r=>`<i class="${r.have>=r.count?'got':'short'}">${draw(item(r.family,r.tier))}${r.sibling?`<em class="needLv" aria-label="level ${levelOf(r)}">Lv${levelOf(r)}</em>`:''}<b>${r.have>=r.count?'✓ ':''}${r.have}/${r.count}</b></i>`).join('')}</span><span>Gold order</span></span>`
   :`<span class="need"><b class="needIcon">…</b><span>Gold order coming</span></span>`;
  const coins=`<span class="need ${coinsOk?'ok':''}"><b class="needIcon coinNeed">${COIN}</b><span><b>${Math.min(state.coins,u.cost)}</b>/${u.cost}</span></span>`;
+ const short=!u.materials&&order?goldShort(t.id):null;
+ // the missing parts, said in words under the needs (the coins can already be green)
+ const lack=short?.parts?`<p class="needMissing"><b>Missing:</b> ${missText(short.miss)}</p>`:short?`<p class="needMissing ready"><b>All parts are on the board:</b> deliver the gold order</p>`:'';
  const button=canBuild(u)?`<button class="cardButton build" type="button" data-restore="${t.id}">Build · ${COIN} ${u.cost}</button>`
-  :!u.materials&&order?`<button class="cardButton go" type="button" data-make="${order.id}">Make the gold order</button>`
+  :short?`<button class="cardButton go" type="button" data-make="${order.id}">${!short.parts?'Deliver the gold order':short.miss.length===1&&short.parts===1?`Make the missing ${nameOf(item(short.miss[0].family,short.miss[0].tier))}`:`Make ${short.parts} missing parts`}</button>`
   :!u.materials?`<button class="cardButton go" type="button" data-go>Deliver an order</button>`
   :`<button class="cardButton go" type="button" data-go>Earn ${u.cost-state.coins} more ${COIN}</button>`;
- return `<section id="mapCard" class="mapCard ${canBuild(u)?'ready':''}" data-card="${t.id}"><span class="cardArt next">${placeArt(t,u.stage)}<em>Stage ${u.stage}</em></span><div class="cardBody"><small class="cardPlace">${n?t.stages[n-1].name:'New place'}</small><h3>${u.name}</h3>${pips(n)}<div class="needs">${stuff}${coins}</div></div>${button}</section>`;
+ return `<section id="mapCard" class="mapCard ${canBuild(u)?'ready':''}" data-card="${t.id}"><span class="cardArt next">${placeArt(t,u.stage)}<em>Stage ${u.stage}</em></span><div class="cardBody"><small class="cardPlace">${n?t.stages[n-1].name:'New place'}</small><h3>${u.name}</h3>${pips(n)}<div class="needs">${stuff}${coins}</div>${lack}</div>${button}</section>`;
 }
 let focusOnOpen=false;
 function showMap(){
