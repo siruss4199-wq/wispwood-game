@@ -22,6 +22,24 @@ export const COIN_VALUE=[5,5,10,25,45,80,140,240];
 // Orders ask for tier 5 at most (build 31: a sixth-tier story order stalled the beach's end).
 export const ORDER_TOP=5;export const COIN_RATE=5;
 export const CHEST_ENERGY=15;
+// The level path (docs/V5_LEVEL_PATH_2026-10-27.md; user: "togloomond ashiglaad gameplayd sonirholtoi
+// zuilsee nemmeer baina"): the player level opens a merge rule and two kinds of crew order. The
+// level-up energy stays.
+export const LEVEL_PATH=[
+ {level:3,id:'triple',name:'Triple merge',text:'Drag a level 3 or bigger part onto its twin while a third one touches it: all three make two of the next level.'},
+ {level:5,id:'token',name:'Tide tokens from the crew',text:'Every eighth crew order also pays a Tide token.'},
+ {level:8,id:'favour',name:'Crew favours',text:'Every sixth crew order asks one part a level higher and pays a Sea chest too (a Brass cog from the Survey Worksite on).'}
+];
+// The triple merge is for parts of level 3 and up (tier 2+): measured with the economy harness,
+// triples of smaller parts used up the cheap pairs a player merges for free while energy is out
+// (at 4.5 s an action, low-energy moments with a free move fell from about 80 % to 45 %).
+export const TOKEN_EVERY=8,FAVOUR_EVERY=6,TRIPLE_MIN_TIER=2;
+// What a level-path order pays on top of its coins. A favour pays a Sea chest at the beach and a
+// Brass cog from the worksite on: cogs at the beach brought the Shell Trap out before the beach was
+// finished (measured, 4 s an action: 45 min against the beach's 54).
+export const BONUSES=['token','chest','cog'],BONUS_NAMES={token:'Tide token',chest:'Sea chest',cog:'Brass cog'};
+export const levelOf=s=>Number.isInteger(s?.level?.level)?s.level.level:1;
+export const unlocked=(s,id)=>levelOf(s)>=LEVEL_PATH.find(u=>u.id===id).level;
 // The camp shed (build 32, user: "aguulah bolon udur tutmiin shagnaliig nem"): four spaces off
 // the board for parts, crates, cogs and tokens. What is in the shed does not count for orders
 // or cargo; tap it to bring it back to the board.
@@ -298,13 +316,25 @@ export function makeOrder(s){
    const onBoard=new Set(others.map(o=>key(o.needs)));
    needs=vary.find(v=>!stale(v))??(bad(needs)?vary.find(v=>!bad(v))??vary.find(v=>!onBoard.has(key(v))):null)??needs;
   }
+  // The level path: from level 8 every sixth everyday order is a crew favour (its first part one tier
+  // higher, within reach and the order limits, and a Sea chest or Brass cog on top); from level 5 every eighth
+  // pays a Tide token too (every eighth: every fifth left slow players never short of energy). Counted by the order's own number, so it is deterministic.
+  // The first everyday order after level 5 pays its Tide token at once (s.pathNext), so the level-up's
+  // promise is kept on the next card, not up to eight orders later (measured: the first token came at
+  // 51 min, against level 5 at about 10). Favours keep their turn (within six orders): a first favour
+  // at once left slow players never short of energy (economy harness, 10 s an action).
+  const k=n-FIRST.length,opened=s.pathNext;let bonus;
+  if(unlocked(s,'favour')&&k%FAVOUR_EVERY===FAVOUR_EVERY-1){const r=needs[0],up=Math.min(ORDER_TOP,maxTier(r.family)-1,hi(r.family)+1);
+   if(up>r.tier){needs=structuredClone(needs);needs[0]={family:r.family,tier:up,count:1};bonus=s.area>=1?'cog':'chest';}}
+  if(!bonus&&unlocked(s,'token')&&(opened==='token'||k%TOKEN_EVERY===TOKEN_EVERY-1))bonus='token';
+  if(opened==='token'&&bonus==='token')delete s.pathNext;
   // Never two identical cards (2026-10-26: with one generator out, two-part jobs of one chain could
   // run out of new combinations): a quick job not on the board takes the place.
   {const onBoard=new Set(others.map(o=>key(o.needs)));
    if(onBoard.has(key(needs))){const alt=pool.flatMap(f=>Array.from({length:hi(f)},(_,k)=>[1,2].map(c=>[{family:f,tier:k+1,count:c}])).flat()).find(v=>!onBoard.has(key(v)));
     if(alt){needs=alt;role='quick';}}}
   recent.push(key(needs));if(recent.length>RECENT)recent.splice(0,recent.length-RECENT);
-  return {id:'o'+n,who:crewFor(needs),needs,coins:orderPrice(s,needs,role),role,born:s.moves};
+  return {id:'o'+n,who:crewFor(needs),needs,coins:orderPrice(s,needs,role),role,born:s.moves,...(bonus?{bonus}:{})};
  }
  return {id:'o'+n,who:crewFor(needs),needs,coins:priceOf(needs),born:s.moves};
 }
@@ -350,9 +380,10 @@ export const cargoKeys=s=>s.board.flatMap((x,i)=>reachable(s,i)?[{index:i,...x.k
 // A merge on cell i cracks the tideglass beside it, if what it makes is at least as strong
 // as the part in the glass (build 19: small merges no longer chip it); the last crack frees
 // the part.
-function crack(s,i,power=Infinity){
+function crack(s,i,power=Infinity,also=[]){
  const cracked=[],freed=[];
- for(const j of neighbours(i)){const g=s.board[j];if(g?.type!=='glass'||power<g.tier)continue;
+ // A triple merge makes parts on two spaces: the glass beside either cracks once.
+ for(const j of new Set([i,...also].flatMap(neighbours))){const g=s.board[j];if(g?.type!=='glass'||power<g.tier)continue;
   g.cracks=(g.cracks??0)+1;if(g.cracks>=GLASS_HITS){s.board[j]=item(g.family,g.tier);freed.push(j);}else cracked.push(j);}
  return {cracked,freed,bonus:freed.length*XP.unseal};
 }
@@ -378,7 +409,9 @@ function gainXp(s,amount){
   // Energy only (Build 41, user: "ene hairtsagiig amarhan uguud baina"): level chests no longer
   // add a driftwood crate.
   const energy=bonus(s,CHEST_ENERGY);
-  ups.push({level:s.level.level,energy,family:null,index:-1});
+  const unlock=LEVEL_PATH.find(u=>u.level===s.level.level);
+  if(unlock?.id==='token')s.pathNext='token';
+  ups.push({level:s.level.level,energy,family:null,index:-1,...(unlock?{unlock:unlock.id}:{})});
  }
  return ups;
 }
@@ -480,7 +513,11 @@ function step(s,a,now){
   if(y.type!=='item'||y.family!==x.family||y.tier!==x.tier)return fail('Merge two identical parts.');
   if(x.tier>=maxTier(x.family))return fail('This is the top of its chain.');
   s.board[to]=item(x.family,x.tier+1);s.board[from]=null;s.merges++;
-  return withCracks({ok:true,event:'merge',index:to,xp:XP.merge,message:nameOf(s.board[to])},crack(s,to,x.tier+1));
+  // Triple merge (the level path, level 3): a third identical part touching the space dropped on
+  // joins, and the three make two (the second takes the third's space).
+  const third=unlocked(s,'triple')&&x.tier>=TRIPLE_MIN_TIER?neighbours(to).find(k=>matches(s.board[k],x))??-1:-1;
+  if(third>=0){s.board[third]=item(x.family,x.tier+1);s.merges++;}
+  return withCracks({ok:true,event:'merge',index:to,...(third>=0?{triple:third}:{}),xp:XP.merge*(third>=0?2:1),message:nameOf(s.board[to])+(third>=0?' ×2 · triple merge':'')},crack(s,to,x.tier+1,third>=0?[third]:[]));
  }
  if(a.type==='openKit'){
   const box=valid(a.index)?s.board[a.index]:null;if(box?.type!=='kit')return fail('Choose a crate.');
@@ -505,11 +542,16 @@ function step(s,a,now){
   s.coins+=o.coins;s.ordersDone++;s.orders[lane]=null;s.energy=Math.min(MAX_ENERGY,s.energy+gain);
   if(o.story&&TASKS[o.story]&&stageOf(s,o.story)<STAGES)s.materials[o.story]=stageOf(s,o.story)+1;
   s.orders[lane]=makeOrder(s);
+  // A tool the order pays on top (the level path): next to the Rover; the delivery has just freed
+  // at least one space, and the shed takes it if the board is somehow full.
+  let tool=null;
+  if(BONUSES.includes(o.bonus)){const x=o.bonus==='cog'?cog():o.bonus==='chest'?kit(newestGenerator(s),2):token(),i=nearestFree(s.board,ROVER,cellPos),k=s.shed.indexOf(null);
+   if(i>=0){s.board[i]=x;tool={type:o.bonus,index:i};}else if(k>=0){s.shed[k]=x;tool={type:o.bonus,slot:k};}}
   // A gold order is the materials for its place's next stage (Build 41, user: "story upgrade
   // shuud hurdan hiigdej baina"): the stage can be bought once they are delivered. Orders no
   // longer bring a driftwood crate every third time.
   const materials=o.story&&s.materials[o.story]>stageOf(s,o.story)?{id:o.story,stage:s.materials[o.story]}:null;
-  return {ok:true,event:'deliver',index:null,xp:Math.max(1,Math.round(o.coins/COIN_RATE)),coins:o.coins,box:-1,freed:take,...(materials?{materials}:{}),energy:gain,message:`+${o.coins} coins`+(gain?` · +${gain} energy`:'')+(materials?` · materials for ${TASKS[o.story].stages[materials.stage-1].name}`:'')};
+  return {ok:true,event:'deliver',index:null,xp:Math.max(1,Math.round(o.coins/COIN_RATE)),coins:o.coins,box:-1,freed:take,...(materials?{materials}:{}),energy:gain,...(tool?{tool}:{}),message:`+${o.coins} coins`+(gain?` · +${gain} energy`:'')+(tool?` · a ${BONUS_NAMES[tool.type]}`:'')+(materials?` · materials for ${TASKS[o.story].stages[materials.stage-1].name}`:'')};
  }
  // Upgrade a place on the beach one stage (the action keeps its old name, 'restore').
  if(a.type==='restore'){
@@ -640,7 +682,7 @@ function validCell(x){
  return false;
 }
 const validNeed=r=>r&&CHAINS[r.family]&&integer(r.tier,0,maxTier(r.family))&&integer(r.count,1,4);
-const validOrder=o=>o&&typeof o.id==='string'&&Array.isArray(o.needs)&&o.needs.length>=1&&o.needs.length<=2&&o.needs.every(validNeed)&&integer(o.coins,1,999)&&(o.story===undefined||!!TASKS[o.story])&&['ivo','neri','tamsin','bram'].includes(o.who);
+const validOrder=o=>o&&typeof o.id==='string'&&Array.isArray(o.needs)&&o.needs.length>=1&&o.needs.length<=2&&o.needs.every(validNeed)&&integer(o.coins,1,999)&&(o.story===undefined||!!TASKS[o.story])&&['ivo','neri','tamsin','bram'].includes(o.who)&&(o.bonus===undefined||BONUSES.includes(o.bonus));
 
 // Build 3 (version 1) had sand and numbered cells; build 4 (version 2) had the tide.
 // Both become sealed cargo: each covered cell gets the key this layout gives it and
@@ -703,6 +745,9 @@ export function load(raw,now=Date.now()){
   if(!s.materials||typeof s.materials!=='object'||Array.isArray(s.materials)||!Object.entries(s.materials).every(([id,n])=>TASKS[id]&&integer(n,1,STAGES)))return fresh(now);
   // Build 41 added seenEnd (the prototype-complete screen shown): absent means not yet.
   if(s.seenEnd!==undefined&&typeof s.seenEnd!=='boolean')return fresh(now);
+  // The level path (Build 46j): a Tide-token order level 5 promised, still to come. Saves before it
+  // have none; a damaged value is dropped (it only means the next token order waits its turn).
+  if(s.pathNext!==undefined&&s.pathNext!=='token')delete s.pathNext;
   if(!s.swaps||!integer(s.swaps.day,-1,1e7)||!integer(s.swaps.n,0,FREE_SWAPS)||!integer(s.swaps.ads,0,AD_SWAPS))return fresh(now);
   if(!s.shop||!integer(s.shop.day,-1,1e7)||!s.shop.bought||typeof s.shop.bought!=='object'||Array.isArray(s.shop.bought)||!Object.entries(s.shop.bought).every(([id,n])=>SHOP[id]&&integer(n,0,SHOP[id].limit)))return fresh(now);
   const bookKey=k=>typeof k==='string'&&/^[a-z]+\d$/.test(k)&&BOOK_CHAINS.includes(k.slice(0,-1))&&+k.slice(-1)<=maxTier(k.slice(0,-1));

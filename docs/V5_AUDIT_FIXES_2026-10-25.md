@@ -167,3 +167,16 @@ What the other candidates did:
 ### Saves
 - No state shape changes.
 - Orders already in a save keep their parts and price until delivered.
+
+## Build 46j: the level path (2026-10-27)
+
+The player level now opens gameplay, and keeps its +15 energy. Details are in
+`docs/V5_LEVEL_PATH_2026-10-27.md`.
+
+| Level | Unlock |
+|---|---|
+| 3 | Triple merge: three touching level-3+ parts make two |
+| 5 | Tide tokens from crew orders (the next order at once, then every eighth) |
+| 8 | Crew favours: every sixth order asks one tier higher for a Sea chest, or a Brass cog at the worksite |
+
+All economy guards pass. Shell Trap timing and energy pressure hold at every speed.

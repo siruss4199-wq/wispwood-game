@@ -285,3 +285,11 @@ body.nextMode[data-art] #board.board .tile.tile.glass{background:radial-gradient
 body.nextMode #board .iceArt{opacity:.78}
 /* information badges are neutral slate; colour stays for the generator's action mark */
 body.nextMode #board .srcLevel,body.nextMode #board .tile.kit .pulls{background:#4b5964;color:#fff}
+/* Build 46j (the level path): a crew order that also pays a tool shows it beside its coins. */
+body.nextMode #requests .reqBonus{display:inline-flex;align-items:center;margin-left:3px;font-size:11px;font-weight:900;color:#6b4a1f;line-height:1}
+body.nextMode #requests .reqBonus :is(img,.art){width:20px!important;height:20px!important;max-width:none;object-fit:contain;translate:none;filter:none}
+body.nextMode #requests .reqBonus .kitTag{display:none}
+body.nextMode .levelPill{cursor:pointer}
+/* a ready card's Deliver button fills its foot: the tool is named by the delivery message instead */
+body.nextMode #requests .requestCard.ready .reqBonus{display:none}
+.moment.pathMoment small{white-space:pre-line;text-align:left}
