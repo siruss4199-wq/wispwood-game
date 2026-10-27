@@ -381,3 +381,106 @@ redrawn or recoloured, and gameplay, item IDs and saves are unchanged.
 
 A wider pass should repaint the rest of the Rover chain together, and decide whether the bag's
 colour should step down for cargo that fills the board.
+
+## Build 45l: tool art integration (2026-10-27, branch `claude/v5-tool-art`)
+
+Two supplied transparent sprites replace the art of exactly two identities. The bag, the copper
+offcut, the Rover, the background, the cells, the HUD and the order layout are unchanged.
+Gameplay, item IDs, merge chains, requirements, rewards and saves are untouched (`game.mjs` is not
+in the diff).
+
+### Mapping
+
+The IDs come from the code: `FAMILIES.rig.names` in `v5/core.mjs:19`, where tier 1 is "Grip tool"
+and tier 2 is "Split spanner". They are mapped in `PILOT` in `v5/next/chains.mjs`.
+
+| Supplied sprite | Identity | Previous file (kept) | New runtime file |
+|---|---|---|---|
+| Chunky pliers, coral/navy handles | item `rig` tier 1, "Grip tool" (`rig-1`) | `coast/icons/grip-tool-pilot.webp` (45k pilot); `premium/grip-tool-vibrant.webp` | `coast/icons/grip-tool-v2.webp` |
+| Adjustable wrench, blue/navy handle | item `rig` tier 2, "Split spanner" (`rig-2`) | `premium/split-spanner-vibrant.webp` | `coast/icons/split-spanner-v2.webp` |
+
+- `draw()` is the only Coast Camp renderer, so the same file appears on the merge board, under
+  ice, on crew order cards, in the selected-item panel, in the collection book, and in every
+  preview that draws the part.
+- Classic V5 (`v5/index.html`, `premium.mjs`) keeps its own sprites.
+- **Rollback:** delete the entry from `PILOT`.
+
+### Masters and export
+
+- **Masters:** `docs/art-source/coastal-tools-2026-10-27/` (`grip-pliers-v2.png`,
+  `adjustable-wrench.png`). They are lossless PNG copies of the 1254 px attachments as received.
+  The attachments arrived as WebP, so an earlier PNG may hold cleaner edges.
+- **Runtime files:** made with the 45k recipe:
+  - trim to the drawn object (alpha ≥ 8);
+  - pad to a square so the object fills about 92 %;
+  - Lanczos resize to 192 px;
+  - WebP q92: 11.7 KB and 10.1 KB.
+- Transparency and aspect ratio are kept. There is no baked tile, glow or recolouring, and the
+  board's CSS adds only its 1 px contact shadow.
+
+### Size
+
+- The measured bounds are in `art-bounds.mjs`.
+- `TARGET_OF` draws both tools at 78.5 % of the cell (longest visible side). Each is a diagonal
+  tool of about the same mass.
+- That is inside the requested 78–80 % start, and keeps the test's 5-point step under the Rover
+  (84 %).
+- The copper offcut is 72 % and the pocket winch 74 %.
+- Neither tool touches the cell edge or a badge, and the whole cell stays the touch target.
+
+### Verified (Chromium)
+
+Same save, before (45k) and after, at 360×780, 390×844, 430×932 and 907×510.
+
+- **Placement:** the board, the order cards (Bram's Lv3 wrench beside Lv2 pliers), the
+  selected-item panel and the book all show the new files.
+- **No old art:** no old tool file appears anywhere in the page.
+- **Images and errors:** no image fails to load, and there are no console errors or failed
+  requests.
+- **Merges:** a tap selects, and a drag merges Grip tool + Grip tool into Split spanner. Taps on
+  twins have not merged since an earlier build, by design. A corner tap and a corner-to-corner drag
+  still work.
+- **Save:** reload keeps the merge.
+- **Indicators:** ice, the selected and valid-target rings, and the badges stay legible.
+
+Not run here: WebKit, which is not installed in this container (CI runs it), and real Safari.
+
+### Generator diagnostic (yellow drill rover, `gen-rig-pilot`)
+
+**Source and export are not the cause:**
+- The master is 1254 px and the object is 1096 px.
+- The 192 px runtime file is drawn at 118–149 device px on phones (DPR 3) and 58–120 px at
+  907×510, so it is always downsampled, never stretched.
+- The object fills 92 % of its canvas.
+- A still render (reduced motion) matches a single Lanczos resize of the source: 94–104 % of its
+  edge sharpness.
+
+**Cause: the generator's idle "breathing" animation.** `next.css:143–146`
+`genBreathe` (`translateY(-2px) scale(1.03)`, 2.8 s, infinite) re-samples the sprite every frame
+at a fractional scale and a sub-pixel offset.
+
+With motion on, the Rover's edges are 9–20 % softer than the same tile still:
+
+| Viewport | Breathing vs still |
+|---|---|
+| 390@3 | 0.87 |
+| 360@3 | 0.84 |
+| 430@3 | 0.86 |
+| 907×510@2 | 0.80 |
+| 907×510@1 | 0.91 |
+
+It is the only board sprite that is always animated, so it looks soft beside sharp neighbours.
+
+**Contributing:** it is the most detailed sprite (bolts, auger) at about 44 CSS px. The lightning
+badge also covers part of its tracks.
+
+**Not changed in this pass.** The smallest fix is to drop the scale from `genBreathe` and bob by
+whole pixels only.
+
+### Remaining limitations
+
+- The brief describes the wrench as coral/navy; the supplied sprite is blue/navy. It is used as
+  supplied, with no recolouring. The blue tells it apart from the coral pliers at order-card size,
+  which was the earlier "Split spanner and Grip tool look alike" problem.
+- The Rover chain now goes from coral pliers (tier 1) and a blue wrench (tier 2) to the older
+  painted pocket winch (tier 3). This is the style jump noted for 45k, one step later.

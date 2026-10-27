@@ -781,12 +781,17 @@ test('board art: every sprite is measured and drawn at its kind\'s size',async()
   if(TARGET_OF[f])assert.ok(Math.abs(shown-TARGET_OF[f])<.005,`${f}: pilot target ${TARGET_OF[f]}, shown ${shown.toFixed(3)}`);
   else assert.ok(shown>=lo-.005&&shown<=hi+.005,`${f}: ${a.kind} shown at ${shown.toFixed(3)} of the cell`);}
  // what the user saw: materials no longer outweigh generators; containers agree with each other
- // (the files the board draws now: Build 45k pilot art for the Grip tool, the Rover and the bundle)
+ // (the files the board draws now: Build 45k pilot art for the Rover and the bundle, the tool art
+ // integration's -v2 Grip tool and Split spanner)
  const s=f=>ART_BOUNDS[f][0]*artFit(f).fit;
- for(const m of ['copper-offcut','grip-tool-pilot','split-spanner'])assert.ok(s(m)<=s('gen-rig-pilot')-.05,`${m} smaller than the Rivet Rover`);
+ for(const m of ['copper-offcut','grip-tool-v2','split-spanner-v2'])assert.ok(s(m)<=s('gen-rig-pilot')-.05,`${m} smaller than the Rivet Rover`);
  const c=['cargo-crate','cargo-barrel','cargo-bundle-pilot','cargo-basket','driftwood-crate'].map(s);assert.ok(Math.max(...c)-Math.min(...c)<=.05,`containers ${c.map(x=>x.toFixed(2))}`);
- // the pilot art replaces exactly its three identities, and keeps its colours on the board
- assert.match(draw({type:'item',family:'rig',tier:1}),/grip-tool-pilot\.webp/);assert.match(draw({type:'item',family:'rig',tier:2}),/split-spanner-vibrant\.webp/);
+ // the new art replaces exactly its identities, and keeps its colours on the board
+ assert.match(draw({type:'item',family:'rig',tier:1}),/grip-tool-v2\.webp/);assert.match(draw({type:'item',family:'rig',tier:2}),/split-spanner-v2\.webp/);
+ assert.match(draw({type:'item',family:'rig',tier:0}),/copper-offcut-vibrant\.webp/);assert.match(draw({type:'item',family:'rig',tier:3}),/pocket-winch-vibrant\.webp/);
+ assert.match(draw({type:'glass',family:'rig',tier:2}),/split-spanner-v2\.webp/);
+ // the two tools are balanced against each other (the art direction's 78-80 % start)
+ for(const m of ['grip-tool-v2','split-spanner-v2'])assert.ok(s(m)>=.74&&s(m)<=.8,`${m} shown at ${s(m).toFixed(3)}`);
  assert.match(draw({type:'source',id:'rig',level:3}),/gen-rig-pilot\.webp/);assert.match(draw({type:'source',id:'rope'}),/gen-rope\.webp/);
  assert.match(draw({type:'cargo',key:{family:'chart',tier:2}}),/cargo-bundle-pilot\.webp/);assert.match(draw({type:'cargo',key:{family:'rope',tier:2}}),/cargo-barrel\.webp/);
  for(const f of Object.keys(TARGET_OF))assert.equal(toneOf(f),null,`${f} is never toned`);
