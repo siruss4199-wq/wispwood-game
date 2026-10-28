@@ -29,7 +29,7 @@ function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el
 let adPlaying=false;
 const sfx=(kind,tier=0)=>sounds.play(kind,tier,{muted:adPlaying||platform.muted()});
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 46k · a harder start';
+export const BUILD='Build 46l · tide token hints';
 // The level path (docs/V5_LEVEL_PATH_2026-10-27.md): a crew order that pays a tool on top shows it
 // beside its coins (a Tide token; a favour's Sea chest or Brass cog).
 const bonusThing=o=>o.bonus==='cog'?cog():o.bonus==='chest'?kit(newestGenerator(state),2):o.bonus==='token'?token():null;
@@ -83,6 +83,9 @@ const placeIcons=list=>list.map(t=>{const n=stageOf(state,t.id);return `<span cl
 const iconArt=k=>{if(k==='workshop')return '<img class="art" src="assets/premium/workshop-operational.webp" alt="">';if(ICONS[k])return art(ICONS[k]);const g=k.match(/^source-(\w+)$/),p=k.match(/^(\w+)-(\d)$/);return draw(g?{type:'source',id:g[1]}:item(p[1],+p[2]));};
 // A part a Tide token can turn into one an order wants.
 const swappable=x=>state.orders.some(o=>missingOf(state,o).some(r=>r.tier===x.tier&&r.family!==x.family));
+// What a Tide token can turn a board part into now: missing order parts with a part of their level, of
+// another kind, on the board.
+const tokenOptions=()=>state.orders.flatMap(o=>missingOf(state,o)).filter(r=>state.board.some(y=>y?.type==='item'&&y.tier===r.tier&&y.family!==r.family));
 // What each generator level does (v5/kits.mjs levelLift), said when it is reached.
 const LEVEL_GAIN={2:'Every third part comes out one tier higher.',3:'Every second part comes out one tier higher.',4:'Every part comes out one tier higher.',5:'Top level: every part one tier higher, every third two tiers.'};
 
@@ -276,7 +279,11 @@ function renderSelection(){
  }else if(x.type==='cargo'){const k=CHAINS[x.key.family].names[x.key.tier],have=state.board.some(y=>matches(y,x.key)),gen=CHAINS[x.key.family].gen;
   title='Sealed cargo';desc=`Opens with a ${k}: lay one on it. What is inside is a surprise`+(x.find?.type==='source'?' — something glows in there.':['cog','token'].includes(x.find?.type)?' — something gleams in there.':'.')+(have?' You have one: drag it onto this cargo.':sourceOpen(state,gen)?` ${SOURCES[gen].name} makes them.`:` Its generator is still sealed somewhere on the board.`);}
  else if(x.type==='jar')desc='Energy, sealed in a jar.';
- else if(x.type==='token')desc='Drag it onto a part: the part becomes one of the same tier that a crew order is waiting for.';
+ // Build 46l (user: "zarim item deer ajillahgui baina"): the token works only on a part of a level some
+ // order is still missing in another kind; the panel says which levels work now, or that none does.
+ else if(x.type==='token'){const opts=tokenOptions();
+  desc=opts.length?`Drag it onto a glowing ${[...new Set(opts.map(r=>'Lv'+(r.tier+1)))].join(' or ')} part: it becomes ${opts.slice(0,2).map(r=>'a '+nameOf(item(r.family,r.tier))).join(' or ')} for an order.`
+   :'Turns a part into the same level of another kind that an order still needs. No order needs a swap right now: keep it (or put it in the shed) for later.';}
  else if(x.type==='cog')desc=`Drag it onto a generator: +1 level, up to ${MAX_GENERATOR_LEVEL}. Higher levels make better parts.`;
  if(SHED_TYPES_UI.includes(x.type))buttons+='<button data-action="store">Shed</button>';
  $('#selection').innerHTML=`<span class="preview">${draw(x)}</span><span class="copy"><b>${title}</b><small>${desc}</small></span><span class="actionGroup">${buttons}</span>`;
@@ -422,13 +429,15 @@ board.addEventListener('click',e=>{if(suppressClick){suppressClick=false;return;
 // movable thing owns its touch gesture (no page scroll), a copy follows the finger, and the
 // space under it is marked; letting go there merges or moves.
 const DRAGGABLE=['item','kit','source','cog','token'];
-function endDrag(){document.querySelectorAll('#board .dragging,#board .target,#shed .target,#shed .shedToggle.target').forEach(x=>x.classList.remove('dragging','target'));drag?.ghost?.remove();drag=null;}
+function endDrag(){document.querySelectorAll('#board .dragging,#board .target,#shed .target,#shed .shedToggle.target').forEach(x=>x.classList.remove('dragging','target'));if(state.board[drag?.from]?.type==='token'&&drag?.moved)document.querySelectorAll('#board .tile.match').forEach(x=>x.classList.remove('match'));drag?.ghost?.remove();drag=null;}
 board.addEventListener('pointerdown',e=>{suppressClick=false;const t=e.target.closest('[data-index]');if(!t||e.button!==0)return;const i=+t.dataset.index;if(!DRAGGABLE.includes(state.board[i]?.type))return;drag={from:i,id:e.pointerId,x:e.clientX,y:e.clientY,moved:false,over:null};});
 // Move and drop are heard on the whole page: a drag can end on the shed under the board.
 document.addEventListener('pointermove',e=>{
  if(!drag||drag.id!==e.pointerId)return;
  if(!drag.moved){if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)<=8)return;drag.moved=true;
   const from=board.querySelector(`[data-index="${drag.from}"]`),r=from.getBoundingClientRect();from.classList.add('dragging');
+  // a dragged Tide token shows the parts it works on, as a tapped one does (Build 46l)
+  if(state.board[drag.from]?.type==='token')state.board.forEach((y,k)=>{if(y?.type==='item'&&swappable(y))board.querySelector(`[data-index="${k}"]`)?.classList.add('match');});
   drag.ghost=document.createElement('div');drag.ghost.className='dragGhost';drag.ghost.style.cssText=`width:${r.width}px;height:${r.height}px`;drag.ghost.innerHTML=draw(state.board[drag.from]);document.body.append(drag.ghost);}
  drag.ghost.style.transform=`translate(${e.clientX-drag.ghost.offsetWidth/2}px,${e.clientY-drag.ghost.offsetHeight*.7}px)`;
  const t=document.elementFromPoint(e.clientX,e.clientY)?.closest('#board [data-index], #shed [data-slot], #shed [data-shed-toggle]'),i=t?(t.dataset.slot!=null?'s'+t.dataset.slot:t.dataset.index!=null?+t.dataset.index:'shed'):null;
