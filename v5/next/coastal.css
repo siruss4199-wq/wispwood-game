@@ -322,3 +322,12 @@ body.nextMode[data-art] #board.board .tile.tile.empty{background:linear-gradient
 /* ice keeps its own pale cool inside over the same warm cell as the parts (its gradient and base
    colour), so the frame and its cracks read as ice and the part inside is not tinted by the sand */
 body.nextMode[data-art] #board.board .tile.tile.glass{background:radial-gradient(closest-side,#f1fafce6,#e4f4f8bf),linear-gradient(var(--cell-hi),var(--cell-lo)) var(--cell-lo)}
+/* Build 47b: the Vault door on the coast screen. The picture is the coast's own Vault (cropped from
+   the Home art, 4:3 like the screen); each turned ring lights one turquoise ring over the dial. The
+   place's icon is not drawn over the door. */
+#coastMap .beachScene[data-area="entrance"] .restoredIcon{display:none}
+.doorRings{position:absolute;left:48.7%;top:50%;width:54%;aspect-ratio:1;translate:-50% -50%;pointer-events:none;z-index:1}
+.doorRings i{position:absolute;inset:0;margin:auto;border-radius:50%;border:2px solid #7ff3f300;box-shadow:none;transition:border-color .6s,box-shadow .6s}
+.doorRings i:nth-child(2){width:74%;height:74%}.doorRings i:nth-child(3){width:46%;height:46%}
+.doorRings i:nth-child(1){width:100%;height:100%}
+.doorRings[data-stage="1"] i:nth-child(1),.doorRings[data-stage="2"] i:nth-child(-n+2),.doorRings[data-stage="3"] i{border-color:#9ff6f6;box-shadow:0 0 10px 2px #54e6e6b3,inset 0 0 10px 2px #54e6e680}

@@ -82,7 +82,17 @@ export const AREAS=[
     {name:'Light the door',cost:220,effect:{copy:'newest'},lines:[['tamsin','Lanterns all around the dial. The tideglass in it glows back at us.'],['tamsin','We will need lamps of our own up here. Packed with the lanterns: a copy of our newest generator.']]},
     {name:'Map the dial',cost:240,effect:{kit:['newest',3]},lines:[['neri','Every ring of the dial is mapped. Now we know how it opens.'],['bram','The worksite is done. Next: the Vault Entrance itself.']]}],'ws-door')
   ]},
- {id:'entrance',name:'Vault Entrance',picture:'entrance',coming:true,tasks:[]},
+ // Build 47b: Chapter 1's finale (from PR #80's Vault door): the mapped dial, three rings, each turned
+ // with its own stage; the inner ring names its materials (a Signal lamp and a Bearing dial). Turning
+ // it opens the Vault. Picture: the coast's own Vault (the Home and story art), not PR #80's door.
+ {id:'entrance',name:'Vault Entrance',short:'DOOR',picture:'vault-door',
+  intro:[['neri','The dial is mapped: three rings, each with its own mechanism.'],['ivo','Bring me the parts for each ring and we turn them one by one.']],
+  tasks:[
+   place('vault-door','lamp-3',[48.7,50],[
+    {name:'Turn the outer ring',cost:240,effect:{energy:10},lines:[['neri','The outer ring turns. Two to go.']]},
+    {name:'Turn the middle ring',cost:280,effect:{kit:['newest',3]},lines:[['tamsin','The middle ring is turning. The tideglass in the dial glows brighter.']]},
+    {name:'Turn the inner ring',cost:320,gold:[['lamp',3,1],['chart',4,1]],effect:{},lines:[['bram','The inner ring is set. Stand back.']]}])
+  ]},
  {id:'vault',name:'The Vault',picture:'vault-open',coming:true,tasks:[]}
 ];
 // The next area opens when this one's last stage is bought (game.mjs restore and load).

@@ -21,7 +21,7 @@ import {CREW} from '../crew.mjs';
 import {reduced,burst,rewardFlight,moment as sharedMoment} from '../feedback.mjs';
 import {sfx as sounds} from './sfx.mjs';
 import {createHome} from './home.mjs';
-import {playIntro,preloadIntro,storySeen} from './story-intro.mjs';
+import {playIntro,preloadIntro,storySeen,playScenes} from './story-intro.mjs';
 import {haptics} from './haptics.mjs';
 // The shared moment draws its icon with the Classic art; new chains need draw().
 // Moments show above an open screen (the beach) too: a modal dialog covers the page.
@@ -32,7 +32,7 @@ function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el
 let adPlaying=false;
 const sfx=(kind,tier=0)=>sounds.play(kind,tier,{muted:adPlaying||platform.muted()});
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 47a · rewards wait for space';
+export const BUILD='Build 47b · the Vault door';
 // The level path (docs/V5_LEVEL_PATH_2026-10-27.md): a crew order that pays a tool on top shows it
 // beside its coins (a Tide token; a favour's Sea chest or Brass cog).
 const bonusThing=o=>o.bonus==='cog'?cog():o.bonus==='chest'?kit(newestGenerator(state),2):o.bonus==='token'?token():null;
@@ -250,7 +250,7 @@ function renderNextPlace(){
   // After the last stage (Audit 2026-10-25: coins had no use) the strip says the chapter is done
   // and that the coins crew orders keep paying carry over to the next area.
   const next=AREAS.slice(state.area+1).find(a=>a.coming)?.name;
-  if(allDone(state)){el.querySelector('.rsText b').textContent='Chapter complete';el.querySelector('.rsText small').innerHTML=next?`Coins carry over to the ${next} · ${COIN}${state.coins}`:`${COIN}${state.coins} saved`;}
+  if(allDone(state)){el.querySelector('.rsText b').textContent='Chapter complete';el.querySelector('.rsText small').innerHTML=next?`Coins carry over to ${/^The /.test(next)?next:'the '+next} · ${COIN}${state.coins}`:`${COIN}${state.coins} saved`;}
   else{el.querySelector('.rsText b').textContent=area.name;el.querySelector('.rsText small').textContent=areaDone(state)?'Every place is restored':'The next stages open as you build';}
   el.querySelector('.rsAction').textContent='View';el.setAttribute('aria-label',`Go to the ${area.name}`);return;}
  const {u,t,ready}=n,was=el.dataset.ready==='1';
@@ -584,7 +584,7 @@ function sceneHtml(area){
  const done=areaDone(state,area),vars=area.tasks.map((t,k)=>{const n=stageOf(state,t.id),grow=lastStage?.id===t.id;return `--r${k}:${REVEAL[grow?lastStage.stage-1:n]}`;}).join(';');
  const masks=area.tasks.map((t,k)=>`radial-gradient(ellipse calc(var(--r${k})*1%) calc(var(--r${k})*2%) at ${t.at[0]}% ${t.at[1]}%,#000 40%,transparent 100%)`).join(',');
  const pic=area.map?`assets/premium/${area.map}.webp`:`assets/premium/${area.picture}-vibrant.webp`;
- return `<div class="beachScene ${done?'complete':''} ${area.map?'mapped':''}" data-built="${builtCount(state,area)}" style="--p:${(builtCount(state,area)/(area.tasks.length*STAGES)).toFixed(3)}"><img class="sceneBase" src="${pic}" alt="${area.name}, ${done?'fully restored':builtCount(state,area)+' of '+area.tasks.length*STAGES+' upgrades'}"><div class="sceneStorm" aria-hidden="true"></div><img class="sceneColor" src="${pic}" alt="" aria-hidden="true" style="${vars};-webkit-mask-image:${masks};mask-image:${masks}"><div class="restored">${placeIcons(area.tasks.filter(t=>stageOf(state,t.id)>0))}</div></div>`;
+ return `<div class="beachScene ${done?'complete':''} ${area.map?'mapped':''}" data-area="${area.id}" data-built="${builtCount(state,area)}" style="--p:${(builtCount(state,area)/(area.tasks.length*STAGES)).toFixed(3)}"><img class="sceneBase" src="${pic}" alt="${area.name}, ${done?'fully restored':builtCount(state,area)+' of '+area.tasks.length*STAGES+' upgrades'}"><div class="sceneStorm" aria-hidden="true"></div>${area.id==='entrance'?`<div class="doorRings" data-stage="${stageOf(state,'vault-door')}" aria-hidden="true"><i></i><i></i><i></i></div>`:''}<img class="sceneColor" src="${pic}" alt="" aria-hidden="true" style="${vars};-webkit-mask-image:${masks};mask-image:${masks}"><div class="restored">${placeIcons(area.tasks.filter(t=>stageOf(state,t.id)>0))}</div></div>`;
 }
 // After the picture is drawn with the old size, the new one is set so the colour spreads.
 function growScene(){
@@ -701,13 +701,14 @@ function showBeat(id,effects,stage=stageOf(state,id)){
  const next=AREAS[AREAS.indexOf(area)+1];
  if(effects?.nextArea)extra.push(['bram',`${area.name} is complete! Up the cliff: the ${next.name} is open.`]);
  else if(effects?.areaDone)extra.push(['bram',`${area.name} is complete! ${next?`The ${next.name} opens in the next update.`:''}`]);
- playLines(st.name,st.lines.concat(extra),()=>{const fresh=effects&&Object.keys(effects).length,nxt=fresh?nextPlace():null;if(nxt&&!effects.nextArea)mapFocus=nxt.u.id;if(effects?.nextArea){render();showMap();showIntro();}else if($('#coastMap').open)showMap();const icon=$(`#coastMap .restoredIcon[data-task="${id}"]`)??$(`.restoredIcon[data-task="${id}"]`);icon?.classList.add('upgraded');
+ playLines(st.name,st.lines.concat(extra),()=>{const fresh=effects&&Object.keys(effects).length,nxt=fresh?nextPlace():null;if(nxt&&!effects.nextArea)mapFocus=nxt.u.id;if(effects?.nextArea){render();showMap();if(!nextReveal())showIntro();}else if($('#coastMap').open)showMap();const icon=$(`#coastMap .restoredIcon[data-task="${id}"]`)??$(`.restoredIcon[data-task="${id}"]`);icon?.classList.add('upgraded');
   // The stage's rewards, said once the story has been told (build 22: every stage gives one).
   // One clear next step after the story: the next place to build, said with its rewards.
   const next=nxt&&!effects?.nextArea?` · Next: ${nxt.u.name}${nxt.ready?' (ready)':''}`:'';
   if(effects&&Object.keys(effects).length)moment(`${st.name} · stage ${stage} of ${STAGES}`,rewardText(effects)+next,null);burst(($('#coastMap').open?$('#coastMap .beachScene'):board).getBoundingClientRect(),'gold',true);
   for(const i of [effects?.kit,effects?.copy])if(i>=0)board.querySelector(`[data-index="${i}"]`)?.classList.add('unsealed');
-  if(effects?.areaDone&&allDone(state))setTimeout(showEnd,900);});
+  if(pendingReveals().some(v=>v.live(state)))setTimeout(()=>nextReveal(()=>{if(allDone(state))setTimeout(showEnd,600);}),900);
+  else if(effects?.areaDone&&allDone(state))setTimeout(showEnd,900);});
  sfx('milestone');
 }
 // The coins a bought stage cost, said on its story card (Build 41 M3, from PR #77's receipt).
@@ -722,6 +723,36 @@ function playLines(title,lines,done){
 // A generator found in cargo shows its whole chain.
 function newGeneratorMoment(gen){const c=CHAINS[GENERATOR_CHAINS[gen][0][0]];moment(`New generator: ${SOURCES[gen].name}!`,c.names.join(' → '),{type:'source',id:gen});}
 function showIntro(){const a=currentArea(state);if(a.intro)playLines(a.name,a.intro);}
+// ---------- reveals (Build 47b, from PR #80) ----------
+// A chapter's big moments play once: each is marked seen (state.seen) when it is dismissed, so a
+// reload before that shows it again and none after. A camp that loads past a reveal it never saw
+// (an older save) has it marked without playing, except the newest one it has reached.
+const REVEALS=[
+ // the Vault door's intro, when a camp reaches the Vault Entrance (a finished Chapter 1 save too)
+ {id:'door',when:s=>s.area>=2,live:s=>s.area===2&&!builtCount(s,AREAS[2]),play:done=>playLines(AREAS[2].name,AREAS[2].intro,done)},
+ // the inner ring turns: Chapter 1 is complete and the Vault opens
+ {id:'vault-open',when:s=>stageOf(s,'vault-door')>=STAGES,live:()=>true,play:done=>vaultReveal(done)}
+];
+const markSeen=id=>{if(!state.seen?.[id]&&act(state,{type:'seen',id},Date.now()).ok){persist();playlog.event('reveal',{id});}};
+const pendingReveals=()=>REVEALS.filter(v=>v.when(state)&&!state.seen?.[v.id]);
+function nextReveal(done=()=>{}){
+ const list=pendingReveals(),last=list.at(-1);
+ for(const v of list.slice(0,-1))markSeen(v.id);
+ if(!last){done();return false;}
+ if(!last.live(state)){markSeen(last.id);done();return false;}
+ last.play(()=>{markSeen(last.id);render();done();});
+ return true;
+}
+// The Vault opens (PR #80's Reveal A, with the coast's own Vault picture): the light runs down the
+// seam, then floods the door. A painted open-door frame for this Vault does not exist yet; the
+// light is CSS over the closed door (docs/V5_CHAPTER2_INTEGRATION_2026-10-28.md, missing art).
+const VAULT_ART='assets/premium/coast/home/home-bg.webp',VAULT_LIGHT=[458/941,622/1672,255/941];
+function vaultReveal(done){
+ for(const id of ['coastMap','beat'])if($('#'+id).open)$('#'+id).close();
+ playScenes({label:'Chapter 1 complete',last:'Continue',reduced,face:who=>`assets/premium/coast/ui/${FACES[who]}.webp`,scenes:[
+  {id:'vault-seam',src:VAULT_ART,pos:'47% 37%',fx:'seam',light:VAULT_LIGHT,who:null,alt:'The Vault door in the cliff, a line of light down its seam.',text:'The inner ring locks into place. Light runs down the seam of the Vault door.'},
+  {id:'vault-open',src:VAULT_ART,pos:'47% 37%',fx:'open',light:VAULT_LIGHT,who:'neri',alt:'The Vault door flooded with light as it opens.',text:'It opens. After all this time, the Vault is open.'}]}).then(()=>done());
+}
 
 $('#build').textContent='COAST CAMP · '+BUILD.toUpperCase();
 // CrazyGames lifecycle (Build 41 M7; no-ops without the SDK): loading until the page has loaded,
@@ -749,10 +780,12 @@ let adOffered=false;
 function showEnd(){
  if(!allDone(state)||state.seenEnd)return;run({type:'seenEnd'});playlog.flush();
  const gens=new Set(state.board.filter(x=>x?.type==='source').map(x=>x.id)).size,stages=Object.values(state.built).reduce((a,b)=>a+b,0);
- $('#endContent').innerHTML=`<small class="adTag">CHAPTER COMPLETE</small><h2 id="endTitle">The coast is restored — for now</h2>
-  <p>You rebuilt Landing Beach and the Survey Worksite: <b>${stages} stages</b>, <b>${state.ordersDone} crew orders</b>, <b>${gens} generators</b>.</p>
-  <p>Next on the coast: the Vault Entrance. The dial is mapped and the crew is working out the way in; it comes in a later update.</p>
-  <p>Crew orders keep coming. Their coins carry over to the Vault Entrance, and the shop takes them now.</p>
+ // Build 47b: Chapter 1 ends with the Vault door open; what comes next is named, never offered.
+ const next=AREAS.slice(state.area+1).find(a=>a.coming);
+ $('#endContent').innerHTML=`<small class="adTag">CHAPTER 1 COMPLETE</small><h2 id="endTitle">The Vault is open</h2>
+  <p>You rebuilt Landing Beach and the Survey Worksite and turned the three rings of the Vault door: <b>${stages} stages</b>, <b>${state.ordersDone} crew orders</b>, <b>${gens} generators</b>.</p>
+  <p>${next?`Next: ${next.name}. It comes in a later update.`:'More of the coast comes in a later update.'}</p>
+  <p>Crew orders keep coming. Their coins carry over, and the shop takes them now.</p>
   <button class="primary" type="button" data-keep>Keep playing</button><button class="menuButton" type="button" data-feedback>Share feedback</button>`;
  $('#endDialog').showModal();
 }
@@ -783,7 +816,7 @@ function arrive(fromHome=true){
  if(holdSave&&!damaged){holdSave=false;persist();}
  syncPlaying();if(fromHome)$('#hint').focus({preventScroll:true});
  if(!state.moves)showIntro();
- else if(allDone(state)&&!state.seenEnd)setTimeout(showEnd,600);
+ else nextReveal(()=>{if(allDone(state)&&!state.seenEnd)setTimeout(showEnd,600);});
 }
 // Home and Loading (Build 46p): the board above is set up once; Home only covers and uncovers it.
 if(document.getElementById('home')){

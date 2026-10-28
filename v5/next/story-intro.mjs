@@ -15,45 +15,69 @@ export const INTRO=[
  {art:'landing',who:'ivo',text:'Answers can wait a moment. Let’s clear the landing and sort our supplies.',pos:'50% 50%',
   alt:'A broken wooden path up the beach, with supply crates beside it.'}
 ];
-const NAMES={bram:'Bram',ivo:'Ivo'};
+const NAMES={bram:'Bram',ivo:'Ivo',neri:'Neri',tamsin:'Tamsin'};
 export function storySeen(storage){try{return !!JSON.parse(storage.get(STORY_KEY)??'null')?.intro;}catch{return false;}}
 // The pictures load ahead (Home is up), never holding anything back.
 export function preloadIntro(){for(const s of INTRO){const im=new Image();im.src=ART(s.art);}}
 
-// Plays the story over Home; resolves once the player is done (Check supplies) or skips.
+// Plays the first-play story over Home; resolves once the player is done (Check supplies) or skips.
 export function playIntro({storage,face,reduced}){
- const $=id=>document.getElementById(id),root=$('story'),layers=[...root.querySelectorAll('.storyArt')];
+ return playScenes({scenes:INTRO.map(x=>({...x,src:ART(x.art),id:x.art})),face,reduced,last:'Check supplies'}).then(r=>{
+  try{storage.set(STORY_KEY,JSON.stringify({intro:r.how,scene:r.scene,at:Date.now()}));}catch{}
+  return r.how;});
+}
+// Full-screen illustrated scenes with one line each (the first-play story, Build 47b's Vault reveal):
+// live text, Next on every scene and the last button's own label, Skip and Escape throughout,
+// cross-fades (none with reduced motion). A scene may carry a light effect (fx: 'seam' or 'open',
+// at light: [x, y, r] as shares of its picture) drawn in CSS over the picture, never baked in.
+// The board behind is inert while it plays. Resolves {how:'done'|'skipped', scene}.
+export function playScenes({scenes,face,reduced,last='Continue',label=''}){
+ const $=id=>document.getElementById(id),root=$('story'),layers=[...root.querySelectorAll('.storyArt')],main=document.querySelector('main.game'),wasInert=!!main?.inert;
  let n=0,top=0,closed=false,resolve;
  const done=new Promise(r=>resolve=r);
+ // the light sits where the scene says on the picture as drawn (object-fit: cover, object-position)
+ function light(s,img){
+  const el=root.querySelector('.storyLight');root.dataset.fx=s.fx??'';if(!s.fx||!s.light||!img.naturalWidth){el.hidden=true;return;}
+  const b=img.getBoundingClientRect(),k=Math.max(b.width/img.naturalWidth,b.height/img.naturalHeight),[px,py]=getComputedStyle(img).objectPosition.split(' ').map(v=>parseFloat(v)/100);
+  const ox=b.left+(b.width-img.naturalWidth*k)*px,oy=b.top+(b.height-img.naturalHeight*k)*py,[x,y,r]=s.light;
+  el.style.setProperty('--lx',(ox+x*img.naturalWidth*k)+'px');el.style.setProperty('--ly',(oy+y*img.naturalHeight*k)+'px');el.style.setProperty('--lr',(r*img.naturalWidth*k)+'px');el.hidden=false;
+ }
  function picture(s){
   const next=layers[1-top],cur=layers[top];
-  next.src=ART(s.art);next.alt=s.alt;next.style.objectPosition=s.pos;root.querySelector('.storyBlur').src=ART(s.art);
-  const swap=()=>{next.classList.add('on');cur.classList.remove('on');cur.alt='';top=1-top;};
+  const same=cur.getAttribute('src')===s.src;
+  if(same){cur.alt=s.alt;cur.style.objectPosition=s.pos??'';light(s,cur);return;}
+  next.src=s.src;next.alt=s.alt;next.style.objectPosition=s.pos??'';root.querySelector('.storyBlur').src=s.src;
+  const swap=()=>{next.classList.add('on');cur.classList.remove('on');cur.alt='';top=1-top;light(s,next);};
   if(next.complete)swap();else{next.onload=next.onerror=()=>{next.onload=next.onerror=null;swap();};}
  }
  function scene(){
-  const s=INTRO[n];picture(s);
-  root.dataset.scene=s.art;
+  const s=scenes[n];picture(s);
+  root.dataset.scene=s.id??'';
   const f=$('storyFace');f.hidden=!s.who;if(s.who)f.src=face(s.who);
   $('storyWho').textContent=s.who?NAMES[s.who]:'';$('storyWho').hidden=!s.who;
   $('storyText').textContent=s.text;$('storyText').classList.toggle('narration',!s.who);
   for(const [k,d] of [...root.querySelectorAll('.storyDots i')].entries())d.classList.toggle('on',k===n);
-  $('storyNext').textContent=n<INTRO.length-1?'Next':'Check supplies';
+  $('storyNext').textContent=n<scenes.length-1?'Next':last;
   $('storyNext').focus({preventScroll:true,focusVisible:false});
  }
  function finish(how){
   if(closed)return;closed=true;
-  try{storage.set(STORY_KEY,JSON.stringify({intro:how,scene:n+1,at:Date.now()}));}catch{}
-  removeEventListener('keydown',keys);
-  const end=()=>{root.hidden=true;root.classList.remove('leaving');document.body.classList.remove('storyOpen');};
+  removeEventListener('keydown',keys);removeEventListener('resize',relight);
+  // the board is given back only if this made it inert (Home keeps its own while it is up)
+  const end=()=>{root.hidden=true;root.classList.remove('leaving');document.body.classList.remove('storyOpen');if(main&&!wasInert)main.inert=false;};
   if(reduced())end();else{root.classList.add('leaving');setTimeout(end,260);}
-  resolve(how);
+  resolve({how,scene:n+1});
  }
  const keys=e=>{if(e.key==='Escape'){e.preventDefault();finish('skipped');}};
- $('storyNext').onclick=()=>{if(closed)return;if(n<INTRO.length-1){n++;scene();}else finish('done');};
+ const relight=()=>{const s=scenes[n],img=layers[top];if(s)light(s,img);};
+ $('storyNext').onclick=()=>{if(closed)return;if(n<scenes.length-1){n++;scene();}else finish('done');};
  $('storySkip').onclick=()=>finish('skipped');
- addEventListener('keydown',keys);
+ addEventListener('keydown',keys);addEventListener('resize',relight);
+ $('storyLabel').textContent=label;$('storyLabel').hidden=!label;
+ root.querySelector('.storyDots').innerHTML=scenes.map(()=>'<i></i>').join('');
+ root.setAttribute('aria-label',label?`Story: ${label}`:'Story');
  for(const l of layers){l.classList.remove('on');l.removeAttribute('src');}
+ if(main)main.inert=true;
  root.hidden=false;document.body.classList.add('storyOpen');scene();
  return done;
 }

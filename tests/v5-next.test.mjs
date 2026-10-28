@@ -395,8 +395,10 @@ test('the Survey Worksite: seven places in three stages, every stage a reward, t
  assert.ok(w.tasks.every(t=>t.stages[0].cost<t.stages[1].cost&&t.stages[1].cost<t.stages[2].cost),'each stage costs more');
  assert.ok(w.tasks.every(t=>t.stages.every(x=>Object.keys(x.effect).length===1&&x.lines.length>=1)),'every stage gives one reward and a line');
  assert.equal(w.tasks.flatMap(t=>t.stages.map(x=>x.cost)).reduce((a,b)=>a+b),3270);// Build 41h: ×2 (Build 41e: 1635)
- assert.equal(Object.keys(TASKS).length,14,'place ids are unique across areas');
- assert.ok(AREAS.slice(2).every(a=>a.coming&&!a.tasks.length),'later areas are still to come');
+ // Build 47b: the Vault Entrance has its finale (the Vault door, one place); the areas after it are still to come.
+ assert.equal(Object.keys(TASKS).length,15,'place ids are unique across areas');
+ assert.deepEqual(AREAS[2].tasks.map(t=>t.id),['vault-door']);
+ assert.ok(AREAS.slice(3).every(a=>a.coming&&!a.tasks.length),'later areas are still to come');
  // Its stages are bought like the beach's and keep the beach's stages.
  const s=stock(fresh(0));s.area=1;s.built=beachDone();s.coins=5000;
  assert.equal(nextTask(s).id,'ws-camp');const r=ok(s,{type:'restore'});assert.equal(r.task,'ws-camp');assert.equal(r.effects.energy,Math.min(8,Math.max(0,50-40)));
@@ -438,10 +440,10 @@ test('the economy is tight: energy runs out through both areas, and both still f
  const s=fresh(0);let now=0,waited=0,lowest=99,beach=null,shell=null,lamp=null;const STEP=4000;
  assert.equal(s.energy,30,'a new camp starts with 30 energy (Build 46k; was 40)');
  let beachWait=0;
- while(!(s.area===1&&areaDone(s))&&now<48*3600e3){
+ while(!(s.area>=2||s.area===1&&areaDone(s))&&now<48*3600e3){// worksite done (Build 47b: then the Vault door)
   // Build 41g: out of energy, a player buys the shop's Energy pack when coins allow.
   tick(s,now);const a=nextAction(s);if(!a&&s.energy<1&&act(s,{type:'buy',id:'energy',day:Math.floor(now/864e5)},now).ok)continue;if(!a){now+=30000;waited+=30000;continue;}
-  const r=ok(s,a,now);now+=STEP;if(r.effects?.nextArea){beach=now;beachWait=waited;}if(r.released?.some(n=>n.id==='shell'))shell=now;if(r.released?.some(n=>n.id==='lamp'))lamp=now;
+  const r=ok(s,a,now);now+=STEP;if(r.effects?.nextArea==='worksite'){beach=now;beachWait=waited;}if(r.released?.some(n=>n.id==='shell'))shell=now;if(r.released?.some(n=>n.id==='lamp'))lamp=now;
   if(beach&&now>beach+5*60000)lowest=Math.min(lowest,s.energy);
  }
  assert.ok(areaDone(s,AREAS[1]),'the worksite is finished');
@@ -779,7 +781,7 @@ test('audit fixes: delivery energy, stuck orders, old saves',()=>{
 // the scripted player's beach and worksite, 26 % before the audit, about 10 % after.
 test('audit fixes: few everyday orders repeat the parts of the last four',()=>{
  const s=fresh(0);let now=0,repeats=0,n=0;const seen=new Set(),recent=[];
- while(now<6*3600e3&&!(s.area===1&&areaDone(s))){tick(s,now);
+ while(now<6*3600e3&&!(s.area>=2||s.area===1&&areaDone(s))){tick(s,now);
   for(const o of s.orders)if(!seen.has(o.id)){seen.add(o.id);if(o.story)continue;const k=o.needs.map(r=>r.family+r.tier).sort().join('+');n++;if(recent.slice(-4).includes(k))repeats++;recent.push(k);}
   const a=nextAction(s);if(!a){if(s.energy<=3&&act(s,{type:'ration'},now).ok)continue;now+=10000;continue;}
   assert.ok(act(s,a,now).ok);now+=6000;}

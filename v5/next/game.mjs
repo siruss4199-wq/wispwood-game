@@ -183,7 +183,7 @@ export function fresh(now=Date.now()){
  for(let i=0;i<BOARD_SIZE;i++)if(GLASS[i])board[i]=glass(...GLASS[i]);else if(!CAMP.includes(i))board[i]=cargoAt(i);
  const s={version:VERSION,board,energy:START_ENERGY,energyAt:now,coins:0,level:freshLevel(),taps:{},
   orders:[],slots:3,orderSeq:0,ordersDone:0,area:0,built:{},found:[],moves:0,merges:0,lastAt:now,
-  shed:Array(SHED_SLOTS).fill(null),pending:[],daily:{day:-1,count:0},book:{claimed:[],pages:[]},shop:{day:-1,bought:{}},swaps:{day:-1,n:0,ads:0},materials:{}};
+  shed:Array(SHED_SLOTS).fill(null),pending:[],seen:{},daily:{day:-1,count:0},book:{claimed:[],pages:[]},shop:{day:-1,bought:{}},swaps:{day:-1,n:0,ads:0},materials:{}};
  for(const g of Object.keys(GENERATOR_CHAINS))s.taps[g]=0;
  for(let i=0;i<s.slots;i++)s.orders.push(makeOrder(s));
  note(s);return s;
@@ -277,7 +277,9 @@ export function makeOrder(s){
   // Half of an area's everyday orders want its focus chain once its generator is out (the
   // Survey Worksite's Rope Winch).
   const focus=currentArea(s)?.focus,pool=focus&&families.includes(focus)&&rand(n*19)<.5?[focus]:families;
-  if(story){needs=goldNeeds(s,families,family,low,n);return {id:'o'+n,who:crewFor(needs),needs,coins:priceOf(needs,true),story:story.id};}
+  // Build 47b (from PR #80): a stage may name its own materials (gold: [[chain, tier, count], ...]),
+  // e.g. the Vault door's inner ring; otherwise they follow the newest generator as above.
+  if(story){needs=story.gold?story.gold.map(([family,tier,count])=>({family,tier,count})):goldNeeds(s,families,family,low,n);return {id:'o'+n,who:crewFor(needs),needs,coins:priceOf(needs,true),story:story.id};}
   // Build 44 (user, 2026-10-25: "orderuudiig utga uchirtai bolgoy"; docs/V5_ECONOMY_AUDIT_PROPOSAL,
   // proposal A): everyday orders take turns being a quick job (one small part of one chain) and a
   // two-part job (parts of two different chains; pays ×1.15). The big job was dropped on 2026-10-26
@@ -369,6 +371,7 @@ const put=(s,x,near=0)=>{const i=nearestFree(s.board,near,cellPos);if(i>=0)s.boa
 // next action that leaves a space. Each one is placed once: it
 // leaves the list as it lands. PENDING_MAX only bounds what load() accepts (every stage in the
 // game gives at most one board reward, far fewer than 100).
+export const SEEN_ID=/^[a-z0-9-]{1,40}$/;
 export const PENDING_MAX=100,PENDING_TYPES=['source','kit','token','cog','item'];
 const give=(s,x)=>{const i=put(s,x);if(i<0)s.pending.push(x);return i;};
 function placePending(s){
@@ -446,8 +449,13 @@ export const stageOf=(s,id)=>s.built[id]??0;
 export function upgrades(s){
  const a=currentArea(s);if(!a)return [];
  return a.tasks.flatMap((t,k)=>{const n=stageOf(s,t.id);if(n>=STAGES||n===0&&k>0&&!stageOf(s,a.tasks[k-1].id))return [];
-  const st=t.stages[n];return [{id:t.id,stage:n+1,name:st.name,cost:st.cost,effect:st.effect,lines:st.lines,icon:t.icon,place:t.name,materials:(s.materials?.[t.id]??0)>n}];}).sort((x,y)=>x.cost-y.cost);
+  // Build 47b (from PR #80): a stage may wait for another place's stage (requires: {place: stage}).
+  const st=t.stages[n];if(!stageReady(s,st))return [];
+  return [{id:t.id,stage:n+1,name:st.name,cost:st.cost,effect:st.effect,lines:st.lines,icon:t.icon,place:t.name,materials:(s.materials?.[t.id]??0)>n,...(st.gold?{gold:st.gold}:{})}];}).sort((x,y)=>x.cost-y.cost);
 }
+export const stageReady=(s,st)=>!st?.requires||Object.entries(st.requires).every(([id,n])=>stageOf(s,id)>=n);
+// The next stage of a place that waits for another place (for the card's explanation).
+export function blockedStage(s,id){const t=TASKS[id],n=stageOf(s,id),st=t?.stages[n];return st&&!stageReady(s,st)?{stage:n+1,name:st.name,requires:st.requires}:null;}
 // The cheapest upgrade whose materials are in (the one the main screen points to), and the
 // cheapest still waiting for them (the gold order is for that one).
 export const nextTask=s=>upgrades(s).find(u=>u.materials)??null;
@@ -460,6 +468,14 @@ export const allDone=s=>AREAS.filter(a=>a.tasks.length).every(a=>areaDone(s,a));
 export const totalBuilt=s=>Object.values(s.built).reduce((n,k)=>n+k,0);
 // When an area is complete the next one with places opens (build 31: the Survey Worksite).
 function advance(s){let next=null;while(areaDone(s)&&AREAS[s.area+1]?.tasks.length){s.area++;next=AREAS[s.area].id;}return next;}
+// A stage waiting for materials with no gold order live gets one at once (Build 41e): it takes the
+// place of the crew order the player has made least of (parts made stay on the board). Used after a
+// purchase and, since Build 47b (from PR #80), when a save moves on to a new area as it loads.
+function ensureGold(s){
+ if(s.orders.some(o=>o?.story)||!storyTarget(s))return null;
+ const made=o=>orderProgress(s,o).reduce((n,r)=>n+r.have/r.count,0),lane=s.orders.reduce((k,o,i)=>made(o)<made(s.orders[k])?i:k,0);
+ const o=makeOrder(s);if(!o.story)return null;s.orders[lane]=o;return o.id;
+}
 
 export function act(s,a,now=Date.now()){
  const wasFull=s.energy>=REFILL_CAP,r=step(s,a,now);
@@ -591,10 +607,10 @@ function step(s,a,now){
   if(areaDone(s)){effects.areaDone=AREAS[s.area].id;const next=advance(s);if(next)effects.nextArea=next;}
   // A stage that opens with no gold order live gets one at once (Build 41e): it takes the place
   // of the crew order the player has made least of (parts made stay on the board).
-  if(!s.orders.some(o=>o?.story)&&storyTarget(s)){
-   const made=o=>orderProgress(s,o).reduce((n,r)=>n+r.have/r.count,0),lane=s.orders.reduce((k,o,i)=>made(o)<made(s.orders[k])?i:k,0);
-   const o=makeOrder(s);if(o.story){s.orders[lane]=o;effects.goldOrder=o.id;}
-  }
+  // Build 47b (from PR #80): a gold order for a place that needs no more materials (finished, or
+  // already supplied) is replaced, so a finished area leaves no stale gold order behind.
+  for(let k=0;k<s.orders.length;k++){const o=s.orders[k];if(o?.story&&(stageOf(s,o.story)>=STAGES||(s.materials[o.story]??0)>stageOf(s,o.story))){s.orders[k]=null;s.orders[k]=makeOrder(s);}}
+  const gold=ensureGold(s);if(gold)effects.goldOrder=gold;
   return {ok:true,event:'restore',task:t.id,stage:t.stage,effects,xp:XP.restore,message:t.name+(t.stage===1?' · restored':` · stage ${t.stage}`)};
  }
  // The shed: a part, crate, cog or token goes in the first free shed space, and back out to
@@ -667,6 +683,8 @@ function step(s,a,now){
   return {ok:true,event:'shop',id:a.id,ad:!!o.ad,index,slot,thing,energy:o.energy??0,message:`${o.name}`+(o.energy?` · +${o.energy} energy`:'')+(slot!=null?' · in the shed':'')};
  }
  // The prototype-complete screen has been seen (Build 41 M5): it shows once.
+ // A story card the player has dismissed (Build 47b, from PR #80): it never plays again by itself.
+ if(a.type==='seen'){if(typeof a.id!=='string'||!SEEN_ID.test(a.id))return fail('Unknown story card.');if(s.seen[a.id])return fail('Already seen.');s.seen[a.id]=true;return {ok:true,event:'seen',id:a.id,message:''};}
  if(a.type==='seenEnd'){if(!allDone(s)||s.seenEnd)return fail('Nothing to see yet.');s.seenEnd=true;return {ok:true,event:'seenEnd',message:'The coast so far is restored.'};}
  if(a.type==='recycle'){
   const x=valid(a.index)?s.board[a.index]:null;if(x?.type!=='item')return fail('Only loose parts can be recycled.');
@@ -753,8 +771,8 @@ export function load(raw,now=Date.now()){
   if(!s.taps||!Object.keys(GENERATOR_CHAINS).every(k=>integer(s.taps[k],0,1e9)))return fresh(now);
   // Build 32 added the shed and the daily gift; older saves get an empty shed and a gift today.
   s.shed??=Array(SHED_SLOTS).fill(null);s.daily??={day:-1,count:0};
-  // Build 47a added rewards waiting for space; older saves have none waiting.
-  s.pending??=[];
+  // Build 47a added rewards waiting for space, Build 47b dismissed story cards; older saves have none.
+  s.pending??=[];s.seen??={};
   // Build 33 added the book: parts already found wait in it to be ticked off.
   s.book??={claimed:[],pages:[]};
   // Build 34 added the shop's daily stock.
@@ -777,12 +795,18 @@ export function load(raw,now=Date.now()){
   if(!s.shop||!integer(s.shop.day,-1,1e7)||!s.shop.bought||typeof s.shop.bought!=='object'||Array.isArray(s.shop.bought)||!Object.entries(s.shop.bought).every(([id,n])=>SHOP[id]&&integer(n,0,SHOP[id].limit)))return fresh(now);
   const bookKey=k=>typeof k==='string'&&/^[a-z]+\d$/.test(k)&&BOOK_CHAINS.includes(k.slice(0,-1))&&+k.slice(-1)<=maxTier(k.slice(0,-1));
   if(!s.book||!Array.isArray(s.book.claimed)||!Array.isArray(s.book.pages)||!s.book.claimed.every(k=>bookKey(k)&&s.found.includes(k))||new Set(s.book.claimed).size!==s.book.claimed.length||!s.book.pages.every(f=>BOOK_CHAINS.includes(f)&&bookKeys(f).every(k=>s.book.claimed.includes(k))))return fresh(now);
+  if(!s.seen||typeof s.seen!=='object'||Array.isArray(s.seen)||!Object.entries(s.seen).every(([k,v])=>SEEN_ID.test(k)&&v===true))return fresh(now);
   if(!Array.isArray(s.pending)||s.pending.length>PENDING_MAX||!s.pending.every(x=>PENDING_TYPES.includes(x?.type)&&validCell(x)))return fresh(now);
   if(!Array.isArray(s.shed)||s.shed.length!==SHED_SLOTS||!s.shed.every(x=>x===null||SHED_TYPES.includes(x?.type)&&validCell(x)))return fresh(now);
   if(!s.daily||!integer(s.daily.day,-1,1e7)||!integer(s.daily.count,0,1e7))return fresh(now);
   s.level=validLevel(s.level);
   // Saves that finished the beach before the Survey Worksite existed go up the cliff.
-  advance(s);
+  // Saves that finished the beach before the Survey Worksite existed go up the cliff, and since
+  // Build 47b a finished worksite goes on to the Vault door, with its gold order ready.
+  if(advance(s))ensureGold(s);
+  // seenEnd marked the end of the content of its day (Build 41 M5); a camp with new places to build
+  // (Build 47b: the Vault door) sees the end card again when it reaches the new end.
+  if(s.seenEnd&&!allDone(s))delete s.seenEnd;
   if(before41)for(const u of upgrades(s))s.materials[u.id]=u.stage;
   if(s.rationAt!==undefined&&!(Number.isFinite(s.rationAt)&&s.rationAt<=now))delete s.rationAt;
   if(!Number.isFinite(s.energyAt)||s.energyAt>now)s.energyAt=now;

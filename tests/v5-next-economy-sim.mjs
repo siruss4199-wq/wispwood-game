@@ -23,7 +23,8 @@ export function simulate(g,policy,speed,seed,{until=4*3600e3,firstOnly=false,onS
  const rnd=mulberry(seed),s=g.fresh(0);let now=0;
  const m={speed,seed,minEnergy:Infinity,bought:0,idle:0,longestIdle:0,starve:[],lowStates:0,lowFree:0,taps:0,rations:0,orderAges:[],restores:[],gens:{},first:{},first15:{orders:0,restores:0}};
  let idleRun=0,starveStart=null;const born={};
- const done=()=>s.area===1&&g.areaDone(s);
+ // The Survey Worksite is finished (since Build 47b the camp then moves on to the Vault door).
+ const done=()=>s.area>=2||s.area===1&&g.areaDone(s);
  while(now<until&&!done()&&!(firstOnly&&now>=15*MIN)){
   g.tick(s,now);for(const o of s.orders)born[o.id]??=now;
   if(s.energy<1&&starveStart===null)starveStart=now;

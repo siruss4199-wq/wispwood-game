@@ -21,7 +21,7 @@ function run(speed,seed,area){
   born.set(o.id,{t:now,taps,actions,ownedFrac:have/want,readyAtBirth:!!g.orderItems(s,o)});
   const key=o.needs.map(r=>r.family+r.tier).sort().join('+');if(!o.story&&recent.slice(-4).includes(key))repeats++;if(!o.story)recent.push(key);
   const live=s.orders.filter(Boolean).filter(x=>!x.story);boards++;if(live.length>=3&&new Set(live.map(x=>x.needs[0].family)).size===1)sameChainBoards++;};
- const done=()=>area===0?s.area>=1:(s.area===1&&g.areaDone(s));
+ const done=()=>area===0?s.area>=1:(s.area>=2||s.area===1&&g.areaDone(s));// worksite done (Build 47b: then the Vault door)
  while(now<10*3600e3&&!done()){
   const e0=s.energy;g.tick(s,now);income.regen+=s.energy-e0;
   for(const o of s.orders)if(o)note(o);

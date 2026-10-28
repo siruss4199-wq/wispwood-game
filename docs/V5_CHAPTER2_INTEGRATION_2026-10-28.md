@@ -59,3 +59,83 @@ copy, a crate or a Tide token.
   players, not the bot, and the pacing numbers stay as they were.
 - **Test fix.** `tests/v5-next-home-browser.cjs`'s reduced-motion check could release a held logo
   request before it had arrived, leaving it held for good. It now waits for the request.
+
+## Step 2 (Build 47b): the Vault Entrance finale and the opening reveal
+
+**Rules and data,** ported from PR #80 and adapted:
+
+**The Vault door.**
+- The Vault Entrance (area 2, index unchanged) has one place, the Vault door, in three stages:
+  turn the outer ring (240), the middle ring (280) and the inner ring (320), 840 coins in all.
+- The inner ring names its own materials (stage field `gold`): a Signal lamp (Lantern Kiln tier 3)
+  and a Bearing dial (Survey Kite tier 4).
+- Turning the inner ring completes Chapter 1. The Vault itself (area 3) is still listed as coming
+  until steps 4–5.
+
+**Engine pieces taken from #80:**
+- stage `gold` (authored gold orders);
+- `requires` / `stageReady` / `blockedStage`, a stage that waits for another (unused until the
+  Observatory);
+- `ensureGold`, a gold order after a purchase and when a save moves on as it loads;
+- stale gold orders are replaced after a purchase;
+- `s.seen` with a `seen` action: story cards play once.
+
+**Old saves:**
+- A finished Chapter 1 save (Build 46: the worksite done, area 1) moves on to the Vault door as it
+  loads, with its gold order ready. Its board, coins and moves are unchanged.
+- The old end mark (`seenEnd`) is cleared when there are new places, so a save that already saw
+  the old ending sees the new end card at the new end.
+- `seen` is optional with a default. A damaged `seen` list is not trusted (unreadable save → Home
+  keeps it and offers Retry).
+- A camp partway through Chapter 1 is untouched.
+
+**Presentation:**
+- **Door intro.** On reaching the Vault Entrance, #80's door intro plays once (Neri, Ivo). A camp
+  that loads past it has it marked without playing.
+- **Coast screen.** It shows the coast's own Vault: `vault-door-vibrant.webp`, cropped 941×706 from
+  the Home art. Each turned ring lights one turquoise ring over the dial (CSS).
+- **The reveal.** The inner ring plays the Vault reveal once, in the story player (Skip throughout,
+  Escape, reduced motion), labelled "Chapter 1 complete":
+  - the light runs down the door's seam;
+  - the door floods with light;
+  - Neri: "It opens. After all this time, the Vault is open."
+- **End card.** Then: "Chapter 1 complete · The Vault is open". Whatever comes next is named,
+  never offered as a button.
+
+**Not taken from #80 (art):**
+- PR #80's door art (`vault-gate`, `vault-door-*`, `vault-reveal-*`) shows a different vault: a
+  brass compass dial. The Classic `entrance-vibrant` / `vault-open-vibrant` pictures show a third
+  one.
+- The game's own Vault (Home, story intro) has the turquoise wave orb and a lit seam. Those images
+  are not used here.
+
+**Missing art** (nothing unrelated was substituted):
+1. The open Vault door for this Vault design. The reveal's light is CSS over the closed door.
+2. Ring-turning states for this door. The rings are CSS.
+3. A Vault Entrance coast-screen picture. A crop of the Home art is used.
+4. "The Vault" thumbnail in the coast screen's journey row is still the Classic violet-portal
+   picture (pre-existing). It is replaced in step 5.
+
+**Story wording changed from #80:**
+- The middle ring's line said "The tideglass hums like the beacon crown". The beacon-hum link is
+  held back, so it now reads "The tideglass in the dial glows brighter."
+- Neri's reveal line in #80 ("…an observatory, gone quiet") is replaced by "It opens. After all
+  this time, the Vault is open.", because the Archive comes first (step 4).
+
+**Tests:**
+- `tests/v5-next-chapter2.test.mjs` (new, 5 tests): finished saves with `seenEnd` true, false or
+  absent go to the door with its gold order; a mid-Chapter 1 save is untouched; the three rings
+  through real gold deliveries, the inner ring's exact materials, no stale gold order; seen flags;
+  the door's crate on a full board waits.
+- `tests/v5-next-chapter2-browser.cjs` (new, in CI, 360/390/430/907×510): a finished save that saw
+  the old ending continues to the door intro once; the coast's Vault with lit rings; three rings
+  delivered and built by hand; the reveal once with Skip; the end card; reload shows neither again.
+- **Deliberately updated:**
+  - the economy sims and tests now stop at the finished worksite (it is no longer the camp's last
+    area);
+  - `tests/v5-next.test.mjs` counts 15 places;
+  - the playtest end-card test and the bright test's end strip now use the door.
+- **Regression found and fixed:** the story player gave the board back as inert after the
+  first-play story. Home now owns its own inertness.
+- `node --test tests/v5-*.test.mjs`: 305/305. All eight Coast Camp browser tests pass in Chromium
+  (WebKit runs in CI).
