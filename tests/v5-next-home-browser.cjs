@@ -17,6 +17,10 @@ const save=page=>page.evaluate(k=>localStorage.getItem(k),KEY);
 const homeUsable=page=>page.waitForSelector('#home:not(.isLoading)',{timeout:20000});
 // The first new camp's Play shows the story (Build 46q; tests/v5-next-story-browser.cjs covers it):
 // these Home checks skip it.
+// Holds the requests matching re until release(); any request, before or after, then goes through
+// (a picture can be asked for twice, by its <img> and by the loader).
+async function hold(page,re){let open;const gate=new Promise(r=>open=r);await page.route(re,async r=>{await gate;await r.continue().catch(()=>{});});
+ return async()=>{open();await page.unroute(re);};}
 async function skipStory(page){await page.waitForFunction(()=>document.querySelector('#home').hidden||!document.querySelector('#story').hidden);
  if(await page.locator('#story:not([hidden])').count())await page.locator('#storySkip').click();}
 async function play(page){await page.locator('#homePlay').click();await skipStory(page);await page.waitForSelector('#home',{state:'hidden'});}
@@ -35,14 +39,14 @@ async function drag(page,a,z){const A=await page.locator(`#board [data-index="${
 
    // 1. Fresh save: Loading, then Home with Play; nothing is saved until Play; Play → the board.
    {const {context,page,errors}=await fresh();
-    const held=[];await page.route(/home\/(logo|home-bg)\.webp/,r=>{held.push(r);});
+    const release=await hold(page,/home\/(logo|home-bg)\.webp/);
     await page.goto(BASE+'play.html',{waitUntil:'commit'});
     await page.waitForFunction(()=>/of 3 pictures/.test(document.querySelector('#homeStatus')?.textContent||''),null,{timeout:20000});
     assert.ok(await page.locator('#home.isLoading').count(),tag('loading first'));
     assert.match(await page.textContent('#homeStatus'),/Loading the camp · 1 of 3 pictures/,tag('real picture count'));
     assert.equal(await page.getAttribute('#homeBar','aria-valuenow'),'33',tag('measured progress'));
     assert.equal(await page.locator('#homePlay').isVisible(),false,tag('no Play while loading'));
-    for(const r of held)await r.continue();await page.unroute(/home\/(logo|home-bg)\.webp/);await homeUsable(page);
+    await release();await homeUsable(page);
     assert.equal((await page.textContent('#homePlay')).trim(),'Play');assert.equal(await page.locator('#homeChapter').isVisible(),false,tag('no place for a new camp'));
     assert.equal(await save(page),null,tag('nothing saved before Play'));
     // the board behind Home cannot be reached
@@ -111,6 +115,17 @@ async function drag(page,a,z){const A=await page.locator(`#board [data-index="${
     assert.equal(JSON.parse(await save(page)).moves,0,tag('new camp on request'));
     assert.deepEqual(errors,[]);await context.close();}
 
+   // 3b. Recovery copies are never overwritten (Build 47c): an older copy under -damaged and PR
+   //     #80's -backup stay as they were; this one goes to the next free key, once.
+   {const {context,page,errors}=await fresh();
+    await page.goto(BASE+'play.html?new=1');await homeUsable(page);
+    const broken='{"version":4,"board":"second broken save"}';
+    await page.evaluate(([k,v])=>{localStorage.setItem(k,v);localStorage.setItem(k+'-damaged','an older recovery copy');localStorage.setItem(k+'-backup','a PR #80 recovery copy');},[KEY,broken]);
+    await page.reload();await homeUsable(page);await page.locator('#homeNew').click();await page.waitForSelector('#home',{state:'hidden'});
+    const keys=await page.evaluate(k=>[k+'-damaged',k+'-backup',k+'-damaged-2',k+'-damaged-3'].map(x=>localStorage.getItem(x)),KEY);
+    assert.deepEqual(keys,['an older recovery copy','a PR #80 recovery copy',broken,null],tag('older copies kept, this one beside them'));
+    assert.deepEqual(errors,[]);await context.close();}
+
    // 4. A Home picture that fails: Retry or go on without it. A game file that fails: Retry,
    //    which loads the game; the save is never touched.
    {const {context,page}=await fresh();
@@ -132,23 +147,21 @@ async function drag(page,a,z){const A=await page.locator(`#board [data-index="${
 
    // 5. Play waits only for board pictures still loading, with a real count, then goes in.
    {const {context,page}=await fresh();
-    const held=[];await page.route(/icons\/gen-rig-pilot\.webp/,r=>{held.push(r);});
+    const release=await hold(page,/icons\/gen-rig-pilot\.webp/);
     await page.goto(BASE+'play.html',{waitUntil:'commit'});await homeUsable(page);
     await page.locator('#homePlay').click();
     await page.waitForFunction(()=>/Getting the board ready · \d+ of \d+ pictures/.test(document.querySelector('#homeStatus')?.textContent||''));
     assert.ok(await page.locator('#home').isVisible(),tag('Play waits for the missing board picture'));
     assert.equal(await page.locator('#homePlay').isDisabled(),true);
-    for(const r of held)await r.continue();await page.unroute(/icons\/gen-rig-pilot\.webp/);await skipStory(page);await page.waitForSelector('#home',{state:'hidden'});
+    await release();await skipStory(page);await page.waitForSelector('#home',{state:'hidden'});
     await context.close();}
 
    // 6. Reduced motion: no fade and no moving bar.
    {const {context,page}=await fresh({reducedMotion:'reduce'});
-    const held=[];await page.route(/home\/logo\.webp/,r=>{held.push(r);});
+    const release=await hold(page,/home\/logo\.webp/);
     await page.goto(BASE+'play.html',{waitUntil:'commit'});await page.waitForSelector('#homeBar');
     assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('#homeBar>i')).animationName),'none',tag('bar still'));
-    // release the held logo only once its request has arrived (otherwise it could be held for good)
-    for(let k=0;k<100&&!held.length;k++)await page.waitForTimeout(50);
-    for(const r of held)await r.continue();await page.unroute(/home\/logo\.webp/);await homeUsable(page);await page.locator('#homePlay').click();await skipStory(page);
+    await release();await homeUsable(page);await page.locator('#homePlay').click();await skipStory(page);
     assert.equal(await page.locator('#home.leaving').count(),0);assert.equal(await page.locator('#home').isVisible(),false,tag('no fade with reduced motion'));
     await context.close();}
 

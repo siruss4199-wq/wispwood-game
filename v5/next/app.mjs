@@ -32,7 +32,7 @@ function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el
 let adPlaying=false;
 const sfx=(kind,tier=0)=>sounds.play(kind,tier,{muted:adPlaying||platform.muted()});
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 47b · the Vault door';
+export const BUILD='Build 47c · backups kept';
 // The level path (docs/V5_LEVEL_PATH_2026-10-27.md): a crew order that pays a tool on top shows it
 // beside its coins (a Tide token; a favour's Sea chest or Brass cog).
 const bonusThing=o=>o.bonus==='cog'?cog():o.bonus==='chest'?kit(newestGenerator(state),2):o.bonus==='token'?token():null;
@@ -58,7 +58,20 @@ let state=startNew?fresh(bootNow):load(rawSave??'',bootNow),selected=null,focusO
 let damaged=!!rawSave&&JSON.stringify(state)===JSON.stringify(fresh(bootNow)),holdSave=!rawSave||damaged,homeOpen=!!document.getElementById('home');
 const persist=()=>{if(!holdSave)storage.set(SAVE_KEY,JSON.stringify(state));};
 // Keeps the save that could not be read before anything replaces it.
-function keepDamaged(){if(damaged&&rawSave){storage.set(SAVE_KEY+'-damaged',rawSave);playlog.event('saveDamaged');}damaged=false;}
+// Build 47c (reconciling PR #80's vaultwake-v5-coast-backup with Build 46p's -damaged key): a
+// recovery copy is never overwritten. The save goes to the first free -damaged key (-damaged, then
+// -damaged-2 … -damaged-9, then one named by the time), unless an identical copy is already kept
+// under any of them or #80's -backup. It answers false when the copy could not be written (storage
+// full); then nothing replaces the save.
+const BACKUP_KEYS=[SAVE_KEY+'-damaged',...Array.from({length:8},(_,i)=>`${SAVE_KEY}-damaged-${i+2}`)];
+function keepDamaged(){
+ if(damaged&&rawSave){
+  if(![...BACKUP_KEYS,SAVE_KEY+'-backup'].some(k=>storage.get(k)===rawSave)){
+   const k=BACKUP_KEYS.find(k=>storage.get(k)===null)??`${SAVE_KEY}-damaged-${Date.now()}`;storage.set(k,rawSave);
+   if(storage.get(k)!==rawSave)return false;}
+  playlog.event('saveDamaged');}
+ damaged=false;return true;
+}
 // The local playtest log (Build 41 M6): this browser only, copied out by the player.
 const playlog=createLog({storage:{get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>localStorage.setItem(k,v),remove:k=>localStorage.removeItem(k)},
  build:BUILD,viewport:`${innerWidth}x${innerHeight}`,touch:!!globalThis.matchMedia?.('(pointer:coarse)').matches});
@@ -565,9 +578,9 @@ $('#soundButton').onclick=()=>{sounds.toggle();render();sfx('tap');};
 $('#hapticsButton').onclick=()=>{haptics.toggle();render();haptics.pulse('merge');};
 $('#helpButton').onclick=()=>$('#help').showModal();
 $('#menuButton').onclick=()=>{$('#homeButton').hidden=homeOpen;$('#classicNote').textContent=storage.get('vaultwake-v5')?'Your Classic save is kept and continues where you left it.':'';$('#hapticsNote').textContent=haptics.method==='vibrate'?'Vibration on merges: use the button at the bottom of the board screen.':haptics.method==='ios-switch'?'Vibration on merges may work on this iPhone (iOS 18 and later); turn it off at the bottom of the board screen.':'Vibration is not available in this browser.';$('#menu').showModal();};
-$('#newGame').onclick=()=>{if(!confirm('Start the Coast Camp from the beginning? Your Classic save is not affected.'))return;newCamp();$('#menu').close();if(homeOpen&&home)home.enter();else showIntro();};
+$('#newGame').onclick=()=>{if(!confirm('Start the Coast Camp from the beginning? Your Classic save is not affected.'))return;if(!newCamp())return;$('#menu').close();if(homeOpen&&home)home.enter();else showIntro();};
 // A new camp, chosen by the player (the menu, or Home after a save could not be read).
-function newCamp(){keepDamaged();holdSave=false;state=fresh(Date.now());selected=null;focusOrder=null;persist();render();}
+function newCamp(){if(!keepDamaged()){alert('Your old save could not be copied aside (this browser\'s storage is full), so nothing was replaced.');return false;}holdSave=false;state=fresh(Date.now());selected=null;focusOrder=null;persist();render();return true;}
 $('#homeButton').onclick=()=>{$('#menu').close();persist();home?.show();};
 for(const d of document.querySelectorAll('dialog'))d.querySelector('.close')?.addEventListener('click',()=>d.close());
 
@@ -824,7 +837,7 @@ if(document.getElementById('home')){
  home=createHome({boot:window.VWBoot??null,hasSave:!!rawSave&&!damaged,damaged,
   chapter:()=>{const a=currentArea(state);return a?.tasks?.length?`${a.name} · ${stagesBuilt()} of ${a.tasks.length*STAGES} stages built`:a?.name??'';},
   onEnter:arrive,onSettings:()=>$('#menuButton').onclick(),onBook:showBook,
-  onNewCamp:()=>{if(!confirm('Start a new camp? The save that could not be read stays in this browser as a backup.'))return false;newCamp();return true;},
+  onNewCamp:()=>{if(!confirm('Start a new camp? The save that could not be read stays in this browser as a backup.'))return false;return newCamp();},
   onOpenChange:v=>{homeOpen=v;syncPlaying?.();},
   // The first-play story (Build 46q): once, on the first new camp's Play, never on Continue.
   beforeEnter:reason=>reason==='play'&&!rawSave&&!storySeen(storage)?playIntro({storage,reduced,face:who=>`assets/premium/coast/ui/${FACES[who]}.webp`}):null});

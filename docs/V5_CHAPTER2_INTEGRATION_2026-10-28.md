@@ -139,3 +139,55 @@ copy, a crate or a Tide token.
   first-play story. Home now owns its own inertness.
 - `node --test tests/v5-*.test.mjs`: 305/305. All eight Coast Camp browser tests pass in Chromium
   (WebKit runs in CI).
+
+## Step 3 (Build 47c): PR #80 against the current line, and what is taken
+
+**Background.** PR #80 (Build 43, `claude/v5-chapter2`, `e3bc1f4`) was built on `e020a5f` (Build
+41l). The current line has since gained:
+- Builds 44–46: the bright board, the audit fixes, the level path, the harder start, and the tool,
+  crate and barrel art;
+- Home and Loading (46p) and the story intro (46q).
+
+PR #80 is therefore not merged; each part is decided below.
+
+| PR #80 part | Decision | Why |
+|---|---|---|
+| Rewards wait on a full board (`give`, `placePending`, `s.pending`) | **Ported, step 1** | Placement kept at the old spot and order kept first-in-first-out, so Chapter 1's economy is unchanged and the brief's order rule holds. |
+| Authored gold stages, `requires`, `ensureGold`, stale gold orders, `s.seen` | **Ported, step 2** | Needed by the door and the Observatory. |
+| Vault door data (3 rings, 840 coins, inner-ring materials) | **Ported, step 2** | One line changed (no beacon-hum link). |
+| Vault door / gate / reveal art | **Not used** | It shows a different vault than the game's own (Home, story intro); see the missing-art list. |
+| Unreadable save → `vaultwake-v5-coast-backup`, then a new camp | **Replaced by Build 46p's safer handling, reconciled here** | 46p leaves the unreadable save in place and copies it aside only when the player chooses a new camp. #80 copied it to one fixed key and started a new camp at once, so a second bad save would overwrite the first copy. See "Backups" below. |
+| The Observatory area: 5 places × 3 stages, Lens Bench copies, optics gold, `requires` on the sea gate | **To port, step 5** | After the Archive bridge; costs re-measured on today's economy (Build 46k's harder start and the level path changed it). |
+| Optics chain (6 tiers), Lens Bench generator, `NEWEST_ORDER`, book page | **To port, step 5** | New art exists in #80 (optic-0…5, gen-optic) and matches the painted icons. |
+| Everyday-order focus on optics in the Observatory | **To port, step 5** | The current line already has `focus` (the worksite's Rope Winch). |
+| Signal and harbour reveals, Chapter 2 end card, "Hidden Harbour" listed as coming | **To port, step 5** | Shown in the story player like the Vault reveal. `harbour-view.webp` is a small upscaled crop (#80 said so); it is flagged, not replaced. |
+| Generators parked in the shed | **Measure first, step 5** | Added only if board occupancy in the Observatory needs it. |
+| Journal, replaying finished areas, non-blocking stage bubble | **Deferred** | Not needed for a complete chapter. The current stage cards stay as they are. |
+| Build 42 visual direction (`vd.css`, beach place art changes, `landing-map`) | **Not taken** | Superseded by the current board and coast art (Builds 44–46). |
+| `D5` copy-to-cog | **Not taken** | #80 had already dropped it (it broke the Chapter 1 guard). |
+
+**Story facts in PR #80** (kept as written unless noted):
+- **The fleet** that "no shipping register remembers".
+- **The signal** "three long, two short" on a bearing: where from, not who sends it.
+- **The hidden harbour** as the next objective.
+- **Conflict to decide (not changed):** #80's Observatory hall says "A compass and a crescent on
+  every banner. That mark was on the door too." The approved intro (46q) says the wave seal is on
+  the Vault. The current Vault art shows a wave orb inside a compass star, so both marks can be on
+  the door. Please confirm or reword.
+- **Changed:** the beacon-hum line (step 2) and Neri's reveal line (step 2: the Archive comes
+  before the Observatory).
+
+**Backups (reconciled here).**
+- A recovery copy is never overwritten. The unreadable save goes to the first free key of
+  `vaultwake-v5-coast-damaged`, `-damaged-2` … `-damaged-9`, then one named by the time.
+- Nothing is written if an identical copy is already kept, under these keys or #80's
+  `vaultwake-v5-coast-backup`.
+- If the copy cannot be written (storage full), the new camp is refused and the save stays.
+- The existing keys `vaultwake-v5-coast`, `-damaged` and `-backup` are never renamed, cleared or
+  overwritten.
+- Tested in `tests/v5-next-home-browser.cjs` 3b: an older `-damaged` copy and a #80 `-backup` copy
+  stay; the new copy lands in `-damaged-2`.
+
+**Test robustness.** `tests/v5-next-home-browser.cjs` held picture requests by hand. A picture can be
+asked for twice (its `<img>` and the loader), so one could stay held for good: about 1 run in 3
+timed out. A gate now holds the requests and lets every one through once it opens. 4/4 runs pass.
