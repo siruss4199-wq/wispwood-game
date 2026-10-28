@@ -5,6 +5,7 @@ export const ART_BOUNDS={
  'brass-cog':[0.901, 0.971, 0.505, 0.482],
  'captains-trunk':[0.911, 0.903, 0.503, 0.484],
  'cargo-barrel':[0.906, 0.799, 0.508, 0.49],
+ 'cargo-barrel-v2':[0.917, 0.83, 0.5, 0.5],
  'cargo-basket':[0.906, 0.983, 0.505, 0.487],
  'cargo-bundle':[0.911, 0.926, 0.503, 0.484],
  'cargo-bundle-pilot':[0.917, 0.909, 0.5, 0.5],

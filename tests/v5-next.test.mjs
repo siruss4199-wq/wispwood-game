@@ -869,7 +869,8 @@ test('board art: every sprite is measured and drawn at its kind\'s size',async()
  // integration's -v2 Grip tool and Split spanner)
  const s=f=>ART_BOUNDS[f][0]*artFit(f).fit;
  for(const m of ['copper-offcut','grip-tool-v2','split-spanner-v2'])assert.ok(s(m)<=s('gen-rig-pilot')-.05,`${m} smaller than the Rivet Rover`);
- const c=['cargo-crate','cargo-barrel','cargo-bundle-pilot','cargo-basket','driftwood-crate'].map(s);assert.ok(Math.max(...c)-Math.min(...c)<=.05,`containers ${c.map(x=>x.toFixed(2))}`);
+ // (Build 46n/46o: the closed crate and barrel draw their -v2 art)
+ const c=['cargo-crate-v2','cargo-barrel-v2','cargo-bundle-pilot','cargo-basket','driftwood-crate'].map(s);assert.ok(Math.max(...c)-Math.min(...c)<=.05,`containers ${c.map(x=>x.toFixed(2))}`);
  // the new art replaces exactly its identities, and keeps its colours on the board
  assert.match(draw({type:'item',family:'rig',tier:1}),/grip-tool-v2\.webp/);assert.match(draw({type:'item',family:'rig',tier:2}),/split-spanner-v2\.webp/);
  assert.match(draw({type:'item',family:'rig',tier:0}),/copper-offcut-vibrant\.webp/);assert.match(draw({type:'item',family:'rig',tier:3}),/pocket-winch-vibrant\.webp/);
@@ -877,7 +878,13 @@ test('board art: every sprite is measured and drawn at its kind\'s size',async()
  // the two tools are balanced against each other (the art direction's 78-80 % start)
  for(const m of ['grip-tool-v2','split-spanner-v2'])assert.ok(s(m)>=.74&&s(m)<=.8,`${m} shown at ${s(m).toFixed(3)}`);
  assert.match(draw({type:'source',id:'rig',level:3}),/gen-rig-pilot\.webp/);assert.match(draw({type:'source',id:'rope'}),/gen-rope\.webp/);
- assert.match(draw({type:'cargo',key:{family:'chart',tier:2}}),/cargo-bundle-pilot\.webp/);assert.match(draw({type:'cargo',key:{family:'rope',tier:2}}),/cargo-barrel\.webp/);
+ assert.match(draw({type:'cargo',key:{family:'chart',tier:2}}),/cargo-bundle-pilot\.webp/);// Build 46n/46o: only the closed cargo crate (Rover key) and barrel (Rope Winch key) take the new
+ // art, at the art direction's 76-80 %; other cargo, deep cargo's look and generator crates keep theirs
+ assert.match(draw({type:'cargo',key:{family:'rope',tier:2}}),/cargo-barrel-v2\.webp/);
+ assert.match(draw({type:'cargo',key:{family:'rig',tier:2}}),/cargo-crate-v2\.webp/);assert.match(draw({type:'cargo',key:{family:'rig',tier:3},deep:true}),/cargo-crate-v2\.webp/);
+ assert.match(draw({type:'cargo',key:{family:'shell',tier:1}}),/cargo-basket\.webp/);
+ for(const size of [1,2,3])assert.doesNotMatch(draw({type:'kit',family:'rig',size,left:3}),/cargo-(crate|barrel)/);
+ for(const m of ['cargo-crate-v2','cargo-barrel-v2'])assert.ok(s(m)>=.76&&s(m)<=.82,`${m} shown at ${s(m).toFixed(3)}`);
  for(const f of Object.keys(TARGET_OF))assert.equal(toneOf(f),null,`${f} is never toned`);
  // colour tones are an interim for containers only (art direction 45j): no item, tool, map, light
  // or generator is recoloured on the board, so order cards and the board show the same art

@@ -1,4 +1,4 @@
-# Vaultwake V5 Coast Camp — Build 46n: board colours and cargo crate art (2026-10-28)
+# Vaultwake V5 Coast Camp — Builds 46n/46o: board colours, cargo crate and barrel art (2026-10-28)
 
 - **Branch:** `claude/v5-board-crate`, cut from `claude/v5-audit-fixes` at `82409c3` (Build 46m, the
   latest build with green CI apart from the known Classic V5 failures).
@@ -68,6 +68,48 @@ not the board mockup, so nothing was taken from a mockup. The rules are appended
 
 For comparison, the barrel is 78–79 % and the bundle 73–74 %.
 
+## 3. Mint supply barrel (Build 46o)
+
+The closed cargo barrel is sealed cargo whose key is a Rope Winch part
+(`CARGO_LOOK.rope` → `CARGO_FILE.barrel` → `cargo-barrel`).
+- It now maps to `cargo-barrel-v2` through `PILOT`. The board, the selected-item panel and the
+  previews show it; the panel reads "Opens with a Pulley block".
+- Nothing else uses the barrel file. There is no open-barrel state.
+- Contents, opening rules and the old `cargo-barrel.webp` are unchanged.
+- **Master:** `docs/art-source/coastal-crate-2026-10-28/cargo-barrel-master.webp`, as received.
+- **Runtime file:** `cargo-barrel-v2.webp`, made with the same recipe: 13.7 KB. The alpha and aspect
+  ratio are kept. There is no recolouring, glow, badge or tile.
+
+**Optical balance.** The sizes come from each sprite's own alpha (≥ 160) scaled to its rendered
+box, so transparent padding does not count. Measured at 390 px:
+
+| Container | Visible width | Visible height | Painted area of the cell |
+|---|---|---|---|
+| Canvas bundle (unchanged) | 72.9 % | 66.3 % | 35 % |
+| Crate (46n) | 77.6 % | 67.1 % | 39 % |
+| Barrel at the crate's longest side | 64.4 % | 77.6 % | 43 % |
+| **Barrel as shipped** (`TARGET_OF` .795) | 63.2 % | 76.2 % | 41 % |
+
+At the crate's longest side, the barrel is a solid rounded block that fills its box and painted 9 %
+more of the cell, so it looked heavier. The shipped size is at the bottom of the 76–80 % start
+(75.9 % tall at 360, 77.0 % at 907×510). The bundle was left as it is; at 73 % it is the lightest of
+the three, as before.
+
+**Silhouettes at real phone size** (390 px board at DPR 1, compared side by side):
+- **Bundle:** a wide, soft canvas bag with a handle, green flap and coral straps.
+- **Crate:** a rectangular block with blue corner bands and a coral clasp.
+- **Barrel:** an upright rounded block with a mint middle and two navy hoops.
+
+They are told apart by shape as well as colour. Bundle and barrel share green: the bundle's is a
+dark flap on khaki, the barrel's a pale band on brown wood.
+
+**Test change.** `tests/v5-next.test.mjs` "board art" asserted that rope cargo draws the old
+`cargo-barrel.webp`. It now asserts:
+- the closed crate (including deep cargo) and the barrel draw their `-v2` files;
+- the basket and the generator crates do not;
+- both are shown at 76–82 % of the sprite box;
+- the containers still agree within 5 points, now using the files the board actually draws.
+
 ## Verification (Chromium; same save before and after)
 
 - **Screenshots:** before (`82409c3`, served from `git archive`) and after, at 360×780, 390×844,
@@ -90,7 +132,7 @@ For comparison, the barrel is 78–79 % and the bundle 73–74 %.
   missing images, failed requests or console errors.
 
 **Commands:**
-- `node --test tests/v5-*.test.mjs`: 295/295 pass.
+- `node --test tests/v5-*.test.mjs`: 295/295 pass (46n and 46o).
 - `node tests/v5-next-browser.cjs`: the Chromium Coast Camp steps pass at 360, 390 and 430. The run
   then stops because WebKit is not installed in this container; that is not a test failure. CI
   runs WebKit.
