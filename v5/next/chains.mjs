@@ -15,7 +15,11 @@ import {fitStyle} from './art-fit.mjs';
 // Tool art integration (2026-10-27): the Grip tool (rig tier 1) moves on to chunky pliers and the
 // Split spanner (rig tier 2) gets an adjustable wrench, versioned -v2 files beside the old ones
 // (grip-tool-pilot, split-spanner-vibrant). Masters: docs/art-source/coastal-tools-2026-10-27/.
-const PILOT={'cargo-bundle':'cargo-bundle-pilot','rig-1':'grip-tool-v2','rig-2':'split-spanner-v2','gen-rig':'gen-rig-pilot'};
+// Board colour + cargo crate pass (2026-10-28): the closed cargo crate (sealed cargo a Rover part
+// opens, CARGO_LOOK rig) gets a wooden crate with blue metal bands and a coral clasp, versioned
+// -v2 beside the old file; the generator crates (KIT_FILE) are not cargo and keep their art.
+// Master: docs/art-source/coastal-crate-2026-10-28/.
+const PILOT={'cargo-bundle':'cargo-bundle-pilot','cargo-crate':'cargo-crate-v2','rig-1':'grip-tool-v2','rig-2':'split-spanner-v2','gen-rig':'gen-rig-pilot'};
 // Every painted sprite carries its board fit (art-fit.mjs); only the board's CSS reads it.
 const img=(f0,cls,art)=>{const f=PILOT[f0]??f0;return `<img class="art ${cls}" src="assets/premium/coast/icons/${f}.webp" alt="" aria-hidden="true" draggable="false" data-art="${art}"${fitStyle(f)}>`;};
 const CARGO_FILE={crate:'cargo-crate',bundle:'cargo-bundle',barrel:'cargo-barrel',basket:'cargo-basket'};

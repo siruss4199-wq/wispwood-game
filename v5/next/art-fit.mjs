@@ -18,7 +18,9 @@ const TUNE={};
 // as a share of the cell), in place of their kind's range.
 // Tool art integration: the two Rover tools at 78.5 % of the cell, the same for both (each is a
 // diagonal tool of about the same mass), a clear step under the Rover's 84 %.
-export const TARGET_OF={'cargo-bundle-pilot':.76,'grip-tool-pilot':.78,'gen-rig-pilot':.84,'grip-tool-v2':.785,'split-spanner-v2':.785};
+// The closed cargo crate: .81 of the sprite box, which the cell's 1 px padding makes 77.5-79 % of the
+// whole cell across (its longest side is its width), inside the art direction's 76-80 %.
+export const TARGET_OF={'cargo-bundle-pilot':.76,'cargo-crate-v2':.81,'grip-tool-pilot':.78,'gen-rig-pilot':.84,'grip-tool-v2':.785,'split-spanner-v2':.785};
 // Interim colour tone for containers whose painted material breaks the board's palette (Build 45j,
 // art direction: "containers: natural wood and canvas with small coloured accents"). The canvas
 // bundle (sealed Survey Kite cargo, often a third of the board) is painted turquoise, the same blue
