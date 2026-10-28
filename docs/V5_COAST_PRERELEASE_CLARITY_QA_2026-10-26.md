@@ -326,3 +326,254 @@ Order cards and the board show the same art.
 
 - Same save at 390 px, before (45h) and after: full screen and board. Also 360, 430 and 907×510.
 - Matching items are marked by the gold brackets and the green ring, not by colour alone.
+
+## Build 45k: three-asset visual pilot (2026-10-27)
+
+Three supplied transparent PNGs replace the art of exactly three identities. Nothing else is
+redrawn or recoloured, and gameplay, item IDs and saves are unchanged.
+
+### Mapping
+
+`PILOT` in `v5/next/chains.mjs`:
+
+| Supplied image | Identity | Old file (kept) | New runtime file |
+|---|---|---|---|
+| Supply bag (green flap, canvas, coral straps) | sealed cargo with the bundle look (`CARGO_LOOK.chart`, opened by a Survey Kite part) | `coast/icons/cargo-bundle.webp` | `coast/icons/cargo-bundle-pilot.webp` |
+| Grip pliers (steel, coral/navy handles) | item `rig` tier 1, "Grip tool" | `premium/grip-tool-vibrant.webp` (Classic V5 still uses it) | `coast/icons/grip-tool-pilot.webp` |
+| Drill rover (yellow, coral, navy tracks) | generator `rig`, "Rivet Rover" | `coast/icons/gen-rig.webp` | `coast/icons/gen-rig-pilot.webp` |
+
+- The Rivet Rover has one image for all its levels; the level overlay stays. Other generators
+  keep their art.
+- `draw()` is the only renderer, so the same art appears on the board, the order cards, the
+  selection panel, the collection book and the cargo previews. A browser check confirmed this, and
+  that no old file appears anywhere in Coast Camp.
+- **Rollback:** delete an entry from `PILOT`.
+- **Masters:** `docs/art-source/coastal-pilot-2026-10-27/` (the full-resolution PNGs).
+
+### Runtime files
+
+- Each image is trimmed to its drawn object, padded so the solid object fills about 92 % of a
+  square canvas (like the other icons), and saved as a 192 px WebP: 11–19 KB, against 14–17 KB for
+  the files they replace. Transparency and edges are kept.
+- Their measured bounds are in `art-bounds.mjs`.
+- The art direction's optical targets are set centrally in `art-fit.mjs` `TARGET_OF`: bag 76 %,
+  pliers 78 %, generator 84 % of the cell, as the longest visible side.
+- None of the three is toned. In its normal state the art has only the board's 1 px contact
+  shadow. Deep (unreachable) cargo keeps its mild darkening as a state.
+
+### Checked at real size (390 px, 1×)
+
+- The pliers' jaws and handles are clear.
+- The drill rover's body and drill read clearly.
+- Pliers under ice stay visible.
+- Nothing spills into the next cell.
+- The selected and unselected pliers are the same size.
+- A corner tap still selects and a corner-to-corner drag still merges.
+
+### Judgement
+
+- **The three work together.** Their style is cleaner and higher in contrast than the older
+  painted icons, and the pliers and the rover now read at a glance.
+- **The bag is now the loudest object on the board.** Sealed bundles often fill a third of the
+  board, so its saturated green, yellow and coral repeats about a dozen times.
+- **A merge chain now jumps in style.** Grip tool (coral, pilot) → Split spanner (turquoise, old
+  art).
+
+A wider pass should repaint the rest of the Rover chain together, and decide whether the bag's
+colour should step down for cargo that fills the board.
+
+## Build 45l: tool art integration (2026-10-27, branch `claude/v5-tool-art`)
+
+Two supplied transparent sprites replace the art of exactly two identities. The bag, the copper
+offcut, the Rover, the background, the cells, the HUD and the order layout are unchanged.
+Gameplay, item IDs, merge chains, requirements, rewards and saves are untouched (`game.mjs` is not
+in the diff).
+
+### Mapping
+
+The IDs come from the code: `FAMILIES.rig.names` in `v5/core.mjs:19`, where tier 1 is "Grip tool"
+and tier 2 is "Split spanner". They are mapped in `PILOT` in `v5/next/chains.mjs`.
+
+| Supplied sprite | Identity | Previous file (kept) | New runtime file |
+|---|---|---|---|
+| Chunky pliers, coral/navy handles | item `rig` tier 1, "Grip tool" (`rig-1`) | `coast/icons/grip-tool-pilot.webp` (45k pilot); `premium/grip-tool-vibrant.webp` | `coast/icons/grip-tool-v2.webp` |
+| Adjustable wrench, blue/navy handle | item `rig` tier 2, "Split spanner" (`rig-2`) | `premium/split-spanner-vibrant.webp` | `coast/icons/split-spanner-v2.webp` |
+
+- `draw()` is the only Coast Camp renderer, so the same file appears on the merge board, under
+  ice, on crew order cards, in the selected-item panel, in the collection book, and in every
+  preview that draws the part.
+- Classic V5 (`v5/index.html`, `premium.mjs`) keeps its own sprites.
+- **Rollback:** delete the entry from `PILOT`.
+
+### Masters and export
+
+- **Masters:** `docs/art-source/coastal-tools-2026-10-27/` (`grip-pliers-v2.png`,
+  `adjustable-wrench.png`). They are lossless PNG copies of the 1254 px attachments as received.
+  The attachments arrived as WebP, so an earlier PNG may hold cleaner edges.
+- **Runtime files:** made with the 45k recipe:
+  - trim to the drawn object (alpha ≥ 8);
+  - pad to a square so the object fills about 92 %;
+  - Lanczos resize to 192 px;
+  - WebP q92: 11.7 KB and 10.1 KB.
+- Transparency and aspect ratio are kept. There is no baked tile, glow or recolouring, and the
+  board's CSS adds only its 1 px contact shadow.
+
+### Size
+
+- The measured bounds are in `art-bounds.mjs`.
+- `TARGET_OF` draws both tools at 78.5 % of the cell (longest visible side). Each is a diagonal
+  tool of about the same mass.
+- That is inside the requested 78–80 % start, and keeps the test's 5-point step under the Rover
+  (84 %).
+- The copper offcut is 72 % and the pocket winch 74 %.
+- Neither tool touches the cell edge or a badge, and the whole cell stays the touch target.
+
+### Verified (Chromium)
+
+Same save, before (45k) and after, at 360×780, 390×844, 430×932 and 907×510.
+
+- **Placement:** the board, the order cards (Bram's Lv3 wrench beside Lv2 pliers), the
+  selected-item panel and the book all show the new files.
+- **No old art:** no old tool file appears anywhere in the page.
+- **Images and errors:** no image fails to load, and there are no console errors or failed
+  requests.
+- **Merges:** a tap selects, and a drag merges Grip tool + Grip tool into Split spanner. Taps on
+  twins have not merged since an earlier build, by design. A corner tap and a corner-to-corner drag
+  still work.
+- **Save:** reload keeps the merge.
+- **Indicators:** ice, the selected and valid-target rings, and the badges stay legible.
+
+Not run here: WebKit, which is not installed in this container (CI runs it), and real Safari.
+
+### Generator diagnostic (yellow drill rover, `gen-rig-pilot`)
+
+**Source and export are not the cause:**
+- The master is 1254 px and the object is 1096 px.
+- The 192 px runtime file is drawn at 118–149 device px on phones (DPR 3) and 58–120 px at
+  907×510, so it is always downsampled, never stretched.
+- The object fills 92 % of its canvas.
+- A still render (reduced motion) matches a single Lanczos resize of the source: 94–104 % of its
+  edge sharpness.
+
+**Cause: the generator's idle "breathing" animation.** `next.css:143–146`
+`genBreathe` (`translateY(-2px) scale(1.03)`, 2.8 s, infinite) re-samples the sprite every frame
+at a fractional scale and a sub-pixel offset.
+
+With motion on, the Rover's edges are 9–20 % softer than the same tile still:
+
+| Viewport | Breathing vs still |
+|---|---|
+| 390@3 | 0.87 |
+| 360@3 | 0.84 |
+| 430@3 | 0.86 |
+| 907×510@2 | 0.80 |
+| 907×510@1 | 0.91 |
+
+It is the only board sprite that is always animated, so it looks soft beside sharp neighbours.
+
+**Contributing:** it is the most detailed sprite (bolts, auger) at about 44 CSS px. The lightning
+badge also covers part of its tracks.
+
+**Not changed in this pass.** The smallest fix is to drop the scale from `genBreathe` and bob by
+whole pixels only.
+
+### Remaining limitations
+
+- The brief describes the wrench as coral/navy; the supplied sprite is blue/navy. It is used as
+  supplied, with no recolouring. The blue tells it apart from the coral pliers at order-card size,
+  which was the earlier "Split spanner and Grip tool look alike" problem.
+- The Rover chain now goes from coral pliers (tier 1) and a blue wrench (tier 2) to the older
+  painted pocket winch (tier 3). This is the style jump noted for 45k, one step later.
+
+## Build 45m: the generator's yellow mark and sharpness (2026-10-27)
+
+The user wrote: "generatoriin shar icon ontsgui bainaa" (the generator's yellow icon looks poor).
+
+### Energy mark
+
+- **Before:** the yellow badge on every generator showed the text glyph "ϟ" (`app.mjs`). At
+  15–17 px it rendered thin and crooked, and differently on every font.
+- **After:** it is a drawn SVG bolt (`BOLT` in `app.mjs`, styled in `coastal.css`). It is
+  centred, solid and the same on every device. Size, colour and position are unchanged.
+
+### Generator sharpness
+
+- **Before:** the idle bob was a transform animation, `genBreathe` (`next.css:143–146`). Measured
+  at 390×844@3 in Chromium, any transform animation leaves the sprite softer than a still tile:
+
+  | Bob | Sharpness vs still |
+  |---|---|
+  | `genBreathe` (scale) | 0.77–0.87 |
+  | whole-pixel `translateY` | 0.82–0.85 |
+
+- **After:** the bob is a stepped 1 px `top` offset (`cbGenBob`, in `coastal.css`). The sprite is
+  repainted twice per 2.8 s cycle at full sharpness: 1.00–1.01 of still at 360, 390 and 430 @3,
+  and at 907×510 @1 and @2.
+- Reduced motion still has no bob.
+- The source image is unchanged.
+
+### Verified (Chromium)
+
+- `node --test tests/v5-*.test.mjs`: 284/284.
+- `v5-next-browser`, bright and playtest suites pass.
+- The tool-placement, merge and reload check passes at 360×780 and 907×510.
+- The corner tap and drag check passes.
+- WebKit is not available locally; CI runs it.
+
+## Build 45n: tideglass hints (2026-10-27)
+
+The user wrote: "zarimdaa merge hiihed musuu tsohihgui baih shig baina" (sometimes a merge does
+not seem to crack the ice). They chose option A, presentation only. The rule in `game.mjs`
+`crack()` is unchanged.
+
+### The rule, as found
+
+A merge cracks tideglass only when all three are true:
+- the glass is directly beside the space the merge lands on (above, below, left or right; not
+  diagonal);
+- the merge lands there (the space the part was dragged from does not count);
+- what the merge makes is at least the level of the part inside the glass.
+
+On a new board, 11 of 17 glass hold a level 1 or 2 part, and any merge beside them cracks them. 4
+need a level 3 or better merge and 2 need a level 4 or better. A smaller merge beside those did
+nothing, with no sign why.
+
+### Change
+
+- **Level mark:** glass that a merge can be too small for carries "Lv3+" or "Lv4+" in the
+  bottom-right badge corner (slate, like the other information badges). The tile's label says the
+  same.
+- **Too-small merge:** when a merge is too small for glass beside it:
+  - that glass shrugs (a short side shake, none under reduced motion);
+  - its mark pulses orange;
+  - the message line says "too small for the tideglass: merge a level N or better beside it".
+- The logic is in `v5/next/ice.mjs`; `app.mjs` and `coastal.css` draw it.
+
+### Verified
+
+- **Unit test:** a new test in `tests/v5-next.test.mjs` places every glass on a new board, every
+  space beside it and merge results from level 2 to level 5. The hint calls a merge too small
+  exactly when the reducer leaves that glass uncracked. `node --test tests/v5-*.test.mjs`:
+  285/285.
+- **Browser (Chromium, 360, 390, 430 and 907×510):**
+  - six marks on a new board;
+  - a level 2 merge beside "Lv3+" glass shows the message and the shrug, with no crack;
+  - a level 3 merge on the same space cracks it;
+  - no console errors.
+- **Suites:** `v5-next-browser`, bright and playtest pass in Chromium. WebKit is not available
+  locally; CI runs it.
+
+### Build 45o: no level written on the ice
+
+The user wrote: "Leveliin too bichee hereggui yum baina musun deer… Hagrahgui tohioldold l
+heley" (no level number on the ice; only tell me when it does not break).
+
+- The "Lv3+" / "Lv4+" marks are removed; tideglass looks as it did before 45n.
+- **Kept:** only when a merge is too small, the glass beside it flashes an orange outline and
+  shrugs (no shrug under reduced motion), and the message line names the level that would crack
+  it. The tile's screen-reader label still says it.
+- **Verified:**
+  - `node --test tests/v5-*.test.mjs`: 285/285.
+  - Ice check at 360, 390, 430 and 907×510: no marks on the ice, a too-small merge gives the
+    cue with no crack, and a level 3 merge cracks it; no errors.
+  - `v5-next-browser`, bright and playtest pass in Chromium.

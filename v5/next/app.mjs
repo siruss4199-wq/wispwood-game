@@ -6,6 +6,7 @@ import {primaryAction} from './guide.mjs';
 import {needsOf,missingOf,levelOf} from './needs.mjs';
 import {LEVEL_PATH,BONUS_NAMES,CHEST_ENERGY,EARLY_LEVELS,EARLY_LEVEL_ENERGY} from './game.mjs';
 import {kit} from '../kits.mjs';
+import {iceNeed,weakIceBeside} from './ice.mjs';
 import {purposeOf} from './purposes.mjs';
 import {createLog} from './playtest.mjs';
 import {rewardedAd,initPlatform,platform} from './platform-cg.mjs';
@@ -29,13 +30,16 @@ function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el
 let adPlaying=false;
 const sfx=(kind,tier=0)=>sounds.play(kind,tier,{muted:adPlaying||platform.muted()});
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 46l · tide token hints';
+export const BUILD='Build 46m · new art';
 // The level path (docs/V5_LEVEL_PATH_2026-10-27.md): a crew order that pays a tool on top shows it
 // beside its coins (a Tide token; a favour's Sea chest or Brass cog).
 const bonusThing=o=>o.bonus==='cog'?cog():o.bonus==='chest'?kit(newestGenerator(state),2):o.bonus==='token'?token():null;
 const bonusArt=o=>o.bonus?`<span class="reqBonus" title="Also pays a ${BONUS_NAMES[o.bonus]}" aria-label="plus a ${BONUS_NAMES[o.bonus]}">+${draw(bonusThing(o))}</span>`:'';
 // What the player level opens next, for the level badge.
 const nextUnlock=lv=>LEVEL_PATH.find(u=>u.level>lv)??null;
+// The generator's energy mark (Build 45m): a drawn bolt; the old "ϟ" text glyph rendered thin and
+// crooked at badge size, differently on every font.
+const BOLT='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 1.5 4.5 13.5H11L9.5 22.5 19.5 10H13Z"/></svg>';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
@@ -185,7 +189,7 @@ function renderBoard(){
   // is and what is in it is told by the panel under the board when it is tapped.
   let badge='';
   // Build 45g: an open generator carries a small ϟ (it spends energy when tapped) and its level.
-  if(x?.type==='source')badge=locked?`<span class="lockedLabel">NEXT AREA</span>`:`<span class="genMark" aria-hidden="true">ϟ</span>`+(producerLevel(x)>1?`<span class="srcLevel">Lv${producerLevel(x)}</span>`:'');
+  if(x?.type==='source')badge=locked?`<span class="lockedLabel">NEXT AREA</span>`:`<span class="genMark" aria-hidden="true">${BOLT}</span>`+(producerLevel(x)>1?`<span class="srcLevel">Lv${producerLevel(x)}</span>`:'');
   else if(x?.type==='kit')badge=`<span class="pulls">${x.left}</span>`;
   else if(x?.type==='jar')badge=`<span class="sealBadge">+${x.energy}ϟ</span>`;
   else if(x?.type==='cargo'&&(x.find?.type==='source'||x.find?.type==='cog'||x.find?.type==='token'))badge=`<span class="cargoGleam ${x.find.type!=='source'?'cogGleam':''}" aria-hidden="true"></span>`;
@@ -195,7 +199,7 @@ function renderBoard(){
   // generator it still needs. The panel under the board tells the rest.
   const holdsGen=x?.type==='cargo'&&x.find?.type==='source'&&focusGens.has(x.find.id);
   const ice=x?.type==='glass'?`ice${Math.min(2,x.cracks??0)}`:'';
-  return `<button class="tile ${x?.type??'empty'} ${ice} ${x?.cracks?'cracked':''} ${ready?'keyReady':''} ${deep?'deep':''} ${locked?'locked':''} ${selected===i?'selected':''} ${twin?'match':''} ${focused?'nextAction':''} ${x?.type==='source'&&focusGens.has(x.id)||holdsGen?'orderSource':''} ${(r+c)%2?'odd':''}" data-index="${i}" style="grid-row:${r+1};grid-column:${c+1}" ${x?.family||x?.id?`data-family="${x.family??x.id}"`:''} ${x?.type==='cargo'?`data-key="${x.key.family}"`:''} aria-label="${nameOf(x)}${x?.type==='glass'?` · ${GLASS_HITS-(x.cracks??0)} hit${GLASS_HITS-(x.cracks??0)>1?'s':''} left`:''}${locked?' · locked':''}${x?.type==='source'&&!locked?' · tap to make a part for 1 energy':''}. Space ${i+1}" aria-pressed="${selected===i}">${draw(deep?{...x,deep:true}:x)}${badge}</button>`;
+  return `<button class="tile ${x?.type??'empty'} ${ice} ${x?.cracks?'cracked':''} ${ready?'keyReady':''} ${deep?'deep':''} ${locked?'locked':''} ${selected===i?'selected':''} ${twin?'match':''} ${focused?'nextAction':''} ${x?.type==='source'&&focusGens.has(x.id)||holdsGen?'orderSource':''} ${(r+c)%2?'odd':''}" data-index="${i}" style="grid-row:${r+1};grid-column:${c+1}" ${x?.family||x?.id?`data-family="${x.family??x.id}"`:''} ${x?.type==='cargo'?`data-key="${x.key.family}"`:''} aria-label="${nameOf(x)}${x?.type==='glass'?` · ${GLASS_HITS-(x.cracks??0)} hit${GLASS_HITS-(x.cracks??0)>1?'s':''} left`:''}${iceNeed(x)?` · cracked by a level ${iceNeed(x)} or better merge beside it`:''}${locked?' · locked':''}${x?.type==='source'&&!locked?' · tap to make a part for 1 energy':''}. Space ${i+1}" aria-pressed="${selected===i}">${draw(deep?{...x,deep:true}:x)}${badge}</button>`;
  }).join('');
  // The free-space count shows only when space is getting short.
  const free=state.board.filter(x=>x===null).length,f=$('#free');f.textContent=!free?'Board full':free+(free===1?' space left':' spaces left');f.hidden=free>3;f.classList.toggle('out',!free);
@@ -348,7 +352,13 @@ function run(a){
  if(r.event==='merge'){const m=state.board[r.index],first=m?.type==='item'&&r.found?.includes(m.family+m.tier);tile?.classList.add('merge-pop');burst(tile?.getBoundingClientRect(),m?.family,first||m?.tier>=4);
   // a triple merge (the level path) makes its second part where the third stood
   if(r.triple!=null){const t3=board.querySelector(`[data-index="${r.triple}"]`);t3?.classList.add('merge-pop');burst(t3?.getBoundingClientRect(),m?.family,true);}
-  if(!r.broken?.length){sfx(first&&m.tier>=2||m?.tier>=4?'discovery':'merge',m?.tier??0);haptics.pulse('merge');}for(const d of r.dug??[])board.querySelector(`[data-index="${d.index}"]`)?.classList.add('unlocked');}
+  if(!r.broken?.length){sfx(first&&m.tier>=2||m?.tier>=4?'discovery':'merge',m?.tier??0);haptics.pulse('merge');}for(const d of r.dug??[])board.querySelector(`[data-index="${d.index}"]`)?.classList.add('unlocked');
+  // Build 45n/45o: a merge too small for the tideglass beside it says so (the glass shrugs and
+  // flashes; no level is written on the ice, user: "hagrahgui tohioldold l heley").
+  const weak=weakIceBeside(state.board,r.index);
+  if(weak.length){for(const j of weak)board.querySelector(`[data-index="${j}"]`)?.classList.add('iceWeak');
+   const need=Math.min(...weak.map(j=>iceNeed(state.board[j])??state.board[j].tier+1));
+   $('#message').textContent=`${r.message} · too small for the tideglass: merge a level ${need} or better beside it`;}}
  if(r.event==='produce'||r.event==='kit')sfx('produce');
  if((r.event==='produce'||r.event==='kit')&&fromRect&&tile&&!reduced()){const to=tile.getBoundingClientRect(),el=document.createElement('div');el.className='flight';el.innerHTML=draw(state.board[r.index]);el.style.cssText=`left:${fromRect.x}px;top:${fromRect.y}px;--dx:${to.x-fromRect.x}px;--dy:${to.y-fromRect.y}px`;document.body.append(el);setTimeout(()=>el.remove(),460);}
  if(r.event==='deliver'){deliverSequence(r,taking,orderRect,before.coins,readyBefore);sfx('deliver');
