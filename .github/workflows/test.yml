@@ -34,8 +34,9 @@ jobs:
   test:
     name: Game rule and markup tests
     runs-on: ubuntu-latest
-    # Full mobile matrix approaches 15 minutes before the final viewport checks.
-    timeout-minutes: 20
+    # Full mobile matrix approaches 15 minutes before the final viewport checks; the Coast Camp step
+    # (Chromium and WebKit, Chapters 1-2) took about 10 more in Build 47e, so the job gets 30.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
