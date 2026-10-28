@@ -82,3 +82,34 @@ test('a reward with room still goes straight onto the board', ()=>{
  const g0=gens(s),r=ok(s,{type:'restore',id:'beach-path'});
  assert.ok(r.effects.copy>=0);assert.equal(r.effects.pending,undefined);assert.equal(gens(s),g0+1);assert.deepEqual(s.pending,[]);
 });
+
+// Build 47f QA: the Chapter 2 places' rewards on a full board (a Tide token, Lens Bench crates, the
+// Lens Bench copy, a Brass cog), through a reload, landing once each in the order earned.
+test('Observatory rewards on a full board wait, survive a reload and land once each, in order', async ()=>{
+ const {AREAS}=await import('../v5/next/areas.mjs');
+ const done=a=>Object.fromEntries(a.tasks.map(t=>[t.id,3]));
+ const s=fresh(0);s.area=3;s.coins=20000;s.daily={day:9e6,count:1};
+ s.built={...done(AREAS[0]),...done(AREAS[1]),'vault-door':3,'vault-archive':3,'obs-hall':1,'obs-desk':2,'obs-bench':0,'obs-array':1};delete s.built['obs-bench'];
+ // materials in for the next stages, so no gold order is needed
+ s.materials={...s.built,'obs-hall':3,'obs-desk':3,'obs-bench':1,'obs-array':2};
+ let n=0;for(let i=0;i<s.board.length;i++)if(s.board[i]===null||s.board[i].type==='cargo'&&n++<10)s.board[i]=item('rig',0);
+ const t=load(JSON.stringify(s),5000);assert.equal(free(t),0,'a full board');
+ const buy=id=>ok(t,{type:'restore',id},6000).effects;
+ const e1=buy('obs-hall');// stage 2: a Tide token
+ const e2=buy('obs-desk');// stage 3: a crate for the newest generator
+ const e3=buy('obs-bench');// stage 1: the Lens Bench
+ const e4=buy('obs-array');// stage 2: a Brass cog
+ assert.deepEqual([e1.token,e2.kit,e3.copy,e4.cog],[-1,-1,-1,-1],'none of them fitted');
+ assert.deepEqual(t.pending.map(x=>x.type==='source'?'source:'+x.id:x.type),['token','kit','source:optic','cog'],'kept in the order earned');
+ // a reload keeps them, once
+ const u=load(JSON.stringify(t),7000);assert.deepEqual(u.pending,t.pending);
+ // two spaces: the first two land; then the rest
+ const [i,j]=twins(u);const m1=ok(u,{type:'merge',from:i,to:j},8000);assert.deepEqual(m1.arrived.map(a=>a.thing.type),['token']);
+ const [k,l]=twins(u);const m2=ok(u,{type:'merge',from:k,to:l},8100);assert.deepEqual(m2.arrived.map(a=>a.thing.type),['kit']);
+ for(let r=0;r<2;r++){const [a,b]=twins(u);ok(u,{type:'merge',from:a,to:b},8200+r);}
+ assert.deepEqual(u.pending,[],'all landed');
+ const count=pred=>u.board.filter(pred).length;
+ assert.equal(count(x=>x?.type==='source'&&x.id==='optic'),1,'one Lens Bench');assert.equal(count(x=>x?.type==='cog'),1,'one cog');assert.equal(count(x=>x?.type==='token'),1,'one token');
+ // a further merge brings nothing more
+ const [c,d]=twins(u);assert.equal(ok(u,{type:'merge',from:c,to:d},9000).arrived,undefined);
+});
