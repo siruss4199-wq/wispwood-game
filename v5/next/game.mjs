@@ -183,7 +183,7 @@ export function fresh(now=Date.now()){
  for(let i=0;i<BOARD_SIZE;i++)if(GLASS[i])board[i]=glass(...GLASS[i]);else if(!CAMP.includes(i))board[i]=cargoAt(i);
  const s={version:VERSION,board,energy:START_ENERGY,energyAt:now,coins:0,level:freshLevel(),taps:{},
   orders:[],slots:3,orderSeq:0,ordersDone:0,area:0,built:{},found:[],moves:0,merges:0,lastAt:now,
-  shed:Array(SHED_SLOTS).fill(null),daily:{day:-1,count:0},book:{claimed:[],pages:[]},shop:{day:-1,bought:{}},swaps:{day:-1,n:0,ads:0},materials:{}};
+  shed:Array(SHED_SLOTS).fill(null),pending:[],daily:{day:-1,count:0},book:{claimed:[],pages:[]},shop:{day:-1,bought:{}},swaps:{day:-1,n:0,ads:0},materials:{}};
  for(const g of Object.keys(GENERATOR_CHAINS))s.taps[g]=0;
  for(let i=0;i<s.slots;i++)s.orders.push(makeOrder(s));
  note(s);return s;
@@ -362,6 +362,20 @@ export function orderProgress(s,o){return o.needs.map(r=>({...r,have:Math.min(r.
 
 // ---- board helpers ----
 const put=(s,x,near=0)=>{const i=nearestFree(s.board,near,cellPos);if(i>=0)s.board[i]=x;return i;};
+// Rewards that find no free space wait (Build 47a, ported from PR #80's Chapter 2 plan D6): a
+// stage bought on a full board used to lose its generator copy, crate or Tide token. A waiting
+// reward is kept in the save (s.pending, in the order it was earned) and lands where a reward with
+// room would (the first free space from the top left, as before), first earned first, after the
+// next action that leaves a space. Each one is placed once: it
+// leaves the list as it lands. PENDING_MAX only bounds what load() accepts (every stage in the
+// game gives at most one board reward, far fewer than 100).
+export const PENDING_MAX=100,PENDING_TYPES=['source','kit','token','cog','item'];
+const give=(s,x)=>{const i=put(s,x);if(i<0)s.pending.push(x);return i;};
+function placePending(s){
+ const out=[];
+ while(s.pending.length){const i=nearestFree(s.board,0,cellPos);if(i<0)break;const x=s.pending.shift();s.board[i]=x;out.push({index:i,thing:x});}
+ return out;
+}
 // Cargo cell j opens: its find takes the space, or pays out and leaves it free.
 function reveal(s,j){
  const f=s.board[j].find;
@@ -452,12 +466,12 @@ export function act(s,a,now=Date.now()){
  if(!r.ok)return r;
  if(wasFull&&s.energy<REFILL_CAP)s.energyAt=now;
  s.moves++;s.lastAt=now;
- const released=release(s);
+ const released=release(s),arrived=placePending(s);
  const found=note(s),xp=r.xp??0,levelUp=xp?gainXp(s,xp):[];
  if(levelUp.length)found.push(...note(s));
  if(levelUp.length)released.push(...release(s));
  if(released.length)r.message+=released.map(n=>` · the ${SOURCES[n.id].name} comes out`).join('');
- return {...r,...(released.length?{released}:{}),...(found.length?{found}:{}),...(levelUp.length?{levelUp}:{})};
+ return {...r,...(released.length?{released}:{}),...(arrived.length?{arrived}:{}),...(found.length?{found}:{}),...(levelUp.length?{levelUp}:{})};
 }
 export function tick(s,now=Date.now()){return settleEnergy(s,now);}
 
@@ -569,9 +583,10 @@ function step(s,a,now){
   if(s.coins<t.cost)return fail(`${t.name} needs ${t.cost} coins. Deliver crew orders for coins.`);
   s.coins-=t.cost;s.built[t.id]=t.stage;const e=t.effect??{},effects={};
   if(e.energy){effects.energy=bonus(s,e.energy);}
-  if(e.copy){const id=e.copy==='newest'?newestGenerator(s):e.copy;effects.copy=put(s,source(id));effects.copyId=id;}
-  if(e.kit){const family=e.kit[0]==='newest'?newestGenerator(s):e.kit[0];effects.kit=put(s,kit(family,e.kit[1]));effects.kitFamily=family;}
-  if(e.token){effects.token=put(s,token());}
+  if(e.copy){const id=e.copy==='newest'?newestGenerator(s):e.copy;effects.copy=give(s,source(id));effects.copyId=id;}
+  if(e.kit){const family=e.kit[0]==='newest'?newestGenerator(s):e.kit[0];effects.kit=give(s,kit(family,e.kit[1]));effects.kitFamily=family;}
+  if(e.token){effects.token=give(s,token());}
+  if(s.pending.length)effects.pending=s.pending.length;
   if(e.slots&&s.slots<e.slots){s.slots=e.slots;while(s.orders.length<s.slots)s.orders.push(makeOrder(s));effects.slots=e.slots;}
   if(areaDone(s)){effects.areaDone=AREAS[s.area].id;const next=advance(s);if(next)effects.nextArea=next;}
   // A stage that opens with no gold order live gets one at once (Build 41e): it takes the place
@@ -738,6 +753,8 @@ export function load(raw,now=Date.now()){
   if(!s.taps||!Object.keys(GENERATOR_CHAINS).every(k=>integer(s.taps[k],0,1e9)))return fresh(now);
   // Build 32 added the shed and the daily gift; older saves get an empty shed and a gift today.
   s.shed??=Array(SHED_SLOTS).fill(null);s.daily??={day:-1,count:0};
+  // Build 47a added rewards waiting for space; older saves have none waiting.
+  s.pending??=[];
   // Build 33 added the book: parts already found wait in it to be ticked off.
   s.book??={claimed:[],pages:[]};
   // Build 34 added the shop's daily stock.
@@ -760,6 +777,7 @@ export function load(raw,now=Date.now()){
   if(!s.shop||!integer(s.shop.day,-1,1e7)||!s.shop.bought||typeof s.shop.bought!=='object'||Array.isArray(s.shop.bought)||!Object.entries(s.shop.bought).every(([id,n])=>SHOP[id]&&integer(n,0,SHOP[id].limit)))return fresh(now);
   const bookKey=k=>typeof k==='string'&&/^[a-z]+\d$/.test(k)&&BOOK_CHAINS.includes(k.slice(0,-1))&&+k.slice(-1)<=maxTier(k.slice(0,-1));
   if(!s.book||!Array.isArray(s.book.claimed)||!Array.isArray(s.book.pages)||!s.book.claimed.every(k=>bookKey(k)&&s.found.includes(k))||new Set(s.book.claimed).size!==s.book.claimed.length||!s.book.pages.every(f=>BOOK_CHAINS.includes(f)&&bookKeys(f).every(k=>s.book.claimed.includes(k))))return fresh(now);
+  if(!Array.isArray(s.pending)||s.pending.length>PENDING_MAX||!s.pending.every(x=>PENDING_TYPES.includes(x?.type)&&validCell(x)))return fresh(now);
   if(!Array.isArray(s.shed)||s.shed.length!==SHED_SLOTS||!s.shed.every(x=>x===null||SHED_TYPES.includes(x?.type)&&validCell(x)))return fresh(now);
   if(!s.daily||!integer(s.daily.day,-1,1e7)||!integer(s.daily.count,0,1e7))return fresh(now);
   s.level=validLevel(s.level);

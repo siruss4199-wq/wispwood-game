@@ -32,7 +32,7 @@ function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el
 let adPlaying=false;
 const sfx=(kind,tier=0)=>sounds.play(kind,tier,{muted:adPlaying||platform.muted()});
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 46q · story intro';
+export const BUILD='Build 47a · rewards wait for space';
 // The level path (docs/V5_LEVEL_PATH_2026-10-27.md): a crew order that pays a tool on top shows it
 // beside its coins (a Tide token; a favour's Sea chest or Brass cog).
 const bonusThing=o=>o.bonus==='cog'?cog():o.bonus==='chest'?kit(newestGenerator(state),2):o.bonus==='token'?token():null;
@@ -213,7 +213,9 @@ function renderBoard(){
   return `<button class="tile ${x?.type??'empty'} ${ice} ${x?.cracks?'cracked':''} ${ready?'keyReady':''} ${deep?'deep':''} ${locked?'locked':''} ${selected===i?'selected':''} ${twin?'match':''} ${focused?'nextAction':''} ${x?.type==='source'&&focusGens.has(x.id)||holdsGen?'orderSource':''} ${(r+c)%2?'odd':''}" data-index="${i}" style="grid-row:${r+1};grid-column:${c+1}" ${x?.family||x?.id?`data-family="${x.family??x.id}"`:''} ${x?.type==='cargo'?`data-key="${x.key.family}"`:''} aria-label="${nameOf(x)}${x?.type==='glass'?` · ${GLASS_HITS-(x.cracks??0)} hit${GLASS_HITS-(x.cracks??0)>1?'s':''} left`:''}${iceNeed(x)?` · cracked by a level ${iceNeed(x)} or better merge beside it`:''}${locked?' · locked':''}${x?.type==='source'&&!locked?' · tap to make a part for 1 energy':''}. Space ${i+1}" aria-pressed="${selected===i}">${draw(deep?{...x,deep:true}:x)}${badge}</button>`;
  }).join('');
  // The free-space count shows only when space is getting short.
- const free=state.board.filter(x=>x===null).length,f=$('#free');f.textContent=!free?'Board full':free+(free===1?' space left':' spaces left');f.hidden=free>3;f.classList.toggle('out',!free);
+ // Build 47a: rewards waiting for space say so here until they land.
+ const free=state.board.filter(x=>x===null).length,f=$('#free'),wait=state.pending?.length??0;
+ f.textContent=wait?`${wait} reward${wait>1?'s':''} waiting · make a space`:!free?'Board full':free+(free===1?' space left':' spaces left');f.hidden=free>3&&!wait;f.classList.toggle('out',!free||wait>0);
 }
 // The shed (build 32; Build 44: folded by default): one row with how full it is; a tap on the
 // row, a drag over it or the Shed button opens its four spaces. A drag dropped on the folded row
@@ -390,6 +392,9 @@ function run(a){
  if(r.event==='daily'){const g=r.gift;if(g.coins)rewardFlight($('#dailyButton').getBoundingClientRect(),$('#coinPill').getBoundingClientRect(),`+${g.coins} coins`);if(g.energy)rewardFlight($('#dailyButton').getBoundingClientRect(),$('#energyPill').getBoundingClientRect(),`+${g.energy} ϟ`);tile?.classList.add('unsealed');sfx('milestone');moment(`Daily gift · day ${g.day} of ${DAILY.length}`,giftText(DAILY[g.day-1])+(g.slot!=null?' · in the shed (the board is full)':''),g.thing??null);}
  // A generator reaching level 2 brings out the next kind beside it.
  for(const n of r.released??[]){const t=board.querySelector(`[data-index="${n.index}"]`);t?.classList.add('unsealed');burst(t?.getBoundingClientRect(),'gold',true);setTimeout(()=>{newGeneratorMoment(n.id);sfx('milestone');},r.event==='producerUp'?900:0);}
+ // A reward that was waiting for space lands (Build 47a).
+ for(const n of r.arrived??[]){board.querySelector(`[data-index="${n.index}"]`)?.classList.add('unsealed');}
+ if(r.arrived?.length){$('#message').textContent+=` · ${r.arrived.length===1?'a waiting reward lands':r.arrived.length+' waiting rewards land'}: ${r.arrived.map(n=>nameOf(n.thing)).join(', ')}`;sfx('unseal');}
  if(r.event==='unseal'){tile?.classList.add('unsealed');burst(tile?.getBoundingClientRect(),'gold',r.opened.type==='source');sfx(r.opened.type==='source'?'milestone':'unseal');haptics.pulse('merge');
   if(r.opened.type==='coins')rewardFlight(tile?.getBoundingClientRect(),$('#coinPill').getBoundingClientRect(),`+${r.opened.coins} coins`);
   if(r.opened.type==='jar')rewardFlight(tile?.getBoundingClientRect(),$('#energyPill').getBoundingClientRect(),`+${r.opened.energy} ϟ`);
@@ -680,11 +685,12 @@ $('#mapContent').addEventListener('click',e=>{
  if(e.target.closest('[data-back],[data-go]'))$('#coastMap').close();
 });
 function rewardText(e={}){
- const out=[];
+ const out=[],wait=' (waits for a free space)';
  if(e.energy)out.push(`+${e.energy} energy`);
- if(e.copy>=0&&e.copyId)out.push(`a ${SOURCES[e.copyId].name} to merge`);
+ if(e.copyId)out.push(`a ${SOURCES[e.copyId].name} to merge`+(e.copy>=0?'':wait));
  if(e.kit>=0&&state.board[e.kit]?.type==='kit')out.push(nameOf(state.board[e.kit]).replace(' · ',' for '));
- if(e.token>=0)out.push('a Tide token');
+ else if(e.kitFamily)out.push(`a crate for the ${SOURCES[e.kitFamily].name}`+wait);
+ if(e.token!==undefined)out.push('a Tide token'+(e.token>=0?'':wait));
  if(e.slots)out.push('a fourth order card');
  out.push('+8 XP');
  return 'Rewards: '+out.join(' · ');

@@ -146,6 +146,8 @@ async function drag(page,a,z){const A=await page.locator(`#board [data-index="${
     const held=[];await page.route(/home\/logo\.webp/,r=>{held.push(r);});
     await page.goto(BASE+'play.html',{waitUntil:'commit'});await page.waitForSelector('#homeBar');
     assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('#homeBar>i')).animationName),'none',tag('bar still'));
+    // release the held logo only once its request has arrived (otherwise it could be held for good)
+    for(let k=0;k<100&&!held.length;k++)await page.waitForTimeout(50);
     for(const r of held)await r.continue();await page.unroute(/home\/logo\.webp/);await homeUsable(page);await page.locator('#homePlay').click();await skipStory(page);
     assert.equal(await page.locator('#home.leaving').count(),0);assert.equal(await page.locator('#home').isVisible(),false,tag('no fade with reduced motion'));
     await context.close();}
