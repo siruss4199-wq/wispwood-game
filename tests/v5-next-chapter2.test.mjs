@@ -53,9 +53,10 @@ test('the Vault door: three rings, 840 coins, the inner ring wants a Signal lamp
  deliverGold();ok(s,{type:'restore',id:'vault-door'});
  const gold=deliverGold();assert.deepEqual(gold.needs,[{family:'lamp',tier:3,count:1},{family:'chart',tier:4,count:1}],'the inner ring asks exactly its authored materials');
  const r=ok(s,{type:'restore',id:'vault-door'});
- assert.equal(stageOf(s,'vault-door'),STAGES);assert.ok(r.effects.areaDone);assert.equal(r.effects.nextArea,undefined,'nothing after the door is playable yet');
- assert.equal(allDone(s),true,'Chapter 1 complete');assert.ok(!s.orders.some(o=>o?.story),'no stale gold order left');
- ok(s,{type:'seenEnd'});assert.equal(s.seenEnd,true);
+ // Build 47d: the open Vault leads into Chapter 2 (the Tide Archive first)
+ assert.equal(stageOf(s,'vault-door'),STAGES);assert.ok(r.effects.areaDone);assert.equal(r.effects.nextArea,'vault');assert.equal(s.area,3);
+ assert.equal(allDone(s),false,'Chapter 2 lies ahead');
+ const gold2=s.orders.filter(o=>o?.story);assert.equal(gold2.length,1);assert.equal(gold2[0].story,'vault-archive','the archive\'s gold order, not a stale door one');
 });
 
 test('story cards are seen once, kept in the save, and checked when loaded', ()=>{
@@ -69,4 +70,21 @@ test('the door\'s crate reward on a full board waits (Build 47a still holds)', (
  const s=load(JSON.stringify(chapter1Done()),5000);s.coins=5000;s.materials['vault-door']=2;s.built['vault-door']=1;
  for(let i=0;i<s.board.length;i++)if(s.board[i]===null)s.board[i]=item('rig',0);
  const r=ok(s,{type:'restore',id:'vault-door'});assert.equal(r.effects.kit,-1);assert.equal(s.pending.length,1);assert.equal(s.pending[0].type,'kit');assert.equal(s.pending[0].size,3);
+});
+
+// Build 47d: the Tide Archive, a short bridge inside the Vault: one place, three stages, gold orders
+// for the late generators' parts (Lantern Kiln, Shell Trap), and no new chain or level gate.
+test('the Tide Archive: three stages for the Lantern Kiln and the Shell Trap, then the camp\'s end', ()=>{
+ const a=AREAS[3];assert.equal(a.id,'vault');assert.equal(a.name,'The Silent Observatory');
+ const t=a.tasks[0];assert.equal(t.id,'vault-archive');assert.equal(t.name,'Light the archive');
+ assert.deepEqual(t.stages.map(x=>x.cost),[100,120,140]);
+ assert.deepEqual(t.stages.map(x=>x.gold),[[['lamp',2,2]],[['shell',3,1],['lamp',3,1]],[['shell',4,1],['lamp',2,1]]]);
+ assert.ok(t.stages.every(x=>!x.level&&!x.requires),'no level gate');
+ const s=fresh(0);s.area=2;s.built={...done(AREAS[0]),...done(AREAS[1]),'vault-door':3};s.materials={...s.built};s.coins=5000;s.daily={day:9e6,count:1};
+ const t2=load(JSON.stringify(s),5000);assert.equal(t2.area,3,'a camp whose door is open (Build 47b) moves into the Vault');
+ const deliverGold=()=>{const o=t2.orders.find(x=>x?.story==='vault-archive');assert.ok(o);
+  const free=t2.board.reduce((acc,x,i)=>x===null||x.type==='cargo'?[...acc,i]:acc,[]);let k=0;
+  for(const r of o.needs)for(let c=0;c<r.count;c++)t2.board[free[k++]]=item(r.family,r.tier);ok(t2,{type:'deliver',id:o.id});return o;};
+ for(let st=0;st<3;st++){const o=deliverGold();assert.deepEqual(o.needs.map(r=>[r.family,r.tier,r.count]),t.stages[st].gold);ok(t2,{type:'restore',id:'vault-archive'});}
+ assert.equal(allDone(t2),true,'the archive read is the end of this build');assert.ok(!t2.orders.some(o=>o?.story));
 });

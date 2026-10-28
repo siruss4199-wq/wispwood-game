@@ -191,3 +191,74 @@ PR #80 is therefore not merged; each part is decided below.
 **Test robustness.** `tests/v5-next-home-browser.cjs` held picture requests by hand. A picture can be
 asked for twice (its `<img>` and the loader), so one could stay held for good: about 1 run in 3
 timed out. A gate now holds the requests and lets every one through once it opens. 4/4 runs pass.
+
+## Step 4 (Build 47d): the Tide Archive, a short bridge inside the Vault
+
+**The director's frame:**
+- The Tide Archive is a short narrative bridge, not a chapter.
+- No new chain, no Record Press, no new XP gate.
+- It reuses the underused late generators.
+- No lighthouse history and no beacon-hum link.
+- The wave seal ties the intro's letter to the archive without naming the sender.
+
+**What is built:**
+- **Where it sits.** The Vault (area 3, id `vault`, index unchanged) is now **The Silent
+  Observatory**, Chapter 2. Its first place is the Tide Archive (`vault-archive`), three stages
+  inside the open Vault.
+- **Costs.** 100, 120 and 140 coins (360 in all), against about 156 a stage at the worksite and 280
+  at the door. It is a short bridge, not a grind.
+- **Gold orders** (authored), all for the late generators:
+  1. two Storm lanterns (Lantern Kiln tier 2);
+  2. a Pearl oyster and a Signal lamp (Shell Trap tier 3, Kiln tier 3);
+  3. a Nautilus and a Storm lantern (Shell Trap tier 4, Kiln tier 2).
+- **Rewards:** +8 energy, a Tide token, then a sea chest for the newest generator.
+- **No new rule.** No level requirement, chain or currency. The engine pieces are step 2's
+  authored gold.
+- **Story:**
+  - Intro: Tamsin "Records, floor to ceiling, every one sealed against the damp."; Bram "Lamps
+    first. Then we find out what this place was for." (#80's line).
+  - Stage lines (new):
+    - Tamsin: shelves of records.
+    - Neri: "The same wave seal as on your letter, pressed into every cover."
+    - Bram: "Then the letter and this archive belong together. Who sealed them is another
+      question."
+    - Neri: the index points to "instruments, logbooks, an observatory".
+    - Ivo: "Then that is where we go."
+- **Reveals.**
+  - After the Vault reveal, the archive's intro plays. Each reveal plays once, in order; one the
+    camp has moved past is marked without playing.
+  - "Chapter 1 complete" stays on the Vault reveal.
+  - The end card at the end of this build's content reads "The archive is read".
+- **Save.** A camp whose door is open (a Build 47b save at the Vault Entrance, all done) moves into
+  the Vault as it loads, with the archive's gold order ready, and its old end mark cleared.
+- **Picture.** The coast screen and the strip use PR #80's Observatory interior
+  (`observatory-map.webp`, `observatory-vibrant.webp`, ported). The archive sits on its shelves.
+  The journey row's Vault thumbnail is now the Observatory, not the Classic violet portal.
+
+**Missing art:** the Tide Archive has no place art of its own. It is drawn with its map icon (a
+Route fold) on the Observatory interior. A dedicated archive picture or shelf states would replace
+that.
+
+**Tests:**
+- `tests/v5-next-chapter2.test.mjs`:
+  - the door's inner ring now leads into the Vault (area 3, the archive's gold order, no stale
+    door one);
+  - new test: the archive's costs, authored gold and no level gate;
+  - a Build 47b save at the open door moves into the Vault;
+  - the three stages through real gold deliveries, then the end of the content.
+- `tests/v5-next-chapter2-browser.cjs`: after the reveal, the archive intro (once), the Observatory
+  interior on the coast screen, three stages delivered and built by hand with late-generator parts,
+  the seal line, the end card, nothing again after reload.
+- Updated:
+  - `tests/v5-next.test.mjs` counts 16 places;
+  - the playtest end card and the bright end strip now use the archive's last stage.
+- **Bug found and fixed:** the end-card rewrite had dropped the Keep playing / Share feedback
+  buttons from the Chapter 1 card; both cards have them.
+- **Test robustness:** the Home test removed a request route while a request was held. Playwright
+  then sometimes stalled an unrelated module request, so the page never started (2 in 25 runs in a
+  standalone repro). The route now stays in place with its gate open: 0 in 25 and 3/3 full runs.
+- `node --test tests/v5-*.test.mjs`: 306/306. All nine Coast Camp browser tests pass in Chromium
+  (the two that also run WebKit stop at the missing local WebKit; CI runs it).
+
+**Tried and reverted:** giving every loaded camp a missing gold order changed saves on a plain
+round trip (5 save tests). Gold orders still come only when a camp moves on, or after a purchase.

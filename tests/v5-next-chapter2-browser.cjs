@@ -2,7 +2,8 @@
 // Build 47b: a finished Chapter 1 save that already saw the old ending continues into the Vault
 // door: its intro plays once (not again after a reload), the coast screen shows the coast's own
 // Vault with lit rings, the three rings are turned through their gold orders, and the inner ring
-// opens the Vault (the reveal, once, labelled "Chapter 1 complete", with Skip), then the end card.
+// opens the Vault (the reveal, once, labelled "Chapter 1 complete", with Skip). Build 47d: inside,
+// the Tide Archive's intro, its three stages (late-generator gold orders, the seal line), the end card.
 const assert=require('node:assert/strict');const {chromium,webkit}=require('playwright');const {throughHome}=require('./v5-next-home-helper.cjs');
 const URL='http://127.0.0.1:8080/v5/play.html',KEY='vaultwake-v5-coast';
 (async()=>{
@@ -50,14 +51,34 @@ const URL='http://127.0.0.1:8080/v5/play.html',KEY='vaultwake-v5-coast';
    assert.match(await page.textContent('#storyText'),/Light runs down the seam/);assert.equal(await page.getAttribute('#story','data-fx'),'seam');
    await page.locator('#storyNext').click();assert.equal(await page.getAttribute('#story','data-fx'),'open');assert.match(await page.textContent('#storyWho'),/Neri/);
    await page.locator('#storyNext').click();await page.waitForSelector('#story',{state:'hidden'});
-   await page.waitForSelector('#endDialog[open]',{timeout:5000});assert.match(await page.textContent('#endContent'),/The Vault is open/);
-   s=await save();assert.equal(s.seen['vault-open'],true);assert.equal(s.seenEnd,true);
+   // Build 47d: inside, Chapter 2 begins with the Tide Archive's intro (no end card yet)
+   const inside=await beats();assert.match(inside,/Records, floor to ceiling/,tag('the archive intro follows the reveal'));
+   s=await save();assert.equal(s.area,3);assert.equal(s.seen['vault-open'],true);assert.equal(s.seen.archive,true);
+   assert.equal(await page.locator('#endDialog[open]').count(),0,tag('no end card: Chapter 2 is playable'));
+   assert.ok(s.orders.some(o=>o?.story==='vault-archive'),tag('the archive\'s gold order'));
+   // the archive's three stages through their gold orders (Lantern Kiln and Shell Trap parts)
+   for(let st=1;st<=3;st++){
+    await page.evaluate(k=>{const s=JSON.parse(localStorage.getItem(k)),o=s.orders.find(x=>x?.story==='vault-archive');let k2=0;const free=s.board.reduce((a,x,i)=>x===null||x.type==='cargo'?[...a,i]:a,[]);
+     for(const r of o.needs)for(let c=0;c<r.count;c++)s.board[free[k2++]]={type:'item',family:r.family,tier:r.tier};localStorage.setItem(k,JSON.stringify(s));},KEY);
+    await page.reload();await page.waitForSelector('#board .tile');await beats();
+    const gold=(await save()).orders.find(o=>o?.story==='vault-archive');
+    assert.ok(gold.needs.every(r=>['lamp','shell'].includes(r.family)),tag(`archive stage ${st} wants late-generator parts`));
+    await page.locator(`#requests [data-order="${gold.id}"]`).click();await page.waitForTimeout(150);await page.locator('#hint[data-kind="deliver"]').click().catch(()=>{});
+    await page.waitForFunction(([k,id])=>!JSON.parse(localStorage.getItem(k)).orders.some(o=>o?.id===id),[KEY,gold.id],{timeout:5000});
+    await page.locator('#mapButton').click();await page.waitForSelector('#coastMap[open]');
+    if(st===1)assert.match(await page.locator('#coastMap .sceneBase').getAttribute('src'),/observatory-map\.webp$/,tag('the Observatory interior'));
+    await page.locator('#coastMap [data-restore="vault-archive"]').click();await page.waitForTimeout(400);
+    const said=await beats();if(st===2)assert.match(said,/same wave seal as on your letter/,tag('the seal links the letter and the archive'));
+    if(st<3&&await page.locator('#coastMap[open]').count())await page.locator('#coastMap .close').click();
+   }
+   await page.waitForSelector('#endDialog[open]',{timeout:5000});assert.match(await page.textContent('#endContent'),/The archive is read/);
+   s=await save();assert.equal(s.seenEnd,true);
    await page.locator('#endContent [data-keep]').click();
-   // reload: neither the reveal nor the end card again
+   // reload: neither a reveal nor the end card again
    await page.reload();await page.waitForSelector('#board .tile');await page.waitForTimeout(800);
-   assert.equal(await page.locator('#story:not([hidden])').count(),0,tag('the reveal plays once'));assert.equal(await page.locator('#endDialog[open]').count(),0);
+   assert.equal(await page.locator('#story:not([hidden])').count(),0,tag('the reveal plays once'));assert.equal(await page.locator('#endDialog[open]').count(),0);assert.equal(await beats(),'',tag('no intro again'));
    assert.deepEqual(errors,[],tag('no errors'));await context.close();}
-   console.log(`${engine} Coast Camp Chapter 2 integration: finished save (old ending seen) → Vault door intro once → rings through gold orders → Vault opens once → end card passed`);
+   console.log(`${engine} Coast Camp Chapter 2 integration: finished save (old ending seen) → Vault door intro once → rings through gold orders → Vault opens once → Tide Archive (intro, seal line, three stages) → end card passed`);
   }finally{await browser.close();}
  }
 })().catch(e=>{console.error(e);process.exit(1);});

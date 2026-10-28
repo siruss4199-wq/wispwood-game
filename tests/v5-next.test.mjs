@@ -395,10 +395,11 @@ test('the Survey Worksite: seven places in three stages, every stage a reward, t
  assert.ok(w.tasks.every(t=>t.stages[0].cost<t.stages[1].cost&&t.stages[1].cost<t.stages[2].cost),'each stage costs more');
  assert.ok(w.tasks.every(t=>t.stages.every(x=>Object.keys(x.effect).length===1&&x.lines.length>=1)),'every stage gives one reward and a line');
  assert.equal(w.tasks.flatMap(t=>t.stages.map(x=>x.cost)).reduce((a,b)=>a+b),3270);// Build 41h: ×2 (Build 41e: 1635)
- // Build 47b: the Vault Entrance has its finale (the Vault door, one place); the areas after it are still to come.
- assert.equal(Object.keys(TASKS).length,15,'place ids are unique across areas');
- assert.deepEqual(AREAS[2].tasks.map(t=>t.id),['vault-door']);
- assert.ok(AREAS.slice(3).every(a=>a.coming&&!a.tasks.length),'later areas are still to come');
+ // Build 47b: the Vault Entrance has its finale (the Vault door, one place); Build 47d: the Vault
+ // (Chapter 2) starts with the Tide Archive; any areas after it are still to come.
+ assert.equal(Object.keys(TASKS).length,16,'place ids are unique across areas');
+ assert.deepEqual(AREAS[2].tasks.map(t=>t.id),['vault-door']);assert.equal(AREAS[3].tasks[0].id,'vault-archive');
+ assert.ok(AREAS.slice(4).every(a=>a.coming&&!a.tasks.length),'later areas are still to come');
  // Its stages are bought like the beach's and keep the beach's stages.
  const s=stock(fresh(0));s.area=1;s.built=beachDone();s.coins=5000;
  assert.equal(nextTask(s).id,'ws-camp');const r=ok(s,{type:'restore'});assert.equal(r.task,'ws-camp');assert.equal(r.effects.energy,Math.min(8,Math.max(0,50-40)));

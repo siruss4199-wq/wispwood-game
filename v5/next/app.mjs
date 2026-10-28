@@ -32,7 +32,7 @@ function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el
 let adPlaying=false;
 const sfx=(kind,tier=0)=>sounds.play(kind,tier,{muted:adPlaying||platform.muted()});
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 47c · backups kept';
+export const BUILD='Build 47d · the Tide Archive';
 // The level path (docs/V5_LEVEL_PATH_2026-10-27.md): a crew order that pays a tool on top shows it
 // beside its coins (a Tide token; a favour's Sea chest or Brass cog).
 const bonusThing=o=>o.bonus==='cog'?cog():o.bonus==='chest'?kit(newestGenerator(state),2):o.bonus==='token'?token():null;
@@ -738,22 +738,22 @@ function newGeneratorMoment(gen){const c=CHAINS[GENERATOR_CHAINS[gen][0][0]];mom
 function showIntro(){const a=currentArea(state);if(a.intro)playLines(a.name,a.intro);}
 // ---------- reveals (Build 47b, from PR #80) ----------
 // A chapter's big moments play once: each is marked seen (state.seen) when it is dismissed, so a
-// reload before that shows it again and none after. A camp that loads past a reveal it never saw
-// (an older save) has it marked without playing, except the newest one it has reached.
+// reload before that shows it again and none after. They play in order, one after another; one the
+// camp has moved past (it is no longer live: a save that loads later on) is marked without playing.
 const REVEALS=[
  // the Vault door's intro, when a camp reaches the Vault Entrance (a finished Chapter 1 save too)
  {id:'door',when:s=>s.area>=2,live:s=>s.area===2&&!builtCount(s,AREAS[2]),play:done=>playLines(AREAS[2].name,AREAS[2].intro,done)},
  // the inner ring turns: Chapter 1 is complete and the Vault opens
- {id:'vault-open',when:s=>stageOf(s,'vault-door')>=STAGES,live:()=>true,play:done=>vaultReveal(done)}
+ {id:'vault-open',when:s=>stageOf(s,'vault-door')>=STAGES,live:()=>true,play:done=>vaultReveal(done)},
+ // Build 47d: inside, the Tide Archive (Chapter 2's first place); its intro, when the camp gets there
+ {id:'archive',when:s=>s.area>=3,live:s=>s.area===3&&!builtCount(s,AREAS[3]),play:done=>playLines(AREAS[3].name,AREAS[3].intro,done)}
 ];
 const markSeen=id=>{if(!state.seen?.[id]&&act(state,{type:'seen',id},Date.now()).ok){persist();playlog.event('reveal',{id});}};
 const pendingReveals=()=>REVEALS.filter(v=>v.when(state)&&!state.seen?.[v.id]);
 function nextReveal(done=()=>{}){
- const list=pendingReveals(),last=list.at(-1);
- for(const v of list.slice(0,-1))markSeen(v.id);
- if(!last){done();return false;}
- if(!last.live(state)){markSeen(last.id);done();return false;}
- last.play(()=>{markSeen(last.id);render();done();});
+ let v;while((v=pendingReveals()[0])&&!v.live(state))markSeen(v.id);
+ if(!v){done();return false;}
+ v.play(()=>{markSeen(v.id);render();nextReveal(done);});
  return true;
 }
 // The Vault opens (PR #80's Reveal A, with the coast's own Vault picture): the light runs down the
@@ -793,11 +793,14 @@ let adOffered=false;
 function showEnd(){
  if(!allDone(state)||state.seenEnd)return;run({type:'seenEnd'});playlog.flush();
  const gens=new Set(state.board.filter(x=>x?.type==='source').map(x=>x.id)).size,stages=Object.values(state.built).reduce((a,b)=>a+b,0);
- // Build 47b: Chapter 1 ends with the Vault door open; what comes next is named, never offered.
- const next=AREAS.slice(state.area+1).find(a=>a.coming);
- $('#endContent').innerHTML=`<small class="adTag">CHAPTER 1 COMPLETE</small><h2 id="endTitle">The Vault is open</h2>
+ // Build 47b: Chapter 1 ends with the Vault door open; Build 47d: the camp's end is inside the Vault
+ // (the Tide Archive read). What comes next is named, never offered.
+ const next=AREAS.slice(state.area+1).find(a=>a.coming),inside=state.area>=3;
+ $('#endContent').innerHTML=(inside?`<small class="adTag">CHAPTER 2 · THE SILENT OBSERVATORY</small><h2 id="endTitle">The archive is read</h2>
+  <p>The Tide Archive is lit, dried and read: <b>${stages} stages</b>, <b>${state.ordersDone} crew orders</b>, <b>${gens} generators</b>. Its index points deeper in, to the Observatory.</p>
+  <p>The Observatory comes in a later update.</p>`:`<small class="adTag">CHAPTER 1 COMPLETE</small><h2 id="endTitle">The Vault is open</h2>
   <p>You rebuilt Landing Beach and the Survey Worksite and turned the three rings of the Vault door: <b>${stages} stages</b>, <b>${state.ordersDone} crew orders</b>, <b>${gens} generators</b>.</p>
-  <p>${next?`Next: ${next.name}. It comes in a later update.`:'More of the coast comes in a later update.'}</p>
+  <p>${next?`Next: ${next.name}. It comes in a later update.`:'More of the coast comes in a later update.'}</p>`)+`
   <p>Crew orders keep coming. Their coins carry over, and the shop takes them now.</p>
   <button class="primary" type="button" data-keep>Keep playing</button><button class="menuButton" type="button" data-feedback>Share feedback</button>`;
  $('#endDialog').showModal();

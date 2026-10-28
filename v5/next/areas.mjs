@@ -93,7 +93,19 @@ export const AREAS=[
     {name:'Turn the middle ring',cost:280,effect:{kit:['newest',3]},lines:[['tamsin','The middle ring is turning. The tideglass in the dial glows brighter.']]},
     {name:'Turn the inner ring',cost:320,gold:[['lamp',3,1],['chart',4,1]],effect:{},lines:[['bram','The inner ring is set. Stand back.']]}])
   ]},
- {id:'vault',name:'The Vault',picture:'vault-open',coming:true,tasks:[]}
+ // Chapter 2, The Silent Observatory (PR #80's chapter, kept by the director on 2026-10-28). Build
+ // 47d: inside the open Vault, a short bridge first, the Tide Archive (one place, three stages): its
+ // gold orders want the late generators' parts (Shell Trap, Lantern Kiln), and its index points to
+ // the Observatory. The wave seal links the archive to the intro's letter without saying who sent it.
+ // Picture: PR #80's Observatory interior; the archive sits on its shelves (no archive art yet).
+ {id:'vault',name:'The Silent Observatory',short:'VAULT',picture:'observatory',map:'observatory-map',
+  intro:[['tamsin','Records, floor to ceiling, every one sealed against the damp.'],['bram','Lamps first. Then we find out what this place was for.']],
+  tasks:[
+   place('vault-archive','chart-1',[33,33],[
+    {name:'Light the archive',cost:100,gold:[['lamp',2,2]],effect:{energy:8},lines:[['tamsin','Two lanterns and the whole room shows: shelf after shelf of records.']]},
+    {name:'Dry the sealed records',cost:120,gold:[['shell',3,1],['lamp',3,1]],effect:{token:1},lines:[['neri','The same wave seal as on your letter, pressed into every cover.'],['bram','Then the letter and this archive belong together. Who sealed them is another question.']]},
+    {name:'Read the archive index',cost:140,gold:[['shell',4,1],['lamp',2,1]],effect:{kit:['newest',2]},lines:[['neri','The index points deeper in: instruments, logbooks, an observatory.'],['ivo','Then that is where we go.']]}])
+  ]}
 ];
 // The next area opens when this one's last stage is bought (game.mjs restore and load).
 export const TASKS=Object.fromEntries(AREAS.flatMap(a=>a.tasks.map(t=>[t.id,{...t,area:a.id}])));

@@ -18,9 +18,11 @@ const homeUsable=page=>page.waitForSelector('#home:not(.isLoading)',{timeout:200
 // The first new camp's Play shows the story (Build 46q; tests/v5-next-story-browser.cjs covers it):
 // these Home checks skip it.
 // Holds the requests matching re until release(); any request, before or after, then goes through
-// (a picture can be asked for twice, by its <img> and by the loader).
+// (a picture can be asked for twice, by its <img> and by the loader). The route stays in place:
+// removing it while a request is held could stall an unrelated request (a module), so the page
+// never started (seen about 1 run in 12).
 async function hold(page,re){let open;const gate=new Promise(r=>open=r);await page.route(re,async r=>{await gate;await r.continue().catch(()=>{});});
- return async()=>{open();await page.unroute(re);};}
+ return async()=>{open();};}
 async function skipStory(page){await page.waitForFunction(()=>document.querySelector('#home').hidden||!document.querySelector('#story').hidden);
  if(await page.locator('#story:not([hidden])').count())await page.locator('#storySkip').click();}
 async function play(page){await page.locator('#homePlay').click();await skipStory(page);await page.waitForSelector('#home',{state:'hidden'});}
