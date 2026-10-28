@@ -498,7 +498,7 @@ function step(s,a,now){
    if(!y){s.board[to]=x;s.board[from]=null;return {ok:true,event:'move',index:to,message:'Moved.'};}
    if(y.type!=='item')return fail('Lay the Tide token on a part: it becomes a part a crew order wants.');
    const want=s.orders.flatMap(o=>o.needs).find(r=>r.tier===y.tier&&r.family!==y.family&&count(s,r)<r.count);
-   if(!want)return fail(`No crew order is waiting for a different ${['first','second','third','fourth','fifth','sixth','seventh','eighth'][y.tier]}-tier part.`);
+   if(!want)return fail(`No crew order is missing a Lv${y.tier+1} part of another kind, so the token cannot turn this one. Try a part of a level an order still needs.`);
    s.board[to]=item(want.family,y.tier);s.board[from]=null;
    return {ok:true,event:'swap',index:to,xp:XP.unseal,message:'Tide token · '+nameOf(s.board[to])};
   }
