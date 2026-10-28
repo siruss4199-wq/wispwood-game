@@ -52,7 +52,6 @@ body.nextMode #requests .reqName{position:absolute;left:39px;right:6px;top:6px;d
 body.nextMode #requests .reqName b{font-size:12px;font-weight:900;color:var(--cb-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 body.nextMode #requests .reqName small{display:none}
 body.nextMode .reqTag{font-style:normal;font-size:8px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;border-radius:999px;padding:0 5px;color:#fff;white-space:nowrap}
-body.nextMode .reqTag.big{background:linear-gradient(#ff8a63,var(--cb-coral))}
 body.nextMode .reqTag.gold{background:linear-gradient(#ffd25a,#e7a21c);color:#5a3a02}
 body.nextMode .reqBig{display:none}
 body.nextMode #requests .requestItems{flex:1;display:flex;align-items:center;justify-content:center;gap:3px;height:auto;padding:0 6px 4px;background:none}
@@ -81,6 +80,12 @@ body.nextMode #requests .requestCard.storyOrder{--ring:#f2c23a}
 body.nextMode #requests .requestCard.ready{--ring:var(--cb-green)}
 body.nextMode #requests .requestCard.active{--ring:var(--cb-turq)}
 body.nextMode #requests .requestCard:is(.ready,.storyOrder,.active)::before{filter:drop-shadow(1.5px 0 0 var(--ring)) drop-shadow(-1.5px 0 0 var(--ring)) drop-shadow(0 1.5px 0 var(--ring)) drop-shadow(0 -1.5px 0 var(--ring)) drop-shadow(0 2px 3px #0d5a6a40)}
+/* nothing in the game is selected by a slide of the finger (Audit 2026-10-25: story text turned
+   blue); the playtest log stays selectable */
+body.nextMode{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body.nextMode :is(textarea,input){-webkit-user-select:text;user-select:text}
+/* a crew order taking long suggests a new one (Audit 2026-10-25) */
+body.nextMode #requests .reqStuck{position:absolute;right:6px;top:-9px;z-index:3;font-style:normal;font-size:9px;font-weight:900;line-height:16px;padding:0 6px;border-radius:999px;background:linear-gradient(#5b9cf6,#3f7be0);color:#fff;box-shadow:0 1px 0 #2c5fb5,0 0 0 1.5px #fff}
 /* ---------- the restoration strip: the board's way to the coast (52–56 px) ---------- */
 body.nextMode .restoreStrip{position:relative;display:flex;align-items:center;width:100%;height:56px;min-height:0;margin:6px 0 0;padding:0;border-style:solid;border-width:0 76px 0 60px;border-image:url('../assets/premium/coast/ui/restore-strip.webp') 0 215 0 170 fill / 0 76px 0 60px stretch;background:none;box-shadow:none;border-radius:0;color:var(--cb-ink);text-align:left;filter:drop-shadow(0 2px 3px #0d5a6a33)}
 body.nextMode .restoreStrip .rsThumb{position:absolute;left:-52.5px;top:5px;width:44px;height:44px;border-radius:50%;overflow:hidden;background:radial-gradient(circle at 50% 35%,#e3f8f8,#9fdde2)}
@@ -110,6 +115,9 @@ body[data-art].nextMode .boardHeading #hint.primaryAction:is([data-kind="upgrade
 body[data-art].nextMode .boardHeading:has(#hint[data-kind="upgrade"]) #hint{display:none}
 /* ---------- the board: uniform apricot cells, thin gaps, shallow depth ---------- */
 body.nextMode[data-art] #board.board{background:#efcf9c;border:0;border-radius:16px;padding:4px;gap:3px;margin-top:4px;box-shadow:inset 0 0 0 1.5px #f8e2bb,0 3px 0 #d3a76a,0 10px 22px #0d5a6a38}
+/* the board keeps the full width on every phone (2026-10-26, user: "Board hemjee jijig
+   bolchihson baina"): Build 46 shrank it on short screens to clear Safari's bottom bar, which
+   made it small on an iPhone; the page scrolls for the last row instead */
 body.nextMode #board.board .tile.tile,body.nextMode #board.board .tile.tile:is(.odd,.empty,.cargo,.glass,.deep,.cog,.token,.source){background:url('../assets/premium/coast/ui/cell.webp') center/100% 100% no-repeat;border-radius:9px;box-shadow:none;outline:0}
 body.nextMode #board.board .tile.tile.empty{opacity:.88}
 body.nextMode #board.board .tile.tile.cargo.deep{filter:saturate(.9) brightness(.94)}
@@ -170,6 +178,15 @@ body.nextMode #requests .requestCard:focus-visible{outline:2px solid var(--cb-tu
 body.nextMode #requests .requestCard.requestCard.active{outline:0}
 /* story cards use the painted faces too */
 .nextMode .beatLine img.face{width:76px;height:76px;border-radius:50%;object-fit:cover;object-position:50% 12%;background:#d7f1f2;box-shadow:0 0 0 3px #fff,0 0 0 6px #f0c45a,0 6px 14px #0003}
+
+/* no ad offers where ads are off (CrazyGames Basic Launch, data-ads="off") */
+:root:not([data-ads="on"]):not([data-dev="on"]) :is(.adsOnly,#adEnergyButton),[data-ads="off"] :is(.adsOnly,#adEnergyButton){display:none!important}
+/* on CrazyGames nothing leads out of the game: no Classic link, playtest log, sound check page or
+   feedback export (data-platform="crazygames", tools/coast-crazygames.mjs) */
+[data-platform="crazygames"] :is(#classicLink,#classicNote,#playlogButton,a[href="next/sounds.html"],[data-feedback]){display:none!important}
+/* players see no developer tools: the Classic link, the playtest log, the sound check page, the
+   feedback export and the build name show only with ?dev=1 (2026-10-26) */
+:root:not([data-dev="on"]) :is(#classicLink,#classicNote,#playlogButton,a[href="next/sounds.html"],[data-feedback],#menu .menuNote,footer #build){display:none!important}
 /* ---------- Build 45g: pre-release clarity pass ---------- */
 /* HUD numbers: one size and weight for energy and coins, a firm dark edge on the energy so it
    reads on the bright painted well; the cap is lighter but still readable */
@@ -268,3 +285,40 @@ body.nextMode[data-art] #board.board .tile.tile.glass{background:radial-gradient
 body.nextMode #board .iceArt{opacity:.78}
 /* information badges are neutral slate; colour stays for the generator's action mark */
 body.nextMode #board .srcLevel,body.nextMode #board .tile.kit .pulls{background:#4b5964;color:#fff}
+/* Build 46j (the level path): a crew order that also pays a tool shows it beside its coins. */
+body.nextMode #requests .reqBonus{display:inline-flex;align-items:center;margin-left:3px;font-size:11px;font-weight:900;color:#6b4a1f;line-height:1}
+body.nextMode #requests .reqBonus :is(img,.art){width:20px!important;height:20px!important;max-width:none;object-fit:contain;translate:none;filter:none}
+body.nextMode #requests .reqBonus .kitTag{display:none}
+body.nextMode .levelPill{cursor:pointer}
+/* a ready card's Deliver button fills its foot: the tool is named by the delivery message instead */
+body.nextMode #requests .requestCard.ready .reqBonus{display:none}
+.moment.pathMoment small{white-space:pre-line;text-align:left}
+/* Build 45m: the generator's energy mark is a drawn bolt (crisp at 15-17 px on every font), and
+   the generator's idle bob no longer runs on the compositor. Any transform animation (genBreathe's
+   scale, or even a whole-pixel translate) left the sprite 15-23 % softer than a still tile; a
+   stepped 1 px "top" bob repaints it at full sharpness, twice per 2.8 s cycle. */
+body.nextMode #board .genMark svg{display:block;width:72%;height:72%;fill:#6b3d00;stroke:#6b3d00;stroke-width:1.2;stroke-linejoin:round}
+@media(prefers-reduced-motion:no-preference){
+ body.nextMode #board .tile.source:not(.dragging)>.art{position:relative;animation:cbGenBob 2.8s infinite}
+}
+@keyframes cbGenBob{0%,100%{top:0;animation-timing-function:steps(2,jump-none)}50%{top:-1px;animation-timing-function:steps(2,jump-none)}}
+/* Build 45n/45o: tideglass shrugs and flashes when a merge beside it is too small to crack it
+   (the message line says which level would). Nothing is written on the ice itself. */
+body.nextMode #board .tile.iceWeak{animation:cbIceFlash .9s ease-out}
+@media(prefers-reduced-motion:no-preference){body.nextMode #board .tile.iceWeak{animation:cbIceFlash .9s ease-out,cbIceShrug .45s ease-in-out}}
+@keyframes cbIceShrug{20%{translate:-2px 0}45%{translate:2px 0}70%{translate:-1px 0}100%{translate:0 0}}
+@keyframes cbIceFlash{0%,100%{box-shadow:none}25%{box-shadow:inset 0 0 0 2.5px #e8742c}}
+/* ---------- Build 46n: board colour pass (art direction, 2026-10-28) ---------- */
+/* Warm sand in a slim ocean-turquoise frame, in place of the pale grey-beige of 45j. The frame and
+   its lighter upper rim are outer shadows and every cell's depth is background layers (a 1 px top
+   highlight, a soft 1.5 px lower shade), so the board's size, gaps, sprites and touch targets are
+   unchanged and box-shadow stays free for the state rings (selection, twins, targets). Empty cells
+   sit a little lower: a soft darker top edge, a light bottom one, no lower shade. */
+:root{--cell:#f9d89d;--cell-hi:#ffe2ac;--cell-lo:#f3cc8d;--cell-top:#fff3d6;--cell-edge:#d9a45cb3;--cell-empty:#eac58c;--board:#e9be7a;--board-frame:#168da8;--board-frame-hi:#6fcadb}
+body.nextMode[data-art] #board.board{background:var(--board);box-shadow:0 0 0 3px var(--board-frame),0 -1.5px 0 3px var(--board-frame-hi),0 6px 16px #0d5a6a33}
+body.nextMode[data-art] #board.board .tile.tile,body.nextMode[data-art] #board.board .tile.tile:is(.odd,.item,.source,.cargo,.kit,.glass,.deep,.cog,.token,.jar,.match,.selected,.target,.nextAction,.orderSource,.keyReady,.locked){
+ background:linear-gradient(var(--cell-top),var(--cell-top)) top/100% 1px no-repeat,linear-gradient(var(--cell-edge),var(--cell-edge)) bottom/100% 1.5px no-repeat,linear-gradient(var(--cell-hi),var(--cell-lo)) var(--cell-lo)}
+body.nextMode[data-art] #board.board .tile.tile.empty{background:linear-gradient(#c8955499,#c8955400) top/100% 3px no-repeat,linear-gradient(#f6dcae,#f6dcae) bottom/100% 1px no-repeat,var(--cell-empty);opacity:1}
+/* ice keeps its own pale cool inside over the same warm cell as the parts (its gradient and base
+   colour), so the frame and its cracks read as ice and the part inside is not tinted by the sand */
+body.nextMode[data-art] #board.board .tile.tile.glass{background:radial-gradient(closest-side,#f1fafce6,#e4f4f8bf),linear-gradient(var(--cell-hi),var(--cell-lo)) var(--cell-lo)}

@@ -1,9 +1,12 @@
 // Coast Camp: the new-loop page (v5/play.html). Same look as Classic V5, one loop:
 // generators → merge → crew orders → coins → upgrade the coast's places on the beach screen.
-import {allDone,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,newestGenerator,cog,token,SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,nextTask,currentArea,areaDone,upgrades,stageOf,builtCount,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys,reachable,generatorsMerge,MAX_GENERATOR_LEVEL,GLASS_HITS,nextKind,UNLOCK_LEVEL,GENERATOR_ORDER,storyTarget,roleOf,COIN_VALUE as COIN_VALUE_UI} from './game.mjs';
+import {isStuck,allDone,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,newestGenerator,cog,token,SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,nextTask,currentArea,areaDone,upgrades,stageOf,builtCount,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys,reachable,generatorsMerge,MAX_GENERATOR_LEVEL,GLASS_HITS,nextKind,UNLOCK_LEVEL,GENERATOR_ORDER,storyTarget,roleOf} from './game.mjs';
 import {AREAS,STAGES,TASKS} from './areas.mjs';
 import {primaryAction} from './guide.mjs';
 import {needsOf,missingOf,levelOf} from './needs.mjs';
+import {LEVEL_PATH,BONUS_NAMES,CHEST_ENERGY,EARLY_LEVELS,EARLY_LEVEL_ENERGY} from './game.mjs';
+import {kit} from '../kits.mjs';
+import {iceNeed,weakIceBeside} from './ice.mjs';
 import {purposeOf} from './purposes.mjs';
 import {createLog} from './playtest.mjs';
 import {rewardedAd,initPlatform,platform} from './platform-cg.mjs';
@@ -27,13 +30,22 @@ function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el
 let adPlaying=false;
 const sfx=(kind,tier=0)=>sounds.play(kind,tier,{muted:adPlaying||platform.muted()});
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 45k · coastal board';
+export const BUILD='Build 46o · warm board';
+// The level path (docs/V5_LEVEL_PATH_2026-10-27.md): a crew order that pays a tool on top shows it
+// beside its coins (a Tide token; a favour's Sea chest or Brass cog).
+const bonusThing=o=>o.bonus==='cog'?cog():o.bonus==='chest'?kit(newestGenerator(state),2):o.bonus==='token'?token():null;
+const bonusArt=o=>o.bonus?`<span class="reqBonus" title="Also pays a ${BONUS_NAMES[o.bonus]}" aria-label="plus a ${BONUS_NAMES[o.bonus]}">+${draw(bonusThing(o))}</span>`:'';
+// What the player level opens next, for the level badge.
+const nextUnlock=lv=>LEVEL_PATH.find(u=>u.level>lv)??null;
+// The generator's energy mark (Build 45m): a drawn bolt; the old "ϟ" text glyph rendered thin and
+// crooked at badge size, differently on every font.
+const BOLT='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 1.5 4.5 13.5H11L9.5 22.5 19.5 10H13Z"/></svg>';
 enablePremium('vibrant');document.body.dataset.art='premium';document.body.dataset.palette='vibrant';
 const $=q=>document.querySelector(q),board=$('#board');
 const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
 // ?new=1 (the playtest page's "start from the beginning" link) starts a new camp.
 const startNew=new URLSearchParams(location.search).has('new');
-if(startNew)history.replaceState(null,'',location.pathname);
+if(startNew){const q=new URLSearchParams(location.search);q.delete('new');history.replaceState(null,'',location.pathname+(q.size?'?'+q:''));}
 let state=startNew?fresh(Date.now()):load(storage.get(SAVE_KEY)??'',Date.now()),selected=null,focusOrder=null,drag=null,suppressClick=false;
 const persist=()=>storage.set(SAVE_KEY,JSON.stringify(state));
 // The local playtest log (Build 41 M6): this browser only, copied out by the player.
@@ -48,6 +60,12 @@ persist();
 const ICONS={rock:{type:'rock'},'crate-salvage':{type:'crate',kind:'salvage'},'crate-survey':{type:'crate',kind:'survey'},'source-chart':{type:'source',id:'chart'},'flux-3':item('flux',3),'chart-1':item('chart',1)};
 // A gold coin (orders pay coins; coins upgrade the beach).
 const COIN='<i class="coinIcon" aria-hidden="true"></i>';
+// Players see no developer tools and no ad offers (2026-10-26, user: "publish hiihed yu uldsen be
+// ... hurdan duusgay"): ?dev=1 shows the playtest log, the sound check, the Classic link, the
+// build name and the ad stand-in, as before; a page that has real ads says data-ads="on"
+// (CrazyGames after Full Launch). Without ads every ad offer is hidden; nothing else changes.
+const DEV=new URLSearchParams(location.search).has('dev');document.documentElement.dataset.dev=DEV?'on':'off';
+const ADS=document.documentElement.dataset.ads==='on'||DEV&&document.documentElement.dataset.ads!=='off';
 const pips=n=>`<span class="pips" aria-label="stage ${n} of ${STAGES}">${Array.from({length:STAGES},(_,k)=>`<i class="${k<n?'on':''}"></i>`).join('')}</span>`;
 // Places with stage art (build 38: workshop, pier, beacon) are drawn as they stand at their stage.
 const stageArt=(t,n)=>`<img class="art" src="assets/premium/coast/place-${t.art}-${Math.max(1,n)}.webp" alt="" draggable="false">`;
@@ -69,6 +87,9 @@ const placeIcons=list=>list.map(t=>{const n=stageOf(state,t.id);return `<span cl
 const iconArt=k=>{if(k==='workshop')return '<img class="art" src="assets/premium/workshop-operational.webp" alt="">';if(ICONS[k])return art(ICONS[k]);const g=k.match(/^source-(\w+)$/),p=k.match(/^(\w+)-(\d)$/);return draw(g?{type:'source',id:g[1]}:item(p[1],+p[2]));};
 // A part a Tide token can turn into one an order wants.
 const swappable=x=>state.orders.some(o=>missingOf(state,o).some(r=>r.tier===x.tier&&r.family!==x.family));
+// What a Tide token can turn a board part into now: missing order parts with a part of their level, of
+// another kind, on the board.
+const tokenOptions=()=>state.orders.flatMap(o=>missingOf(state,o)).filter(r=>state.board.some(y=>y?.type==='item'&&y.tier===r.tier&&y.family!==r.family));
 // What each generator level does (v5/kits.mjs levelLift), said when it is reached.
 const LEVEL_GAIN={2:'Every third part comes out one tier higher.',3:'Every second part comes out one tier higher.',4:'Every part comes out one tier higher.',5:'Top level: every part one tier higher, every third two tiers.'};
 
@@ -81,14 +102,14 @@ function render(){
  // picture is shown where it belongs, on the restoration strip and the coast screen.
  $('#energy').innerHTML=`${state.energy}<span class="energyCap">/${REFILL_CAP}</span>`;
  $('#coins').textContent=state.coins;
- const lv=state.level;$('#levelNum').textContent=lv.level;$('#levelPill').style.setProperty('--p',Math.round(100*lv.xp/xpToNext(lv.level))+'%');$('#levelPill').setAttribute('aria-label',`Level ${lv.level}, ${lv.xp} of ${xpToNext(lv.level)} XP`);
+ const lv=state.level;$('#levelNum').textContent=lv.level;$('#levelPill').style.setProperty('--p',Math.round(100*lv.xp/xpToNext(lv.level))+'%');{const nx=nextUnlock(lv.level);$('#levelPill').setAttribute('aria-label',`Level ${lv.level}, ${lv.xp} of ${xpToNext(lv.level)} XP`+(nx?`. Level ${nx.level} opens ${nx.name}`:''));$('#levelPill').title=nx?`Level ${nx.level}: ${nx.name}`:'Every level-path unlock is open';}
  const ready=upgrades(state).some(u=>u.materials&&state.coins>=u.cost);if(!(holdPlace>performance.now()))$('#mapReady').hidden=!ready;
  // The beach and its upgrades live on their own screen (user, 2026-10-22: "ene zaaval boardtai
  // neg delgetsend tsug baimaargui"); the board screen keeps only the BEACH button, whose dot
  // shows when an upgrade is affordable, and the coin count.
  renderOrders();renderBoard();renderShed();renderSelection();renderHint();renderNextPlace();
  $('#dailyButton').hidden=!giftReady();
- $('#adEnergyButton').hidden=!(state.energy<5&&shopLeft(state,'adEnergy',today())>0);
+ $('#adEnergyButton').hidden=!ADS||!(state.energy<5&&shopLeft(state,'adEnergy',today())>0);
  if(!$('#adEnergyButton').hidden&&!adOffered)playlog.event('adOffer',{id:'adEnergy'});adOffered=!$('#adEnergyButton').hidden;
  {const n=bookReady(state).length+BOOK_CHAINS.filter(f=>pageReady(state,f)).length;$('#bookCount').hidden=!n;$('#bookCount').textContent=n;$('#bookButton').classList.toggle('ready',n>0);}
  calmBadges();
@@ -115,15 +136,17 @@ function renderOrders(){
   const place=o.story&&AREAS[state.area]?.tasks.find(t=>t.id===o.story),stage=place?Math.min(STAGES,stageOf(state,place.id)+1):0;
   const got=p.reduce((n,r)=>n+r.have,0),want=p.reduce((n,r)=>n+r.count,0);
   const role=roleOf(o),why=place?null:purposeOf(o,role);
-  const label=`${place?`Gold order: the materials for ${place.stages[stage-1].name} (${place.name}, stage ${stage}). `:`${who.name} the ${who.role}${why?`, ${why.short}`:''}${role==='big'?' (a big job)':''}: `}${p.map(r=>r.count+' '+nameOf(item(r.family,r.tier))+(r.sibling?` (level ${levelOf(r)})`:'')).join(', ')}. ${ready?'Ready: tap to deliver.':`${got} of ${want} parts on the board.`} Reward ${o.coins} coins`;
+  const label=`${place?`Gold order: the materials for ${place.stages[stage-1].name} (${place.name}, stage ${stage}). `:`${who.name} the ${who.role}${why?`, ${why.short}`:''}: `}${p.map(r=>r.count+' '+nameOf(item(r.family,r.tier))+(r.sibling?` (level ${levelOf(r)})`:'')).join(', ')}. ${ready?'Ready: tap to deliver.':`${got} of ${want} parts on the board.`} Reward ${o.coins} coins`;
   // Build 45 (coastal board design): a painted face where the crew member has one, the name, a
-  // kind tag only where it matters (a big job, the gold order's stage), the parts with have/need
+  // kind tag only for the gold order's stage, the parts with have/need
   // (✓ and green when there are enough), and the coins or, when ready, the one Deliver button.
-  const tag=place?`<i class="reqTag gold">Stage ${stage}</i>`:role==='big'?'<i class="reqTag big">Big job</i>':'';
+  const tag=place?`<i class="reqTag gold">Stage ${stage}</i>`:'';
   // the gold order is named as such (a place's name does not fit a card; the strip and the label carry it)
   const head=place?`<span class="reqFace place">${placeArt(place,stage)}</span><span class="reqName"><b>Gold order</b>${tag}</span>`
    :`<span class="reqFace">${face(o.who)}</span><span class="reqName"><b>${who.name}</b>${tag}</span>`;
-  return `<button class="requestCard ${ready?'ready':''} ${place?'storyOrder':''} ${focusOrder===o.id?'active':''}" data-order="${o.id}" data-role="${role}" aria-label="${label}"><span class="reqHead">${head}</span><span class="requestItems">${p.map(r=>`<span class="${r.have>=r.count?'met':''} ${heldKey===r.family+r.tier?'held':''}" data-part="${r.family+r.tier}">${draw(item(r.family,r.tier))}${r.sibling?`<i class="reqLv" aria-hidden="true">Lv${levelOf(r)}</i>`:''}<b>${r.have>=r.count?'<i aria-hidden="true">✓</i>':''}${r.have}/${r.count}</b></span>`).join('')}</span><span class="reqFoot">${ready?`<strong class="reqDeliver">Deliver <em>+${o.coins}</em>${COIN}</strong>`:`<span class="requestReward">${COIN}${o.coins}</span>`}</span></button>`;
+  // A crew order taking long (Audit 2026-10-25) suggests a new one; the tapped card's panel has it.
+  const stuck=isStuck(state,o);
+  return `<button class="requestCard ${ready?'ready':''} ${place?'storyOrder':''} ${stuck?'stuck':''} ${focusOrder===o.id?'active':''}" data-order="${o.id}" data-role="${role}" aria-label="${label}${stuck?'. Taking long: tap it for a new order.':''}"><span class="reqHead">${head}</span>${stuck?'<i class="reqStuck" aria-hidden="true">↻ New?</i>':''}<span class="requestItems">${p.map(r=>`<span class="${r.have>=r.count?'met':''} ${heldKey===r.family+r.tier?'held':''}" data-part="${r.family+r.tier}">${draw(item(r.family,r.tier))}${r.sibling?`<i class="reqLv" aria-hidden="true">Lv${levelOf(r)}</i>`:''}<b>${r.have>=r.count?'<i aria-hidden="true">✓</i>':''}${r.have}/${r.count}</b></span>`).join('')}</span><span class="reqFoot">${ready?`<strong class="reqDeliver">Deliver <em>+${o.coins}</em>${COIN}</strong>`:`<span class="requestReward">${COIN}${o.coins}</span>`}${bonusArt(o)}</span></button>`;
  }).join('')}</div>`;
  renderOrderTools();
 }
@@ -140,15 +163,16 @@ function renderOrderTools(){
  if(!o||orderItems(state,o)){bar.hidden=true;bar.innerHTML='';return;}
  const day=today(),free=swapsLeft(state,day),ads=adSwapsLeft(state,day),missing=missingOf(state,o);
  bar.hidden=false;
- const swap=o.story?`<span class="toolNote">The gold order is the ${currentArea(state).name}'s next stage: it stays.</span>`:`<span class="toolNote">Stuck on ${CREW[o.who].name}'s order?</span>`+(free>0?`<button data-swap>↻ New order <small>${free} free today</small></button>`:ads>0?'<button class="adOffer" data-swap-ad>▶ New order</button>':'<button disabled>No more changes today</button>');
+ const swap=o.story?`<span class="toolNote">The gold order is the ${currentArea(state).name}'s next stage: it stays.</span>`:`<span class="toolNote">Stuck on ${CREW[o.who].name}'s order?</span>`+(free>0?`<button data-swap>↻ New order <small>${free} free today</small></button>`:ADS&&ads>0?'<button class="adOffer" data-swap-ad>▶ New order</button>':'<button disabled>No more changes today</button>');
  // What the order is for and where its coins go (Build 44): the crew member's reason, and the
  // next stage the coins count toward (the gold order instead brings that stage's materials).
- const role=roleOf(o),why=purposeOf(o,role),n=nextPlace(),kind={quick:'Quick job',pair:'Two-crew job',big:'Big job'}[role];
+ const role=roleOf(o),why=purposeOf(o,role),n=nextPlace(),kind={quick:'Quick job',pair:'Two-part job'}[role];
  const t=o.story&&TASKS[o.story],st=t&&t.stages[Math.min(STAGES,stageOf(state,t.id)+1)-1];
  const say=o.story?`<p class="orderSay"><b>${t.name} · materials</b>Delivering this brings the materials for <em>${st.name}</em>; then it can be built for ${st.cost} coins.</p>`
   :`<p class="orderSay"><b>${kind} · ${CREW[o.who].name}</b>“${why?.line??'Parts for the camp.'}”</p>`;
- const extra=o.story?0:o.coins-o.needs.reduce((v,r)=>v+r.count*COIN_VALUE_UI[r.tier],0);
- const pays=!o.story&&n&&!n.ready?`<p class="orderPays">${COIN} +${o.coins}${extra>0?` <small>(${role==='big'?'big job':'two crews'}: +${extra})</small>`:''} → <b>${n.u.name}</b> ${Math.min(n.u.cost,state.coins+o.coins)}/${n.u.cost}${n.u.materials?'':' · also needs its gold order'}</p>`:'';
+ // Three lines (Audit 2026-10-25, user: "ene yu ve"): why, what it pays and where the coins go,
+ // how to make the parts; the bonus sums and the "100/100" progress (it read as done) are gone.
+ const pays=!o.story&&n&&!n.ready?`<p class="orderPays">${COIN} +${o.coins} → <b>${n.u.name}</b></p>`:'';
  bar.innerHTML=`${say}${pays}<ol class="routes" aria-label="Where the parts come from">${missing.map(chainRoute).join('')}</ol><div class="toolRow">${swap}</div>`;
 }
 function renderBoard(){
@@ -165,7 +189,7 @@ function renderBoard(){
   // is and what is in it is told by the panel under the board when it is tapped.
   let badge='';
   // Build 45g: an open generator carries a small ϟ (it spends energy when tapped) and its level.
-  if(x?.type==='source')badge=locked?`<span class="lockedLabel">NEXT AREA</span>`:`<span class="genMark" aria-hidden="true">ϟ</span>`+(producerLevel(x)>1?`<span class="srcLevel">Lv${producerLevel(x)}</span>`:'');
+  if(x?.type==='source')badge=locked?`<span class="lockedLabel">NEXT AREA</span>`:`<span class="genMark" aria-hidden="true">${BOLT}</span>`+(producerLevel(x)>1?`<span class="srcLevel">Lv${producerLevel(x)}</span>`:'');
   else if(x?.type==='kit')badge=`<span class="pulls">${x.left}</span>`;
   else if(x?.type==='jar')badge=`<span class="sealBadge">+${x.energy}ϟ</span>`;
   else if(x?.type==='cargo'&&(x.find?.type==='source'||x.find?.type==='cog'||x.find?.type==='token'))badge=`<span class="cargoGleam ${x.find.type!=='source'?'cogGleam':''}" aria-hidden="true"></span>`;
@@ -175,7 +199,7 @@ function renderBoard(){
   // generator it still needs. The panel under the board tells the rest.
   const holdsGen=x?.type==='cargo'&&x.find?.type==='source'&&focusGens.has(x.find.id);
   const ice=x?.type==='glass'?`ice${Math.min(2,x.cracks??0)}`:'';
-  return `<button class="tile ${x?.type??'empty'} ${ice} ${x?.cracks?'cracked':''} ${ready?'keyReady':''} ${deep?'deep':''} ${locked?'locked':''} ${selected===i?'selected':''} ${twin?'match':''} ${focused?'nextAction':''} ${x?.type==='source'&&focusGens.has(x.id)||holdsGen?'orderSource':''} ${(r+c)%2?'odd':''}" data-index="${i}" style="grid-row:${r+1};grid-column:${c+1}" ${x?.family||x?.id?`data-family="${x.family??x.id}"`:''} ${x?.type==='cargo'?`data-key="${x.key.family}"`:''} aria-label="${nameOf(x)}${x?.type==='glass'?` · ${GLASS_HITS-(x.cracks??0)} hit${GLASS_HITS-(x.cracks??0)>1?'s':''} left`:''}${locked?' · locked':''}${x?.type==='source'&&!locked?' · tap to make a part for 1 energy':''}. Space ${i+1}" aria-pressed="${selected===i}">${draw(deep?{...x,deep:true}:x)}${badge}</button>`;
+  return `<button class="tile ${x?.type??'empty'} ${ice} ${x?.cracks?'cracked':''} ${ready?'keyReady':''} ${deep?'deep':''} ${locked?'locked':''} ${selected===i?'selected':''} ${twin?'match':''} ${focused?'nextAction':''} ${x?.type==='source'&&focusGens.has(x.id)||holdsGen?'orderSource':''} ${(r+c)%2?'odd':''}" data-index="${i}" style="grid-row:${r+1};grid-column:${c+1}" ${x?.family||x?.id?`data-family="${x.family??x.id}"`:''} ${x?.type==='cargo'?`data-key="${x.key.family}"`:''} aria-label="${nameOf(x)}${x?.type==='glass'?` · ${GLASS_HITS-(x.cracks??0)} hit${GLASS_HITS-(x.cracks??0)>1?'s':''} left`:''}${iceNeed(x)?` · cracked by a level ${iceNeed(x)} or better merge beside it`:''}${locked?' · locked':''}${x?.type==='source'&&!locked?' · tap to make a part for 1 energy':''}. Space ${i+1}" aria-pressed="${selected===i}">${draw(deep?{...x,deep:true}:x)}${badge}</button>`;
  }).join('');
  // The free-space count shows only when space is getting short.
  const free=state.board.filter(x=>x===null).length,f=$('#free');f.textContent=!free?'Board full':free+(free===1?' space left':' spaces left');f.hidden=free>3;f.classList.toggle('out',!free);
@@ -193,7 +217,10 @@ function renderShed(){
 // The next place (Build 44): a compact preview of the coast's next stage beside the guidance.
 // It says "Ready" only when the materials are in and the coins are there.
 function nextPlace(){
- const ups=upgrades(state);const u=ups.find(canBuild)??ups.find(u=>u.materials)??storyTarget(state)??ups[0];
+ // One goal at a time (Audit 2026-10-25): a stage ready to build, else the stage the live gold
+ // order is for (so the strip and the gold card name the same place), else as before.
+ const ups=upgrades(state),gold=state.orders.find(o=>o?.story)?.story;
+ const u=ups.find(canBuild)??ups.find(u=>u.id===gold)??ups.find(u=>u.materials)??storyTarget(state)??ups[0];
  if(!u)return null;const t=TASKS[u.id];return {u,t,ready:canBuild(u)};
 }
 // The restoration strip (Build 45): the board's one way to the coast. It shows the place the next
@@ -207,7 +234,11 @@ function renderNextPlace(){
  const el=$('#mapButton'),n=nextPlace(),area=currentArea(state);
  if(!n){el.dataset.place='';el.dataset.ready='0';el.classList.remove('ready');
   el.querySelector('.rsThumb').innerHTML=`<img class="art" src="assets/premium/${area.picture}-vibrant.webp" alt="">`;
-  el.querySelector('.rsText b').textContent=area.name;el.querySelector('.rsText small').textContent=areaDone(state)?'Every place is restored':'The next stages open as you build';
+  // After the last stage (Audit 2026-10-25: coins had no use) the strip says the chapter is done
+  // and that the coins crew orders keep paying carry over to the next area.
+  const next=AREAS.slice(state.area+1).find(a=>a.coming)?.name;
+  if(allDone(state)){el.querySelector('.rsText b').textContent='Chapter complete';el.querySelector('.rsText small').innerHTML=next?`Coins carry over to the ${next} · ${COIN}${state.coins}`:`${COIN}${state.coins} saved`;}
+  else{el.querySelector('.rsText b').textContent=area.name;el.querySelector('.rsText small').textContent=areaDone(state)?'Every place is restored':'The next stages open as you build';}
   el.querySelector('.rsAction').textContent='View';el.setAttribute('aria-label',`Go to the ${area.name}`);return;}
  const {u,t,ready}=n,was=el.dataset.ready==='1';
  el.dataset.place=u.id;el.dataset.ready=ready?'1':'0';el.classList.toggle('ready',ready);
@@ -252,7 +283,11 @@ function renderSelection(){
  }else if(x.type==='cargo'){const k=CHAINS[x.key.family].names[x.key.tier],have=state.board.some(y=>matches(y,x.key)),gen=CHAINS[x.key.family].gen;
   title='Sealed cargo';desc=`Opens with a ${k}: lay one on it. What is inside is a surprise`+(x.find?.type==='source'?' — something glows in there.':['cog','token'].includes(x.find?.type)?' — something gleams in there.':'.')+(have?' You have one: drag it onto this cargo.':sourceOpen(state,gen)?` ${SOURCES[gen].name} makes them.`:` Its generator is still sealed somewhere on the board.`);}
  else if(x.type==='jar')desc='Energy, sealed in a jar.';
- else if(x.type==='token')desc='Drag it onto a part: the part becomes one of the same tier that a crew order is waiting for.';
+ // Build 46l (user: "zarim item deer ajillahgui baina"): the token works only on a part of a level some
+ // order is still missing in another kind; the panel says which levels work now, or that none does.
+ else if(x.type==='token'){const opts=tokenOptions();
+  desc=opts.length?`Drag it onto a glowing ${[...new Set(opts.map(r=>'Lv'+(r.tier+1)))].join(' or ')} part: it becomes ${opts.slice(0,2).map(r=>'a '+nameOf(item(r.family,r.tier))).join(' or ')} for an order.`
+   :'Turns a part into the same level of another kind that an order still needs. No order needs a swap right now: keep it (or put it in the shed) for later.';}
  else if(x.type==='cog')desc=`Drag it onto a generator: +1 level, up to ${MAX_GENERATOR_LEVEL}. Higher levels make better parts.`;
  if(SHED_TYPES_UI.includes(x.type))buttons+='<button data-action="store">Shed</button>';
  $('#selection').innerHTML=`<span class="preview">${draw(x)}</span><span class="copy"><b>${title}</b><small>${desc}</small></span><span class="actionGroup">${buttons}</span>`;
@@ -315,10 +350,21 @@ function run(a){
   sfx('shatter');haptics.pulse('ice');}
  if(r.event==='swap'){tile?.classList.add('merge-pop');burst(tile?.getBoundingClientRect(),'gold');sfx('rare');}
  if(r.event==='merge'){const m=state.board[r.index],first=m?.type==='item'&&r.found?.includes(m.family+m.tier);tile?.classList.add('merge-pop');burst(tile?.getBoundingClientRect(),m?.family,first||m?.tier>=4);
-  if(!r.broken?.length){sfx(first&&m.tier>=2||m?.tier>=4?'discovery':'merge',m?.tier??0);haptics.pulse('merge');}for(const d of r.dug??[])board.querySelector(`[data-index="${d.index}"]`)?.classList.add('unlocked');}
+  // a triple merge (the level path) makes its second part where the third stood
+  if(r.triple!=null){const t3=board.querySelector(`[data-index="${r.triple}"]`);t3?.classList.add('merge-pop');burst(t3?.getBoundingClientRect(),m?.family,true);}
+  if(!r.broken?.length){sfx(first&&m.tier>=2||m?.tier>=4?'discovery':'merge',m?.tier??0);haptics.pulse('merge');}for(const d of r.dug??[])board.querySelector(`[data-index="${d.index}"]`)?.classList.add('unlocked');
+  // Build 45n/45o: a merge too small for the tideglass beside it says so (the glass shrugs and
+  // flashes; no level is written on the ice, user: "hagrahgui tohioldold l heley").
+  const weak=weakIceBeside(state.board,r.index);
+  if(weak.length){for(const j of weak)board.querySelector(`[data-index="${j}"]`)?.classList.add('iceWeak');
+   const need=Math.min(...weak.map(j=>iceNeed(state.board[j])??state.board[j].tier+1));
+   $('#message').textContent=`${r.message} · too small for the tideglass: merge a level ${need} or better beside it`;}}
  if(r.event==='produce'||r.event==='kit')sfx('produce');
  if((r.event==='produce'||r.event==='kit')&&fromRect&&tile&&!reduced()){const to=tile.getBoundingClientRect(),el=document.createElement('div');el.className='flight';el.innerHTML=draw(state.board[r.index]);el.style.cssText=`left:${fromRect.x}px;top:${fromRect.y}px;--dx:${to.x-fromRect.x}px;--dy:${to.y-fromRect.y}px`;document.body.append(el);setTimeout(()=>el.remove(),460);}
  if(r.event==='deliver'){deliverSequence(r,taking,orderRect,before.coins,readyBefore);sfx('deliver');
+  if(r.tool?.index!=null)board.querySelector(`[data-index="${r.tool.index}"]`)?.classList.add('unsealed');
+  // the crew's +1 energy (Audit 2026-10-25) flies to the energy pill
+  if(r.energy&&orderRect)setTimeout(()=>rewardFlight(orderRect,$('#energyPill').getBoundingClientRect(),`+${r.energy} ϟ`),reduced()?0:420);
   if(r.materials){const t=TASKS[r.materials.id],u=t.stages[r.materials.stage-1],ok=state.coins>=u.cost;setTimeout(()=>moment(ok?'Ready to build: '+u.name:'Materials in: '+t.name,ok?`${t.name} · go to the ${currentArea(state).name} to build it (${u.cost} coins).`:`${u.name} also needs ${u.cost} coins: ${u.cost-state.coins} more from crew orders.`),reduced()?0:950);}}
  if(r.event==='producerUp'){const src=state.board[r.index],next=nextKind(src.id),waiting=next&&src.level<UNLOCK_LEVEL&&!state.board.some(y=>y?.type==='source'&&y.id===next);
   moment(SOURCES[src.id].name+' · level '+src.level,LEVEL_GAIN[src.level]+(waiting?` Level ${UNLOCK_LEVEL} brings out the ${SOURCES[next].name}.`:''),src);tile?.classList.add('merge-pop');burst(tile?.getBoundingClientRect(),'gold',true);sfx('milestone');}
@@ -342,7 +388,9 @@ function run(a){
   // Crates that now touch open ground show their keys for the first time.
   for(const k of cargoKeys(state))if(!reachBefore.has(k.index))board.querySelector(`[data-index="${k.index}"]`)?.classList.add('newKey');}
  if(r.found?.length&&r.event!=='restore'){const k=r.found.at(-1),x=item(k.replace(/\d+$/,''),+k.match(/\d+$/)[0]);if(x.tier>=2)setTimeout(()=>moment('New: '+nameOf(x),(x.tier<maxTier(x.family)?'Next: '+CHAINS[x.family].names[x.tier+1]:'Top of the chain')+` · in the book: +${BOOK_COINS[x.tier]} coins`,x),r.levelUp?1600:0);}
- if(r.levelUp){const u=r.levelUp.at(-1);setTimeout(()=>{moment('Level '+u.level+'!',`The crew is fired up: +${r.levelUp.reduce((n,v)=>n+v.energy,0)} ϟ`);sfx('milestone');$('#levelPill').classList.add('levelUp');setTimeout(()=>$('#levelPill').classList.remove('levelUp'),1400);},r.event==='restore'?0:400);}
+ if(r.levelUp){const u=r.levelUp.at(-1),opened=r.levelUp.map(v=>LEVEL_PATH.find(p=>p.id===v.unlock)).filter(Boolean).at(-1),energy=r.levelUp.reduce((n,v)=>n+v.energy,0),nx=nextUnlock(u.level);
+  // The level path: a level that opens something says what, with the energy after it.
+  setTimeout(()=>{moment('Level '+u.level+'!'+(opened?' · New: '+opened.name:''),(opened?opened.text+' ':'')+(energy?`+${energy} ϟ.`:'')+(!opened&&nx?` Level ${nx.level}: ${nx.name}.`:''));sfx('milestone');$('#levelPill').classList.add('levelUp');setTimeout(()=>$('#levelPill').classList.remove('levelUp'),1400);},r.event==='restore'?0:400);}
  return r;
 }
 // The delivery (Build 44): the parts leave the board for the order card, then coins fly from
@@ -382,18 +430,24 @@ function clickTile(i){
  selected=selected===i&&x?.type==='item'?null:x?i:null;render();
 }
 // The click a drag ends with is not a tap; the next press clears the flag if no click came.
+// The level badge shows the level path: what is open and what each next level brings.
+{const pill=$('#levelPill');pill.setAttribute('role','button');pill.tabIndex=0;
+ const show=()=>{const lv=state.level.level;moment(`Level ${lv} · the level path`,LEVEL_PATH.map(u=>`${lv>=u.level?'✓':'Level '+u.level+':'} ${u.name}${lv>=u.level?'':': '+u.text}`).join('\n')+`\nEvery level: energy (+${EARLY_LEVEL_ENERGY} ϟ up to level ${EARLY_LEVELS}, then +${CHEST_ENERGY} ϟ).`);document.querySelector('.moment')?.classList.add('pathMoment');sfx('tap');};
+ pill.addEventListener('click',show);pill.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();show();}});}
 board.addEventListener('click',e=>{if(suppressClick){suppressClick=false;return;}const t=e.target.closest('[data-index]');if(t)clickTile(+t.dataset.index);});
 // Drag to merge (build 23, user: "merge hiih uildel drag hiij zuuj bolohgui baina"): every
 // movable thing owns its touch gesture (no page scroll), a copy follows the finger, and the
 // space under it is marked; letting go there merges or moves.
 const DRAGGABLE=['item','kit','source','cog','token'];
-function endDrag(){document.querySelectorAll('#board .dragging,#board .target,#shed .target,#shed .shedToggle.target').forEach(x=>x.classList.remove('dragging','target'));drag?.ghost?.remove();drag=null;}
+function endDrag(){document.querySelectorAll('#board .dragging,#board .target,#shed .target,#shed .shedToggle.target').forEach(x=>x.classList.remove('dragging','target'));if(state.board[drag?.from]?.type==='token'&&drag?.moved)document.querySelectorAll('#board .tile.match').forEach(x=>x.classList.remove('match'));drag?.ghost?.remove();drag=null;}
 board.addEventListener('pointerdown',e=>{suppressClick=false;const t=e.target.closest('[data-index]');if(!t||e.button!==0)return;const i=+t.dataset.index;if(!DRAGGABLE.includes(state.board[i]?.type))return;drag={from:i,id:e.pointerId,x:e.clientX,y:e.clientY,moved:false,over:null};});
 // Move and drop are heard on the whole page: a drag can end on the shed under the board.
 document.addEventListener('pointermove',e=>{
  if(!drag||drag.id!==e.pointerId)return;
  if(!drag.moved){if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)<=8)return;drag.moved=true;
   const from=board.querySelector(`[data-index="${drag.from}"]`),r=from.getBoundingClientRect();from.classList.add('dragging');
+  // a dragged Tide token shows the parts it works on, as a tapped one does (Build 46l)
+  if(state.board[drag.from]?.type==='token')state.board.forEach((y,k)=>{if(y?.type==='item'&&swappable(y))board.querySelector(`[data-index="${k}"]`)?.classList.add('match');});
   drag.ghost=document.createElement('div');drag.ghost.className='dragGhost';drag.ghost.style.cssText=`width:${r.width}px;height:${r.height}px`;drag.ghost.innerHTML=draw(state.board[drag.from]);document.body.append(drag.ghost);}
  drag.ghost.style.transform=`translate(${e.clientX-drag.ghost.offsetWidth/2}px,${e.clientY-drag.ghost.offsetHeight*.7}px)`;
  const t=document.elementFromPoint(e.clientX,e.clientY)?.closest('#board [data-index], #shed [data-slot], #shed [data-shed-toggle]'),i=t?(t.dataset.slot!=null?'s'+t.dataset.slot:t.dataset.index!=null?+t.dataset.index:'shed'):null;
@@ -461,7 +515,7 @@ function showShop(){
   return `<li class="shopItem"><span class="shopIcon">${x?draw(x):'<b class="bolt">ϟ</b>'}</span><span class="shopText"><b>${o.name}</b><small>${what}</small><small class="left">${left} of ${o.limit} left today</small></span>${btn}</li>`;};
  const ids=Object.keys(SHOP);
  $('#shopContent').innerHTML=`<div class="shopTop"><h2 id="shopTitle">Shop</h2><b class="beachCoins">${COIN} ${state.coins}</b></div><p>A little help for coins, a few of each a day; it restocks tomorrow. Coins spent here are not spent on the coast.</p>
-  <h3>Free with a short ad</h3><ol class="shopList">${ids.filter(id=>SHOP[id].ad).map(row).join('')}</ol>
+  ${ADS?`<h3>Free with a short ad</h3><ol class="shopList">${ids.filter(id=>SHOP[id].ad).map(row).join('')}</ol>`:''}
   <h3>For coins</h3><ol class="shopList">${ids.filter(id=>!SHOP[id].ad).map(row).join('')}</ol>`;
  if(!$('#shop').open)$('#shop').showModal();
 }
@@ -482,7 +536,7 @@ function adStandIn(){
 let adBusy=false;
 // The action is run only when the ad finished; today's day is filled in then.
 async function watchAd(action){
- if(adBusy)return;adBusy=true;const offer=action.type==='swapOrder'?'swap':action.id;playlog.event('ad',{id:offer,phase:'start'});
+ if(adBusy||!ADS)return;adBusy=true;const offer=action.type==='swapOrder'?'swap':action.id;playlog.event('ad',{id:offer,phase:'start'});
  const r=await rewardedAd({onStart(){adPlaying=true;},onEnd(){adPlaying=false;},standIn:adStandIn});
  adBusy=false;playlog.event('ad',{id:offer,phase:r});
  if(r==='finished')run({...action,day:today()});
@@ -673,9 +727,10 @@ let adOffered=false;
 function showEnd(){
  if(!allDone(state)||state.seenEnd)return;run({type:'seenEnd'});playlog.flush();
  const gens=new Set(state.board.filter(x=>x?.type==='source').map(x=>x.id)).size,stages=Object.values(state.built).reduce((a,b)=>a+b,0);
- $('#endContent').innerHTML=`<small class="adTag">PROTOTYPE COMPLETE</small><h2 id="endTitle">The coast is restored — for now</h2>
+ $('#endContent').innerHTML=`<small class="adTag">CHAPTER COMPLETE</small><h2 id="endTitle">The coast is restored — for now</h2>
   <p>You rebuilt Landing Beach and the Survey Worksite: <b>${stages} stages</b>, <b>${state.ordersDone} crew orders</b>, <b>${gens} generators</b>.</p>
   <p>Next on the coast: the Vault Entrance. The dial is mapped and the crew is working out the way in; it comes in a later update.</p>
+  <p>Crew orders keep coming. Their coins carry over to the Vault Entrance, and the shop takes them now.</p>
   <button class="primary" type="button" data-keep>Keep playing</button><button class="menuButton" type="button" data-feedback>Share feedback</button>`;
  $('#endDialog').showModal();
 }

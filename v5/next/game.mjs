@@ -22,6 +22,32 @@ export const COIN_VALUE=[5,5,10,25,45,80,140,240];
 // Orders ask for tier 5 at most (build 31: a sixth-tier story order stalled the beach's end).
 export const ORDER_TOP=5;export const COIN_RATE=5;
 export const CHEST_ENERGY=15;
+// A harder start (Build 46k, user: "togloom ehneesee mash amarhan sanagdaad baigaa, toglogchid hetsuu
+// davan tuulj baigaa medremj uguhgui"; chose option A, docs/V5_HARDER_START_2026-10-27.md). Measured
+// before (scripted player, first 30 min): energy never ran out, a stage every 2.7 min, the first gold
+// order done in 1.5 min. A new camp starts with less energy, the first five levels give less, and the
+// first six stages' gold orders ask one part a level bigger, so the first energy squeeze comes at
+// about 12 min (5 s an action) and the first stages are goals that take planning.
+export const START_ENERGY=30,EARLY_LEVELS=5,EARLY_LEVEL_ENERGY=5,GOLD_LIFT=1,GOLD_LIFT_STAGES=6;
+export const levelEnergy=level=>level<=EARLY_LEVELS?EARLY_LEVEL_ENERGY:CHEST_ENERGY;
+// The level path (docs/V5_LEVEL_PATH_2026-10-27.md; user: "togloomond ashiglaad gameplayd sonirholtoi
+// zuilsee nemmeer baina"): the player level opens a merge rule and two kinds of crew order. The
+// level-up energy stays.
+export const LEVEL_PATH=[
+ {level:3,id:'triple',name:'Triple merge',text:'Drag a level 3 or bigger part onto its twin while a third one touches it: all three make two of the next level.'},
+ {level:5,id:'token',name:'Tide tokens from the crew',text:'Every eighth crew order also pays a Tide token.'},
+ {level:8,id:'favour',name:'Crew favours',text:'Every sixth crew order asks one part a level higher and pays a Sea chest too (a Brass cog from the Survey Worksite on).'}
+];
+// The triple merge is for parts of level 3 and up (tier 2+): measured with the economy harness,
+// triples of smaller parts used up the cheap pairs a player merges for free while energy is out
+// (at 4.5 s an action, low-energy moments with a free move fell from about 80 % to 45 %).
+export const TOKEN_EVERY=8,FAVOUR_EVERY=6,TRIPLE_MIN_TIER=2;
+// What a level-path order pays on top of its coins. A favour pays a Sea chest at the beach and a
+// Brass cog from the worksite on: cogs at the beach brought the Shell Trap out before the beach was
+// finished (measured, 4 s an action: 45 min against the beach's 54).
+export const BONUSES=['token','chest','cog'],BONUS_NAMES={token:'Tide token',chest:'Sea chest',cog:'Brass cog'};
+export const levelOf=s=>Number.isInteger(s?.level?.level)?s.level.level:1;
+export const unlocked=(s,id)=>levelOf(s)>=LEVEL_PATH.find(u=>u.id===id).level;
 // The camp shed (build 32, user: "aguulah bolon udur tutmiin shagnaliig nem"): four spaces off
 // the board for parts, crates, cogs and tokens. What is in the shed does not count for orders
 // or cargo; tap it to bring it back to the board.
@@ -155,7 +181,7 @@ export function fresh(now=Date.now()){
  const board=Array(BOARD_SIZE).fill(null);
  board[ROVER]=source('rig');
  for(let i=0;i<BOARD_SIZE;i++)if(GLASS[i])board[i]=glass(...GLASS[i]);else if(!CAMP.includes(i))board[i]=cargoAt(i);
- const s={version:VERSION,board,energy:40,energyAt:now,coins:0,level:freshLevel(),taps:{},
+ const s={version:VERSION,board,energy:START_ENERGY,energyAt:now,coins:0,level:freshLevel(),taps:{},
   orders:[],slots:3,orderSeq:0,ordersDone:0,area:0,built:{},found:[],moves:0,merges:0,lastAt:now,
   shed:Array(SHED_SLOTS).fill(null),daily:{day:-1,count:0},book:{claimed:[],pages:[]},shop:{day:-1,bought:{}},swaps:{day:-1,n:0,ads:0},materials:{}};
  for(const g of Object.keys(GENERATOR_CHAINS))s.taps[g]=0;
@@ -172,7 +198,15 @@ export function fresh(now=Date.now()){
 // a Split spanner, then a Pocket winch, then two kinds at once, so taps alone fill none of them.
 const FIRST=[[['rig',2,1]],[['rig',3,1]],[['rig',2,1],['rig',1,2]]];
 // Everyday order kinds (Build 44) and what each pays on top of its parts' worth.
-export const ROLES=['quick','pair','big'],ROLE_PAY={quick:1,pair:1.15,big:1.3},ROLE_TURN=['quick','pair','big','pair'];
+// Energy a delivery gives back (Audit 2026-10-25).
+export const DELIVER_ENERGY=1;
+// The big job (one part a tier past what its generator makes easily, ×1.3) was dropped on
+// 2026-10-26 (user: "big job hereg baina uu ... hundruuleed yavchihiin bishuu"): it only made orders
+// harder, not more interesting. Orders saved with role 'big' keep their coins and show as quick jobs.
+// Two of every three are two-part jobs: with quick and two-part jobs in plain turns, the board
+// ran dry while energy was out (measured: at 4.5 s an action, 45 % of low-energy moments had a
+// free move, against 86 % or more this way and with the big job).
+export const ROLES=['quick','pair'],ROLE_PAY={quick:1,pair:1.15},ROLE_TURN=['quick','pair','pair'];
 // How many of the last everyday orders a new one may not repeat (Build 44, s.recent).
 export const RECENT=6;
 // An everyday order's coins: its parts' worth times its kind's pay, rounded to 5. Rounding up
@@ -180,7 +214,7 @@ export const RECENT=6;
 // follow the stages built, orders outran the generators (taps 790 → 1,003, waiting ×4).
 export const rolePrice=(needs,role)=>Math.max(5,Math.round(priceOf(needs)*ROLE_PAY[role]/5)*5);
 // The kind of an order, also for saves made before Build 44 (which did not store one).
-export const roleOf=o=>o?.story?'gold':ROLES.includes(o?.role)?o.role:new Set(o?.needs?.map(r=>r.family)).size>1?'pair':o?.needs?.[0]?.tier>=3?'big':'quick';
+export const roleOf=o=>o?.story?'gold':ROLES.includes(o?.role)?o.role:o?.needs?.length>1?'pair':'quick';
 function rand(n){let t=(n*2654435761+0x6D2B79F5)>>>0;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296;}
 const CREW_OF={rig:'ivo',rope:'ivo',chart:'neri',shell:'neri',flux:'tamsin',lamp:'tamsin'};
 const crewFor=needs=>needs.length>1?'bram':CREW_OF[needs[0].family];
@@ -189,16 +223,33 @@ export const priceOf=(needs,story=false)=>{const v=needs.reduce((v,r)=>v+r.count
 // The second part of an order comes from another open chain, chosen evenly by the order's own
 // seed (build 41: it was always the first open chain, so Rivet Rover filled most second parts).
 export function secondChain(families,main,tier,seed){const ok=families.filter(f=>f!==main&&tier<=maxTier(f));return ok.length?ok[Math.floor(rand(seed)*ok.length)]:null;}
-// A second part never asks more than its generator can reach easily: one tier above its level
-// (a new Lv1 generator: tier 2 at most), so fair chains do not mean dear parts.
-const reach=(s,chain)=>Math.max(1,...s.board.filter(x=>x?.type==='source'&&x.id===CHAINS[chain].gen).map(producerLevel));
+// A second part never asks more than its generator can reach easily: one tier above the best
+// part it makes (a new Lv1 generator: tier 2 at most), so fair chains do not mean dear parts.
+// Build 46f: reach is that best part's tier, read from the same rule produce uses (the fourth-tap
+// bonus plus levelLift, capped at tier 3). It was the generator's level, which matches the best
+// part only at levels 1 and 2: a level-3 generator still makes tier 2 at best, yet its orders
+// jumped to tier 4, so levelling up (which level 3 needs, for the next generator) made that
+// chain's orders cost 60 % more energy for 20 % more output.
+export const bestTier=level=>Math.max(...Array.from({length:12},(_,k)=>Math.min(3,((k+1)%4===0?1:0)+levelLift(level,k+1))));
+const level=(s,chain)=>Math.max(1,...s.board.filter(x=>x?.type==='source'&&x.id===CHAINS[chain].gen).map(producerLevel));
+const reach=(s,chain)=>bestTier(level(s,chain));
+// What levelling pays instead (Build 46f, re-tuned with the economy harness): levels 3 and 4 make
+// no better part than level 2, so an everyday part asked at its generator's limit pays 40 % more
+// for each such level. Measured with the economy harness against Build 46e (numbers in
+// docs/V5_AUDIT_FIXES_2026-10-25.md): 0 % left the late worksite stages slow, 30 % left a fast
+// player stuck with no energy and nothing to merge; 40 % passes every economy guard.
+export const PAY_PER_LEVEL=.4;
+export function orderPrice(s,needs,role){
+ const lift=needs.reduce((n,r)=>n+(r.tier>=reach(s,r.family)+1?level(s,r.family)-bestTier(level(s,r.family)):0),0);
+ return Math.round(rolePrice(needs,role)*(1+PAY_PER_LEVEL*lift)/5)*5;
+}
 // The gold order is a stage's materials, so it is the biggest order on the board (Build 41h,
 // user: "story upgrade task bielelt heterhii hurdan ... merge togloh medremj avch amjilgui",
 // with energy left to run out as in a classic free-to-play merge game): the newest generator's
 // part one tier past what it makes easily and two of a second chain's part (a third part was
 // measured too: three-part gold orders made the session 7 hours of waiting).
 function goldNeeds(s,families,family,low,n){
- const tier=Math.max(2,Math.min(maxTier(family)-1,reach(s,family)+1));
+ const tier=Math.max(2,Math.min(maxTier(family)-1,reach(s,family)+1+(totalBuilt(s)<GOLD_LIFT_STAGES?GOLD_LIFT:0)));
  const needs=[{family,tier,count:1}],other=secondChain(families,family,Math.max(1,low),n*29+3);
  needs.push(other?{family:other,tier:Math.max(1,Math.min(low+1,reach(s,other)+1,maxTier(other)-1)),count:2}:{family,tier:Math.max(1,tier-1),count:2});
  return needs;
@@ -228,14 +279,12 @@ export function makeOrder(s){
   const focus=currentArea(s)?.focus,pool=focus&&families.includes(focus)&&rand(n*19)<.5?[focus]:families;
   if(story){needs=goldNeeds(s,families,family,low,n);return {id:'o'+n,who:crewFor(needs),needs,coins:priceOf(needs,true),story:story.id};}
   // Build 44 (user, 2026-10-25: "orderuudiig utga uchirtai bolgoy"; docs/V5_ECONOMY_AUDIT_PROPOSAL,
-  // proposal A): everyday orders take turns being a quick job (one small part of one chain), a
-  // two-crew job (parts of two different chains) and a big job (one part a tier past what its
-  // generator makes easily). The first chain is one no other everyday order on the board starts
-  // with, when the area has one; only unlocked chains, never above maxTier − 1. Bigger jobs pay
-  // more for their parts (×1.15, ×1.3), so effort is worth it. Measured: orders already done on
-  // arrival 14 % → under 5 %, tiers spread 1–4, nobody waits longer for energy.
-  // Two of every four are two-crew jobs, so most cards mix chains once a second one is out.
-  const role=ROLE_TURN[(n-FIRST.length)%ROLE_TURN.length],others=s.orders.filter(o=>o&&!o.story),firsts=new Set(others.map(o=>o.needs[0].family));
+  // proposal A): everyday orders take turns being a quick job (one small part of one chain) and a
+  // two-part job (parts of two different chains; pays ×1.15). The big job was dropped on 2026-10-26
+  // (see ROLES). The first chain is one no other everyday order on the board starts with, when the
+  // area has one; only unlocked chains, never above maxTier − 1. Two of every three orders are
+  // two-part jobs, so most cards mix chains once a second one is out.
+  let role=ROLE_TURN[(n-FIRST.length)%ROLE_TURN.length];const others=s.orders.filter(o=>o&&!o.story),firsts=new Set(others.map(o=>o.needs[0].family));
   // The camp remembers its last few everyday orders (s.recent, Build 44): a new one repeats
   // neither those nor a card already on the board.
   const recent=Array.isArray(s.recent)?s.recent:(s.recent=[]),key=ns=>ns.map(r=>r.family+r.tier+'x'+r.count).sort().join('+');
@@ -245,19 +294,22 @@ export function makeOrder(s){
   const build=f1=>{
    // A quick job: one chain at the area's floor tier (one part, or two while they are small).
    if(role==='quick'){const t=Math.max(1,Math.min(hi(f1),low));return [{family:f1,tier:t,count:t<=2&&rand(n*13)<.7?2:1}];}
-   if(role==='pair'){const t=Math.max(1,Math.min(hi(f1),low+1+Math.floor(rand(n*29)*2))),f2=secondChain(families,f1,Math.max(1,t-1),n*23+5);
-    return f2?[{family:f1,tier:t,count:1},{family:f2,tier:Math.max(1,Math.min(Math.max(1,t-1),reach(s,f2)+1,maxTier(f2)-1)),count:1}]:[{family:f1,tier:t,count:2}];}
-   // A big job: the part one tier past what its generator makes easily; while that is still a
-   // small part (not above the area's floor), three of them while tier 2 or under, else two, so
-   // it is the most work on the board.
-   const t=Math.max(2,Math.min(top+1,reach(s,f1)+1,maxTier(f1)-1));return [{family:f1,tier:t,count:t>Math.max(2,low)?1:t<=2?3:2}];
+   // A two-part job: two chains, or two tiers of one while it is the only one out.
+   const t=Math.max(1,Math.min(hi(f1),low+1+Math.floor(rand(n*29)*2))),f2=secondChain(families,f1,Math.max(1,t-1),n*23+5);
+    // With one generator out (the first quarter hour) a two-part job asks two tiers of its chain
+    // (Audit 2026-10-25: three in five orders there repeated one of the last four).
+    return f2?[{family:f1,tier:t,count:1},{family:f2,tier:Math.max(1,Math.min(Math.max(1,t-1),reach(s,f2)+1,maxTier(f2)-1)),count:1}]:t>=2?[{family:f1,tier:t,count:1},{family:f1,tier:t-1,count:2}]:[{family:f1,tier:t,count:2}];
   };
   // A repeat, or an order already lying finished on the board, is varied: one more or one fewer
   // of a small part, a tier up within reach, a tier down to the floor, or another open chain;
   // the first that is new is kept.
-  const done=ns=>ns.every(r=>count(s,r)>=r.count),bad=ns=>avoid.has(key(ns))||done(ns);
+  // Audit 2026-10-25 (user: "buguding ni hii"): the same parts in another number still read as
+  // the same job, so the last four everyday orders' parts are avoided too while there is
+  // anything else to ask (measured: repeats 24 % → see docs/V5_AUDIT_FIXES_2026-10-25.md).
+  const loose=ns=>ns.map(r=>r.family+r.tier).sort().join('+'),seen=new Set(recent.slice(-4).map(k=>k.replace(/x\d+/g,'')));
+  const done=ns=>ns.every(r=>count(s,r)>=r.count),bad=ns=>avoid.has(key(ns))||done(ns),stale=ns=>bad(ns)||seen.has(loose(ns));
   const first=from[Math.floor(rand(n*7)*from.length)];needs=build(first);
-  if(bad(needs)){
+  if(stale(needs)){
    const vary=[];const one=ns=>{const r=ns[0];return r;};
    {const v=structuredClone(needs);if(v.length===1&&v[0].tier<=2){v[0].count=v[0].count===1?2:1;vary.push(v);}}
    {const v=structuredClone(needs);if(one(v).tier<hi(one(v).family)){one(v).tier++;vary.push(v);}}
@@ -266,14 +318,33 @@ export function makeOrder(s){
    {const v=structuredClone(needs);if(v[1]&&v[1].tier<hi(v[1].family)){v[1].tier++;vary.push(v);}}
    {const v=structuredClone(needs);if(v.length===1&&v[0].count===1){v[0].count=2;vary.push(v);}}
    for(const f of pool)if(f!==first)vary.push(build(f));
+   // the area's focus chain gives way to another open chain before a job repeats (Audit 2026-10-25)
+   for(const f of families)if(f!==first&&!pool.includes(f))vary.push(build(f));
    // Best: new to the camp and not already made; else at least not a card on the board.
    const onBoard=new Set(others.map(o=>key(o.needs)));
-   needs=vary.find(v=>!bad(v))??vary.find(v=>!onBoard.has(key(v)))??needs;
+   needs=vary.find(v=>!stale(v))??(bad(needs)?vary.find(v=>!bad(v))??vary.find(v=>!onBoard.has(key(v))):null)??needs;
   }
+  // The level path: from level 8 every sixth everyday order is a crew favour (its first part one tier
+  // higher, within reach and the order limits, and a Sea chest or Brass cog on top); from level 5 every eighth
+  // pays a Tide token too (every eighth: every fifth left slow players never short of energy). Counted by the order's own number, so it is deterministic.
+  // The first everyday order after level 5 pays its Tide token at once (s.pathNext), so the level-up's
+  // promise is kept on the next card, not up to eight orders later (measured: the first token came at
+  // 51 min, against level 5 at about 10). Favours keep their turn (within six orders): a first favour
+  // at once left slow players never short of energy (economy harness, 10 s an action).
+  const k=n-FIRST.length,opened=s.pathNext;let bonus;
+  if(unlocked(s,'favour')&&k%FAVOUR_EVERY===FAVOUR_EVERY-1){const r=needs[0],up=Math.min(ORDER_TOP,maxTier(r.family)-1,hi(r.family)+1);
+   if(up>r.tier){needs=structuredClone(needs);needs[0]={family:r.family,tier:up,count:1};bonus=s.area>=1?'cog':'chest';}}
+  if(!bonus&&unlocked(s,'token')&&(opened==='token'||k%TOKEN_EVERY===TOKEN_EVERY-1))bonus='token';
+  if(opened==='token'&&bonus==='token')delete s.pathNext;
+  // Never two identical cards (2026-10-26: with one generator out, two-part jobs of one chain could
+  // run out of new combinations): a quick job not on the board takes the place.
+  {const onBoard=new Set(others.map(o=>key(o.needs)));
+   if(onBoard.has(key(needs))){const alt=pool.flatMap(f=>Array.from({length:hi(f)},(_,k)=>[1,2].map(c=>[{family:f,tier:k+1,count:c}])).flat()).find(v=>!onBoard.has(key(v)));
+    if(alt){needs=alt;role='quick';}}}
   recent.push(key(needs));if(recent.length>RECENT)recent.splice(0,recent.length-RECENT);
-  return {id:'o'+n,who:crewFor(needs),needs,coins:rolePrice(needs,role),role};
+  return {id:'o'+n,who:crewFor(needs),needs,coins:orderPrice(s,needs,role),role,born:s.moves,...(bonus?{bonus}:{})};
  }
- return {id:'o'+n,who:crewFor(needs),needs,coins:priceOf(needs)};
+ return {id:'o'+n,who:crewFor(needs),needs,coins:priceOf(needs),born:s.moves};
 }
 // Board cells an order would take: exact matches, lowest index first.
 export function orderItems(s,o){
@@ -281,6 +352,12 @@ export function orderItems(s,o){
  for(const r of o.needs){let left=r.count;for(let i=0;i<s.board.length&&left;i++)if(!used.has(i)&&matches(s.board[i],r)){used.add(i);take.push(i);left--;}if(left)return null;}
  return take;
 }
+// A crew order still not ready 200 moves after it came (Audit 2026-10-25: one in ten took over
+// an hour, mostly two-crew jobs) is "stuck": its card suggests a new order. Measured: half of
+// all crew orders are delivered within 60 moves, nine in ten within about 320. Gold orders
+// cannot be changed, so they are never stuck. Orders saved before this have no born and are not.
+export const STUCK_MOVES=200;
+export const isStuck=(s,o)=>!!o&&!o.story&&Number.isInteger(o.born)&&s.moves-o.born>=STUCK_MOVES&&!orderItems(s,o);
 export function orderProgress(s,o){return o.needs.map(r=>({...r,have:Math.min(r.count,count(s,r))}));}
 
 // ---- board helpers ----
@@ -311,9 +388,10 @@ export const cargoKeys=s=>s.board.flatMap((x,i)=>reachable(s,i)?[{index:i,...x.k
 // A merge on cell i cracks the tideglass beside it, if what it makes is at least as strong
 // as the part in the glass (build 19: small merges no longer chip it); the last crack frees
 // the part.
-function crack(s,i,power=Infinity){
+function crack(s,i,power=Infinity,also=[]){
  const cracked=[],freed=[];
- for(const j of neighbours(i)){const g=s.board[j];if(g?.type!=='glass'||power<g.tier)continue;
+ // A triple merge makes parts on two spaces: the glass beside either cracks once.
+ for(const j of new Set([i,...also].flatMap(neighbours))){const g=s.board[j];if(g?.type!=='glass'||power<g.tier)continue;
   g.cracks=(g.cracks??0)+1;if(g.cracks>=GLASS_HITS){s.board[j]=item(g.family,g.tier);freed.push(j);}else cracked.push(j);}
  return {cracked,freed,bonus:freed.length*XP.unseal};
 }
@@ -338,8 +416,10 @@ function gainXp(s,amount){
   s.level.xp-=xpToNext(s.level.level);s.level.level++;
   // Energy only (Build 41, user: "ene hairtsagiig amarhan uguud baina"): level chests no longer
   // add a driftwood crate.
-  const energy=bonus(s,CHEST_ENERGY);
-  ups.push({level:s.level.level,energy,family:null,index:-1});
+  const energy=bonus(s,levelEnergy(s.level.level));
+  const unlock=LEVEL_PATH.find(u=>u.level===s.level.level);
+  if(unlock?.id==='token')s.pathNext='token';
+  ups.push({level:s.level.level,energy,family:null,index:-1,...(unlock?{unlock:unlock.id}:{})});
  }
  return ups;
 }
@@ -418,7 +498,7 @@ function step(s,a,now){
    if(!y){s.board[to]=x;s.board[from]=null;return {ok:true,event:'move',index:to,message:'Moved.'};}
    if(y.type!=='item')return fail('Lay the Tide token on a part: it becomes a part a crew order wants.');
    const want=s.orders.flatMap(o=>o.needs).find(r=>r.tier===y.tier&&r.family!==y.family&&count(s,r)<r.count);
-   if(!want)return fail(`No crew order is waiting for a different ${['first','second','third','fourth','fifth','sixth','seventh','eighth'][y.tier]}-tier part.`);
+   if(!want)return fail(`No crew order is missing a Lv${y.tier+1} part of another kind, so the token cannot turn this one. Try a part of a level an order still needs.`);
    s.board[to]=item(want.family,y.tier);s.board[from]=null;
    return {ok:true,event:'swap',index:to,xp:XP.unseal,message:'Tide token · '+nameOf(s.board[to])};
   }
@@ -441,7 +521,11 @@ function step(s,a,now){
   if(y.type!=='item'||y.family!==x.family||y.tier!==x.tier)return fail('Merge two identical parts.');
   if(x.tier>=maxTier(x.family))return fail('This is the top of its chain.');
   s.board[to]=item(x.family,x.tier+1);s.board[from]=null;s.merges++;
-  return withCracks({ok:true,event:'merge',index:to,xp:XP.merge,message:nameOf(s.board[to])},crack(s,to,x.tier+1));
+  // Triple merge (the level path, level 3): a third identical part touching the space dropped on
+  // joins, and the three make two (the second takes the third's space).
+  const third=unlocked(s,'triple')&&x.tier>=TRIPLE_MIN_TIER?neighbours(to).find(k=>matches(s.board[k],x))??-1:-1;
+  if(third>=0){s.board[third]=item(x.family,x.tier+1);s.merges++;}
+  return withCracks({ok:true,event:'merge',index:to,...(third>=0?{triple:third}:{}),xp:XP.merge*(third>=0?2:1),message:nameOf(s.board[to])+(third>=0?' ×2 · triple merge':'')},crack(s,to,x.tier+1,third>=0?[third]:[]));
  }
  if(a.type==='openKit'){
   const box=valid(a.index)?s.board[a.index]:null;if(box?.type!=='kit')return fail('Choose a crate.');
@@ -456,14 +540,26 @@ function step(s,a,now){
   const take=orderItems(s,o);if(!take)return fail('Make the parts this order needs first.');
   for(const i of take)s.board[i]=null;
   // The lane is cleared first, so a delivered story order is followed by the next one.
-  s.coins+=o.coins;s.ordersDone++;s.orders[lane]=null;
+  // Audit 2026-10-25 (user: "buguding ni hii"): a delivery also gives the crew +1 energy, so a
+  // quick player waits less for energy (measured, chapter: 65 → 44 % of the time at 4 s an
+  // action, 44 → 29 % at 6 s; +2 or more left no waiting at all, so energy stopped mattering).
+  // Build 46f: the gold order gives no energy (its reward is the stage's materials); with orders
+  // asking what the generators make, a stage takes more crew orders and their energy alone kept
+  // slower players from ever running out.
+  const gain=o.story?0:DELIVER_ENERGY;
+  s.coins+=o.coins;s.ordersDone++;s.orders[lane]=null;s.energy=Math.min(MAX_ENERGY,s.energy+gain);
   if(o.story&&TASKS[o.story]&&stageOf(s,o.story)<STAGES)s.materials[o.story]=stageOf(s,o.story)+1;
   s.orders[lane]=makeOrder(s);
+  // A tool the order pays on top (the level path): next to the Rover; the delivery has just freed
+  // at least one space, and the shed takes it if the board is somehow full.
+  let tool=null;
+  if(BONUSES.includes(o.bonus)){const x=o.bonus==='cog'?cog():o.bonus==='chest'?kit(newestGenerator(s),2):token(),i=nearestFree(s.board,ROVER,cellPos),k=s.shed.indexOf(null);
+   if(i>=0){s.board[i]=x;tool={type:o.bonus,index:i};}else if(k>=0){s.shed[k]=x;tool={type:o.bonus,slot:k};}}
   // A gold order is the materials for its place's next stage (Build 41, user: "story upgrade
   // shuud hurdan hiigdej baina"): the stage can be bought once they are delivered. Orders no
   // longer bring a driftwood crate every third time.
   const materials=o.story&&s.materials[o.story]>stageOf(s,o.story)?{id:o.story,stage:s.materials[o.story]}:null;
-  return {ok:true,event:'deliver',index:null,xp:Math.max(1,Math.round(o.coins/COIN_RATE)),coins:o.coins,box:-1,freed:take,...(materials?{materials}:{}),message:`+${o.coins} coins`+(materials?` · materials for ${TASKS[o.story].stages[materials.stage-1].name}`:'')};
+  return {ok:true,event:'deliver',index:null,xp:Math.max(1,Math.round(o.coins/COIN_RATE)),coins:o.coins,box:-1,freed:take,...(materials?{materials}:{}),energy:gain,...(tool?{tool}:{}),message:`+${o.coins} coins`+(gain?` · +${gain} energy`:'')+(tool?` · a ${BONUS_NAMES[tool.type]}`:'')+(materials?` · materials for ${TASKS[o.story].stages[materials.stage-1].name}`:'')};
  }
  // Upgrade a place on the beach one stage (the action keeps its old name, 'restore').
  if(a.type==='restore'){
@@ -594,7 +690,7 @@ function validCell(x){
  return false;
 }
 const validNeed=r=>r&&CHAINS[r.family]&&integer(r.tier,0,maxTier(r.family))&&integer(r.count,1,4);
-const validOrder=o=>o&&typeof o.id==='string'&&Array.isArray(o.needs)&&o.needs.length>=1&&o.needs.length<=2&&o.needs.every(validNeed)&&integer(o.coins,1,999)&&(o.story===undefined||!!TASKS[o.story])&&['ivo','neri','tamsin','bram'].includes(o.who);
+const validOrder=o=>o&&typeof o.id==='string'&&Array.isArray(o.needs)&&o.needs.length>=1&&o.needs.length<=2&&o.needs.every(validNeed)&&integer(o.coins,1,999)&&(o.story===undefined||!!TASKS[o.story])&&['ivo','neri','tamsin','bram'].includes(o.who)&&(o.bonus===undefined||BONUSES.includes(o.bonus));
 
 // Build 3 (version 1) had sand and numbered cells; build 4 (version 2) had the tide.
 // Both become sealed cargo: each covered cell gets the key this layout gives it and
@@ -636,6 +732,7 @@ export function load(raw,now=Date.now()){
   // Build 30 could price a sixth-tier story order at NaN coins (saved as null): it is priced again.
   if(Array.isArray(s.orders))for(const o of s.orders)if(o&&o.coins===null&&Array.isArray(o.needs)&&o.needs.every(validNeed))o.coins=priceOf(o.needs,!!o.story);
   if(!Array.isArray(s.orders)||s.orders.length!==s.slots||!s.orders.every(validOrder))return fresh(now);
+  for(const o of s.orders)if(o.born!==undefined&&!integer(o.born,0,s.moves))delete o.born;
   if(!s.built||typeof s.built!=='object'||Array.isArray(s.built)||!Object.entries(s.built).every(([id,n])=>TASKS[id]&&integer(n,1,STAGES))||!Array.isArray(s.found))return fresh(now);
   for(const k of ['orderSeq','ordersDone','moves','merges'])if(!integer(s[k],0,1e9))return fresh(now);
   if(!s.taps||!Object.keys(GENERATOR_CHAINS).every(k=>integer(s.taps[k],0,1e9)))return fresh(now);
@@ -656,6 +753,9 @@ export function load(raw,now=Date.now()){
   if(!s.materials||typeof s.materials!=='object'||Array.isArray(s.materials)||!Object.entries(s.materials).every(([id,n])=>TASKS[id]&&integer(n,1,STAGES)))return fresh(now);
   // Build 41 added seenEnd (the prototype-complete screen shown): absent means not yet.
   if(s.seenEnd!==undefined&&typeof s.seenEnd!=='boolean')return fresh(now);
+  // The level path (Build 46j): a Tide-token order level 5 promised, still to come. Saves before it
+  // have none; a damaged value is dropped (it only means the next token order waits its turn).
+  if(s.pathNext!==undefined&&s.pathNext!=='token')delete s.pathNext;
   if(!s.swaps||!integer(s.swaps.day,-1,1e7)||!integer(s.swaps.n,0,FREE_SWAPS)||!integer(s.swaps.ads,0,AD_SWAPS))return fresh(now);
   if(!s.shop||!integer(s.shop.day,-1,1e7)||!s.shop.bought||typeof s.shop.bought!=='object'||Array.isArray(s.shop.bought)||!Object.entries(s.shop.bought).every(([id,n])=>SHOP[id]&&integer(n,0,SHOP[id].limit)))return fresh(now);
   const bookKey=k=>typeof k==='string'&&/^[a-z]+\d$/.test(k)&&BOOK_CHAINS.includes(k.slice(0,-1))&&+k.slice(-1)<=maxTier(k.slice(0,-1));

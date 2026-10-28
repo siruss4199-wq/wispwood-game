@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {cellPos} from '../v5/core.mjs';
 import {xpToNext} from '../v5/levels.mjs';
-import {rolePrice,RECENT,ROLE_PAY,roleOf,allDone,secondChain,FREE_SWAPS,AD_SWAPS,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,priceOf,totalBuilt,ORDER_TOP,SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,storyTarget,makeOrder,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,glass,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
+import {rolePrice,orderPrice,bestTier,PAY_PER_LEVEL,RECENT,ROLE_PAY,roleOf,allDone,secondChain,FREE_SWAPS,AD_SWAPS,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,priceOf,totalBuilt,ORDER_TOP,SAVE_KEY,fresh,act,load,tick,item,jar,nextTask,storyTarget,makeOrder,upgrades,stageOf,areaDone,builtCount,orderItems,sourceOpen,COIN_VALUE,COIN_RATE,CAMP,ROVER,CARGO,GLASS,glass,CHEST_ENERGY,cog,MAX_GENERATOR_LEVEL,UNLOCK_LEVEL,nextKind,token,cargo,cargoKeys,source,CRATES,nameOf,GENERATOR_ORDER} from '../v5/next/game.mjs';
 import {AREAS,TASKS} from '../v5/next/areas.mjs';
 import {primaryAction} from '../v5/next/guide.mjs';
 import {kit} from '../v5/kits.mjs';
@@ -100,14 +100,22 @@ test('orders grow harder with the beach and the generators, never repeat a live 
  // A new beach and a level-1 Rover: tiers 1-2 only.
  const a=fresh(0);a.orderSeq=10;const t0=tiers(a);assert.ok(Math.min(...t0)>=1&&Math.max(...t0)<=2,JSON.stringify([...new Set(t0)]));
  // Player level alone changes nothing (build 29).
- const b=fresh(0);b.orderSeq=10;b.level.level=9;assert.deepEqual(tiers(b),t0);
+ // The level path (2026-10-27) changes one order in six from level 8: a crew favour asks its first
+ // part a tier higher; every other order is as at level 1.
+ {const b1=fresh(0);b1.orderSeq=10;b1.level.level=7;assert.deepEqual(tiers(b1),t0,'below level 8 the level changes no tier');
+  // (a favour also changes which recent orders the next ones vary from, so later cards differ too,
+  // but no harder: only favours go past level 1's top tier, by one at most)
+  const b=fresh(0);b.orderSeq=10;b.level.level=9;const t9=tiers(b),top=Math.max(...t0),above=t9.filter(t=>t>top);
+  assert.ok(Math.min(...t9)>=Math.min(...t0)&&Math.max(...t9)<=top+1,JSON.stringify([...new Set(t9)]));
+  assert.ok(above.length<=Math.ceil(t9.length/6),`${above.length} orders above tier ${top}`);}
  // Twelve beach stages: tier 3 and up (an easy turn one under), but never more than one tier
  // past what a level-1 Rover makes easily (Build 41g).
  const c=fresh(0);c.orderSeq=10;c.built={'beach-path':3,'beach-tent':3,'beach-mast':3,'beach-workshop':3};const t2=tiers(c);assert.ok(Math.min(...t2)>=2&&Math.max(...t2)<=3,JSON.stringify([...new Set(t2)]));
- // A generator at level 3 lifts the top tier by one.
- const d=fresh(0);d.orderSeq=10;d.board[ROVER].level=3;{const t=tiers(d);assert.ok(t.includes(3)&&Math.max(...t)===4,'a hard turn goes one tier over the top (Build 41g)');}
+ // A generator at level 3 lifts the top tier by one (no order goes past it since the big job was
+ // dropped on 2026-10-26).
+ const d=fresh(0);d.orderSeq=10;d.board[ROVER].level=3;{const t=tiers(d);assert.ok(t.includes(3)&&Math.max(...t)===3,`the lifted top is reached, not passed: ${[...new Set(t)]}`);}
  // The story's order: one at a time, for the next beach stage, the newest generator's best part, half as much again.
- const e=fresh(0);e.orderSeq=10;e.orders=[];const so=makeOrder(e);assert.equal(so.story,'beach-path');assert.equal(so.needs[0].family,'rig');assert.equal(so.needs[0].tier,2);
+ const e=fresh(0);e.orderSeq=10;e.orders=[];const so=makeOrder(e);assert.equal(so.story,'beach-path');assert.equal(so.needs[0].family,'rig');assert.equal(so.needs[0].tier,3,'Build 46k: the first six stages\' gold orders ask a level bigger');
  assert.equal(so.coins,Math.round(so.needs.reduce((v,r)=>v+r.count*COIN_VALUE[r.tier],0)*1.5/5)*5);
  e.orders.push(so);assert.equal(makeOrder(e).story,undefined,'only one story order at a time');
  // Delivering it brings the next story order; normal orders pay by tier and never repeat a live need.
@@ -118,7 +126,8 @@ test('orders grow harder with the beach and the generators, never repeat a live 
   assert.ok(s.orders.filter(x=>x.story).length<=1);
   // Build 44: a bigger kind of job pays more for its parts (rounded to 5); the first three are the plain ladder.
   for(const x of s.orders)if(!x.story)assert.equal(x.coins,x.role?rolePrice(x.needs,x.role):x.needs.reduce((v,r)=>v+r.count*COIN_VALUE[r.tier],0));
-  s.board=s.board.map(x=>x?.type==='kit'||x?.type==='item'?null:x);s.board[15]??=source('chart');
+  // (tools the level path pays on deliveries are cleared too, or 60 deliveries fill the board)
+  s.board=s.board.map(x=>['kit','item','token','cog'].includes(x?.type)?null:x);s.board[15]??=source('chart');
  }
  assert.equal(s.ordersDone,60);
  // Its gold order brought the first stage's materials; nothing else is open, so no gold order waits.
@@ -144,9 +153,10 @@ test('orders pay coins, no box; boxes and generator levels work here too',()=>{
 test('levels give energy, no crate',()=>{
  const s=camp();s.level.xp=19;const e=s.energy,r=ok(s,{type:'merge',from:14,to:16});
  assert.equal(r.levelUp[0].level,2);assert.equal(r.levelUp[0].family,null);assert.ok(!s.board.some(x=>x?.type==='kit'),'no crate');assert.equal(s.board.filter(x=>x?.type==='cargo').length,27);
- assert.equal(CHEST_ENERGY,15);assert.equal(s.energy,Math.min(50,e+15),'up to the refill cap');
+ // Build 46k (a harder start): levels 2-5 give +5, later levels +15 (CHEST_ENERGY)
+ assert.equal(CHEST_ENERGY,15);assert.equal(s.energy,Math.min(50,e+5),'up to the refill cap');
  // Build 41g: level energy tops up to 50 and no further; bought energy above it is kept.
- for(const [start,end] of [[30,45],[45,50],[60,60]]){const t=camp();t.level.xp=19;t.energy=start;ok(t,{type:'merge',from:14,to:16});assert.equal(t.energy,end,`${start} → ${end}`);}
+ for(const [start,end] of [[30,35],[47,50],[60,60]]){const t=camp();t.level.xp=19;t.energy=start;ok(t,{type:'merge',from:14,to:16});assert.equal(t.energy,end,`${start} → ${end}`);}
 });
 
 test('energy refills over time and a low-energy ration helps once an hour',()=>{
@@ -176,7 +186,9 @@ test('a scripted player upgrades Landing Beach (21 stages) in 45–110 minutes o
    for(const u of r.levelUp??[])levels.push(now);
   }
   assert.ok(areaDone(s,AREAS[0]),'area complete');
-  assert.ok(firstRestore<3*60*1000,'first upgrade within 3 minutes');
+  // Build 46k (a harder start): the first gold order asks a part a level bigger, so the first stage
+  // takes longer (it was within 3 minutes)
+  assert.ok(firstRestore<6*60*1000,`first upgrade within 6 minutes (${(firstRestore/60000).toFixed(1)})`);
   const play=now-waited;assert.ok(play>=45*60000&&play<=110*60000,`area 1 took ${(play/60000).toFixed(1)} min of play`);
   assert.ok(waited>0,'energy ran out');assert.ok(now<=4*3600e3,`and the beach is done within ${(now/3600e3).toFixed(1)} h of real time`);
   assert.ok(levels.length>=4,'several level-ups');
@@ -396,7 +408,7 @@ test('worksite orders lean on the Rope Winch, ask tier 3–5 and pay whole coins
  const main=[];for(let k=0;k<80;k++){const o=makeOrder(s);if(o.story){s.orders.push(o);continue;}main.push(o);}
  const rope=main.filter(o=>o.needs[0].family==='rope').length;
  assert.ok(rope/main.length>=.45,`rope orders ${rope}/${main.length}`);
- for(const o of main){assert.ok(o.needs.every(r=>r.tier>=1&&r.tier<=ORDER_TOP),JSON.stringify(o.needs));assert.ok(o.needs[0].tier>=2,'tier 3 and up, an easy turn one under');assert.ok(Number.isInteger(o.coins)&&o.coins>0);assert.equal(o.coins,rolePrice(o.needs,roleOf(o)));}
+ for(const o of main){assert.ok(o.needs.every(r=>r.tier>=1&&r.tier<=ORDER_TOP),JSON.stringify(o.needs));assert.ok(o.needs[0].tier>=2,'tier 3 and up, an easy turn one under');assert.ok(Number.isInteger(o.coins)&&o.coins>0);assert.equal(o.coins,orderPrice(s,o.needs,roleOf(o)));}
  // The beach alone has no focus: Rope Winch parts are one chain among the others there.
  const b=fresh(0);b.built=beachDone();b.board[15]=source('chart');b.board[16]=source('rope');b.board[ROVER].level=3;b.orderSeq=10;// the same generators
  const bm=[];for(let k=0;k<80;k++){const o=makeOrder(b);if(o.story)b.orders.push(o);else bm.push(o);}
@@ -424,7 +436,7 @@ test('a save that finished the beach before the worksite existed goes up the cli
 test('the economy is tight: energy runs out through both areas, and both still finish',()=>{
  // A quick player (an action every 4 s) runs out of energy and buys packs when coins allow.
  const s=fresh(0);let now=0,waited=0,lowest=99,beach=null,shell=null,lamp=null;const STEP=4000;
- assert.equal(s.energy,40,'a new camp starts with 40 energy');
+ assert.equal(s.energy,30,'a new camp starts with 30 energy (Build 46k; was 40)');
  let beachWait=0;
  while(!(s.area===1&&areaDone(s))&&now<48*3600e3){
   // Build 41g: out of energy, a player buys the shop's Energy pack when coins allow.
@@ -717,27 +729,99 @@ test('the playtest log: sessions, milestones, bounds, storage failure and a clea
 });
 
 // Build 44 (user, 2026-10-25: "orderuudiig utga uchirtai bolgoy"): everyday orders take turns being
-// quick, two-crew and big jobs; a big job is the most work and pays the most per part; the camp
+// quick and two-part jobs in turns (the big job was dropped on 2026-10-26); the camp
 // remembers its last orders (s.recent) and repeats neither those nor a card on the board.
-test('everyday orders are quick, two-crew and big jobs, vary, and old saves keep loading',()=>{
+test('everyday orders are quick and two-part jobs, vary, and old saves keep loading',()=>{
  const s=fresh(0);s.board[15]=source('chart');s.built={'beach-path':2,'beach-tent':1};s.orderSeq=3;s.orders=[];s.recent=[];
  const gold=makeOrder(s);assert.ok(gold.story);s.orders=[gold];
  const made=[];for(let k=0;k<40;k++){const o=makeOrder(s);assert.ok(!o.story);made.push(o);
-  assert.ok(['quick','pair','big'].includes(o.role));
+  assert.ok(['quick','pair'].includes(o.role));
   if(o.role==='pair')assert.ok(new Set(o.needs.map(r=>r.family)).size===2||o.needs[0].count===2,JSON.stringify(o.needs));
   assert.ok(s.recent.length<=RECENT);
   const key=x=>x.needs.map(r=>r.family+r.tier+'x'+r.count).sort().join('+');
   assert.ok(!s.orders.some(x=>!x.story&&key(x)===key(o)),'not the same card as one on the board');
   s.orders.push(o);if(s.orders.length>3)s.orders.splice(1,1);}
  const units=o=>o.needs.reduce((n,r)=>n+r.count*2**r.tier,0),mean=f=>{const a=made.filter(o=>o.role===f);return a.reduce((n,o)=>n+units(o),0)/a.length;};
- assert.ok(mean('big')>mean('quick'),'a big job is more work than a quick one');
+ assert.ok(mean('pair')>mean('quick'),'a two-part job is more work than a quick one');assert.ok(made.some(o=>o.role==='quick')&&made.some(o=>o.role==='pair'));
  for(const o of made)assert.equal(o.coins,rolePrice(o.needs,o.role));
  // An older save (no role on its orders, no recent list) loads as it was; its kinds are inferred.
  const old=fresh(0);delete old.recent;for(const o of old.orders)delete o.role;
  const back=load(JSON.stringify(old),5);assert.deepEqual(back.orders,old.orders);assert.deepEqual(back.recent,[]);
- for(const o of back.orders)assert.ok(['quick','pair','big','gold'].includes(roleOf(o)));
+ for(const o of back.orders)assert.ok(['quick','pair','gold'].includes(roleOf(o)));
+ // An order saved as a big job (Builds 44–46b) loads with its coins and shows as a quick job.
+ {const b=fresh(0);const o=b.orders.find(x=>!x.story);o.role='big';o.needs=[{family:'rig',tier:3,count:1}];o.coins=55;
+  const l=load(JSON.stringify(b),5);const lo=l.orders.find(x=>x.id===o.id);assert.equal(lo.coins,55);assert.equal(roleOf(lo),'quick');}
  // A damaged recent list is dropped, not the camp.
  const bad=fresh(0);bad.recent=[1,2,3];bad.moves=7;const b2=load(JSON.stringify(bad),5);assert.equal(b2.moves,7);assert.deepEqual(b2.recent,[]);
+});
+
+// Audit 2026-10-25 (user: "buguding ni hii"): a delivery gives +1 energy; a crew order not ready
+// 200 moves after it came is "stuck" (its card suggests a new order), gold orders never; saves
+// made before this (orders with no born) load as they were; a damaged born is dropped.
+import {DELIVER_ENERGY,STUCK_MOVES,isStuck,MAX_ENERGY as MAX_E} from '../v5/next/game.mjs';
+test('audit fixes: delivery energy, stuck orders, old saves',()=>{
+ const t=fresh(0),i=[0,1,2,3].map(()=>act(t,{type:'produce',id:'rig'},0).index);
+ act(t,{type:'merge',from:i[0],to:i[1]},0);act(t,{type:'merge',from:i[3],to:i[1]},0);
+ const e=t.energy,d=act(t,{type:'deliver',id:'o0'},0);assert.ok(d.ok);assert.equal(DELIVER_ENERGY,1);assert.equal(d.energy,1);assert.equal(t.energy,e+1);assert.match(d.message,/\+1 energy/);
+ {const f=fresh(0);f.energy=MAX_E;const j=[0,1,2,3].map(()=>act(f,{type:'produce',id:'rig'},0).index);act(f,{type:'merge',from:j[0],to:j[1]},0);act(f,{type:'merge',from:j[3],to:j[1]},0);
+  act(f,{type:'deliver',id:'o0'},0);assert.ok(f.energy<=MAX_E,'never above the cap');}
+ // stuck
+ const s=fresh(0),o=s.orders[1];assert.ok(Number.isInteger(o.born));assert.equal(isStuck(s,o),false);
+ s.moves=o.born+STUCK_MOVES-1;assert.equal(isStuck(s,o),false);s.moves=o.born+STUCK_MOVES;assert.equal(isStuck(s,o),true);
+ s.orders[1]={...o,story:'beach-path'};assert.equal(isStuck(s,s.orders[1]),false,'a gold order is never stuck');
+ // an older save: no born on its orders, still loads, nothing stuck; a damaged born is dropped
+ const old=fresh(0);old.moves=900;for(const x of old.orders)delete x.born;
+ const back=load(JSON.stringify(old),5);assert.equal(back.moves,900);assert.deepEqual(back.orders,old.orders);assert.ok(back.orders.every(x=>!isStuck(back,x)));
+ const bad=fresh(0);bad.moves=50;bad.orders[0].born=-3;bad.orders[1].born=999;const b2=load(JSON.stringify(bad),5);
+ assert.equal(b2.moves,50);assert.equal(b2.orders[0].born,undefined);assert.equal(b2.orders[1].born,undefined);assert.equal(b2.orders[2].born,bad.orders[2].born);
+});
+// Everyday orders rarely ask the same parts as one of the last four (in any number): measured over
+// the scripted player's beach and worksite, 26 % before the audit, about 10 % after.
+test('audit fixes: few everyday orders repeat the parts of the last four',()=>{
+ const s=fresh(0);let now=0,repeats=0,n=0;const seen=new Set(),recent=[];
+ while(now<6*3600e3&&!(s.area===1&&areaDone(s))){tick(s,now);
+  for(const o of s.orders)if(!seen.has(o.id)){seen.add(o.id);if(o.story)continue;const k=o.needs.map(r=>r.family+r.tier).sort().join('+');n++;if(recent.slice(-4).includes(k))repeats++;recent.push(k);}
+  const a=nextAction(s);if(!a){if(s.energy<=3&&act(s,{type:'ration'},now).ok)continue;now+=10000;continue;}
+  assert.ok(act(s,a,now).ok);now+=6000;}
+ assert.ok(n>=30,`${n} orders`);assert.ok(repeats/n<=.15,`${repeats} of ${n} repeat`);
+});
+// 2026-10-26: with only Rivet Rover out, two-part jobs of one chain could run out of new
+// combinations and repeat a card on the board (found by random play). Random play (random taps,
+// merges, deliveries, order changes, sometimes the scripted player) never shows two identical
+// crew orders at once.
+test('never two identical crew orders on the board under random play',()=>{
+ const mul=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
+ const key=o=>o.needs.map(r=>r.family+r.tier+'x'+r.count).sort().join('+');
+ for(let seed=1;seed<=12;seed++){const r=mul(seed),R=n=>Math.floor(r()*n),s=fresh(0);let now=0;
+  for(let i=0;i<1500;i++){now+=R(30000)+500;tick(s,now);const day=Math.floor(now/864e5);
+   let a=seed%2===0&&r()<.7?nextAction(s):null;
+   if(!a){const t=['produce','merge','merge','deliver','swapOrder','recycle','openKit'][R(7)],src=s.board.flatMap((x,j)=>x?.type==='source'?[[j,x.id]]:[]);
+    a=t==='produce'?{type:t,id:src[R(src.length)][1]}:t==='merge'?{type:t,from:R(49),to:R(49)}:t==='deliver'||t==='swapOrder'?{type:t,id:s.orders[R(s.orders.length)].id,day,ad:true}:{type:t,index:R(49)};}
+   act(s,a,now);const keys=s.orders.filter(o=>!o.story).map(key);
+   assert.equal(new Set(keys).size,keys.length,`seed ${seed} step ${i}: ${keys}`);}}
+});
+
+// Build 46f: an order asks at most one tier past the best part its chain's generator makes (that
+// generator's level was used as a tier before, so a level-3 Rover's orders asked tier 4 while it
+// makes tier 2 at best); a part at that limit pays 40 % more per level that makes no better part.
+test('orders follow the best part a generator makes; levels with no better part pay instead',()=>{
+ assert.deepEqual([1,2,3,4,5].map(bestTier),[1,2,2,2,3]);
+ for(const L of [1,2,3,4,5]){
+  const s=fresh(0);s.built=beachDone();s.board[ROVER].level=L;s.board[15]=source('chart');s.board[15].level=L;s.orderSeq=10;
+  for(let k=0;k<60;k++){const o=makeOrder(s);if(o.story){s.orders.push(o);continue;}
+   for(const r of o.needs)assert.ok(r.tier<=bestTier(L)+1,`Lv${L}: ${JSON.stringify(r)} past the generator's best part`);
+   const atLimit=o.needs.filter(r=>r.tier===bestTier(L)+1).length,price=Math.round(rolePrice(o.needs,o.role)*(1+PAY_PER_LEVEL*atLimit*(L-bestTier(L)))/5)*5;
+   assert.equal(o.coins,price,`Lv${L}: ${JSON.stringify(o.needs)}`);
+   if(L<=2)assert.equal(o.coins,rolePrice(o.needs,o.role),'levels 1 and 2 pay as before');}
+ }
+});
+test('a gold order gives no energy; a crew order gives its delivery energy',()=>{
+ const s=fresh(0);s.energy=10;s.orders=[makeOrder(Object.assign(s,{orderSeq:10}))].filter(Boolean);
+ const gold=s.orders.find(o=>o.story);assert.ok(gold);for(const r of gold.needs)for(let k=0;k<r.count;k++)s.board[s.board.indexOf(null)]=item(r.family,r.tier);
+ const r=act(s,{type:'deliver',id:gold.id},0);assert.ok(r.ok);assert.equal(s.energy,10);assert.equal(r.energy,0);assert.doesNotMatch(r.message,/energy/);
+ const crew=s.orders.find(o=>o&&!o.story)??makeOrder(s);if(!s.orders.includes(crew))s.orders[s.orders.indexOf(null)>=0?s.orders.indexOf(null):0]=crew;
+ for(const q of crew.needs)for(let k=0;k<q.count;k++)s.board[s.board.indexOf(null)]=item(q.family,q.tier);
+ const e=s.energy,r2=act(s,{type:'deliver',id:crew.id},0);assert.ok(r2.ok,r2.message);assert.equal(s.energy,e+DELIVER_ENERGY);
 });
 
 // Build 45g: an order's card pools needs that name the same part, so what it shows agrees with
@@ -781,18 +865,121 @@ test('board art: every sprite is measured and drawn at its kind\'s size',async()
   if(TARGET_OF[f])assert.ok(Math.abs(shown-TARGET_OF[f])<.005,`${f}: pilot target ${TARGET_OF[f]}, shown ${shown.toFixed(3)}`);
   else assert.ok(shown>=lo-.005&&shown<=hi+.005,`${f}: ${a.kind} shown at ${shown.toFixed(3)} of the cell`);}
  // what the user saw: materials no longer outweigh generators; containers agree with each other
- // (the files the board draws now: Build 45k pilot art for the Grip tool, the Rover and the bundle)
+ // (the files the board draws now: Build 45k pilot art for the Rover and the bundle, the tool art
+ // integration's -v2 Grip tool and Split spanner)
  const s=f=>ART_BOUNDS[f][0]*artFit(f).fit;
- for(const m of ['copper-offcut','grip-tool-pilot','split-spanner'])assert.ok(s(m)<=s('gen-rig-pilot')-.05,`${m} smaller than the Rivet Rover`);
- const c=['cargo-crate','cargo-barrel','cargo-bundle-pilot','cargo-basket','driftwood-crate'].map(s);assert.ok(Math.max(...c)-Math.min(...c)<=.05,`containers ${c.map(x=>x.toFixed(2))}`);
- // the pilot art replaces exactly its three identities, and keeps its colours on the board
- assert.match(draw({type:'item',family:'rig',tier:1}),/grip-tool-pilot\.webp/);assert.match(draw({type:'item',family:'rig',tier:2}),/split-spanner-vibrant\.webp/);
+ for(const m of ['copper-offcut','grip-tool-v2','split-spanner-v2'])assert.ok(s(m)<=s('gen-rig-pilot')-.05,`${m} smaller than the Rivet Rover`);
+ // (Build 46n/46o: the closed crate and barrel draw their -v2 art)
+ const c=['cargo-crate-v2','cargo-barrel-v2','cargo-bundle-pilot','cargo-basket','driftwood-crate'].map(s);assert.ok(Math.max(...c)-Math.min(...c)<=.05,`containers ${c.map(x=>x.toFixed(2))}`);
+ // the new art replaces exactly its identities, and keeps its colours on the board
+ assert.match(draw({type:'item',family:'rig',tier:1}),/grip-tool-v2\.webp/);assert.match(draw({type:'item',family:'rig',tier:2}),/split-spanner-v2\.webp/);
+ assert.match(draw({type:'item',family:'rig',tier:0}),/copper-offcut-vibrant\.webp/);assert.match(draw({type:'item',family:'rig',tier:3}),/pocket-winch-vibrant\.webp/);
+ assert.match(draw({type:'glass',family:'rig',tier:2}),/split-spanner-v2\.webp/);
+ // the two tools are balanced against each other (the art direction's 78-80 % start)
+ for(const m of ['grip-tool-v2','split-spanner-v2'])assert.ok(s(m)>=.74&&s(m)<=.8,`${m} shown at ${s(m).toFixed(3)}`);
  assert.match(draw({type:'source',id:'rig',level:3}),/gen-rig-pilot\.webp/);assert.match(draw({type:'source',id:'rope'}),/gen-rope\.webp/);
- assert.match(draw({type:'cargo',key:{family:'chart',tier:2}}),/cargo-bundle-pilot\.webp/);assert.match(draw({type:'cargo',key:{family:'rope',tier:2}}),/cargo-barrel\.webp/);
+ assert.match(draw({type:'cargo',key:{family:'chart',tier:2}}),/cargo-bundle-pilot\.webp/);// Build 46n/46o: only the closed cargo crate (Rover key) and barrel (Rope Winch key) take the new
+ // art, at the art direction's 76-80 %; other cargo, deep cargo's look and generator crates keep theirs
+ assert.match(draw({type:'cargo',key:{family:'rope',tier:2}}),/cargo-barrel-v2\.webp/);
+ assert.match(draw({type:'cargo',key:{family:'rig',tier:2}}),/cargo-crate-v2\.webp/);assert.match(draw({type:'cargo',key:{family:'rig',tier:3},deep:true}),/cargo-crate-v2\.webp/);
+ assert.match(draw({type:'cargo',key:{family:'shell',tier:1}}),/cargo-basket\.webp/);
+ for(const size of [1,2,3])assert.doesNotMatch(draw({type:'kit',family:'rig',size,left:3}),/cargo-(crate|barrel)/);
+ for(const m of ['cargo-crate-v2','cargo-barrel-v2'])assert.ok(s(m)>=.76&&s(m)<=.82,`${m} shown at ${s(m).toFixed(3)}`);
  for(const f of Object.keys(TARGET_OF))assert.equal(toneOf(f),null,`${f} is never toned`);
  // colour tones are an interim for containers only (art direction 45j): no item, tool, map, light
  // or generator is recoloured on the board, so order cards and the board show the same art
  for(const f of Object.keys(ART_BOUNDS))if(toneOf(f))assert.equal(artFit(f).kind,'container',`${f} is toned but is not a container`);
  // the renderer puts the fit on the sprite
  assert.match(draw({type:'item',family:'rig',tier:0}),/style="--fit:0\.\d+;--dx:-?0(\.\d+)?;--dy:-?0(\.\d+)?"/);
+});
+
+// The level path (docs/V5_LEVEL_PATH_2026-10-27.md; user: "togloomond ashiglaad gameplayd
+// sonirholtoi zuilsee nemmeer baina"): level 3 opens the triple merge, level 5 Tide tokens from
+// crew orders, level 8 crew favours with a Brass cog. Level-up energy stays.
+test('level path: a triple merge from level 3 makes two of the next part',async()=>{
+ const G=await import('../v5/next/game.mjs');
+ const setup=lv=>{const s=fresh(0);s.level={version:1,level:lv,xp:0};s.board[14]=item('rig',2);s.board[15]=item('rig',2);s.board[27]=item('rig',2);return s;};
+ // 27 dragged onto 15; 14 touches 15 (same row): at level 2 it stays, at level 3 it joins
+ let s=setup(2),r=ok(s,{type:'merge',from:27,to:15});
+ assert.deepEqual([s.board[15],s.board[14],s.board[27]],[item('rig',3),item('rig',2),null]);assert.equal(r.triple,undefined);assert.equal(r.xp,1);
+ s=setup(3);const merges=s.merges;r=ok(s,{type:'merge',from:27,to:15});
+ assert.deepEqual([s.board[15],s.board[14],s.board[27]],[item('rig',3),item('rig',3),null]);
+ assert.equal(r.triple,14);assert.equal(r.xp,2);assert.equal(s.merges,merges+2);assert.match(r.message,/×2 · triple merge/);
+ // a third that touches only the space dragged from does not join
+ s=setup(3);s.board[14]=null;s.board[33]=item('rig',2);r=ok(s,{type:'merge',from:27,to:15});assert.equal(r.triple,undefined);assert.deepEqual(s.board[33],item('rig',2));
+ // small parts (levels 1 and 2) never triple: they are the free merges while energy is out
+ for(const t of [0,1]){s=setup(3);for(const i of [14,15,27])s.board[i]=item('rig',t);r=ok(s,{type:'merge',from:27,to:15});assert.equal(r.triple,undefined,`tier ${t}`);assert.deepEqual(s.board[14],item('rig',t));}
+ // tideglass beside either new part cracks, once each
+ s=setup(3);const g=s.board[8];assert.equal(g?.type,'glass');const before=g.cracks??0;ok(s,{type:'merge',from:27,to:15});
+ assert.ok((s.board[8]?.cracks??0)<=before+1,'glass beside both spaces cracks once');
+ assert.equal(G.LEVEL_PATH[0].level,3);
+});
+test('level path: crew orders pay Tide tokens from level 5 and Brass cogs (favours) from level 8',async()=>{
+ const G=await import('../v5/next/game.mjs');
+ const run=lv=>{const s=fresh(0);s.level={version:1,level:lv,xp:0};s.orderSeq=40;s.orders[0]=G.makeOrder(s);assert.ok(s.orders[0].story,'a gold order stands, so the rest are everyday orders');const out=[];for(let i=0;i<60;i++)out.push({k:s.orderSeq-3,o:G.makeOrder(s)});return out;};
+ assert.ok(run(4).every(({o})=>!o.bonus),'nothing before level 5');
+ const five=run(5);assert.ok(five.every(({o})=>!o.story));for(const {k,o} of five){assert.equal(o.bonus,k%G.TOKEN_EVERY===G.TOKEN_EVERY-1?'token':undefined,`order ${k}`);}
+ const eight=run(8),cogs=eight.filter(({o})=>o.bonus==='chest');
+ assert.ok(cogs.length>=5,`favours: ${cogs.length}`);
+ // a favour pays a Sea chest at the beach and a Brass cog from the worksite on
+ {const s=fresh(0);s.level={version:1,level:8,xp:0};s.area=1;s.orderSeq=40;s.orders[0]=G.makeOrder(s);let got=new Set();for(let i=0;i<30;i++){const o=G.makeOrder(s);if(o.bonus)got.add(o.bonus);}assert.ok(got.has('cog')&&!got.has('chest'),[...got].join());}
+ for(const {k,o} of cogs){assert.equal(k%G.FAVOUR_EVERY,G.FAVOUR_EVERY-1);assert.ok(o.needs[0].tier<=Math.min(G.ORDER_TOP,maxTierOf(o.needs[0].family)-1));assert.equal(o.needs[0].count,1);}
+ // delivering a token order puts the token on the board
+ const s=fresh(0);s.level={version:1,level:5,xp:0};const o={id:'oT',who:'ivo',needs:[{family:'rig',tier:0,count:1}],coins:5,bonus:'token'};s.orders[0]=o;s.board[15]=item('rig',0);
+ const r=ok(s,{type:'deliver',id:'oT'});assert.equal(r.tool.type,'token');assert.deepEqual(s.board[r.tool.index],{type:'token'});assert.match(r.message,/a Tide token/);
+});
+test('level path: level-ups name their unlock, keep their energy; older saves load, bad bonuses do not',async()=>{
+ const G=await import('../v5/next/game.mjs');
+ const s=fresh(0);s.level={version:1,level:2,xp:xpToNext(2)-1};s.energy=10;s.board[15]=item('rig',0);s.board[27]=item('rig',0);
+ const r=ok(s,{type:'merge',from:27,to:15});assert.equal(r.levelUp[0].level,3);assert.equal(r.levelUp[0].unlock,'triple');assert.equal(r.levelUp[0].energy,G.levelEnergy(3));
+ // a Build 46i save (orders without bonus) loads unchanged; an order with an unknown bonus is a damaged save
+ const old=fresh(0);old.level={version:1,level:9,xp:3};const back=load(JSON.stringify(old),1);assert.equal(back.level.level,9);assert.deepEqual(back.orders,old.orders);
+ const bad=fresh(0);bad.orders[0].bonus='gem';assert.equal(load(JSON.stringify(bad),1).level.level,1,'rejected');
+ const good=fresh(0);good.orders[0].bonus='cog';assert.equal(load(JSON.stringify(good),1).orders[0].bonus,'cog');
+});
+test('level path: the first crew order after level 5 pays its Tide token at once; saves keep the promise',async()=>{
+ const G=await import('../v5/next/game.mjs');
+ const s=fresh(0);s.level={version:1,level:4,xp:xpToNext(4)-1};s.orderSeq=12;s.board[15]=item('rig',0);s.board[27]=item('rig',0);
+ const r=ok(s,{type:'merge',from:27,to:15});assert.equal(r.levelUp[0].unlock,'token');assert.equal(s.pathNext,'token');
+ // saved and loaded before the next order: still owed
+ const back=load(JSON.stringify(s),1);assert.equal(back.pathNext,'token');
+ s.orders[0]=G.makeOrder(s);const o=G.makeOrder(s);
+ assert.ok(s.orders[0].story||o.bonus==='token'||s.orders[0].bonus==='token','the next everyday order pays the token');assert.equal(s.pathNext,undefined);
+ // a damaged value is dropped, the save is kept
+ const bad=fresh(0);bad.pathNext='gold';assert.equal(load(JSON.stringify(bad),1).pathNext,undefined);
+});
+
+// Build 45n (user: "zarimdaa merge hiihed musuu tsohihgui baih shig baina"): the tideglass hint
+// agrees with the rules. Every glass on a new board, every merge size in each space beside it:
+// the hint calls the merge too small exactly when the reducer leaves that glass uncracked, and
+// iceNeed (the level the message names) is set exactly on glass that some merge cannot crack.
+test('tideglass hint: "too small" agrees with crack()',async()=>{
+ const {iceNeed,weakIceBeside,besideOf}=await import('../v5/next/ice.mjs');
+ const G=await import('../v5/next/game.mjs');
+ let checked=0;
+ for(const k of Object.keys(G.GLASS).map(Number)){
+  const g0=G.fresh().board[k];
+  assert.equal(iceNeed(g0)!==null,g0.tier>=2,`glass ${k} mark`);
+  for(const to of besideOf(k))for(let tier=0;tier<4;tier++){
+   const s=G.fresh();if(s.board[to]?.type==='glass'||s.board[to]?.type==='source')continue;
+   const from=s.board.findIndex((x,i)=>i!==to&&i!==k&&x?.type!=='glass'&&x?.type!=='source');
+   s.board[to]=item('rig',tier);s.board[from]=item('rig',tier);s.board[k]={...s.board[k],cracks:0};
+   const r=G.act(s,{type:'merge',from,to});if(!r.ok)continue;
+   const weak=weakIceBeside(s.board,to).includes(k),cracked=(s.board[k]?.cracks??0)>0||s.board[k]?.type!=='glass';
+   assert.equal(weak,!cracked,`glass ${k} (tier ${G.GLASS[k][1]}), merge to tier ${tier+1} at ${to}`);checked++;}
+ }
+ assert.ok(checked>100,`checked ${checked} merges`);
+});
+
+// Build 46k (user: "togloom ehneesee mash amarhan ... hetsuu davan tuulj baigaa medremj uguhgui"; option A,
+// docs/V5_HARDER_START_2026-10-27.md): less energy to start, less from the first levels, bigger first gold
+// orders; from the seventh stage the gold order is as before.
+test('a harder start: 30 energy, +5 for levels up to 5, the first six stages\' gold orders a level bigger',async()=>{
+ const G=await import('../v5/next/game.mjs');
+ assert.equal(fresh(0).energy,30);assert.deepEqual([2,5,6,9].map(G.levelEnergy),[5,5,15,15]);
+ const gold=built=>{const s=fresh(0);s.orderSeq=10;s.orders=[];let k=0;for(const t of Object.keys(TASKS))if(k<built&&AREAS[0].tasks.some(a=>a.id===t)){const add=Math.min(3,built-k);s.built[t]=add;k+=add;}
+  const o=makeOrder(s);return o.story?o.needs[0]:null;};
+ const early=gold(0),later=gold(6);assert.ok(early&&later,'gold orders at 0 and 6 stages');
+ assert.equal(early.tier,3,'one level bigger than before (tier 2)');
+ assert.deepEqual(later,{family:'rig',tier:2,count:1},'from the seventh stage as before');
 });

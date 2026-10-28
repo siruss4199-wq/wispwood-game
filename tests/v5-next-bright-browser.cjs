@@ -81,9 +81,10 @@ async function run(engine,W,H,motion){
    assert.match(await page.locator(`#board [data-index="${i}"] img.iceArt`).getAttribute('src'),new RegExp(`ice-${k}\\.webp$`),`${tag}: painted ice ${k}`);
    assert.match(await page.locator(`#board [data-index="${i}"]`).getAttribute('aria-label'),new RegExp(`${3-k} hits? left`));}
   // one kind of ice: every ice cell (odd or even) looks the same; since Build 45i it is the board's
-  // own sand cell with a cool tint inside the painted frame, not a separate pale card
+  // own sand cell with a cool tint inside the painted frame, not a separate pale card. Since Build
+  // 46n empty cells are a deliberately recessed sand, so the cell to match is a part's cell.
   {const bg=await page.evaluate(()=>[...document.querySelectorAll('#board .tile')].map(t=>[t.classList.contains('glass'),getComputedStyle(t).backgroundImage+' '+getComputedStyle(t).backgroundColor]));
-   const looks=new Set(bg.filter(([g])=>g).map(([,b])=>b));assert.equal(looks.size,1,`${tag}: ice cells look the same ${[...looks]}`);const sand=await page.evaluate(()=>{const t=document.querySelector('#board .tile.empty')??document.querySelector('#board .tile:not(.glass)');return getComputedStyle(t).backgroundColor;});
+   const looks=new Set(bg.filter(([g])=>g).map(([,b])=>b));assert.equal(looks.size,1,`${tag}: ice cells look the same ${[...looks]}`);const sand=await page.evaluate(()=>{const t=document.querySelector('#board .tile:not(.glass):not(.empty)');return getComputedStyle(t).backgroundColor;});
    assert.ok([...looks][0].startsWith('radial-gradient(')&&[...looks][0].endsWith(' '+sand),`${tag}: ice is a tint over the board's own sand cell (${[...looks][0]} / ${sand})`);}
   // The panel says how many hits are left; the cells carry no numbers.
   await page.locator('#board [data-index="20"]').click();assert.match(await page.locator('#selection').textContent(),/1 hit left/);await page.locator('#board [data-index="20"]').click();
@@ -161,6 +162,28 @@ async function run(engine,W,H,motion){
    // Rapid play: a second merge cue inside 45 ms is dropped, not stacked.
    const plays=await page.evaluate(async()=>{const {sfx}=await import('/v5/next/sfx.mjs');if(!sfx.enabled())sfx.toggle();return [sfx.play('merge',1),sfx.play('merge',1),sfx.play('produce'),sfx.play('nonsense')];});
    if(plays[0])assert.deepEqual(plays,[true,false,true,false],`${tag}: repeats are throttled`);}
+
+  // Audit fixes (Build 46): a crew order taking long suggests a new one; its tapped panel is three
+  // short lines (no "n/m" progress, no bonus sums); nothing is selected by a slide of the finger;
+  // after the last stage the strip says the chapter is done and the coins carry over; on a short
+  // phone screen (390 × 664) the board keeps the full width (2026-10-26: shrinking it read as small).
+  await setState(page,s=>{s.moves=900;for(const o of s.orders)if(!o.story)o.born=0;});
+  {const stuck=page.locator('#requests .requestCard.stuck');const n=await stuck.count();
+   const notReady=await page.locator('#requests .requestCard:not(.ready):not(.storyOrder)').count();assert.equal(n,notReady,`${tag}: every crew order not ready is stuck`);
+   if(n){assert.match(await stuck.first().locator('.reqStuck').textContent(),/New/);assert.match(await stuck.first().getAttribute('aria-label'),/new order/);
+    await stuck.first().click();const tools=await page.locator('#orderTools').textContent();assert.doesNotMatch(tools,/\d+\/\d+|big job:|two crews:|also needs/,`${tag}: the order panel is short`);
+    assert.ok(await page.locator('#orderTools [data-swap], #orderTools [data-swap-ad]').count()>=1,`${tag}: the panel offers a new order`);await stuck.first().click();}}
+  assert.equal(await page.evaluate(()=>{const c=getComputedStyle(document.body);return c.userSelect||c.webkitUserSelect;}),'none',`${tag}: no text selection on the game`);
+  // A player (no ?dev=1) sees no developer tools, no build name and no ad offer (2026-10-26).
+  {await page.evaluate(k=>{const s=JSON.parse(localStorage.getItem(k));s.energy=1;s.swaps={day:9e6,n:3,ads:0};localStorage.setItem(k,JSON.stringify(s));},KEY);await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
+   assert.equal(await page.locator('#adEnergyButton:visible, .adsOnly:visible, #build:visible').count(),0,`${tag}: no ad offer or build name`);
+   await page.locator('#menuButton').click();assert.equal(await page.locator('#menu a:visible, #playlogButton:visible, #menu .menuNote:visible').count(),0,`${tag}: no developer tools in the menu`);await page.keyboard.press('Escape');
+   await page.locator('#shopButton').click();assert.equal(await page.locator('#shop [data-ad]').count(),0,`${tag}: no ad offer in the shop`);await page.locator('#shop .close').click();}
+  await setState(page,s=>{s.area=1;s.built={'beach-path':3,'beach-tent':3,'beach-mast':3,'beach-workshop':3,'beach-pier':3,'beach-beacon':3,'beach-cliff':3,'ws-camp':3,'ws-scope':3,'ws-ropes':3,'ws-steps':3,'ws-pool':3,'ws-hoist':3,'ws-door':3};s.materials={...s.built};s.seenEnd=true;s.orders=s.orders.map(o=>{const x={...o};delete x.story;return x;});s.coins=123;});
+  assert.match(await page.locator('#mapButton').textContent(),/Chapter complete.*Coins carry over to the Vault Entrance.*123/s,`${tag}: the chapter's end says where the coins go`);
+  if(W===390&&motion==='no-preference'){await page.setViewportSize({width:390,height:664});await page.waitForTimeout(200);
+   const b=await page.locator('#board').boundingBox();assert.ok(b.width>=390-24,`${tag}: at 390×664 the board is ${Math.round(b.width)} px wide`);
+   const c=await page.locator('#board [data-index="0"]').boundingBox();assert.ok(c.width>=46,`board cells ${c.width}px at 390×664`);await page.setViewportSize({width:W,height:H});}
 
   assert.deepEqual(errors,[],`${tag}: no page errors`);
   console.log(`${tag}: layout, order cards, ice, delivery → ready → coast → build → next, shed, full board, settings passed`);
