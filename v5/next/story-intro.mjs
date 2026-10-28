@@ -29,18 +29,27 @@ export function playIntro({storage,face,reduced}){
 // Full-screen illustrated scenes with one line each (the first-play story, Build 47b's Vault reveal):
 // live text, Next on every scene and the last button's own label, Skip and Escape throughout,
 // cross-fades (none with reduced motion). A scene may carry a light effect (fx: 'seam' or 'open',
-// at light: [x, y, r] as shares of its picture) drawn in CSS over the picture, never baked in.
+// at light: [x, y, r] as shares of its picture) drawn in CSS over the picture, never baked in, and
+// the Vault door that opens (door, below).
 // The board behind is inert while it plays. Resolves {how:'done'|'skipped', scene}.
 export function playScenes({scenes,face,reduced,last='Continue',label=''}){
  const $=id=>document.getElementById(id),root=$('story'),layers=[...root.querySelectorAll('.storyArt')],main=document.querySelector('main.game'),wasInert=!!main?.inert;
  let n=0,top=0,closed=false,resolve;
  const done=new Promise(r=>resolve=r);
  // the light sits where the scene says on the picture as drawn (object-fit: cover, object-position)
+ // Build 47f: a scene may also carry the Vault door (door: {cx, cy, rx, ry, seam} in the picture's
+ // pixels, inside: the picture behind it). Its two halves are cut from the same picture along the
+ // seam and drawn exactly over it, so they can swing open on the hinges painted at its sides.
  function light(s,img){
-  const el=root.querySelector('.storyLight');root.dataset.fx=s.fx??'';if(!s.fx||!s.light||!img.naturalWidth){el.hidden=true;return;}
+  const el=root.querySelector('.storyLight'),v=root.querySelector('.storyVault');root.dataset.fx=s.fx??'';
+  if(!img.naturalWidth||!s.light&&!s.door){el.hidden=true;if(v)v.hidden=true;return;}
   const b=img.getBoundingClientRect(),k=Math.max(b.width/img.naturalWidth,b.height/img.naturalHeight),[px,py]=getComputedStyle(img).objectPosition.split(' ').map(v=>parseFloat(v)/100);
-  const ox=b.left+(b.width-img.naturalWidth*k)*px,oy=b.top+(b.height-img.naturalHeight*k)*py,[x,y,r]=s.light;
-  el.style.setProperty('--lx',(ox+x*img.naturalWidth*k)+'px');el.style.setProperty('--ly',(oy+y*img.naturalHeight*k)+'px');el.style.setProperty('--lr',(r*img.naturalWidth*k)+'px');el.hidden=false;
+  const ox=b.left+(b.width-img.naturalWidth*k)*px,oy=b.top+(b.height-img.naturalHeight*k)*py;
+  if(s.light){const [x,y,r]=s.light;el.style.setProperty('--lx',(ox+x*img.naturalWidth*k)+'px');el.style.setProperty('--ly',(oy+y*img.naturalHeight*k)+'px');el.style.setProperty('--lr',(r*img.naturalWidth*k)+'px');el.hidden=false;}else el.hidden=true;
+  if(!v)return;v.hidden=!s.door;if(!s.door)return;
+  const d=s.door,px2=n=>n+'px';
+  for(const [k2,val] of Object.entries({cx:ox+d.cx*k,cy:oy+d.cy*k,rx:d.rx*k,ry:d.ry*k,seam:ox+d.seam*k,ox,oy,iw:img.naturalWidth*k,ih:img.naturalHeight*k}))v.style.setProperty('--'+k2,px2(val));
+  v.style.setProperty('--vart',`url("${img.currentSrc||img.src}")`);v.querySelector('.vIn').style.backgroundImage=`url("${d.inside}")`;
  }
  function picture(s){
   const next=layers[1-top],cur=layers[top];

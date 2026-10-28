@@ -404,3 +404,97 @@ round trip (5 save tests). Gold orders still come only when a camp moves on, or 
 - **Local results:**
   - `node --test tests/v5-*.test.mjs`: 311/311.
   - All nine Coast Camp browser tests pass in Chromium. WebKit is not installed here; CI runs it.
+
+## Build 47f: Chapter 1–2 integration and visual QA (2026-10-28)
+
+**Branch.** `claude/v5-ch12-visual-qa`, from `claude/v5-observatory-integration` at `7a769a2` (Build
+47e). The same line, oldest first:
+- `claude/v5-audit-fixes` (#83) and `claude/v5-board-crate` (46n/46o);
+- `claude/v5-home-loading` (46p);
+- `claude/v5-story-intro` (46q);
+- `claude/v5-observatory-integration` (47a–47e).
+
+PR #80 is not merged; its Chapter 2 parts were ported selectively (step 3).
+
+The six screenshots named in the brief were not available in this session. Each reported issue was
+checked against the HEAD above instead.
+
+### What the numbers mean
+
+- **"18 stages" on the Observatory screen.** The area named The Silent Observatory holds the Tide
+  Archive bridge (one place, 3 stages, Build 47d) and PR #80's five Observatory places (15 stages):
+  3 + 15 = 18. The audited 15 counted only PR #80's places. Progression is unchanged. The bar now
+  says "16 / 18 stages" (it said "16 / 18").
+- **"63 stages" on the end card.** Every stage bought across Chapters 1 and 2: Landing Beach 21,
+  Survey Worksite 21, the Vault door 3, then the archive and the Observatory 18. The card now reads
+  "Restoration stages 63 / 63" under "Your camp so far".
+- **"7 generators" on the end card.** It counted the *kinds* standing on the board, not how many
+  generators the player owns. The kinds a player can have are Rover, Kite, Winch, Shell Trap, Lantern
+  Kiln, Crucible and Lens Bench. It is now "Generator types found": the kinds whose parts were found
+  or that are owned (on the board, in the shed or waiting), so a kind kept in the shed still counts.
+
+### Issues checked against HEAD, and what changed
+
+| Reported | At `7a769a2` | Now |
+|---|---|---|
+| "Next: The Vault. It comes in a later update." | **Already gone from play.** That card is Build 46's. At 47e Chapter 1 leads into the Vault, and old-ending saves continue (step 2). The text still sat in an unreachable branch. | The branch is removed. The camp's only end card is Chapter 2's. |
+| Glow over a closed door | **Still there.** The 47b reveal was light over the closed door. | The door visibly opens. The three rings glow, the inner one last, and light runs down the seam. The two halves, cut from the same Home picture along its painted seam and laid exactly over it, swing inward on the hinges painted at its sides. The Observatory interior shows behind them. Then a scene inside, ending on "Enter the Vault". Reduced motion shows each state at once: rings lit, doors open. Skip reaches the same state, since the reveal gives nothing. |
+| First Chapter 2 objective | The archive intro ended on "Continue". The board hint could name another order. | The intro ends on **"Make the gold order"**. It marks the archive's gold order on the board, and the message line says "Light the archive: make 2 × Storm lantern for its gold order." The board hint then follows that order. |
+| New area shown before the door opens | **Found here.** Building the inner ring redrew the coast screen as the Observatory, and Bram said it "is open", before the reveal. | The Vault Entrance stays on screen until the reveal; Bram's line is left to the reveal. |
+| Oversized cut-outs over the Observatory room | **Still there.** PR #80's place cut-outs stood on a picture that already paints the shelves, both desks, the orb array and the passage. | No cut-outs on that picture. Each place's spot is moved onto its painted furnishing, and its restoration shows as the room's colour coming back around it (the beach's own effect). The cut-outs stay in the card and the place row, where they stand alone. Marker hit targets are unchanged (44 px). |
+| "Telescope" for the Vault rings | **Still there.** The door used the Signal lamp part icon. | The door is drawn as itself, a crop of the Home picture's door (`coast/vault-door-thumb.webp`, new), with its rings lit for the stage. The coast screen's rings now sit on the door's painted rim, compass ring and orb ring. |
+| Locked sea gate | 47e said "Opens once Wake the array is done." | "Finish the array first. It needs Wake the array (stage 3 of 3)." The **View array** button selects the array and shows its objective. Both come from the stage's own requirement, the first unmet one. |
+| Card actions | Reveal cards all said "Continue". | The Vault reveal ends on **Enter the Vault** (it enters). The archive intro ends on **Make the gold order** (it marks it). The signal card says **View sea gate** (it opens the coast screen on the sea gate). The harbour card keeps Continue (the end card follows). |
+| Completion card | Teal header with the title spilling under it at 360 px; stats inline; "Chapter 3 … is in development". | The harbour picture comes first, then "Chapter 2 complete", the title and two short lines. The totals sit in a secondary "Your camp so far" box. It says "This is the end of the story so far. The Hidden Harbour is not available yet." There is no Chapter 3 button and no "in development" claim. In landscape the picture stands beside the text. Wherever an unavailable area was promised, the wording now says it is not available (the strip says "N saved"; the coast list says "Not available yet"). |
+| "the The Silent Observatory's next stage" | **Found here,** in the gold order's note. | "The gold order is for Light the archive: it stays." |
+
+**Saves and rewards.**
+- No rule changed in this build. `v5/next/game.mjs` is untouched, and save keys and backup keys are
+  unchanged.
+- The `at` positions and the `LABELS` of the Vault's places are presentation data in `areas.mjs`.
+- New node test (`tests/v5-next-rewards.test.mjs`): on a full board, the Observatory's rewards wait
+  in the order earned, survive a reload, land once each as spaces free, and nothing lands twice. The
+  rewards are a Tide token, a crate, the Lens Bench copy and a Brass cog.
+- Already covered:
+  - Chapter 1 saves that saw the old ending (`v5-next-chapter2.test.mjs`, and its browser test);
+  - story skip and reload, and Home Continue (`v5-next-story-browser.cjs`,
+    `v5-next-home-browser.cjs`);
+  - board interactions after overlays close.
+
+**CI.** Build 47e's run was cancelled at the job's 20-minute limit while the Chapter 2 browser test
+was running. Every other Coast Camp test had passed in Chromium and WebKit. The cause was in the
+test: an optional hint click waited Playwright's full 30 s when the hint was absent. With a 1.5 s
+limit the test takes 94 s in Chromium locally, down from 437 s. The job limit is raised to 30
+minutes for the larger Chapter 1–2 suite.
+
+### Missing art (exact use; nothing unrelated was substituted)
+
+1. **Open Vault door, this Vault.** The same camera and door as `coast/home/home-bg.webp` (941×1672)
+   and its crop `vault-door-vibrant.webp` (941×706). The round door's two halves stand swung inward
+   on their side hinges, with the passage into the Observatory lit behind them.
+   - Uses: the reveal's second and third scenes; the Vault Entrance on the coast screen once
+     complete.
+   - Stand-in: the closed door cut along its seam and turned in CSS.
+   - Not usable: Classic V5's `vault-open-vibrant.webp` is a different, violet portal doorway.
+2. **Ring states.** Three lit-ring overlays (outer rim, compass ring, orb ring), transparent and
+   aligned to `vault-door-vibrant.webp`, or three door crops.
+   - Uses: the Vault Entrance card, its place tile and the coast scene, for each stage.
+   - Stand-in: CSS rings.
+3. **Observatory clean plate.** `observatory-map.webp` (640×640) with the restorable furnishings
+   removed or in ruin, plus three stage overlays per place aligned to it. The furnishings, by spot:
+   - the archive shelves left of the passage (23 %, 36 %);
+   - the passage gate (48 %, 30 %);
+   - the orb array (55 %, 47 %);
+   - the left survey desk (16 %, 68 %);
+   - the right lens bench with its telescope (86 %, 46 %);
+   - the hall's lamps and banners (around 58 %, 82 %, and the two banners at the top).
+   - Use: the coast screen's Observatory scene.
+   - Stand-in: colour returning around restored spots.
+4. **Tide Archive place art** (3 stages). Its card and tile use the Route fold map icon.
+5. **Hidden harbour view.** `coast/harbour-view.webp` is PR #80's small upscaled placeholder.
+   - Uses: the harbour reveal card and the Chapter 2 end card. A sharp painted view is needed,
+     about 941 px wide, portrait or 4:3.
+6. **The array's signal.** A painted frame of the woken array sending its signal. It is now a CSS
+   beam over `place-obs-array-3.webp`.
+7. **Observatory place cut-outs.** PR #80's review cut-outs from concept sheets. Now used only in
+   the card and the place row.

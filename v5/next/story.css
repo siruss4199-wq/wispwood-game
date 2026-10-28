@@ -35,19 +35,43 @@ body.storyOpen{overflow:hidden}
 }
 /* Build 47b: the chapter label above a reveal's line, and the reveal's light. The light is drawn in
    CSS over the picture where the scene says (story-intro.mjs sets --lx/--ly/--lr from the picture as
-   drawn): 'seam' is a turquoise line of light down the Vault door's seam; 'open' floods the door
-   with light. It stands in for a painted open-door frame, which does not exist yet for this Vault. */
+   drawn): 'seam' is a turquoise line of light down the Vault door's seam. */
 .storyLabel{display:inline-block;margin:0 0 8px;padding:3px 12px;border-radius:999px;background:linear-gradient(#2fb3a6,#16877e);color:#fff;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
 .storyLight{position:absolute;inset:0;pointer-events:none;z-index:0}
 .storyLight::before,.storyLight::after{content:"";position:absolute;left:var(--lx);top:var(--ly);transform:translate(-50%,-50%)}
 .story[data-fx="seam"] .storyLight::before{width:max(4px,calc(var(--lr) * .05));height:calc(var(--lr) * 1.9);border-radius:999px;background:linear-gradient(#bff8ff00,#bff8ff 20%,#ffffff 50%,#bff8ff 80%,#bff8ff00);box-shadow:0 0 18px 6px #5ff0f0b3,0 0 42px 14px #2fd0d066}
-.story[data-fx="open"] .storyLight::before{width:calc(var(--lr) * .5);height:calc(var(--lr) * 2);border-radius:40%;background:radial-gradient(closest-side,#fffef5,#d8fbff 55%,#bff8ff00);filter:blur(2px)}
-.story[data-fx="open"] .storyLight::after{width:calc(var(--lr) * 2.3);height:calc(var(--lr) * 2.3);border-radius:50%;background:radial-gradient(closest-side,#fffdf2e6,#d8fbffb3 45%,#9ff0f04d 70%,#9ff0f000)}
-@media(prefers-reduced-motion:no-preference){
- .story[data-fx="seam"] .storyLight::before{animation:storySeam 2.4s ease-in-out infinite}
- .story[data-fx="open"] .storyLight::after{animation:storyOpen 1.6s ease-out both}
- .story[data-fx="open"] .storyLight::before{animation:storyOpenSeam 1.6s ease-out both}
-}
+@media(prefers-reduced-motion:no-preference){.story[data-fx="seam"] .storyLight::before{animation:storySeam 2.4s ease-in-out infinite}}
 @keyframes storySeam{0%,100%{opacity:.75}50%{opacity:1}}
-@keyframes storyOpen{0%{opacity:0;transform:translate(-50%,-50%) scale(.4)}100%{opacity:1;transform:translate(-50%,-50%) scale(1)}}
-@keyframes storyOpenSeam{0%{width:max(4px,calc(var(--lr) * .05))}100%{width:calc(var(--lr) * .5)}}
+/* Build 47f: the Vault opens. story-intro.mjs places the door (--cx/--cy centre, --rx/--ry radii,
+   --seam, and the picture's own origin and size) from the picture as drawn. Its two halves are the
+   picture itself, cut along the seam and laid exactly over it, so nothing moves until they swing
+   inward on their painted hinges; behind them is the Observatory's interior (PR #80's picture).
+   'seam': the three rings glow (the inner one lights last) and light runs down the seam.
+   'open': the halves stand open and the interior is lit. Reduced motion shows each state at once.
+   A painted open-door frame for this Vault does not exist; this is the stand-in (see the doc). */
+.storyVault{position:absolute;inset:0;pointer-events:none;z-index:0;perspective:calc(var(--rx) * 6)}
+.storyVault i{position:absolute;display:block}
+.storyVault .vIn{left:calc(var(--cx) - var(--rx));top:calc(var(--cy) - var(--ry));width:calc(var(--rx) * 2);height:calc(var(--ry) * 2);border-radius:50%;background:#06222b center 42%/cover no-repeat;
+ box-shadow:inset 0 0 calc(var(--rx) * .3) calc(var(--rx) * .1) #04161de6;opacity:0;transition:opacity .9s ease .35s}
+.storyVault .vIn::after{content:"";position:absolute;inset:0;border-radius:50%;background:radial-gradient(closest-side,#fffdf2,#d8fbffcc 40%,#9ff0f000 85%);opacity:0}
+.storyVault .vHalf{top:calc(var(--cy) - var(--ry));height:calc(var(--ry) * 2);background-image:var(--vart);background-size:var(--iw) var(--ih);background-repeat:no-repeat;
+ transition:transform 1.5s cubic-bezier(.45,0,.2,1) .25s,filter 1.5s ease .25s;will-change:transform}
+.storyVault .vHalf.l{left:calc(var(--cx) - var(--rx));width:calc(var(--seam) - var(--cx) + var(--rx));transform-origin:0 50%;
+ background-position:calc(var(--ox) - var(--cx) + var(--rx)) calc(var(--oy) - var(--cy) + var(--ry));clip-path:ellipse(var(--rx) var(--ry) at var(--rx) var(--ry))}
+.storyVault .vHalf.r{left:var(--seam);width:calc(var(--cx) + var(--rx) - var(--seam));transform-origin:100% 50%;
+ background-position:calc(var(--ox) - var(--seam)) calc(var(--oy) - var(--cy) + var(--ry));clip-path:ellipse(var(--rx) var(--ry) at calc(var(--cx) - var(--seam)) var(--ry))}
+.storyVault .vRing{left:var(--cx);top:var(--cy);width:calc(var(--rx) * 2 * var(--s));height:calc(var(--ry) * 2 * var(--s));translate:-50% -50%;border-radius:50%;
+ border:max(2px,calc(var(--rx) * .018)) solid #a8fbff;box-shadow:0 0 12px 3px #54e6e6b3,inset 0 0 12px 3px #54e6e680;transition:opacity .5s}
+/* the outer rim, the brass ring round the compass star, and the ring round the orb */
+.storyVault .r1{--s:.97}.storyVault .r2{--s:.43}.storyVault .r3{--s:.27}
+.story[data-fx="open"] .storyVault .vHalf.l{transform:rotateY(76deg);filter:brightness(.5)}
+.story[data-fx="open"] .storyVault .vHalf.r{transform:rotateY(-76deg);filter:brightness(.5)}
+.story[data-fx="open"] .storyVault .vIn{opacity:1}
+.story[data-fx="open"] .storyVault .vRing{opacity:0}
+@media(prefers-reduced-motion:no-preference){
+ .story[data-fx="seam"] .storyVault .r3{animation:vRingOn 1.2s ease-out .4s both}
+ .story[data-fx="open"] .storyVault .vIn::after{animation:vFlood 2.2s ease-out .3s both}
+}
+@media(prefers-reduced-motion:reduce){.storyVault .vHalf,.storyVault .vIn,.storyVault .vRing{transition:none}.story[data-fx="open"] .storyVault .vIn::after{opacity:.2}}
+@keyframes vRingOn{0%{opacity:0;transform:scale(.8)}60%{opacity:1;transform:scale(1.04)}100%{opacity:1;transform:none}}
+@keyframes vFlood{0%{opacity:0}30%{opacity:1}100%{opacity:.2}}

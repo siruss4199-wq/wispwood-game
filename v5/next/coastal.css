@@ -326,10 +326,12 @@ body.nextMode[data-art] #board.board .tile.tile.glass{background:radial-gradient
    the Home art, 4:3 like the screen); each turned ring lights one turquoise ring over the dial. The
    place's icon is not drawn over the door. */
 #coastMap .beachScene[data-area="entrance"] .restoredIcon{display:none}
-.doorRings{position:absolute;left:48.7%;top:50%;width:54%;aspect-ratio:1;translate:-50% -50%;pointer-events:none;z-index:1}
+/* Build 47f: the rings sit on the door's own rings: its outer rim, the brass ring round the compass
+   star and the ring round the orb (measured on the Home picture the coast's Vault is cut from). */
+.doorRings{position:absolute;left:48.6%;top:54.5%;width:47.6%;aspect-ratio:224/231;translate:-50% -50%;pointer-events:none;z-index:1}
 .doorRings i{position:absolute;inset:0;margin:auto;border-radius:50%;border:2px solid #7ff3f300;box-shadow:none;transition:border-color .6s,box-shadow .6s}
-.doorRings i:nth-child(2){width:74%;height:74%}.doorRings i:nth-child(3){width:46%;height:46%}
-.doorRings i:nth-child(1){width:100%;height:100%}
+.doorRings i:nth-child(2){width:43%;height:43%}.doorRings i:nth-child(3){width:27%;height:27%}
+.doorRings i:nth-child(1){width:97%;height:97%}
 .doorRings[data-stage="1"] i:nth-child(1),.doorRings[data-stage="2"] i:nth-child(-n+2),.doorRings[data-stage="3"] i{border-color:#9ff6f6;box-shadow:0 0 10px 2px #54e6e6b3,inset 0 0 10px 2px #54e6e680}
 /* Build 47e: Chapter 2's reveal cards (PR #80's, in the coast's colours): the array's signal and the
    hidden harbour, in the story dialog. */
@@ -355,3 +357,39 @@ body.nextMode[data-art] #board.board .tile.tile.glass{background:radial-gradient
 @keyframes panelIn{from{transform:scale(1.06)}to{transform:none}}
 @keyframes beamPulse{0%,100%{opacity:.35}20%,40%{opacity:1}60%{opacity:.5}}
 @media(orientation:landscape) and (max-height:560px){.nextMode .revealStage{width:min(30vh,150px)}.nextMode .revealPanel{height:min(34vh,170px);max-height:none;width:auto}}
+
+/* Build 47f: the Vault door as its own picture (cards and the place row), its rings lit for the stage. */
+.doorThumb{position:relative;display:block;width:100%;height:100%;border-radius:50%;overflow:hidden;box-shadow:0 0 0 2px #fff,0 3px 8px #0003}
+.doorThumb img{width:100%;height:100%;object-fit:cover;display:block}
+.doorThumb i{position:absolute;left:50%;top:50%;translate:-50% -50%;border-radius:50%;border:2px solid #9ff6f600;transition:border-color .5s,box-shadow .5s}
+.doorThumb i:nth-child(2){width:87%;height:87%}.doorThumb i:nth-child(3){width:38.5%;height:38.5%}.doorThumb i:nth-child(4){width:24%;height:24%}
+.doorThumb[data-stage="1"] i:nth-child(2),.doorThumb[data-stage="2"] i:nth-child(-n+3):not(img),.doorThumb[data-stage="3"] i{border-color:#a8fbff;box-shadow:0 0 6px 1px #54e6e6b3,inset 0 0 6px 1px #54e6e680}
+.unbuilt .doorThumb img{filter:none}
+/* Build 47f: the Observatory's picture already paints every furnishing, so its places are not stood on
+   it as cut-outs; a restored place brings its colour back around its spot (the beach's own effect). */
+#coastMap .beachScene.mapped[data-area="vault"] .sceneBase{filter:grayscale(calc(.8 - .5*var(--p,0))) brightness(calc(.72 + .2*var(--p,0))) contrast(.95) sepia(.1)}
+#coastMap .beachScene.mapped[data-area="vault"] .sceneColor{display:block}
+/* a locked stage says what to finish first and offers to show it */
+.mapCard.locked .cardWhy{margin:2px 0 0;font-size:12.5px;color:#6b5b45}
+/* Build 47f: the chapter's end leads with the achievement and its picture; the totals come second. */
+.nextMode dialog#endDialog{background:linear-gradient(180deg,#fffaf3,#f6ecd6);padding:0 0 16px;overflow:hidden auto;max-width:min(420px,calc(100vw - 24px))}
+#endDialog .endArt{margin:0 0 12px;height:clamp(120px,30vh,220px);overflow:hidden;background:#0b3c4a}
+#endDialog .endArt img{width:100%;height:100%;object-fit:cover;object-position:50% 45%;display:block}
+#endDialog .endTag{display:inline-block;margin:0 16px 6px;padding:3px 12px;border-radius:999px;background:linear-gradient(#2fb3a6,#16877e);color:#fff;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+.nextMode #endDialog #endTitle{display:block;min-height:0;margin:0 16px 8px;padding:0;color:var(--cb-ink,#173a52);font-size:clamp(22px,6.4vw,28px);line-height:1.15;text-shadow:none;overflow-wrap:anywhere}
+#endDialog .endLine{margin:0 18px 6px;font-size:15px;line-height:1.4;color:#3d4a52}
+#endDialog .endNext{margin:0 18px 12px;font-size:13.5px;color:#6b5b45}
+#endDialog .endStats{margin:0 14px 12px;padding:10px 12px;border-radius:14px;background:#fff6e4;box-shadow:inset 0 0 0 1.5px #f0dcb3;text-align:left}
+#endDialog .endStats h3{margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8a6a35}
+#endDialog .endStats dl{margin:0;display:grid;gap:4px}
+#endDialog .endStats dl div{display:flex;justify-content:space-between;gap:8px;font-size:13.5px}
+#endDialog .endStats dt{color:#4a3d2a}#endDialog .endStats dd{margin:0;font-weight:900;color:#173a52}
+#endDialog .endStats p{margin:8px 0 0;font-size:12.5px;color:#6b5b45}
+#endDialog .primary,#endDialog .menuButton{width:calc(100% - 32px);margin-left:16px;margin-right:16px}
+@media(orientation:landscape) and (max-height:560px){
+ .nextMode dialog#endDialog{width:min(760px,calc(100vw - 24px));max-width:none;max-height:calc(100dvh - 24px);padding:0}
+ #endContent{display:grid;grid-template-columns:minmax(0,38%) minmax(0,1fr);align-items:start;padding-bottom:14px}
+ #endDialog .endArt{grid-column:1;grid-row:1/span 8;height:100%;min-height:100%;margin:0;align-self:stretch}
+ #endContent>:not(.endArt){grid-column:2}
+ #endDialog .endTag{justify-self:center;margin-top:14px}
+}

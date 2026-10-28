@@ -47,7 +47,7 @@ async function closeBeats(page){for(let n=0;n<8&&await page.locator('#beat[open]
    await page.locator('#mapButton').tap();await page.locator('#coastMap [data-restore="obs-passage"]').tap();await closeBeats(page);
    await page.waitForSelector('#beat[open] .vaultReveal',{timeout:4000});assert.match(await page.textContent('#beatContent'),/A hidden harbour/);await closeBeats(page);
    await page.waitForSelector('#endDialog[open]',{timeout:4000});
-   {const t=await page.locator('#endContent').textContent();assert.match(t,/The sea gate is open/);assert.match(t,/63 stages/);assert.match(t,/Chapter 3, The Hidden Harbour, is in development/);assert.doesNotMatch(t,/20\d\d|January|February|March|April|May|June|July|August|September|October|November|December/,'no release date');}
+   {const t=await page.locator('#endContent').textContent();assert.match(t,/The sea gate is open/);assert.match(t,/Restoration stages\s*63 \/ 63/);assert.match(t,/The Hidden Harbour is not available yet/);assert.doesNotMatch(t,/20\d\d|January|February|March|April|May|June|July|August|September|October|November|December/,'no release date');}
    assert.equal(await page.locator('#endContent [data-keep]').count(),1);assert.equal(await page.locator('#endContent [data-feedback]').count(),1);
    await page.locator('#endContent [data-keep]').tap();assert.equal(await page.locator('#endDialog[open]').count(),0,'keep playing returns to the game');
    assert.equal((await read(page)).seenEnd,true);

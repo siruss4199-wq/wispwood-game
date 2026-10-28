@@ -41,7 +41,7 @@ const URL='http://127.0.0.1:8080/v5/play.html',KEY='vaultwake-v5-coast';
     const gold=(await save()).orders.find(o=>o?.story==='vault-door');
     if(ring===3)assert.deepEqual(gold.needs,[{family:'lamp',tier:3,count:1},{family:'chart',tier:4,count:1}],tag('inner ring: a Signal lamp and a Bearing dial'));
     await page.locator(`#requests [data-order="${gold.id}"]`).click();await page.waitForTimeout(150);
-    if(await page.locator('#requests .requestCard.ready button, #hint[data-kind="deliver"]').count())await page.locator('#hint[data-kind="deliver"]').click().catch(()=>{});
+    if(await page.locator('#requests .requestCard.ready button, #hint[data-kind="deliver"]').count())await page.locator(`#hint[data-kind="deliver"]`).click({timeout:1500}).catch(()=>{});
     await page.waitForFunction(([k,id])=>!JSON.parse(localStorage.getItem(k)).orders.some(o=>o?.id===id),[KEY,gold.id],{timeout:5000});
     await page.locator('#mapButton').click();await page.waitForSelector('#coastMap[open]');
     await page.locator('#coastMap [data-restore="vault-door"]').click();await page.waitForTimeout(400);
@@ -50,11 +50,22 @@ const URL='http://127.0.0.1:8080/v5/play.html',KEY='vaultwake-v5-coast';
    // the inner ring: its line, then the Vault opens (the reveal), then the end card
    await beats();await page.waitForSelector('#story:not([hidden])',{timeout:8000});
    assert.match(await page.textContent('#storyLabel'),/Chapter 1 complete/i);assert.ok(await page.locator('#storySkip').isVisible());
-   assert.match(await page.textContent('#storyText'),/Light runs down the seam/);assert.equal(await page.getAttribute('#story','data-fx'),'seam');
+   // Build 47f: the inner ring lights, the door's two halves swing open on the Observatory, then inside
+   assert.match(await page.textContent('#storyText'),/light runs down the seam/);assert.equal(await page.getAttribute('#story','data-fx'),'seam');
+   assert.ok(await page.locator('#story .storyVault:not([hidden])').isVisible(),tag('the door is drawn over the picture'));
+   const closed=await page.locator('#story .vHalf.l').evaluate(e=>getComputedStyle(e).transform);assert.equal(closed,'none',tag('closed: the halves lie flat on the picture'));
    await page.locator('#storyNext').click();assert.equal(await page.getAttribute('#story','data-fx'),'open');assert.match(await page.textContent('#storyWho'),/Neri/);
+   const open=await page.locator('#story .vHalf.l').evaluate(e=>getComputedStyle(e).transform);assert.notEqual(open,'none',tag('open: the halves have swung (reduced motion: at once)'));
+   assert.equal(await page.locator('#story .vIn').evaluate(e=>getComputedStyle(e).opacity),'1',tag('the interior shows'));
+   await page.locator('#storyNext').click();assert.match(await page.textContent('#storyText'),/Chapter 2 begins here/);assert.equal(await page.textContent('#storyNext'),'Enter the Vault');
+   assert.ok(await page.locator('#story .storyVault').isHidden(),tag('inside: no door any more'));
    await page.locator('#storyNext').click();await page.waitForSelector('#story',{state:'hidden'});
    // Build 47d: inside, Chapter 2 begins with the Tide Archive's intro (no end card yet)
-   const inside=await beats();assert.match(inside,/Records, floor to ceiling/,tag('the archive intro follows the reveal'));
+   const last=async()=>{for(let n=0;n<10&&await page.locator('#beat[open]').count();n++){const t=await page.locator('#beatNext').textContent();if(n>=1&&t==='Make the gold order')return t;await page.locator('#beatNext').click();await page.waitForTimeout(80);}return '';};
+   assert.match(await page.locator('#beatContent').textContent(),/Records, floor to ceiling/,tag('the archive intro follows the reveal'));
+   assert.equal(await last(),'Make the gold order',tag('the intro ends on the first objective'));await page.locator('#beatNext').click();
+   {const g=(await save()).orders.find(o=>o?.story==='vault-archive');await page.waitForSelector(`#requests .requestCard.active[data-order="${g.id}"]`,{timeout:3000});
+    assert.match(await page.textContent('#message'),/Light the archive: make 2 × Storm lantern/,tag('the first objective is said'));}
    s=await save();assert.equal(s.area,3);assert.equal(s.seen['vault-open'],true);assert.equal(s.seen.archive,true);
    assert.equal(await page.locator('#endDialog[open]').count(),0,tag('no end card: Chapter 2 is playable'));
    assert.ok(s.orders.some(o=>o?.story==='vault-archive'),tag('the archive\'s gold order'));
@@ -65,7 +76,7 @@ const URL='http://127.0.0.1:8080/v5/play.html',KEY='vaultwake-v5-coast';
     await page.reload();await page.waitForSelector('#board .tile');await beats();
     const gold=(await save()).orders.find(o=>o?.story==='vault-archive');
     assert.ok(gold.needs.every(r=>['lamp','shell'].includes(r.family)),tag(`archive stage ${st} wants late-generator parts`));
-    await page.locator(`#requests [data-order="${gold.id}"]`).click();await page.waitForTimeout(150);await page.locator('#hint[data-kind="deliver"]').click().catch(()=>{});
+    await page.locator(`#requests [data-order="${gold.id}"]`).click();await page.waitForTimeout(150);await page.locator(`#hint[data-kind="deliver"]`).click({timeout:1500}).catch(()=>{});
     await page.waitForFunction(([k,id])=>!JSON.parse(localStorage.getItem(k)).orders.some(o=>o?.id===id),[KEY,gold.id],{timeout:5000});
     await page.locator('#mapButton').click();await page.waitForSelector('#coastMap[open]');
     if(st===1)assert.match(await page.locator('#coastMap .sceneBase').getAttribute('src'),/observatory-map\.webp$/,tag('the Observatory interior'));
@@ -92,23 +103,30 @@ const URL='http://127.0.0.1:8080/v5/play.html',KEY='vaultwake-v5-coast';
    // inside the Vault the book has the Lens Bench's page (Chapter 1's book does not show it)
    await page.locator('#bookButton').click();await page.waitForSelector('#book[open]');assert.equal(await page.locator('#book .bookPage').count(),6,tag('a page for the Lens Bench'));
    assert.match(await page.locator('#book').textContent(),/Lens Bench/);await page.keyboard.press('Escape');
-   // the sea gate's last stage waits for the array, and says so
+   // the sea gate's last stage waits for the array, says so, and shows the array (Build 47f)
    await set({...obs(3),'obs-array':2,'obs-passage':2},{'obs-array':3});
    await page.locator('#mapButton').click();await page.waitForSelector('#coastMap[open]');await page.locator('#coastMap .places [data-select="obs-passage"]').click();
-   assert.match(await page.locator('#mapCard').textContent(),/Open the sea gate.*Opens once Wake the array is done/s,tag('the sea gate says what it waits for'));
+   assert.match(await page.locator('#mapCard').textContent(),/Open the sea gate.*Finish the array first\..*It needs Wake the array \(stage 3 of 3\)/s,tag('the sea gate says what it waits for'));
+   await page.locator('#mapCard [data-select="obs-array"]').click();assert.equal(await page.getAttribute('#mapCard','data-card'),'obs-array',tag('View array shows the array'));
+   assert.match(await page.locator('#mapCard').textContent(),/Wake the array/);
+   // no cut-out stands on the Observatory's picture, which already paints its furnishings
+   assert.equal(await page.locator('#coastMap .beachScene[data-area="vault"] .restoredIcon').count(),0,tag('no duplicate furnishings'));
    // the array wakes: Tamsin's signal card (where it comes from, not who sends it)
-   await page.locator('#coastMap .places [data-select="obs-array"]').click();await page.locator('#coastMap [data-restore="obs-array"]').click();await page.waitForTimeout(300);
+   await page.locator('#coastMap [data-restore="obs-array"]').click();await page.waitForTimeout(300);
    for(let n=0;n<4&&!await page.locator('#beat[open] .vaultReveal').count();n++){await beats();await page.waitForTimeout(500);}
    assert.match(await page.textContent('#beatContent'),/A signal on one bearing.*Not who sends it/s,tag('the signal card'));
+   assert.equal(await page.textContent('#beatNext'),'View sea gate');
    await page.locator('#beatNext').click();s=await save();assert.equal(s.seen['obs-signal'],true);
-   if(await page.locator('#coastMap[open]').count())await page.locator('#coastMap .close').click();
+   await page.waitForSelector('#coastMap[open]');assert.equal(await page.getAttribute('#mapCard','data-card'),'obs-passage',tag('View sea gate shows the sea gate'));
+   await page.locator('#coastMap .close').click();
    // the sea gate opens: the hidden harbour, then Chapter 2's end card
    await set({},{'obs-passage':3});
    await page.locator('#mapButton').click();await page.waitForSelector('#coastMap[open]');await page.locator('#coastMap [data-restore="obs-passage"]').click();await page.waitForTimeout(300);
    for(let n=0;n<4&&!await page.locator('#beat[open] .vaultReveal').count();n++){await beats();await page.waitForTimeout(500);}
    assert.match(await page.textContent('#beatContent'),/A hidden harbour/,tag('the harbour card'));await page.locator('#beatNext').click();
    await page.waitForSelector('#endDialog[open]',{timeout:5000});const end=await page.textContent('#endContent');
-   assert.match(end,/CHAPTER 2 COMPLETE.*The sea gate is open/s);assert.match(end,/Chapter 3, The Hidden Harbour, is in development/);assert.equal(await page.locator('#endContent button').count(),2,tag('Keep playing and Share feedback only'));
+   assert.match(end,/Chapter 2 complete.*The sea gate is open/s);assert.match(end,/The Hidden Harbour is not available yet/);assert.doesNotMatch(end,/in development|Chapter 3/);
+   assert.match(end,/Restoration stages\s*63 \/ 63/);assert.match(end,/Generator types found\s*\d/);assert.equal(await page.locator('#endContent button').count(),2,tag('Keep playing and Share feedback only'));
    s=await save();assert.equal(s.seenEnd,true);assert.equal(s.seen['obs-harbour'],true);
    await page.locator('#endContent [data-keep]').click();
    // reload: neither a reveal nor the end card again

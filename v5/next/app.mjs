@@ -1,7 +1,7 @@
 // Coast Camp: the new-loop page (v5/play.html). Same look as Classic V5, one loop:
 // generators → merge → crew orders → coins → upgrade the coast's places on the beach screen.
 import {blockedStage,isStuck,allDone,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,newestGenerator,cog,token,SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,nextTask,currentArea,areaDone,upgrades,stageOf,builtCount,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys,reachable,generatorsMerge,MAX_GENERATOR_LEVEL,GLASS_HITS,nextKind,UNLOCK_LEVEL,GENERATOR_ORDER,storyTarget,roleOf} from './game.mjs';
-import {AREAS,STAGES,TASKS} from './areas.mjs';
+import {AREAS,STAGES,TASKS,LABELS} from './areas.mjs';
 import {primaryAction} from './guide.mjs';
 import {needsOf,missingOf,levelOf} from './needs.mjs';
 import {LEVEL_PATH,BONUS_NAMES,CHEST_ENERGY,EARLY_LEVELS,EARLY_LEVEL_ENERGY} from './game.mjs';
@@ -32,7 +32,7 @@ function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el
 let adPlaying=false;
 const sfx=(kind,tier=0)=>sounds.play(kind,tier,{muted:adPlaying||platform.muted()});
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 47e · the Silent Observatory';
+export const BUILD='Build 47f · Chapter 1–2 visual QA';
 // The level path (docs/V5_LEVEL_PATH_2026-10-27.md): a crew order that pays a tool on top shows it
 // beside its coins (a Tide token; a favour's Sea chest or Brass cog).
 const bonusThing=o=>o.bonus==='cog'?cog():o.bonus==='chest'?kit(newestGenerator(state),2):o.bonus==='token'?token():null;
@@ -93,13 +93,17 @@ const ADS=document.documentElement.dataset.ads==='on'||DEV&&document.documentEle
 const pips=n=>`<span class="pips" aria-label="stage ${n} of ${STAGES}">${Array.from({length:STAGES},(_,k)=>`<i class="${k<n?'on':''}"></i>`).join('')}</span>`;
 // Places with stage art (build 38: workshop, pier, beacon) are drawn as they stand at their stage.
 const stageArt=(t,n)=>`<img class="art" src="assets/premium/coast/place-${t.art}-${Math.max(1,n)}.webp" alt="" draggable="false">`;
-const placeArt=(t,n)=>t.art?stageArt(t,n):iconArt(t.icon);
+// Build 47f: the Vault door is drawn as itself (a crop of the Home picture's door) with its rings lit
+// for the stage, not as a part's icon; painted ring states do not exist (see the doc's missing art).
+const doorArt=n=>`<span class="doorThumb" data-stage="${n}"><img class="art" src="assets/premium/coast/vault-door-thumb.webp" alt="" draggable="false"><i></i><i></i><i></i></span>`;
+const placeArt=(t,n)=>t.id==='vault-door'?doorArt(n):t.art?stageArt(t,n):iconArt(t.icon);
 // Beach places drawn from the user's painted sheet (Build 41n): every stage shares one canvas with
 // its ground at 90 % down the middle, so the picture stands on its spot; TOP is how far down the
 // canvas each stage's top is (markers float just above it).
-// Build 47e: the Observatory's places (PR #80's cut-outs) stand the same way.
-const ANCHORED=new Set(['path','tent','mast','workshop','pier','beacon','cliff','obs-hall','obs-desk','obs-bench','obs-array','obs-passage']);
-const TOP={'obs-hall-1':.14,'obs-hall-2':.03,'obs-hall-3':.03,'obs-desk-1':.17,'obs-desk-2':.03,'obs-desk-3':.03,'obs-bench-1':.16,'obs-bench-2':.03,'obs-bench-3':.03,'obs-array-1':.22,'obs-array-2':.03,'obs-array-3':.03,'obs-passage-1':.08,'obs-passage-2':.03,'obs-passage-3':.03,'path-1':.33,'path-2':.32,'path-3':.16,'tent-1':.19,'tent-2':.17,'tent-3':.13,'mast-1':.22,'mast-2':.17,'mast-3':.1,'workshop-1':.19,'workshop-2':.18,'workshop-3':.18,'pier-1':.29,'pier-2':.12,'pier-3':.19,'beacon-1':.19,'beacon-2':.16,'beacon-3':.13,'cliff-1':.23,'cliff-2':.14,'cliff-3':.12};
+// Build 47f: the Observatory's cut-outs are not stood on its picture, which already paints every one
+// of its furnishings; there a place's restoration shows as its colour coming back (sceneHtml).
+const ANCHORED=new Set(['path','tent','mast','workshop','pier','beacon','cliff']);
+const TOP={'path-1':.33,'path-2':.32,'path-3':.16,'tent-1':.19,'tent-2':.17,'tent-3':.13,'mast-1':.22,'mast-2':.17,'mast-3':.1,'workshop-1':.19,'workshop-2':.18,'workshop-3':.18,'pier-1':.29,'pier-2':.12,'pier-3':.19,'beacon-1':.19,'beacon-2':.16,'beacon-3':.13,'cliff-1':.23,'cliff-2':.14,'cliff-3':.12};
 // A marker sits beside a standing place, at its right shoulder (its left one near the right edge), so it never covers it; on an
 // empty spot it marks the spot.
 function markerAt(t){
@@ -188,7 +192,7 @@ function renderOrderTools(){
  if(!o||orderItems(state,o)){bar.hidden=true;bar.innerHTML='';return;}
  const day=today(),free=swapsLeft(state,day),ads=adSwapsLeft(state,day),missing=missingOf(state,o);
  bar.hidden=false;
- const swap=o.story?`<span class="toolNote">The gold order is the ${currentArea(state).name}'s next stage: it stays.</span>`:`<span class="toolNote">Stuck on ${CREW[o.who].name}'s order?</span>`+(free>0?`<button data-swap>↻ New order <small>${free} free today</small></button>`:ADS&&ads>0?'<button class="adOffer" data-swap-ad>▶ New order</button>':'<button disabled>No more changes today</button>');
+ const swap=o.story?`<span class="toolNote">The gold order is for ${upgrades(state).find(u=>u.id===o.story)?.name??TASKS[o.story].name}: it stays.</span>`:`<span class="toolNote">Stuck on ${CREW[o.who].name}'s order?</span>`+(free>0?`<button data-swap>↻ New order <small>${free} free today</small></button>`:ADS&&ads>0?'<button class="adOffer" data-swap-ad>▶ New order</button>':'<button disabled>No more changes today</button>');
  // What the order is for and where its coins go (Build 44): the crew member's reason, and the
  // next stage the coins count toward (the gold order instead brings that stage's materials).
  const role=roleOf(o),why=purposeOf(o,role),n=nextPlace(),kind={quick:'Quick job',pair:'Two-part job'}[role];
@@ -262,9 +266,8 @@ function renderNextPlace(){
  if(!n){el.dataset.place='';el.dataset.ready='0';el.classList.remove('ready');
   el.querySelector('.rsThumb').innerHTML=`<img class="art" src="assets/premium/${area.picture}-vibrant.webp" alt="">`;
   // After the last stage (Audit 2026-10-25: coins had no use) the strip says the chapter is done
-  // and that the coins crew orders keep paying carry over to the next area.
-  const next=AREAS.slice(state.area+1).find(a=>a.coming)?.name;
-  if(allDone(state)){el.querySelector('.rsText b').textContent='Chapter complete';el.querySelector('.rsText small').innerHTML=next?`Coins carry over to ${/^The /.test(next)?next:'the '+next} · ${COIN}${state.coins}`:`${COIN}${state.coins} saved`;}
+  // and the coins crew orders keep paying are saved (Build 47f: no area is promised; none is open).
+  if(allDone(state)){el.querySelector('.rsText b').textContent='Chapter complete';el.querySelector('.rsText small').innerHTML=`${COIN}${state.coins} saved`;}
   else{el.querySelector('.rsText b').textContent=area.name;el.querySelector('.rsText small').textContent=areaDone(state)?'Every place is restored':'The next stages open as you build';}
   el.querySelector('.rsAction').textContent='View';el.setAttribute('aria-label',`Go to the ${area.name}`);return;}
  const {u,t,ready}=n,was=el.dataset.ready==='1';
@@ -601,7 +604,7 @@ function sceneHtml(area){
  const done=areaDone(state,area),vars=area.tasks.map((t,k)=>{const n=stageOf(state,t.id),grow=lastStage?.id===t.id;return `--r${k}:${REVEAL[grow?lastStage.stage-1:n]}`;}).join(';');
  const masks=area.tasks.map((t,k)=>`radial-gradient(ellipse calc(var(--r${k})*1%) calc(var(--r${k})*2%) at ${t.at[0]}% ${t.at[1]}%,#000 40%,transparent 100%)`).join(',');
  const pic=area.map?`assets/premium/${area.map}.webp`:`assets/premium/${area.picture}-vibrant.webp`;
- return `<div class="beachScene ${done?'complete':''} ${area.map?'mapped':''}" data-area="${area.id}" data-built="${builtCount(state,area)}" style="--p:${(builtCount(state,area)/(area.tasks.length*STAGES)).toFixed(3)}"><img class="sceneBase" src="${pic}" alt="${area.name}, ${done?'fully restored':builtCount(state,area)+' of '+area.tasks.length*STAGES+' upgrades'}"><div class="sceneStorm" aria-hidden="true"></div>${area.id==='entrance'?`<div class="doorRings" data-stage="${stageOf(state,'vault-door')}" aria-hidden="true"><i></i><i></i><i></i></div>`:''}<img class="sceneColor" src="${pic}" alt="" aria-hidden="true" style="${vars};-webkit-mask-image:${masks};mask-image:${masks}"><div class="restored">${placeIcons(area.tasks.filter(t=>stageOf(state,t.id)>0))}</div></div>`;
+ return `<div class="beachScene ${done?'complete':''} ${area.map?'mapped':''}" data-area="${area.id}" data-built="${builtCount(state,area)}" style="--p:${(builtCount(state,area)/(area.tasks.length*STAGES)).toFixed(3)}"><img class="sceneBase" src="${pic}" alt="${area.name}, ${done?'fully restored':builtCount(state,area)+' of '+area.tasks.length*STAGES+' upgrades'}"><div class="sceneStorm" aria-hidden="true"></div>${area.id==='entrance'?`<div class="doorRings" data-stage="${stageOf(state,'vault-door')}" aria-hidden="true"><i></i><i></i><i></i></div>`:''}<img class="sceneColor" src="${pic}" alt="" aria-hidden="true" style="${vars};-webkit-mask-image:${masks};mask-image:${masks}"><div class="restored">${area.id==='vault'?'':placeIcons(area.tasks.filter(t=>stageOf(state,t.id)>0))}</div></div>`;
 }
 // After the picture is drawn with the old size, the new one is set so the colour spreads.
 function growScene(){
@@ -623,9 +626,13 @@ function mapCard(area,t,u){
  if(n>=STAGES)return `<section id="mapCard" class="mapCard done" data-card="${t.id}"><span class="cardArt">${placeArt(t,n)}</span><div class="cardBody"><small class="cardPlace">${t.name}</small><h3>${t.stages[STAGES-1].name}</h3>${pips(n)}<p class="cardDone">Fully restored ✓</p></div><button class="cardButton replay" type="button" data-replay="${t.id}">Replay its story</button></section>`;
  // Build 47e (from PR #80): a stage that waits for another place (the hall for the archive, the
  // sea gate for the array) says which.
- if(!u){const k=area.tasks.indexOf(t),b=blockedStage(state,t.id);
-  const why=b?`Opens once ${Object.entries(b.requires).map(([id,m])=>TASKS[id].stages[m-1].name).join(' and ')} is done.`:`Opens when ${area.tasks[k-1]?.name??'the place before it'} has its first stage.`;
-  return `<section id="mapCard" class="mapCard locked" data-card="${t.id}"><span class="cardArt ${n?'':'unbuilt'}">${placeArt(t,n)}</span><div class="cardBody"><small class="cardPlace">${b?`Stage ${b.stage}`:'Locked'}</small><h3>${b?b.name:t.name}</h3>${pips(n)}<p class="cardDone">${why}</p></div></section>`;}
+ // Build 47f: it names the place to finish first and offers to show it (from the stage's own
+ // requirement, the first one not yet met).
+ if(!u){const k=area.tasks.indexOf(t),b=blockedStage(state,t.id),need=b&&Object.entries(b.requires).find(([id,m])=>stageOf(state,id)<m);
+  const label=need&&(LABELS[need[0]]??TASKS[need[0]].name),why=need?`Finish ${label} first.`:`Opens when ${area.tasks[k-1]?.name??'the place before it'} has its first stage.`;
+  const sub=need?`<p class="cardWhy">It needs ${TASKS[need[0]].stages[need[1]-1].name} (stage ${need[1]} of ${STAGES}).</p>`:'';
+  const go=need&&area.tasks.some(x=>x.id===need[0])?`<button class="cardButton go" type="button" data-select="${need[0]}">View ${label.replace(/^the /,'')}</button>`:'';
+  return `<section id="mapCard" class="mapCard locked" data-card="${t.id}"><span class="cardArt ${n?'':'unbuilt'}">${placeArt(t,n)}</span><div class="cardBody"><small class="cardPlace">${b?`Stage ${b.stage}`:'Locked'}</small><h3>${b?b.name:t.name}</h3>${pips(n)}<p class="cardDone">${why}</p>${sub}</div>${go}</section>`;}
  const order=state.orders.find(o=>o.story===t.id),coinsOk=state.coins>=u.cost;
  const stuff=u.materials?`<span class="need ok"><b class="needIcon">✓</b><span>Materials</span></span>`
   :order?`<span class="need gold"><span class="needParts">${needsOf(state,order).map(r=>`<i class="${r.have>=r.count?'got':'short'}">${draw(item(r.family,r.tier))}${r.sibling?`<em class="needLv" aria-label="level ${levelOf(r)}">Lv${levelOf(r)}</em>`:''}<b>${r.have>=r.count?'✓ ':''}${r.have}/${r.count}</b></i>`).join('')}</span><span>Gold order</span></span>`
@@ -657,13 +664,13 @@ function showMap(){
  // Finished areas stay listed above the current one, the ones still to come below it.
  const before=AREAS.slice(0,state.area).map(a=>`<section class="mapArea done"><div class="mapHead"><img src="assets/premium/${a.picture}-vibrant.webp" alt=""><div><h2>${a.name}</h2><b>Complete ✓</b></div></div></section>`).join('');
  const laterAreas=AREAS.slice(state.area+1);
- const later=laterAreas.map(a=>`<section class="mapArea coming"><div class="mapHead"><img src="assets/premium/${a.picture}-vibrant.webp" alt=""><div><h2>${a.name}</h2><b>In development</b></div></div></section>`).join('');
+ const later=laterAreas.map(a=>`<section class="mapArea coming"><div class="mapHead"><img src="assets/premium/${a.picture}-vibrant.webp" alt=""><div><h2>${a.name}</h2><b>${a.coming?'Not available yet':'Next'}</b></div></div></section>`).join('');
  // Build 44: the whole way to the Vault, small, at the top: areas done, this one, the ones still
  // to come, and the Vault itself at the end (all real areas; the later ones open in updates).
  const journey=`<ol class="journey" aria-label="The way to the Vault">${AREAS.map((a,k)=>`<li class="${k<state.area?'done':k===state.area?'here':'later'} ${a.id==='vault'?'vault':''}"><img src="assets/premium/${a.picture}-vibrant.webp" alt=""><span>${a.name}</span></li>`).join('')}</ol>`;
  $('#mapContent').innerHTML=`<div class="beachTop"><h2 id="mapTitle" class="mapTitle">${area.name}</h2><b class="beachCoins">${COIN} ${state.coins}</b></div>${journey}
   <div class="sceneWrap">${sceneHtml(area)}<div class="sceneLight" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div><div class="siteMarkers">${markers}</div>
-  <div class="mapProgress" role="img" aria-label="${built} of ${total} upgrades"><i style="width:${(100*built/total).toFixed(1)}%"></i><b>${built} / ${total}${areaDone(state)?' · complete!':''}</b></div></div>
+  <div class="mapProgress" role="img" aria-label="${built} of ${total} stages in ${area.name}"><i style="width:${(100*built/total).toFixed(1)}%"></i><b>${built} / ${total} stages${areaDone(state)?' · complete!':''}</b></div></div>
   ${mapCard(area,focus,open.get(focus.id))}
   <ol class="places">${places}</ol>${before}${laterAreas.length?`<details class="mapFuture"><summary>Coming next · ${laterAreas.length} area${laterAreas.length>1?'s':''}</summary>${later}</details>`:''}
   <button class="backToBoard" type="button" data-back>Back to the board</button>`;
@@ -699,7 +706,10 @@ function buildFx(id,from,was=0){
   sfx('milestone');},520);
 }
 $('#mapContent').addEventListener('click',e=>{
- const r=e.target.closest('[data-restore]');if(r){const from=r.getBoundingClientRect(),cost=upgrades(state).find(u=>u.id===r.dataset.restore)?.cost,was=stageOf(state,r.dataset.restore);receipt=cost;const res=run({type:'restore',id:r.dataset.restore});if(!res.ok)receipt=null;if(res.ok&&!res.effects.nextArea)lastStage={id:res.task,stage:res.stage};if(res.ok&&stageOf(state,res.task)>=STAGES)mapFocus=null;showMap();if(res.ok&&!res.effects.nextArea)buildFx(res.task,from,was);return;}
+ const r=e.target.closest('[data-restore]');if(r){const from=r.getBoundingClientRect(),cost=upgrades(state).find(u=>u.id===r.dataset.restore)?.cost,was=stageOf(state,r.dataset.restore);receipt=cost;const res=run({type:'restore',id:r.dataset.restore});if(!res.ok)receipt=null;if(res.ok&&!res.effects.nextArea)lastStage={id:res.task,stage:res.stage};if(res.ok&&stageOf(state,res.task)>=STAGES)mapFocus=null;
+  // Build 47f: a stage that opens the next area behind a reveal (the inner ring) keeps its own area on
+  // screen until the reveal has shown the way in; the new area is not shown before its door opens.
+  if(!(res.ok&&res.effects.nextArea&&pendingReveals().some(v=>v.live(state))))showMap();if(res.ok&&!res.effects.nextArea)buildFx(res.task,from,was);return;}
  const sel=e.target.closest('[data-select]');if(sel){mapFocus=sel.dataset.select;sfx('tap');showMap();return;}
  const make=e.target.closest('[data-make]');if(make){$('#coastMap').close();focusOrder=make.dataset.make;render();$('#message').textContent='The gold order is marked: make its parts and deliver it for the materials.';return;}
  const p=e.target.closest('[data-replay]');if(p){showBeat(p.dataset.replay,{},STAGES);return;}
@@ -723,9 +733,11 @@ function showBeat(id,effects,stage=stageOf(state,id)){
  const next=AREAS[AREAS.indexOf(area)+1];
  // names that start with "The" are said once (Build 47e: "The Silent Observatory", "The Hidden Harbour")
  const bare=a=>a.name.replace(/^The /,'');
- if(effects?.nextArea)extra.push(['bram',`${area.name} is complete! ${area.id==='beach'?'Up the cliff: the':'The'} ${bare(next)} is open.`]);
- else if(effects?.areaDone)extra.push(['bram',`${area.name} is complete!${next?` The ${bare(next)} is still to come.`:''}`]);
- playLines(st.name,st.lines.concat(extra),()=>{const fresh=effects&&Object.keys(effects).length,nxt=fresh?nextPlace():null;if(nxt&&!effects.nextArea)mapFocus=nxt.u.id;if(effects?.nextArea){render();showMap();if(!nextReveal())showIntro();}else if($('#coastMap').open)showMap();const icon=$(`#coastMap .restoredIcon[data-task="${id}"]`)??$(`.restoredIcon[data-task="${id}"]`);icon?.classList.add('upgraded');
+ // (when a reveal shows the way in, it says so itself: the Vault opening)
+ const revealNext=effects?.nextArea&&pendingReveals().some(v=>v.live(state));
+ if(effects?.nextArea&&!revealNext)extra.push(['bram',`${area.name} is complete! ${area.id==='beach'?'Up the cliff: the':'The'} ${bare(next)} is open.`]);
+ else if(effects?.areaDone&&!effects.nextArea)extra.push(['bram',`${area.name} is complete!${next?` The ${bare(next)} is still to come.`:''}`]);
+ playLines(st.name,st.lines.concat(extra),()=>{const fresh=effects&&Object.keys(effects).length,nxt=fresh?nextPlace():null;if(nxt&&!effects.nextArea)mapFocus=nxt.u.id;if(effects?.nextArea){render();if(!nextReveal()){showMap();showIntro();}}else if($('#coastMap').open)showMap();const icon=$(`#coastMap .restoredIcon[data-task="${id}"]`)??$(`.restoredIcon[data-task="${id}"]`);icon?.classList.add('upgraded');
   // The stage's rewards, said once the story has been told (build 22: every stage gives one).
   // One clear next step after the story: the next place to build, said with its rewards.
   const next=nxt&&!effects?.nextArea?` · Next: ${nxt.u.name}${nxt.ready?' (ready)':''}`:'';
@@ -739,9 +751,9 @@ function showBeat(id,effects,stage=stageOf(state,id)){
 }
 // The coins a bought stage cost, said on its story card (Build 41 M3, from PR #77's receipt).
 let receipt=null;
-function playLines(title,lines,done){
+function playLines(title,lines,done,{last='Continue'}={}){
  let n=0;const dlg=$('#beat'),spent=receipt;receipt=null;
- const show=()=>{const [who,line]=lines[n];$('#beatContent').innerHTML=`<div class="beat"><small>${title}</small>${spent?`<b class="beatReceipt">−${spent} coins</b>`:''}<div class="beatLine">${face(who)}<p><b>${CREW[who].name}</b>${line}</p></div><div class="beatDots">${lines.map((_,k)=>`<i class="${k===n?'on':''}"></i>`).join('')}</div><button class="primary" id="beatNext">${n<lines.length-1?'Next':'Continue'}</button></div>`;
+ const show=()=>{const [who,line]=lines[n];$('#beatContent').innerHTML=`<div class="beat"><small>${title}</small>${spent?`<b class="beatReceipt">−${spent} coins</b>`:''}<div class="beatLine">${face(who)}<p><b>${CREW[who].name}</b>${line}</p></div><div class="beatDots">${lines.map((_,k)=>`<i class="${k===n?'on':''}"></i>`).join('')}</div><button class="primary" id="beatNext">${n<lines.length-1?'Next':last}</button></div>`;
   $('#beatNext').onclick=()=>{n++;if(n<lines.length)show();else{dlg.close();done?.();}};};
  show();if(!dlg.open)dlg.showModal();
 }
@@ -759,10 +771,11 @@ const REVEALS=[
  // the inner ring turns: Chapter 1 is complete and the Vault opens
  {id:'vault-open',when:s=>stageOf(s,'vault-door')>=STAGES,live:()=>true,play:done=>vaultReveal(done)},
  // Build 47d: inside, the Tide Archive (Chapter 2's first place); its intro, when the camp gets there
- {id:'archive',when:s=>s.area>=3,live:s=>s.area===3&&!builtCount(s,AREAS[3]),play:done=>playLines(AREAS[3].name,AREAS[3].intro,done)},
+ // Build 47f: its last button marks the archive's gold order on the board, the first thing to do inside
+ {id:'archive',when:s=>s.area>=3,live:s=>s.area===3&&!builtCount(s,AREAS[3]),play:done=>{const o=firstGold();playLines(AREAS[3].name,AREAS[3].intro,()=>{if(o)markGold(o);done();},{last:o?'Make the gold order':'Continue'});}},
  // Build 47e (PR #80's reveals D and E): the array wakes and reads a signal (where from, not who
  // sends it); the sea gate opens on a hidden harbour, the end of Chapter 2.
- {id:'obs-signal',when:s=>stageOf(s,'obs-array')>=STAGES,live:s=>stageOf(s,'obs-passage')<STAGES,play:done=>revealCard(signalCard(),done)},
+ {id:'obs-signal',when:s=>stageOf(s,'obs-array')>=STAGES,live:s=>stageOf(s,'obs-passage')<STAGES,play:done=>revealCard(signalCard(),()=>{done();mapFocus='obs-passage';showMap();},'View sea gate')},
  {id:'obs-harbour',when:s=>stageOf(s,'obs-passage')>=STAGES,live:()=>true,play:done=>revealCard(harbourCard(),done)}
 ];
 const markSeen=id=>{if(!state.seen?.[id]&&act(state,{type:'seen',id},Date.now()).ok){persist();playlog.event('reveal',{id});}};
@@ -774,12 +787,19 @@ function nextReveal(done=()=>{}){
  return true;
 }
 // One reveal card in the story dialog (PR #80); Continue or Escape closes it.
-function revealCard(html,done){
+function revealCard(html,done,label='Continue'){
  const dlg=$('#beat'),finish=()=>{dlg.oncancel=null;dlg.close();done();};
  if($('#coastMap').open)$('#coastMap').close();
- $('#beatContent').innerHTML=`<div class="beat vaultReveal">${html}<button class="primary" id="beatNext">Continue</button></div>`;
+ $('#beatContent').innerHTML=`<div class="beat vaultReveal">${html}<button class="primary" id="beatNext">${label}</button></div>`;
  $('#beatNext').onclick=finish;dlg.oncancel=e=>{e.preventDefault();finish();};
  if(!dlg.open)dlg.showModal();
+}
+// The gold order for the first stage the camp can build, marked on the board with what it still lacks.
+const firstGold=()=>{const u=upgrades(state).find(u=>!u.materials);return u&&state.orders.find(o=>o?.story===u.id);};
+function markGold(o){
+ if($('#coastMap').open)$('#coastMap').close();focusOrder=o.id;render();
+ const t=TASKS[o.story],u=upgrades(state).find(u=>u.id===o.story),short=goldShort(o.story);
+ $('#message').textContent=`${u?u.name:t.name}: ${short?.parts?`make ${missText(short.miss)} for its gold order.`:'its gold order is ready to deliver.'}`;
 }
 const revealLine=(who,line)=>`<p class="revealLine">${face(who)}<span><b>${CREW[who].name}</b>${line}</span></p>`;
 const nextLine=()=>{const u=upgrades(state)[0];if(!u)return '';const gold=state.orders.some(o=>o?.story===u.id);return `<p class="revealNext"><b>Next</b>${u.name}${gold?' · its gold order is on the board':''}</p>`;};
@@ -787,15 +807,21 @@ const nextLine=()=>{const u=upgrades(state)[0];if(!u)return '';const gold=state.
 function signalCard(){return `<small>The Silent Observatory · the array</small><div class="revealStage signal" aria-hidden="true"><img class="revealDoor" src="assets/premium/coast/place-obs-array-3.webp" alt="" draggable="false"><i class="beam"></i></div><h3>A signal on one bearing</h3>${revealLine('tamsin','Three long, two short: the call sign in their logs. I can tell where it comes from. Not who sends it, or how long it has been sending.')}${nextLine()}`;}
 // The sea gate opens (harbour-view is PR #80's small placeholder picture: missing art, see the doc).
 function harbourCard(){return `<small>The Silent Observatory · the sea gate</small><div class="revealPanel single" aria-hidden="true"><img class="panelTo" src="assets/premium/coast/harbour-view.webp" alt="" draggable="false"></div><h3>A hidden harbour</h3>${revealLine('bram','The bearing runs straight through it. Who sent that signal, and what happened in that harbour?')}`;}
-// The Vault opens (PR #80's Reveal A, with the coast's own Vault picture): the light runs down the
-// seam, then floods the door. A painted open-door frame for this Vault does not exist yet; the
-// light is CSS over the closed door (docs/V5_CHAPTER2_INTEGRATION_2026-10-28.md, missing art).
-const VAULT_ART='assets/premium/coast/home/home-bg.webp',VAULT_LIGHT=[458/941,622/1672,255/941];
+// The Vault opens (PR #80's Reveal A, with the coast's own Vault, Build 47f): the inner ring lights
+// and light runs down the seam; the door's two halves swing inward on their hinges and the
+// Observatory's interior shows behind them; then inside. The halves are the Home picture itself, cut
+// along the painted seam (story-intro.mjs); a painted open-door frame for this Vault does not exist
+// yet (docs/V5_CHAPTER2_INTEGRATION_2026-10-28.md, missing art). Skipping reaches the same state: the
+// reveal gives nothing, the inner ring's rewards came with its stage.
+const VAULT_ART='assets/premium/coast/home/home-bg.webp',VAULT_INSIDE='assets/premium/observatory-map.webp';
+// the round door on the Home picture, in its pixels: centre, radii (it is a little taller than wide), the seam
+const VAULT_DOOR={cx:457,cy:635,rx:224,ry:231,seam:463,inside:VAULT_INSIDE},VAULT_LIGHT=[463/941,635/1672,224/941];
 function vaultReveal(done){
  for(const id of ['coastMap','beat'])if($('#'+id).open)$('#'+id).close();
- playScenes({label:'Chapter 1 complete',last:'Continue',reduced,face:who=>`assets/premium/coast/ui/${FACES[who]}.webp`,scenes:[
-  {id:'vault-seam',src:VAULT_ART,pos:'47% 37%',fx:'seam',light:VAULT_LIGHT,who:null,alt:'The Vault door in the cliff, a line of light down its seam.',text:'The inner ring locks into place. Light runs down the seam of the Vault door.'},
-  {id:'vault-open',src:VAULT_ART,pos:'47% 37%',fx:'open',light:VAULT_LIGHT,who:'neri',alt:'The Vault door flooded with light as it opens.',text:'It opens. After all this time, the Vault is open.'}]}).then(()=>done());
+ playScenes({label:'Chapter 1 complete',last:'Enter the Vault',reduced,face:who=>`assets/premium/coast/ui/${FACES[who]}.webp`,scenes:[
+  {id:'vault-seam',src:VAULT_ART,pos:'47% 37%',fx:'seam',light:VAULT_LIGHT,door:VAULT_DOOR,who:null,alt:'The Vault door in the cliff: its three rings glow and a line of light runs down its seam.',text:'The inner ring locks into place. All three rings glow, and light runs down the seam of the Vault door.'},
+  {id:'vault-open',src:VAULT_ART,pos:'47% 37%',fx:'open',door:VAULT_DOOR,who:'neri',alt:'The two halves of the Vault door stand open; a lit hall of instruments shows inside.',text:'It opens. After all this time, the Vault is open.'},
+  {id:'vault-inside',src:VAULT_INSIDE,pos:'50% 40%',who:null,alt:'Inside the Vault: a quiet hall of lamps, desks, charts and a brass ring of instruments around a glass orb.',text:'Inside, a passage leads to a silent hall of lamps, desks and brass rings. Chapter 2 begins here.'}]}).then(()=>done());
 }
 
 $('#build').textContent='COAST CAMP · '+BUILD.toUpperCase();
@@ -823,16 +849,22 @@ let adOffered=false;
 // The end of this prototype (Build 41 M5): once, after the last stage or on the next visit.
 function showEnd(){
  if(!allDone(state)||state.seenEnd)return;run({type:'seenEnd'});playlog.flush();
- const gens=new Set(state.board.filter(x=>x?.type==='source').map(x=>x.id)).size,stages=Object.values(state.built).reduce((a,b)=>a+b,0);
- // Build 47b: Chapter 1 ends with the Vault door open; Build 47e: the camp's end is Chapter 2's, the
- // sea gate open on the Hidden Harbour. What comes next is named, never offered (no button for it).
- const next=AREAS.slice(state.area+1).find(a=>a.coming),inside=state.area>=3;
- $('#endContent').innerHTML=(inside?`<small class="adTag">CHAPTER 2 COMPLETE</small><h2 id="endTitle">The sea gate is open</h2>
-  <p>You read the Tide Archive, woke the Silent Observatory's array and opened its sea gate: <b>${stages} stages</b>, <b>${state.ordersDone} crew orders</b>, <b>${gens} generators</b>.</p>
-  <p>${next?`Chapter 3, ${next.name}, is in development.`:'More of the coast is in development.'}</p>`:`<small class="adTag">CHAPTER 1 COMPLETE</small><h2 id="endTitle">The Vault is open</h2>
-  <p>You rebuilt Landing Beach and the Survey Worksite and turned the three rings of the Vault door: <b>${stages} stages</b>, <b>${state.ordersDone} crew orders</b>, <b>${gens} generators</b>.</p>
-  <p>${next?`Next: ${next.name}. It comes in a later update.`:'More of the coast comes in a later update.'}</p>`)+`
-  <p>Crew orders keep coming. Their coins carry over, and the shop takes them now.</p>
+ // Build 47f: the stats are labelled for what they count. Stages: every stage bought, all areas so
+ // far (Chapters 1 and 2: 63). Generator types: the kinds found (a part of its chain found, or one
+ // owned on the board, in the shed or waiting), not how many generators stand on the board.
+ const owned=[...state.board,...state.shed,...state.pending],kinds=Object.keys(GENERATOR_CHAINS).filter(g=>state.found.some(k=>k.replace(/\d+$/,'')===g)||owned.some(x=>x?.type==='source'&&x.id===g)).length;
+ const stages=Object.values(state.built).reduce((a,b)=>a+b,0),all=AREAS.reduce((n,a)=>n+a.tasks.length*STAGES,0),last=AREAS.filter(a=>a.tasks.length).at(-1),next=AREAS.slice(AREAS.indexOf(last)+1).find(a=>a.coming);
+ // The content ends with Chapter 2 (Build 47e): the sea gate open on the Hidden Harbour. The achievement
+ // and its picture first, a short line, then the totals; what comes next is said to be unavailable,
+ // never offered (no button) and never promised. Build 47b's Chapter 1 card is gone: Chapter 1 now
+ // leads into the Vault, so the camp's end is always Chapter 2's.
+ $('#endContent').innerHTML=`<figure class="endArt" aria-hidden="true"><img src="assets/premium/coast/harbour-view.webp" alt="" draggable="false"></figure>
+  <small class="endTag">Chapter 2 complete</small><h2 id="endTitle">The sea gate is open</h2>
+  <p class="endLine">The array has a bearing, and the gate opens on a hidden harbour.</p>
+  <p class="endNext">This is the end of the story so far.${next?` ${next.name} is not available yet.`:''}</p>
+  <section class="endStats" aria-label="Your camp so far"><h3>Your camp so far</h3><dl>
+   <div><dt>Restoration stages</dt><dd>${stages} / ${all}</dd></div><div><dt>Crew orders delivered</dt><dd>${state.ordersDone}</dd></div><div><dt>Generator types found</dt><dd>${kinds}</dd></div></dl>
+   <p>Crew orders keep coming. Their coins carry over, and the shop takes them.</p></section>
   <button class="primary" type="button" data-keep>Keep playing</button><button class="menuButton" type="button" data-feedback>Share feedback</button>`;
  $('#endDialog').showModal();
 }

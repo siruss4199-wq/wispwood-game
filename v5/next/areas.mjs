@@ -101,31 +101,33 @@ export const AREAS=[
  {id:'vault',name:'The Silent Observatory',short:'VAULT',picture:'observatory',map:'observatory-map',focus:'optic',
   intro:[['tamsin','Records, floor to ceiling, every one sealed against the damp.'],['bram','Lamps first. Then we find out what this place was for.']],
   tasks:[
-   place('vault-archive','chart-1',[33,33],[
+   place('vault-archive','chart-1',[23,36],[
     {name:'Light the archive',cost:100,gold:[['lamp',2,2]],effect:{energy:8},lines:[['tamsin','Two lanterns and the whole room shows: shelf after shelf of records.']]},
     {name:'Dry the sealed records',cost:120,gold:[['shell',3,1],['lamp',3,1]],effect:{token:1},lines:[['neri','The same wave seal as on your letter, pressed into every cover.'],['bram','Then the letter and this archive belong together. Who sealed them is another question.']]},
     {name:'Read the archive index',cost:140,gold:[['shell',4,1],['lamp',2,1]],effect:{kit:['newest',2]},lines:[['neri','The index points deeper in: instruments, logbooks, an observatory.'],['ivo','Then that is where we go.']]}]),
+   // Build 47f: each place's spot is where its furnishing stands in the Observatory picture (the
+   // shelves, the hall's floor, the left desk, the right bench, the orb, the arched passage).
    // Build 47e: the Observatory itself, PR #80's five places as they were (costs, rewards, authored
    // gold, the sea gate waiting for the array), behind the archive: its hall opens once the index is
    // read. The Lens Bench is earned here (copy:'optic'), and half of the everyday orders want optics
    // once it is out (focus).
-   {...place('obs-hall','lamp-1',[50,84],[
+   {...place('obs-hall','lamp-1',[58,82],[
     {name:'Light the entrance hall',cost:110,requires:{'vault-archive':3},effect:{energy:8},lines:[['tamsin','These lamps were trimmed by hand, for years. Somebody worked here.']]},
     {name:'Clear the fallen stones',cost:130,effect:{token:1},lines:[['ivo','Somebody built this hall to last. The stones came off the dome, nothing more.']]},
     {name:'Hang the banners',cost:150,effect:{kit:['newest',2]},lines:[['neri','A compass and a crescent on every banner. That mark was on the door too.']]}],'obs-hall')},
-   place('obs-desk','chart-3',[22,64],[
+   place('obs-desk','chart-3',[16,68],[
     {name:'Right the survey desk',cost:130,effect:{energy:8},lines:[['neri','Logbooks. Hundreds of them, all in the same hand.']]},
     {name:'Unroll the old charts',cost:150,effect:{token:1},lines:[['neri','Every chart here carries the same mark: the fleet that no shipping register remembers.'],['bram','So they worked from here.']]},
     {name:'Read the last logbook',cost:170,effect:{kit:['newest',2]},lines:[['tamsin','The last entry says: "Array silent. Lenses sent to the bench for regrinding." Then nothing.'],['neri','Then we start at the bench.']]}],'obs-desk'),
-   place('obs-bench','optic-2',[79,64],[
+   place('obs-bench','optic-2',[86,46],[
     {name:'Clear the lens bench',cost:150,effect:{copy:'optic'},lines:[['ivo','A grinding wheel and a box of raw sea glass. We can make lenses again.']]},
     {name:'Fit the grinding wheel',cost:170,effect:{copy:'optic'},lines:[['ivo','The wheel turns true. Merge the new bench with ours: twice the work.']]},
     {name:'Polish the reading lens',cost:190,effect:{kit:['optic',2]},lines:[['neri','The big lens is clear again. Now the array can see.']]}],'obs-bench'),
-   place('obs-array','optic-3',[50,50],[
+   place('obs-array','optic-3',[55,47],[
     {name:'Reseat the array crystal',cost:170,gold:[['optic',2,1],['lamp',2,2]],effect:{energy:10},lines:[['tamsin','The crystal is cold. It needs focused light.']]},
     {name:'Align the brass rings',cost:200,gold:[['optic',3,1],['chart',4,1]],effect:{cog:1},lines:[['neri','The rings are set to a bearing, not to a star.']]},
     {name:'Wake the array',cost:230,gold:[['optic',4,1],['lamp',3,1]],effect:{kit:['optic',3]},lines:[['tamsin','It is waking.']]}],'obs-array'),
-   place('obs-passage','rope-4',[50,24],[
+   place('obs-passage','rope-4',[48,30],[
     {name:'Unbar the inner passage',cost:190,effect:{energy:10},lines:[['bram','Cold air. This passage goes out to the sea.']]},
     {name:'Shore up the tunnel',cost:220,effect:{cog:1},lines:[['ivo','Timber and brass. The same hands as the bench.']]},
     {name:'Open the sea gate',cost:250,requires:{'obs-array':3},gold:[['optic',4,1],['rope',4,1]],effect:{},lines:[['neri','The bearing runs straight through there.']]}],'obs-passage')
@@ -134,6 +136,8 @@ export const AREAS=[
  {id:'harbour',name:'The Hidden Harbour',picture:'harbour',coming:true,tasks:[]}
 ];
 // The next area opens when this one's last stage is bought (game.mjs restore and load).
+// Build 47f: what the Vault's places are called when one waits for another ("Finish the array first").
+export const LABELS={'vault-archive':'the archive','obs-hall':'the entrance hall','obs-desk':'the survey desk','obs-bench':'the lens bench','obs-array':'the array','obs-passage':'the sea gate'};
 export const TASKS=Object.fromEntries(AREAS.flatMap(a=>a.tasks.map(t=>[t.id,{...t,area:a.id}])));
 export const STAGES=3;
 export const areaOf=id=>AREAS.find(a=>a.id===id);
