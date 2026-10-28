@@ -21,6 +21,7 @@ import {CREW} from '../crew.mjs';
 import {reduced,burst,rewardFlight,moment as sharedMoment} from '../feedback.mjs';
 import {sfx as sounds} from './sfx.mjs';
 import {createHome} from './home.mjs';
+import {playIntro,preloadIntro,storySeen} from './story-intro.mjs';
 import {haptics} from './haptics.mjs';
 // The shared moment draws its icon with the Classic art; new chains need draw().
 // Moments show above an open screen (the beach) too: a modal dialog covers the page.
@@ -31,7 +32,7 @@ function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el
 let adPlaying=false;
 const sfx=(kind,tier=0)=>sounds.play(kind,tier,{muted:adPlaying||platform.muted()});
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 46p · home';
+export const BUILD='Build 46q · story intro';
 // The level path (docs/V5_LEVEL_PATH_2026-10-27.md): a crew order that pays a tool on top shows it
 // beside its coins (a Tide token; a favour's Sea chest or Brass cog).
 const bonusThing=o=>o.bonus==='cog'?cog():o.bonus==='chest'?kit(newestGenerator(state),2):o.bonus==='token'?token():null;
@@ -785,5 +786,8 @@ if(document.getElementById('home')){
   chapter:()=>{const a=currentArea(state);return a?.tasks?.length?`${a.name} · ${stagesBuilt()} of ${a.tasks.length*STAGES} stages built`:a?.name??'';},
   onEnter:arrive,onSettings:()=>$('#menuButton').onclick(),onBook:showBook,
   onNewCamp:()=>{if(!confirm('Start a new camp? The save that could not be read stays in this browser as a backup.'))return false;newCamp();return true;},
-  onOpenChange:v=>{homeOpen=v;syncPlaying?.();}});
+  onOpenChange:v=>{homeOpen=v;syncPlaying?.();},
+  // The first-play story (Build 46q): once, on the first new camp's Play, never on Continue.
+  beforeEnter:reason=>reason==='play'&&!rawSave&&!storySeen(storage)?playIntro({storage,reduced,face:who=>`assets/premium/coast/ui/${FACES[who]}.webp`}):null});
+ home.ready.then(()=>{if(!rawSave&&!storySeen(storage))preloadIntro();});
 }else{homeOpen=false;arrive(false);}

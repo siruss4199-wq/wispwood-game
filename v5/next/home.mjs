@@ -25,9 +25,11 @@ export function boardPictures(){
 // hasSave: a save that loaded (Continue); damaged: a save is there but could not be read (it is
 // left as it is: no Play, only Retry or an explicit new camp). chapter() names where the save
 // stands, or '' to show nothing. onEnter runs each time the player goes from Home to the board.
-export function createHome({boot,hasSave,damaged,chapter,onEnter,onSettings,onBook,onNewCamp,onOpenChange}){
+// beforeEnter(reason) may return a promise to wait for before the board (the first-play story);
+// reason is 'play' (a new camp's Play), 'continue' or 'new' (a new camp chosen after a bad save).
+export function createHome({boot,hasSave,damaged,chapter,onEnter,onSettings,onBook,onNewCamp,onOpenChange,beforeEnter}){
  const home=$('home'),main=document.querySelector('main.game'),play=$('homePlay'),label=play.querySelector('span');
- let open=true,usable=false,boardDone=false,boardBad=[],boardCount=[0,0],waiting=false,leaving=0;
+ let open=true,usable=false,boardDone=false,boardBad=[],boardCount=[0,0],waiting=false,leaving=0,gating=false;
  const setOpen=v=>{open=v;document.body.classList.toggle('homeOpen',v);if(main)main.inert=v;onOpenChange?.(v);};
  setOpen(true);
  const loadVisible=v=>{$('homeLoad').hidden=!v;};
@@ -52,23 +54,31 @@ export function createHome({boot,hasSave,damaged,chapter,onEnter,onSettings,onBo
  const boardP=(boot?boot.track(boardPictures(),boardProgress):Promise.resolve([])).then(bad=>{boardDone=true;boardBad=bad;if(waiting)afterBoard();});
  function afterBoard(){
   waiting=false;play.disabled=false;
-  if(boardBad.length){home.classList.add('isWaiting');boot?.fail(`${boardBad.length} board picture${boardBad.length>1?'s':''} could not be loaded.`,()=>{home.classList.remove('isWaiting');loadVisible(false);enter();});return;}
-  home.classList.remove('isWaiting');loadVisible(false);enter();
+  if(boardBad.length){home.classList.add('isWaiting');boot?.fail(`${boardBad.length} board picture${boardBad.length>1?'s':''} could not be loaded.`,()=>{home.classList.remove('isWaiting');loadVisible(false);enter(why());});return;}
+  home.classList.remove('isWaiting');loadVisible(false);enter(why());
  }
  play.addEventListener('click',()=>{
   if(!open||!usable||waiting||damaged)return;
-  if(boardDone&&!boardBad.length){enter();return;}
+  if(boardDone&&!boardBad.length){enter(why());return;}
   waiting=true;play.disabled=true;home.classList.add('isWaiting');loadVisible(true);boot?.reset();
   if(boardDone)afterBoard();else boardProgress(...boardCount);
  });
  $('homeSettings').addEventListener('click',()=>onSettings?.());
  $('homeBook').addEventListener('click',()=>onBook?.());
- $('homeNew').addEventListener('click',()=>{if(onNewCamp?.()){damaged=false;hasSave=false;$('homeRetry').hidden=true;enter();}});
+ $('homeNew').addEventListener('click',()=>{if(onNewCamp?.()){damaged=false;hasSave=false;$('homeRetry').hidden=true;enter('new');}});
  // Home → board: a short fade of Home only (none with reduced motion); the board is already there.
- function enter(){
-  if(!open)return;setOpen(false);clearTimeout(leaving);
+ const why=()=>hasSave?'continue':'play';
+ function enter(reason='continue'){
+  if(!open||gating)return;
+  // Something to show first (the story covers Home): Home then goes without its own fade.
+  const gate=beforeEnter?.(reason);
+  if(gate){gating=true;gate.then(()=>{gating=false;leave(true);});return;}
+  leave(false);
+ }
+ function leave(instant){
+  setOpen(false);clearTimeout(leaving);
   const done=()=>{home.hidden=true;home.classList.remove('leaving');};
-  if(reduced())done();else{home.classList.add('leaving');leaving=setTimeout(done,240);}
+  if(instant||reduced())done();else{home.classList.add('leaving');leaving=setTimeout(done,240);}
   onEnter?.();
  }
  // Board → Home (the menu's Home): the same screen with Continue; the game keeps running behind.

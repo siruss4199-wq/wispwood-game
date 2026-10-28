@@ -15,7 +15,11 @@ const STUB=`window.__cg=[];window.CrazyGames={SDK:{environment:'crazygames',init
  ad:{requestAd(t,cb){cb.adError&&cb.adError()}}}};`;
 const save=page=>page.evaluate(k=>localStorage.getItem(k),KEY);
 const homeUsable=page=>page.waitForSelector('#home:not(.isLoading)',{timeout:20000});
-async function play(page){await page.locator('#homePlay').click();await page.waitForSelector('#home',{state:'hidden'});}
+// The first new camp's Play shows the story (Build 46q; tests/v5-next-story-browser.cjs covers it):
+// these Home checks skip it.
+async function skipStory(page){await page.waitForFunction(()=>document.querySelector('#home').hidden||!document.querySelector('#story').hidden);
+ if(await page.locator('#story:not([hidden])').count())await page.locator('#storySkip').click();}
+async function play(page){await page.locator('#homePlay').click();await skipStory(page);await page.waitForSelector('#home',{state:'hidden'});}
 async function skipBeats(page){for(let n=0;n<10&&await page.locator('#beat[open]').count();n++){await page.locator('#beatNext').click();await page.waitForTimeout(60);}}
 async function drag(page,a,z){const A=await page.locator(`#board [data-index="${a}"]`).boundingBox(),Z=await page.locator(`#board [data-index="${z}"]`).boundingBox();
  await page.mouse.move(A.x+A.width/2,A.y+A.height/2);await page.mouse.down();await page.mouse.move(Z.x+Z.width/2,Z.y+Z.height/2,{steps:8});await page.mouse.up();await page.waitForTimeout(250);}
@@ -134,7 +138,7 @@ async function drag(page,a,z){const A=await page.locator(`#board [data-index="${
     await page.waitForFunction(()=>/Getting the board ready · \d+ of \d+ pictures/.test(document.querySelector('#homeStatus')?.textContent||''));
     assert.ok(await page.locator('#home').isVisible(),tag('Play waits for the missing board picture'));
     assert.equal(await page.locator('#homePlay').isDisabled(),true);
-    for(const r of held)await r.continue();await page.unroute(/icons\/gen-rig-pilot\.webp/);await page.waitForSelector('#home',{state:'hidden'});
+    for(const r of held)await r.continue();await page.unroute(/icons\/gen-rig-pilot\.webp/);await skipStory(page);await page.waitForSelector('#home',{state:'hidden'});
     await context.close();}
 
    // 6. Reduced motion: no fade and no moving bar.
@@ -142,7 +146,7 @@ async function drag(page,a,z){const A=await page.locator(`#board [data-index="${
     const held=[];await page.route(/home\/logo\.webp/,r=>{held.push(r);});
     await page.goto(BASE+'play.html',{waitUntil:'commit'});await page.waitForSelector('#homeBar');
     assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('#homeBar>i')).animationName),'none',tag('bar still'));
-    for(const r of held)await r.continue();await page.unroute(/home\/logo\.webp/);await homeUsable(page);await page.locator('#homePlay').click();
+    for(const r of held)await r.continue();await page.unroute(/home\/logo\.webp/);await homeUsable(page);await page.locator('#homePlay').click();await skipStory(page);
     assert.equal(await page.locator('#home.leaving').count(),0);assert.equal(await page.locator('#home').isVisible(),false,tag('no fade with reduced motion'));
     await context.close();}
 
