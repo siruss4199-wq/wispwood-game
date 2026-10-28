@@ -72,7 +72,8 @@ async function perform(page,a){
    assert.match(await page.locator('#coastMap .beachScene.mapped .sceneBase').getAttribute('src'),/landing-map\.webp$/);
    for(const m of await page.locator('#coastMap .siteMarker').all()){const r=await m.boundingBox();assert.ok(r.width>=44&&r.height>=44,'marker touch target');}
    {const tops=new Set(await page.locator('#coastMap .places .place').evaluateAll(l=>l.map(e=>Math.round(e.getBoundingClientRect().top))));assert.equal(tops.size,1,'the places sit in one row');}
-   assert.equal(await page.locator('#coastMap details.mapFuture:not([open]) .mapArea.coming').count(),3,'coming areas are folded');
+   // Build 47e: four after the beach (the worksite, the Vault Entrance, the Observatory, the Hidden Harbour)
+   assert.equal(await page.locator('#coastMap details.mapFuture:not([open]) .mapArea.coming').count(),4,'coming areas are folded');
    assert.equal(await page.locator('#coastMap .place .pips i.on').count(),Object.values(s.built).reduce((a,b)=>a+b,0),'the beach screen shows every stage');
    assert.equal(await page.locator('#coastMap .beachScene .restoredIcon').count(),Object.keys(s.built).length,'upgraded places stand on the beach picture');
    {const b=await page.locator('#coastMap').boundingBox();assert.ok(b.width>=width-1,'the beach is a full screen of its own');}

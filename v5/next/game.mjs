@@ -57,7 +57,7 @@ export const SHED_SLOTS=4,SHED_TYPES=['item','kit','cog','token'];
 // time pays a few coins once it is ticked off in the book, more for higher tiers; a chain's
 // whole page found and ticked gives a Brass cog.
 export const BOOK_COINS=[1,1,2,3,5,8,12,20];// kept small: bigger book coins undid build 31's energy tension (scripted player)
-export const BOOK_CHAINS=['rig','chart','rope','shell','lamp'];// the chains of GENERATOR_ORDER
+export const BOOK_CHAINS=['rig','chart','rope','shell','lamp','optic'];// the chains of NEWEST_ORDER
 export const bookKeys=family=>Array.from({length:maxTier(family)+1},(_,t)=>family+t);
 // Parts found but not yet ticked off in the book.
 export const bookReady=s=>s.found.filter(k=>!s.book.claimed.includes(k)&&BOOK_CHAINS.includes(k.replace(/\d+$/,'')));
@@ -97,6 +97,9 @@ export const MAX_GENERATOR_LEVEL=5;
 // Lantern Kiln. Cargo holds the copies and Brass cogs that level them.
 export const UNLOCK_LEVEL=3;
 export const nextKind=g=>GENERATOR_ORDER[GENERATOR_ORDER.indexOf(g)+1]??null;
+// Generators earned from places, not from the level-3 chain above (Build 47e, from PR #80: the Lens
+// Bench). NEWEST_ORDER is every generator in the order a player meets them ("newest" rewards follow it).
+export const NEWEST_ORDER=[...GENERATOR_ORDER,'optic'];
 export const generatorsMerge=(x,y)=>x?.type==='source'&&y?.type==='source'&&x.id===y.id&&producerLevel(x)===producerLevel(y)&&producerLevel(x)<MAX_GENERATOR_LEVEL;
 
 export const item=(family,tier)=>({type:'item',family,tier});
@@ -216,7 +219,7 @@ export const rolePrice=(needs,role)=>Math.max(5,Math.round(priceOf(needs)*ROLE_P
 // The kind of an order, also for saves made before Build 44 (which did not store one).
 export const roleOf=o=>o?.story?'gold':ROLES.includes(o?.role)?o.role:o?.needs?.length>1?'pair':'quick';
 function rand(n){let t=(n*2654435761+0x6D2B79F5)>>>0;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296;}
-const CREW_OF={rig:'ivo',rope:'ivo',chart:'neri',shell:'neri',flux:'tamsin',lamp:'tamsin'};
+const CREW_OF={rig:'ivo',rope:'ivo',chart:'neri',shell:'neri',flux:'tamsin',lamp:'tamsin',optic:'tamsin'};
 const crewFor=needs=>needs.length>1?'bram':CREW_OF[needs[0].family];
 // Coins an order pays: its parts' worth, half as much again for the story's (rounded to 5).
 export const priceOf=(needs,story=false)=>{const v=needs.reduce((v,r)=>v+r.count*COIN_VALUE[r.tier],0);return story?Math.round(v*1.5/5)*5:v;};
@@ -394,7 +397,7 @@ function reveal(s,j){
 // Parts seen for the first time (for "New!" moments in the UI).
 function note(s){const fresh=[];for(const x of s.board)if(x?.type==='item'){const k=x.family+x.tier;if(!s.found.includes(k)){s.found.push(k);fresh.push(k);}}return fresh;}
 // The most recently found generator (for rewards that follow your newest chain).
-export const newestGenerator=s=>[...GENERATOR_ORDER].reverse().find(g=>sourceOpen(s,g))??'rig';
+export const newestGenerator=s=>[...NEWEST_ORDER].reverse().find(g=>sourceOpen(s,g))??'rig';
 // Only cargo touching open ground (an orthogonal neighbour that is not cargo) can be
 // opened, so the board opens outward from the camp one ring at a time; cargo
 // further in keeps even its key hidden.
@@ -594,6 +597,9 @@ function step(s,a,now){
  // Upgrade a place on the beach one stage (the action keeps its old name, 'restore').
  if(a.type==='restore'){
   const up=upgrades(s),t=a.id===undefined?up[0]:up.find(u=>u.id===a.id);
+  // Build 47e: a stage that waits for another place (the sea gate for the array) says which.
+  const wait=!t&&TASKS[a.id]?blockedStage(s,a.id):null;
+  if(wait)return fail(`${wait.name} opens once ${Object.entries(wait.requires).map(([id,n])=>TASKS[id].stages[n-1].name).join(' and ')} is done.`);
   if(!t)return fail(TASKS[a.id]&&stageOf(s,a.id)>=STAGES?`${TASKS[a.id].name} is fully upgraded.`:TASKS[a.id]?'Upgrade the place before it first.':'Everything here is upgraded.');
   if(!t.materials)return fail(`${t.name} needs its materials: deliver the gold order for it.`);
   if(s.coins<t.cost)return fail(`${t.name} needs ${t.cost} coins. Deliver crew orders for coins.`);
@@ -602,6 +608,7 @@ function step(s,a,now){
   if(e.copy){const id=e.copy==='newest'?newestGenerator(s):e.copy;effects.copy=give(s,source(id));effects.copyId=id;}
   if(e.kit){const family=e.kit[0]==='newest'?newestGenerator(s):e.kit[0];effects.kit=give(s,kit(family,e.kit[1]));effects.kitFamily=family;}
   if(e.token){effects.token=give(s,token());}
+  if(e.cog){effects.cog=give(s,cog());}
   if(s.pending.length)effects.pending=s.pending.length;
   if(e.slots&&s.slots<e.slots){s.slots=e.slots;while(s.orders.length<s.slots)s.orders.push(makeOrder(s));effects.slots=e.slots;}
   if(areaDone(s)){effects.areaDone=AREAS[s.area].id;const next=advance(s);if(next)effects.nextArea=next;}
@@ -761,13 +768,15 @@ export function load(raw,now=Date.now()){
   if((s?.version===1||s?.version===2)&&Array.isArray(s.board)&&s.taps&&typeof s.taps==='object')upgrade(s);
   if(s?.version===3)toV4(s);
   if(s?.version!==VERSION||!Array.isArray(s.board)||s.board.length!==BOARD_SIZE||!s.board.every(validCell))return fresh(now);
-  if(!integer(s.energy,0,MAX_ENERGY)||!integer(s.coins,0,999999)||!integer(s.area,0,AREAS.length-1)||!integer(s.slots,3,4))return fresh(now);
+  if(!integer(s.energy,0,MAX_ENERGY)||!integer(s.coins,0,999999)||!integer(s.area,0,AREAS.length-1)||!AREAS[s.area].tasks.length||!integer(s.slots,3,4))return fresh(now);
   // Build 30 could price a sixth-tier story order at NaN coins (saved as null): it is priced again.
   if(Array.isArray(s.orders))for(const o of s.orders)if(o&&o.coins===null&&Array.isArray(o.needs)&&o.needs.every(validNeed))o.coins=priceOf(o.needs,!!o.story);
   if(!Array.isArray(s.orders)||s.orders.length!==s.slots||!s.orders.every(validOrder))return fresh(now);
   for(const o of s.orders)if(o.born!==undefined&&!integer(o.born,0,s.moves))delete o.born;
   if(!s.built||typeof s.built!=='object'||Array.isArray(s.built)||!Object.entries(s.built).every(([id,n])=>TASKS[id]&&integer(n,1,STAGES))||!Array.isArray(s.found))return fresh(now);
   for(const k of ['orderSeq','ordersDone','moves','merges'])if(!integer(s[k],0,1e9))return fresh(now);
+  // A generator added later (Build 47e: the Lens Bench) starts with no taps in an older save.
+  if(s.taps&&typeof s.taps==='object'&&!Array.isArray(s.taps))for(const k of Object.keys(GENERATOR_CHAINS))s.taps[k]??=0;
   if(!s.taps||!Object.keys(GENERATOR_CHAINS).every(k=>integer(s.taps[k],0,1e9)))return fresh(now);
   // Build 32 added the shed and the daily gift; older saves get an empty shed and a gift today.
   s.shed??=Array(SHED_SLOTS).fill(null);s.daily??={day:-1,count:0};
@@ -806,7 +815,9 @@ export function load(raw,now=Date.now()){
   if(advance(s))ensureGold(s);
   // seenEnd marked the end of the content of its day (Build 41 M5); a camp with new places to build
   // (Build 47b: the Vault door) sees the end card again when it reaches the new end.
-  if(s.seenEnd&&!allDone(s))delete s.seenEnd;
+  // Build 47e: a camp that had read the Tide Archive (Build 47d's end) has the Observatory to build:
+  // its first stage gets its gold order at once, as a new area's does.
+  if(s.seenEnd&&!allDone(s)){delete s.seenEnd;ensureGold(s);}
   if(before41)for(const u of upgrades(s))s.materials[u.id]=u.stage;
   if(s.rationAt!==undefined&&!(Number.isFinite(s.rationAt)&&s.rationAt<=now))delete s.rationAt;
   if(!Number.isFinite(s.energyAt)||s.energyAt>now)s.energyAt=now;

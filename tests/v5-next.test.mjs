@@ -397,7 +397,8 @@ test('the Survey Worksite: seven places in three stages, every stage a reward, t
  assert.equal(w.tasks.flatMap(t=>t.stages.map(x=>x.cost)).reduce((a,b)=>a+b),3270);// Build 41h: ×2 (Build 41e: 1635)
  // Build 47b: the Vault Entrance has its finale (the Vault door, one place); Build 47d: the Vault
  // (Chapter 2) starts with the Tide Archive; any areas after it are still to come.
- assert.equal(Object.keys(TASKS).length,16,'place ids are unique across areas');
+ // Build 47e: the Observatory's five places follow the archive in the same area.
+ assert.equal(Object.keys(TASKS).length,21,'place ids are unique across areas');
  assert.deepEqual(AREAS[2].tasks.map(t=>t.id),['vault-door']);assert.equal(AREAS[3].tasks[0].id,'vault-archive');
  assert.ok(AREAS.slice(4).every(a=>a.coming&&!a.tasks.length),'later areas are still to come');
  // Its stages are bought like the beach's and keep the beach's stages.
@@ -432,8 +433,9 @@ test('a save that finished the beach before the worksite existed goes up the cli
  const s=fresh(0);s.built=beachDone();s.coins=40;s.moves=900;s.board[16]=source('rope');delete s.materials;
  const back=load(JSON.stringify(s),5);assert.equal(back.area,1);assert.equal(back.moves,900);assert.equal(back.coins,40);assert.deepEqual(back.built,s.built);assert.equal(nextTask(back).id,'ws-camp');
  const t=fresh(0);t.built={...beachDone(),'beach-cliff':2};t.moves=500;const u=load(JSON.stringify(t),5);assert.equal(u.area,0);assert.equal(u.moves,500);
- // An area out of range still starts a new camp.
- const v=fresh(0);v.area=4;v.moves=3;assert.equal(load(JSON.stringify(v),5).moves,0);
+ // An area out of range, or one still to come (no places yet: Build 47e lists the Hidden Harbour),
+ // still starts a new camp: no save ever stood there.
+ for(const area of [4,AREAS.length]){const v=fresh(0);v.area=area;v.moves=3;assert.equal(load(JSON.stringify(v),5).moves,0);}
 });
 
 test('the economy is tight: energy runs out through both areas, and both still finish',()=>{
@@ -504,7 +506,7 @@ test('saves from before the shed and the daily gift load with an empty shed and 
 
 // Build 33: the collection book.
 test('the book: each part found pays its coins once when ticked off; a whole page gives a Brass cog',()=>{
- assert.deepEqual(BOOK_CHAINS,GENERATOR_ORDER,'one page per generator chain');assert.equal(BOOK_COINS.length,8);
+ assert.deepEqual(BOOK_CHAINS,[...GENERATOR_ORDER,'optic'],'one page per generator chain (Build 47e: and the Lens Bench\'s)');assert.equal(BOOK_COINS.length,8);
  assert.equal(bookKeys('lamp').length,5);assert.equal(bookKeys('rig').length,8);
  const s=fresh(0);assert.deepEqual(s.book,{claimed:[],pages:[]});assert.deepEqual(bookReady(s),[]);
  const a=ok(s,{type:'produce',id:'rig'}),b=ok(s,{type:'produce',id:'rig'});assert.deepEqual(bookReady(s),['rig0']);

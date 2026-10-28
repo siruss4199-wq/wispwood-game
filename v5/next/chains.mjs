@@ -27,7 +27,7 @@ const CARGO_FILE={crate:'cargo-crate',bundle:'cargo-bundle',barrel:'cargo-barrel
 const KIT_FILE=['driftwood-crate','sea-chest','captains-trunk'];
 // Build 41l (user: "ed nariin visual tuvshinuur hii", with a painted sheet): every generator, part,
 // cargo, crate, token and cog is a painted icon cut from that sheet (assets/premium/coast/icons).
-const RENDERED=new Set(['rig','chart','rope','shell','lamp']);
+const RENDERED=new Set(['rig','chart','rope','shell','lamp','optic']);
 // The first four Rover parts keep their original painted art (user: "ed nariig hevend ni uldee").
 const KEEP={'rig-0':'copper-offcut','rig-1':'grip-tool','rig-2':'split-spanner','rig-3':'pocket-winch'};
 const icon=(f,cls,art)=>PILOT[f]?img(f,cls,art):KEEP[f]?`<img class="art ${cls}" src="assets/premium/${KEEP[f]}-vibrant.webp" alt="" aria-hidden="true" draggable="false" data-art="${art}"${fitStyle(KEEP[f])}>`:`<img class="art ${cls}" src="assets/premium/coast/icons/${f}.webp" alt="" aria-hidden="true" draggable="false" data-art="${art}"${fitStyle(f)}>`;
@@ -38,11 +38,14 @@ export const CHAINS={
  lamp:{gen:'lamp',names:['Candle stub','Tin lantern','Storm lantern','Signal lamp','Beacon lens']},
  chart:{gen:'chart',names:FAMILIES.chart.names},
  shell:{gen:'shell',names:['Sand dollar','Cockle shell','Conch','Pearl oyster','Nautilus','Coral crown']},
+ // Chapter 2 (The Silent Observatory, from PR #80; Build 47e): the Lens Bench grinds sea glass into the
+ // array's optics, named apart from the Kite's Sight lens / Survey scope and the Kiln's Beacon lens.
+ optic:{gen:'optic',names:['Sea-glass chip','Polished blank','Ground lens','Brass-ringed lens','Focus barrel','Signal reader']},
  flux:{gen:'flux',names:FAMILIES.flux.names}
 };
 // Generator → its chain (the level column stays for saves and future use).
-export const GENERATOR_CHAINS={rig:[['rig',1]],chart:[['chart',1]],rope:[['rope',1]],shell:[['shell',1]],lamp:[['lamp',1]],flux:[['flux',1]]};
-export const GENERATOR_NAMES={rig:'Rivet Rover',chart:'Survey Kite',rope:'Rope Winch',shell:'Shell Trap',lamp:'Lantern Kiln',flux:'Echo Crucible'};
+export const GENERATOR_CHAINS={rig:[['rig',1]],chart:[['chart',1]],rope:[['rope',1]],shell:[['shell',1]],lamp:[['lamp',1]],flux:[['flux',1]],optic:[['optic',1]]};
+export const GENERATOR_NAMES={rig:'Rivet Rover',chart:'Survey Kite',rope:'Rope Winch',shell:'Shell Trap',lamp:'Lantern Kiln',flux:'Echo Crucible',optic:'Lens Bench'};
 // The three generators drawn for Coast Camp (Rover, Kite and Crucible keep their art).
 const GENERATOR_SHAPES={
  rope:'<ellipse cx="50" cy="84" rx="38" ry="8" fill="#6d4a26" opacity=".35"/><path d="M14 80L26 30H74L86 80Z" fill="#8a5a2e"/><path d="M20 78L30 36H70L80 78Z" fill="#b07a46"/><circle cx="50" cy="50" r="22" fill="#a87a45"/><circle cx="50" cy="50" r="18" fill="none" stroke="#e4bf82" stroke-width="6"/><circle cx="50" cy="50" r="10" fill="none" stroke="#c99a5e" stroke-width="6"/><circle cx="50" cy="50" r="4" fill="url(#vw-brass)"/><path d="M50 50L84 34" stroke="#8c9aa8" stroke-width="6" stroke-linecap="round"/><circle cx="86" cy="33" r="6" fill="url(#vw-coral)"/><path d="M72 64Q86 74 78 88" fill="none" stroke="#e4bf82" stroke-width="5" stroke-linecap="round"/>',
@@ -82,7 +85,7 @@ const SHAPES={
 };
 // Coast Camp's crates (generator boxes by size): driftwood crate, sea chest,
 // captain's trunk, with a tag in the colour of the generator they feed.
-const TAG={rig:'#f27755',chart:'#43bfe7',flux:'#ac83fa',rope:'#c9a36a',shell:'#ff9f8a',lamp:'#ffc93c'};
+const TAG={rig:'#f27755',chart:'#43bfe7',flux:'#ac83fa',rope:'#c9a36a',shell:'#ff9f8a',lamp:'#ffc93c',optic:'#2fc6c0'};
 // Sealed cargo shows a "?" with the part that opens it pinned to its corner, and looks
 // like who packed it (build 25, user: "uitgartai haragdaj baina"): Rover
 // parts open wooden crates, Kite parts canvas bundles, Rope Winch parts barrels, the rest

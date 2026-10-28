@@ -331,3 +331,27 @@ body.nextMode[data-art] #board.board .tile.tile.glass{background:radial-gradient
 .doorRings i:nth-child(2){width:74%;height:74%}.doorRings i:nth-child(3){width:46%;height:46%}
 .doorRings i:nth-child(1){width:100%;height:100%}
 .doorRings[data-stage="1"] i:nth-child(1),.doorRings[data-stage="2"] i:nth-child(-n+2),.doorRings[data-stage="3"] i{border-color:#9ff6f6;box-shadow:0 0 10px 2px #54e6e6b3,inset 0 0 10px 2px #54e6e680}
+/* Build 47e: Chapter 2's reveal cards (PR #80's, in the coast's colours): the array's signal and the
+   hidden harbour, in the story dialog. */
+.nextMode .beat.vaultReveal{text-align:center;align-items:center}
+.nextMode .beat.vaultReveal small{align-self:center}
+.nextMode .beat.vaultReveal h3{margin:4px 0 0;font-size:20px;color:var(--cb-ink);text-transform:none;letter-spacing:0}
+.nextMode .beat.vaultReveal p{margin:0;color:var(--cb-ink2);font-size:14px;line-height:1.4}
+.nextMode .beat.vaultReveal .revealNext{display:inline-flex;gap:8px;align-items:center;padding:6px 12px;border-radius:999px;background:#d9f4f2;color:var(--cb-ink);font-weight:800;font-size:13px}
+.nextMode .beat.vaultReveal .revealNext b{color:var(--cb-turq2);text-transform:uppercase;font-size:11px;letter-spacing:.08em}
+.nextMode .beat.vaultReveal .primary{width:100%}
+.nextMode .beat.vaultReveal .revealLine{display:flex;gap:10px;align-items:flex-start;text-align:left;background:#fff3dc;border-radius:14px;padding:10px 12px}
+.nextMode .beat.vaultReveal .revealLine img.face,.nextMode .beat.vaultReveal .revealLine svg{width:44px;height:44px;flex:none;border-radius:50%;object-fit:cover;object-position:50% 12%;background:#d7f1f2;box-shadow:0 0 0 2px #fff,0 0 0 4px #f0c45a}
+.nextMode .beat.vaultReveal .revealLine b{display:block;color:var(--cb-turq2);font-size:12px}
+.nextMode .revealStage{position:relative;width:min(56vw,200px);aspect-ratio:1;margin:0 auto;border-radius:50%;overflow:hidden;background:radial-gradient(circle at 50% 60%,#25707c,#0b2f3c);box-shadow:0 0 0 3px #fff,0 0 0 5px #f0c45a,0 8px 18px #0003}
+.nextMode .revealStage .revealDoor{position:absolute;inset:4%;width:92%;height:92%;object-fit:contain}
+.nextMode .revealStage.signal .beam{position:absolute;left:50%;top:38%;width:70%;height:10px;transform-origin:0 50%;transform:rotate(-28deg);background:linear-gradient(90deg,#bff8f2,#7ee9e0 40%,transparent);border-radius:999px;opacity:.85;filter:blur(1px)}
+.nextMode .revealPanel{position:relative;width:min(56vw,200px);aspect-ratio:300/480;max-height:38vh;margin:0 auto;border-radius:16px;overflow:hidden;box-shadow:0 0 0 3px #fff,0 0 0 5px #f0c45a,0 8px 18px #0003}
+.nextMode .revealPanel img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+@media(prefers-reduced-motion:no-preference){
+ .nextMode .revealPanel .panelTo{animation:panelIn 1.6s ease-out}
+ .nextMode .revealStage.signal .beam{animation:beamPulse 2.2s .4s ease-in-out 3}
+}
+@keyframes panelIn{from{transform:scale(1.06)}to{transform:none}}
+@keyframes beamPulse{0%,100%{opacity:.35}20%,40%{opacity:1}60%{opacity:.5}}
+@media(orientation:landscape) and (max-height:560px){.nextMode .revealStage{width:min(30vh,150px)}.nextMode .revealPanel{height:min(34vh,170px);max-height:none;width:auto}}

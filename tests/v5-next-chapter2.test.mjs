@@ -4,8 +4,9 @@
 // inner one with its own materials; turning it completes Chapter 1. Story cards are seen once.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {fresh,load,act,item,allDone,upgrades,currentArea,stageOf} from '../v5/next/game.mjs';
-import {AREAS,STAGES} from '../v5/next/areas.mjs';
+import {fresh,load,act,item,allDone,upgrades,currentArea,stageOf,blockedStage,bookKeys,BOOK_CHAINS,newestGenerator,makeOrder} from '../v5/next/game.mjs';
+import {AREAS,STAGES,TASKS} from '../v5/next/areas.mjs';
+const TASK=id=>TASKS[id];
 
 const ok=(s,a,now=1000)=>{const r=act(s,a,now);assert.ok(r.ok,JSON.stringify(a)+' '+r.message);return r;};
 const done=a=>Object.fromEntries(a.tasks.map(t=>[t.id,3]));
@@ -74,7 +75,7 @@ test('the door\'s crate reward on a full board waits (Build 47a still holds)', (
 
 // Build 47d: the Tide Archive, a short bridge inside the Vault: one place, three stages, gold orders
 // for the late generators' parts (Lantern Kiln, Shell Trap), and no new chain or level gate.
-test('the Tide Archive: three stages for the Lantern Kiln and the Shell Trap, then the camp\'s end', ()=>{
+test('the Tide Archive: three stages for the Lantern Kiln and the Shell Trap, then the Observatory', ()=>{
  const a=AREAS[3];assert.equal(a.id,'vault');assert.equal(a.name,'The Silent Observatory');
  const t=a.tasks[0];assert.equal(t.id,'vault-archive');assert.equal(t.name,'Light the archive');
  assert.deepEqual(t.stages.map(x=>x.cost),[100,120,140]);
@@ -86,5 +87,78 @@ test('the Tide Archive: three stages for the Lantern Kiln and the Shell Trap, th
   const free=t2.board.reduce((acc,x,i)=>x===null||x.type==='cargo'?[...acc,i]:acc,[]);let k=0;
   for(const r of o.needs)for(let c=0;c<r.count;c++)t2.board[free[k++]]=item(r.family,r.tier);ok(t2,{type:'deliver',id:o.id});return o;};
  for(let st=0;st<3;st++){const o=deliverGold();assert.deepEqual(o.needs.map(r=>[r.family,r.tier,r.count]),t.stages[st].gold);ok(t2,{type:'restore',id:'vault-archive'});}
- assert.equal(allDone(t2),true,'the archive read is the end of this build');assert.ok(!t2.orders.some(o=>o?.story));
+ // Build 47e: the index read opens the Observatory's hall (in the same area: no new area, no level gate)
+ assert.equal(allDone(t2),false,'the Observatory follows');assert.equal(t2.area,3);
+ assert.deepEqual(upgrades(t2).map(u=>[u.id,u.stage]),[['obs-hall',1]]);
+});
+
+// Build 47e: the Silent Observatory itself, PR #80's five places after the archive.
+const OBS=['obs-hall','obs-desk','obs-bench','obs-array','obs-passage'];
+// A camp as Build 47d left it: the archive read, the end card seen.
+function archiveRead(){
+ const s=fresh(0);s.area=3;s.built={...done(AREAS[0]),...done(AREAS[1]),'vault-door':3,'vault-archive':3};s.materials={...s.built};s.coins=20000;s.daily={day:9e6,count:1};s.seenEnd=true;
+ return load(JSON.stringify(s),5000);
+}
+
+test('a camp that read the archive (Build 47d\'s end) goes on into the Observatory', ()=>{
+ const s=archiveRead();assert.notEqual(s.seenEnd,true,'the old end no longer marks the end');assert.equal(allDone(s),false);
+ const gold=s.orders.filter(o=>o?.story);assert.equal(gold.length,1);assert.equal(gold[0].story,'obs-hall','the hall\'s gold order is ready');
+ assert.equal(JSON.stringify(load(JSON.stringify(s),6000).orders),JSON.stringify(s.orders),'loading again changes nothing more');
+});
+// As a player does, with coins to spare: the next stage's gold order delivered (its parts laid on
+// the board), then the stage bought; parts and rewards the board cannot hold are cleared off first.
+function buyNext(s,log){
+ const free=()=>s.board.reduce((a,x,i)=>x===null||x.type==='cargo'?[...a,i]:a,[]);
+ const u=upgrades(s)[0];if(!u)return null;
+ if(!u.materials){const o=s.orders.find(x=>x?.story===u.id);assert.ok(o,`a gold order for ${u.id} ${u.stage}`);
+  const f=free();let k=0;for(const r of o.needs)for(let c=0;c<r.count;c++)s.board[f[k++]]=item(r.family,r.tier);ok(s,{type:'deliver',id:o.id});log.gold.push([u.id,u.stage,o.needs.map(r=>r.family+r.tier+'x'+r.count).join('+')]);}
+ const r=ok(s,{type:'restore',id:u.id});log.stages.push([u.id,u.stage]);
+ for(let i=0;i<s.board.length;i++)if(s.board[i]?.type==='item'&&free().length<6)s.board[i]=null;
+ return r;
+}
+
+test('the Observatory opens only after the archive index is read; the hall says why it waits', ()=>{
+ const s=archiveRead();s.built['vault-archive']=2;s.materials['vault-archive']=2;
+ assert.ok(!upgrades(s).some(u=>u.id==='obs-hall'),'not before the index');
+ assert.deepEqual(blockedStage(s,'obs-hall'),{stage:1,name:'Light the entrance hall',requires:{'vault-archive':3}});
+ assert.match(act(s,{type:'restore',id:'obs-hall'},6000).message,/opens once Read the archive index is done/);
+ const t=archiveRead();assert.equal(blockedStage(t,'obs-hall'),null);assert.deepEqual(upgrades(t).map(u=>u.id),['obs-hall']);
+});
+
+test('the Observatory: Lens Bench copies, optic gold, cogs, the sea gate waits for the array, then the chapter ends', ()=>{
+ const s=archiveRead(),log={gold:[],stages:[]},rewards=[];
+ const t=AREAS[3].tasks.slice(1);assert.deepEqual(t.map(x=>x.id),OBS);
+ assert.equal(AREAS[3].focus,'optic');assert.equal(AREAS[3].tasks.flatMap(x=>x.stages.map(y=>y.cost)).reduce((a,b)=>a+b),2970);
+ // the authored gold orders are the array's and the sea gate's, as in PR #80
+ assert.deepEqual(TASK('obs-array').stages.map(x=>x.gold),[[['optic',2,1],['lamp',2,2]],[['optic',3,1],['chart',4,1]],[['optic',4,1],['lamp',3,1]]]);
+ assert.deepEqual(TASK('obs-passage').stages[2].requires,{'obs-array':3});
+ let guard=0;
+ while(!allDone(s)&&guard++<40){
+  // the sea gate's last stage waits for the array, whatever else is left
+  if(stageOf(s,'obs-passage')===2&&stageOf(s,'obs-array')<3)assert.ok(!upgrades(s).some(u=>u.id==='obs-passage'));
+  const r=buyNext(s,log);assert.ok(r,'never stuck: '+JSON.stringify(upgrades(s)));rewards.push([r.task,r.stage,r.effects]);
+ }
+ assert.equal(allDone(s),true);assert.equal(s.area,3,'the Hidden Harbour is listed, never entered');assert.ok(!s.orders.some(o=>o?.story),'no gold order left');
+ assert.equal(log.stages.length,15);
+ // the bench gives two Lens Benches (on the board, or waiting), the array a cog and the tunnel a cog
+ const benches=[...s.board,...s.pending].filter(x=>x?.type==='source'&&x.id==='optic').length;assert.equal(benches,2,'two Lens Benches');
+ assert.equal(newestGenerator(s),'optic','the Lens Bench is the newest generator');
+ assert.equal(rewards.filter(([,,e])=>e.cog!==undefined).length,2,'two Brass cogs');
+ // after the bench, the Observatory's own gold orders ask for optics
+ const after=log.gold.filter(([id])=>id==='obs-array'||id==='obs-passage');assert.ok(after.every(([,,n])=>/optic/.test(n)),JSON.stringify(after));
+});
+
+test('with every generator out, about half of the Observatory\'s everyday orders start with optics (its focus)', ()=>{
+ const s=archiveRead();for(const id of ['chart','rope','shell','lamp','flux','optic']){const i=s.board.findIndex(x=>x===null||x.type==='cargo');s.board[i]={type:'source',id};}
+ let optic=0,any=0;for(let n=0;n<100;n++){s.orderSeq=200+n;const o=makeOrder(s);assert.ok(!o.story);if(o.needs[0].family==='optic')optic++;if(o.needs.some(r=>r.family==='optic'))any++;}
+ assert.ok(optic>=35&&optic<=70,`orders starting with optics: ${optic} of 100`);assert.ok(any<90,`orders with optics anywhere: ${any} of 100`);
+});
+
+test('the Lens Bench: an older save (no optic taps) loads, and its book page has six parts', ()=>{
+ const s=archiveRead();delete s.taps.optic;const raw=JSON.stringify(s);
+ const t=load(raw,9000);assert.equal(t.moves,s.moves);assert.equal(t.taps.optic,0);assert.deepEqual(t.built,s.built);
+ assert.ok(BOOK_CHAINS.includes('optic'));assert.deepEqual(bookKeys('optic'),['optic0','optic1','optic2','optic3','optic4','optic5']);
+ // a bench taps out its first part
+ let i=t.board.findIndex(x=>x===null);t.board[i]={type:'source',id:'optic',level:1};t.energy=30;const r=ok(t,{type:'produce',id:'optic'},9500);
+ assert.ok(t.board.some(x=>x?.type==='item'&&x.family==='optic'&&x.tier===0),JSON.stringify(r.message??''));
 });

@@ -37,16 +37,17 @@ async function closeBeats(page){for(let n=0;n<8&&await page.locator('#beat[open]
    await page.locator('#playlog .close').tap();
    await page.reload();await page.waitForSelector('#board .tile');
    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('vaultwake-v5-coast-playtest')).sessions.length>=2,null,{timeout:4000});
-   // The end of the content (Build 47d: the Tide Archive's last stage, inside the open Vault): buy it,
-   // then the end card.
+   // The end of the content (Build 47e: the Observatory's sea gate, Chapter 2's last stage): buy it,
+   // then the hidden harbour's reveal card, then the end card.
    await write(page,()=>{const s=JSON.parse(localStorage.getItem('vaultwake-v5-coast'));
-    s.built={'beach-path':3,'beach-tent':3,'beach-mast':3,'beach-workshop':3,'beach-pier':3,'beach-beacon':3,'beach-cliff':3,'ws-camp':3,'ws-scope':3,'ws-ropes':3,'ws-steps':3,'ws-pool':3,'ws-hoist':3,'ws-door':3,'vault-door':3,'vault-archive':2};
-    s.area=3;s.materials={'vault-archive':3};s.coins=500;s.moves=Math.max(s.moves,50);s.daily={day:9e6,count:1};s.seen={door:true,'vault-open':true,archive:true};delete s.seenEnd;localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
+    s.built={'beach-path':3,'beach-tent':3,'beach-mast':3,'beach-workshop':3,'beach-pier':3,'beach-beacon':3,'beach-cliff':3,'ws-camp':3,'ws-scope':3,'ws-ropes':3,'ws-steps':3,'ws-pool':3,'ws-hoist':3,'ws-door':3,'vault-door':3,'vault-archive':3,'obs-hall':3,'obs-desk':3,'obs-bench':3,'obs-array':3,'obs-passage':2};
+    s.area=3;s.materials={'obs-passage':3};s.coins=500;s.moves=Math.max(s.moves,50);s.daily={day:9e6,count:1};s.seen={door:true,'vault-open':true,archive:true,'obs-signal':true};delete s.seenEnd;localStorage.setItem('vaultwake-v5-coast',JSON.stringify(s));});
    await page.reload();await page.waitForSelector('#board .tile');await closeBeats(page);
    assert.equal(await page.locator('#endDialog[open]').count(),0,'not before the end');
-   await page.locator('#mapButton').tap();await page.locator('#coastMap [data-restore="vault-archive"]').tap();await closeBeats(page);
+   await page.locator('#mapButton').tap();await page.locator('#coastMap [data-restore="obs-passage"]').tap();await closeBeats(page);
+   await page.waitForSelector('#beat[open] .vaultReveal',{timeout:4000});assert.match(await page.textContent('#beatContent'),/A hidden harbour/);await closeBeats(page);
    await page.waitForSelector('#endDialog[open]',{timeout:4000});
-   {const t=await page.locator('#endContent').textContent();assert.match(t,/The archive is read/);assert.match(t,/48 stages/);assert.doesNotMatch(t,/20\d\d|January|February|March|April|May|June|July|August|September|October|November|December/,'no release date');}
+   {const t=await page.locator('#endContent').textContent();assert.match(t,/The sea gate is open/);assert.match(t,/63 stages/);assert.match(t,/Chapter 3, The Hidden Harbour, is in development/);assert.doesNotMatch(t,/20\d\d|January|February|March|April|May|June|July|August|September|October|November|December/,'no release date');}
    assert.equal(await page.locator('#endContent [data-keep]').count(),1);assert.equal(await page.locator('#endContent [data-feedback]').count(),1);
    await page.locator('#endContent [data-keep]').tap();assert.equal(await page.locator('#endDialog[open]').count(),0,'keep playing returns to the game');
    assert.equal((await read(page)).seenEnd,true);

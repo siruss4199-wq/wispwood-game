@@ -19,12 +19,13 @@ export function freeAction(g,s){
  const gens=b.filter(x=>x?.type==='source');
  return gens.some((x,i)=>gens.some((y,j)=>i!==j&&g.generatorsMerge(x,y)));
 }
-export function simulate(g,policy,speed,seed,{until=4*3600e3,firstOnly=false,onStep=null,shop=false}={}){
+export function simulate(g,policy,speed,seed,{until=4*3600e3,firstOnly=false,onStep=null,shop=false,finish=null}={}){
  const rnd=mulberry(seed),s=g.fresh(0);let now=0;
  const m={speed,seed,minEnergy:Infinity,bought:0,idle:0,longestIdle:0,starve:[],lowStates:0,lowFree:0,taps:0,rations:0,orderAges:[],restores:[],gens:{},first:{},first15:{orders:0,restores:0}};
  let idleRun=0,starveStart=null;const born={};
  // The Survey Worksite is finished (since Build 47b the camp then moves on to the Vault door).
- const done=()=>s.area>=2||s.area===1&&g.areaDone(s);
+ // finish (Build 47e) measures further, e.g. to the end of Chapter 2.
+ const done=finish?()=>finish(s):()=>s.area>=2||s.area===1&&g.areaDone(s);
  while(now<until&&!done()&&!(firstOnly&&now>=15*MIN)){
   g.tick(s,now);for(const o of s.orders)born[o.id]??=now;
   if(s.energy<1&&starveStart===null)starveStart=now;
@@ -46,7 +47,7 @@ export function simulate(g,policy,speed,seed,{until=4*3600e3,firstOnly=false,onS
   onStep?.(s,now);
  }
  if(starveStart!==null)m.starve.push(now-starveStart);
- m.total=now;m.finished=done();return m;
+ m.total=now;m.finished=done();m.active=m.total-m.idle;return m;
 }
 export const quantile=(a,p)=>{if(!a.length)return 0;const b=[...a].sort((x,y)=>x-y);return b[Math.min(b.length-1,Math.floor(b.length*p))];};
 export const gaps=r=>r.map((t,i)=>i?t-r[i-1]:t);

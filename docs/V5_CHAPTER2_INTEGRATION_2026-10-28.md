@@ -262,3 +262,145 @@ that.
 
 **Tried and reverted:** giving every loaded camp a missing gold order changed saves on a plain
 round trip (5 save tests). Gold orders still come only when a camp moves on, or after a purchase.
+
+## Step 5 (Build 47e): the Silent Observatory, with the Lens Bench and its optics
+
+**What is in it.** PR #80's Observatory, as it was, after the Tide Archive, in the same area:
+
+| Place | Stages (coins) | Rewards | Gold order |
+|---|---|---|---|
+| Entrance hall | 110, 130, 150 | energy 8, Tide token, crate (newest) | the newest generator's part |
+| Survey desk | 130, 150, 170 | energy 8, Tide token, crate (newest) | the newest generator's part |
+| Lens bench | 150, 170, 190 | **Lens Bench**, a second Lens Bench, a Lens Bench crate (size 2) | the newest generator's part |
+| The array | 170, 200, 230 | energy 10, **Brass cog**, Lens Bench crate (size 3) | authored: optic 2 + 2 × lamp 2; optic 3 + chart 4; optic 4 + lamp 3 |
+| Inner passage | 190, 220, 250 | energy 10, **Brass cog**, none | the last one authored: optic 4 + rope 4 |
+
+- The area is 2,970 coins with the archive (21 places in all, 63 stages).
+- **Unlock rules** (checked in tests and in the browser):
+  - the hall opens only once the archive index is read (`requires`);
+  - the other places follow one after another, as everywhere;
+  - the sea gate's last stage waits for the array (`requires`).
+  - A stage that waits says what for, on the coast card ("Opens once Wake the array is done.") and
+    when it is refused (the rule message used to say "Upgrade the place before it first").
+- **The Lens Bench** (optics, six tiers: Sea-glass chip → Polished blank → Ground lens →
+  Brass-ringed lens → Focus barrel → Signal reader) is earned at the bench, introduced with its
+  chain like a generator found in cargo. Half of the Observatory's everyday orders start with
+  optics once it is out (`focus`). It is the newest generator from then on ("newest" crates follow
+  it). Its book page appears once the camp is inside the Vault, so Chapter 1's book does not
+  spoil it.
+- **Reveals** (PR #80's D and E, as cards in the story dialog, each once):
+  - the array wakes: Tamsin, "Three long, two short… I can tell where it comes from. Not who sends
+    it, or how long it has been sending.";
+  - the sea gate opens on a hidden harbour: Bram, "Who sent that signal, and what happened in that
+    harbour?";
+  - then the end card **"Chapter 2 complete · The sea gate is open"**, naming "Chapter 3, The Hidden
+    Harbour, is in development". There is no button for it. The Hidden Harbour is listed as coming
+    (no places, never entered).
+- **Not ported:** generators parked in the shed (measured below: not needed), the journal and the
+  stage bubble (deferred, see step 3).
+
+**Saves.**
+- A Build 47d camp that read the archive (its end card seen) goes on into the Observatory as it
+  loads: its old end mark is cleared and the hall's gold order is made at once. This is a narrower
+  rule than the one reverted in step 4. Only a camp whose content grew after its end gets a gold
+  order on load, so plain round trips are unchanged (tested: loading twice changes nothing).
+- An older save has no Lens Bench taps; they start at 0 instead of failing the check.
+- An area with no places (the Hidden Harbour) is not a valid place for a save to stand, so a save
+  claiming it starts a new camp, as an out-of-range area always has. No real save can stand there.
+- The book's chains now include optics. Older saves' book lists stay valid.
+- Rewards of the Observatory that do not fit wait (step 1): Lens Benches, crates, cogs and tokens.
+- Save keys are unchanged.
+
+**Pacing** (`node tests/v5-next-chapter2-metrics.mjs 5,8 1,2,3,4,5 [shop|noshop]`, new).
+- The scripted player goes from a new camp to the sea gate, five seeds per speed.
+- *Active* is time spent acting; *waiting* is time with nothing to do and no energy.
+- "shop" buys the coin Energy pack when out of energy, as Build 41g's harness does; "noshop" never
+  does and waits instead.
+
+| 5 s/action | Chapter 1 (to the open Vault) | Tide Archive | Observatory | Total |
+|---|---|---|---|---|
+| shop: active / waiting (min) | 136 / 2 | 4.5 / 0 | 44 / 4 | 184 / 6 |
+| noshop: active / waiting | 135 / 72 | 3.9 / 0 | 47 / 0 | 186 / 72 |
+
+| 8 s/action | Chapter 1 | Tide Archive | Observatory | Total |
+|---|---|---|---|---|
+| shop: active / waiting | 223 / 0 | 7.6 / 0 | 79 / 0.4 | 309 / 0.4 |
+| noshop: active / waiting | 220 / 42 | 8.5 / 0 | 80 / 0 | 308 / 42 |
+
+- **Chapter 2** (archive and Observatory) is about 50 min of play at 5 s an action and 87 min at
+  8 s, with no waiting. Energy is no longer the limit there; coins are. All of Chapter 1's waiting
+  happens before the Vault, as measured before.
+- **The Lens Bench** arrives 25–30 min before the end at 5 s (152–161 min with the shop, 224–227
+  without), and 50–55 min before it at 8 s.
+- **Discovery spacing** (a new generator kind, a part first found, or a stage bought):
+  - Chapter 1: median 1.6–3 min, longest 9–22 min;
+  - archive: median 0.7–3.4 min, longest under 5 min;
+  - Observatory: median 1.8–4 min, longest 4–12 min.
+  - **One outlier:** at 5 s with the shop, one seed took 27 min for the sea gate's last stage. It
+    had spent its coins on energy packs and then had to earn the 250 coins. That is the chapter's
+    longest stretch with nothing new; without the shop, the longest is 7 min. Not changed here (it
+    would be an economy change); the director may want the last stage cheaper.
+- **Repetition:**
+  - Parts made most often by merging:
+    - Chapter 1: Rover parts (tier 2 ×87–105, tier 1 ×77–90, tier 3 ×70–91);
+    - Observatory: Ground lens / Polished blank ×15–35 and Tin/Storm lanterns ×14–24.
+    - The Lantern Kiln, which Chapter 1 used only 3–14 times, now carries the archive and half
+      of the array.
+  - Everyday orders asking the same parts as one of the last four: 0–4 % (Chapter 1 and the
+    Observatory), up to 25 % in the archive's 4–6 orders (one repeat).
+- **Board occupancy** (used cells of 36, not cargo):
+  - Chapter 1: median 11–12, 90th percentile 14–16;
+  - Observatory, with 7–8 generators out: median 16–20, 90th percentile ≤ 22.
+  - The board was never full, and no reward had to wait in any run. **Generator parking (PR #80) is
+    not needed** and was not ported.
+
+**Missing art (added to the list above; nothing unrelated substituted):**
+- The Observatory's place art and the optics icons are PR #80's review art, cut from concept
+  sheets.
+- `harbour-view.webp` (the harbour card and the Hidden Harbour's thumbnail) is #80's small upscaled
+  placeholder.
+- The array's signal is drawn as a CSS beam over its stage-3 picture; there is no painted signal
+  frame.
+
+**Story check:**
+- PR #80's lines are kept as written. The conflict noted in step 3 stays open for the director:
+  the hall's line "A compass and a crescent on every banner. That mark was on the door too." against
+  46q's wave seal on the Vault.
+- Nothing in the Observatory names the letter's sender or links the beacon.
+- Small wording fixed in the area-complete line:
+  - "the The Silent Observatory" is now said once;
+  - the Vault Entrance no longer says "Up the cliff";
+  - an area still to come reads "is still to come", and the coast screen labels it "In
+    development", not "Next update".
+
+**Tests:**
+- `tests/v5-next-chapter2.test.mjs`, new tests:
+  - a 47d camp goes on into the Observatory with the hall's gold order, idempotent on reload;
+  - the hall waits for the index, says why, and refuses with that reason;
+  - a full playthrough of the 15 Observatory stages through real gold deliveries: two Lens Benches,
+    two cogs, optics in the array and sea-gate gold, the sea gate never offered before the array,
+    then the chapter's end in area 3;
+  - with every generator out, 35–70 % of everyday orders start with optics;
+  - an older save without Lens Bench taps loads; the optics book page has six parts; a bench taps
+    out a Sea-glass chip.
+- `tests/v5-next-chapter2-browser.cjs` goes on past the archive, at 360, 390, 430 and 907:
+  - no end card after the archive;
+  - the hall's gold order;
+  - the first Lens Bench's chain moment and its book page;
+  - the sea gate's "Opens once Wake the array is done";
+  - the signal card;
+  - the harbour card;
+  - the Chapter 2 end card (only Keep playing and Share feedback);
+  - nothing again after reload.
+- Updated to the new end of content:
+  - the playtest end card (now 63 stages, "Chapter 3, The Hidden Harbour, is in development", after
+    the harbour card);
+  - the bright end strip ("Coins carry over to The Hidden Harbour");
+  - the place count (21);
+  - the coming areas folded on the beach (4);
+  - the book's chains;
+  - an area with no places starting a new camp.
+- `tests/v5-next-economy-sim.mjs` takes a `finish` option (default unchanged) and reports `active`.
+- **Local results:**
+  - `node --test tests/v5-*.test.mjs`: 311/311.
+  - All nine Coast Camp browser tests pass in Chromium. WebKit is not installed here; CI runs it.
