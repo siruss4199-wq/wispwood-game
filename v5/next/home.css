@@ -1,0 +1,52 @@
+/* Coast Camp Home and Loading (Build 46p). One screen over the shared coastal Vault picture: the
+   logo near the top, the closed Vault left clear in the middle, the controls low on the sand.
+   Portrait: the picture covers the screen, centred on the Vault. Landscape: the picture stands
+   whole at full height on the left (never stretched) over a soft blur of itself, the controls on
+   the right. Loading shows a slim bar and live text in place of the controls. */
+.home{--home-ink:#fff;position:fixed;inset:0;z-index:60;display:grid;grid-template-rows:auto auto 1fr auto;justify-items:center;overflow:hidden;
+ padding:max(10px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));
+ background:linear-gradient(#5fb6e6,#9fdcf3 45%,#e9cf9c 72%,#d9b77c);color:var(--home-ink);isolation:isolate}
+body.homeOpen{overflow:hidden}
+.homeArt,.homeBlur{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:47% 37%;z-index:-1;pointer-events:none;user-select:none;-webkit-user-select:none}
+.homeBlur{display:none}
+.homeTop{width:100%;display:flex;justify-content:space-between;align-items:center;min-height:48px}
+.homeIcon{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:#ffffffe6;color:#0f6b7d;box-shadow:0 0 0 2px #ffffff,0 3px 0 #0d5a6a59,0 4px 12px #0d3a4a40}
+.homeIcon svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#homeSettings{margin-left:auto}
+.homeLogo{margin:2px 0 0;width:min(84vw,420px);line-height:0;filter:drop-shadow(0 3px 6px #0d3a4a59)}
+.homeLogo img{width:100%;height:auto;display:block}
+.homePanel{grid-row:4;display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;max-width:420px}
+.homePlay{width:clamp(250px,72vw,290px);aspect-ratio:900/249;min-height:56px;display:grid;place-items:center;padding:0 0 4%;
+ background:url('../assets/premium/coast/home/button.webp') center/100% 100% no-repeat;border-radius:999px;
+ color:#fff;font-size:clamp(24px,7.2vw,30px);font-weight:900;letter-spacing:.02em;text-shadow:0 2px 0 #0a5363,0 0 8px #0a536399;filter:drop-shadow(0 4px 6px #0d3a4a59)}
+.homePlay:focus-visible{outline:3px solid #fff;outline-offset:3px}
+.homePlay:disabled{filter:saturate(.7) drop-shadow(0 4px 6px #0d3a4a59)}
+.homeChapter,.homeStatus,.homeNote{margin:0;max-width:min(92vw,360px);padding:5px 12px;border-radius:999px;background:#0b3f50b8;color:#fff;font-size:14px;font-weight:800;line-height:1.3;text-align:center;text-shadow:0 1px 1px #0006}
+.homeNote{border-radius:14px;font-size:13px;font-weight:700}
+.homeLoad{display:flex;flex-direction:column;align-items:center;gap:8px;width:100%}
+.homeBar{position:relative;width:min(260px,70vw);height:8px;border-radius:4px;overflow:hidden;background:#0b3f5099;box-shadow:0 0 0 1.5px #ffffffd9}
+.homeBar>i{position:absolute;inset:0 auto 0 0;width:var(--p,0%);background:linear-gradient(90deg,#ffe089,#f2b33a);border-radius:4px;transition:width .2s ease-out}
+.homeBar.indet>i{width:34%;animation:homeIndet 1.3s ease-in-out infinite}
+@keyframes homeIndet{0%{left:-34%}100%{left:100%}}
+@media(prefers-reduced-motion:reduce){.homeBar.indet>i{left:0;width:100%;opacity:.45}}
+.homeActions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.homeButton{min-height:44px;padding:0 18px;border-radius:999px;background:#fff;color:#0f5f70;font-size:15px;font-weight:900;box-shadow:0 0 0 2px #0f9fb2,0 3px 0 #0d5a6a59}
+.homeButton.quiet{background:#ffffffd9;color:#36505c;box-shadow:0 0 0 1.5px #ffffffb3}
+.homeButton:focus-visible,.homeIcon:focus-visible{outline:3px solid #fff;outline-offset:3px}
+/* states: loading shows the bar and its text; waiting for the board keeps Play there but greyed */
+.home.isLoading .homePanel>:not(.homeLoad),.home.isLoading .homeTop>*{display:none}
+.home.isWaiting #homeChapter{display:none}
+.home.isFailed .homeBar{display:none}
+.home.leaving{opacity:0;transition:opacity .22s ease-out;pointer-events:none}
+/* landscape: the picture whole on the left, the controls beside it */
+@media (orientation:landscape) and (min-aspect-ratio:4/3){
+ .home{--art-w:calc(100vh * 941 / 1672);grid-template-columns:var(--art-w) 1fr;grid-template-rows:auto auto 1fr auto;padding-left:0}
+ @supports (height:100dvh){.home{--art-w:calc(100dvh * 941 / 1672)}}
+ .homeBlur{display:block;filter:blur(18px) saturate(1.05) brightness(.95);transform:scale(1.12)}
+ .homeArt{inset:0 auto 0 0;width:var(--art-w);height:100%;object-fit:cover;box-shadow:6px 0 24px #0d3a4a4d}
+ .homeTop,.homeLogo,.homePanel{grid-column:2}
+ .homeTop{padding-left:16px}
+ .homeLogo{width:min(calc((100vw - var(--art-w)) * .72),460px);margin-top:0}
+ .homePanel{grid-row:4}
+ .homeLogo{grid-row:2}
+}

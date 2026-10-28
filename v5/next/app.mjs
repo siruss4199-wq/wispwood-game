@@ -20,6 +20,7 @@ import {refillTimes,clock,REFILL_CAP,REFILL_EVERY,rationWait} from '../energy.mj
 import {CREW} from '../crew.mjs';
 import {reduced,burst,rewardFlight,moment as sharedMoment} from '../feedback.mjs';
 import {sfx as sounds} from './sfx.mjs';
+import {createHome} from './home.mjs';
 import {haptics} from './haptics.mjs';
 // The shared moment draws its icon with the Classic art; new chains need draw().
 // Moments show above an open screen (the beach) too: a modal dialog covers the page.
@@ -30,7 +31,7 @@ function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el
 let adPlaying=false;
 const sfx=(kind,tier=0)=>sounds.play(kind,tier,{muted:adPlaying||platform.muted()});
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 46o · warm board';
+export const BUILD='Build 46p · home';
 // The level path (docs/V5_LEVEL_PATH_2026-10-27.md): a crew order that pays a tool on top shows it
 // beside its coins (a Tide token; a favour's Sea chest or Brass cog).
 const bonusThing=o=>o.bonus==='cog'?cog():o.bonus==='chest'?kit(newestGenerator(state),2):o.bonus==='token'?token():null;
@@ -46,8 +47,17 @@ const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},
 // ?new=1 (the playtest page's "start from the beginning" link) starts a new camp.
 const startNew=new URLSearchParams(location.search).has('new');
 if(startNew){const q=new URLSearchParams(location.search);q.delete('new');history.replaceState(null,'',location.pathname+(q.size?'?'+q:''));}
-let state=startNew?fresh(Date.now()):load(storage.get(SAVE_KEY)??'',Date.now()),selected=null,focusOrder=null,drag=null,suppressClick=false;
-const persist=()=>storage.set(SAVE_KEY,JSON.stringify(state));
+// Home (Build 46p): the save is read once here. load() answers a save it cannot read with a new
+// camp (game.mjs); a fresh camp is the same for the same moment, so a save that loads as exactly
+// fresh(now) was not read, and is kept as it is: nothing is written over it until the player
+// chooses a new camp on Home (which first copies it to SAVE_KEY+'-damaged'). A new camp with no
+// save is not written either until the player presses Play.
+const bootNow=Date.now(),rawSave=startNew?null:storage.get(SAVE_KEY)||null;
+let state=startNew?fresh(bootNow):load(rawSave??'',bootNow),selected=null,focusOrder=null,drag=null,suppressClick=false;
+let damaged=!!rawSave&&JSON.stringify(state)===JSON.stringify(fresh(bootNow)),holdSave=!rawSave||damaged,homeOpen=!!document.getElementById('home');
+const persist=()=>{if(!holdSave)storage.set(SAVE_KEY,JSON.stringify(state));};
+// Keeps the save that could not be read before anything replaces it.
+function keepDamaged(){if(damaged&&rawSave){storage.set(SAVE_KEY+'-damaged',rawSave);playlog.event('saveDamaged');}damaged=false;}
 // The local playtest log (Build 41 M6): this browser only, copied out by the player.
 const playlog=createLog({storage:{get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>localStorage.setItem(k,v),remove:k=>localStorage.removeItem(k)},
  build:BUILD,viewport:`${innerWidth}x${innerHeight}`,touch:!!globalThis.matchMedia?.('(pointer:coarse)').matches});
@@ -544,12 +554,15 @@ async function watchAd(action){
  if($('#shop').open)showShop();render();
 }
 // The gift opens by itself once a session is under way, never over another screen or a drag.
-function offerGift(){if(!adBusy&&giftReady()&&giftShown!==today()&&state.moves>=3&&!drag&&!document.querySelector('dialog[open]'))showDaily();}
+function offerGift(){if(!homeOpen&&!adBusy&&giftReady()&&giftShown!==today()&&state.moves>=3&&!drag&&!document.querySelector('dialog[open]'))showDaily();}
 $('#soundButton').onclick=()=>{sounds.toggle();render();sfx('tap');};
 $('#hapticsButton').onclick=()=>{haptics.toggle();render();haptics.pulse('merge');};
 $('#helpButton').onclick=()=>$('#help').showModal();
-$('#menuButton').onclick=()=>{$('#classicNote').textContent=storage.get('vaultwake-v5')?'Your Classic save is kept and continues where you left it.':'';$('#hapticsNote').textContent=haptics.method==='vibrate'?'Vibration on merges: use the button at the bottom of the board screen.':haptics.method==='ios-switch'?'Vibration on merges may work on this iPhone (iOS 18 and later); turn it off at the bottom of the board screen.':'Vibration is not available in this browser.';$('#menu').showModal();};
-$('#newGame').onclick=()=>{if(!confirm('Start the Coast Camp from the beginning? Your Classic save is not affected.'))return;state=fresh(Date.now());selected=null;focusOrder=null;persist();$('#menu').close();render();showIntro();};
+$('#menuButton').onclick=()=>{$('#homeButton').hidden=homeOpen;$('#classicNote').textContent=storage.get('vaultwake-v5')?'Your Classic save is kept and continues where you left it.':'';$('#hapticsNote').textContent=haptics.method==='vibrate'?'Vibration on merges: use the button at the bottom of the board screen.':haptics.method==='ios-switch'?'Vibration on merges may work on this iPhone (iOS 18 and later); turn it off at the bottom of the board screen.':'Vibration is not available in this browser.';$('#menu').showModal();};
+$('#newGame').onclick=()=>{if(!confirm('Start the Coast Camp from the beginning? Your Classic save is not affected.'))return;newCamp();$('#menu').close();if(homeOpen&&home)home.enter();else showIntro();};
+// A new camp, chosen by the player (the menu, or Home after a save could not be read).
+function newCamp(){keepDamaged();holdSave=false;state=fresh(Date.now());selected=null;focusOrder=null;persist();render();}
+$('#homeButton').onclick=()=>{$('#menu').close();persist();home?.show();};
 for(const d of document.querySelectorAll('dialog'))d.querySelector('.close')?.addEventListener('click',()=>d.close());
 
 // ---------- the beach screen and story ----------
@@ -706,8 +719,10 @@ function showIntro(){const a=currentArea(state);if(a.intro)playLines(a.name,a.in
 $('#build').textContent='COAST CAMP · '+BUILD.toUpperCase();
 // CrazyGames lifecycle (Build 41 M7; no-ops without the SDK): loading until the page has loaded,
 // then gameplay whenever no menu, end screen, log, ad or hidden tab is in the way.
-initPlatform().then(on=>{if(!on)return;platform.loadingStart();const stop=()=>{platform.loadingStop();syncPlaying();};document.readyState==='complete'?stop():addEventListener('load',stop,{once:true});});
-const syncPlaying=()=>platform.setPlaying(!adBusy&&!document.hidden&&!document.querySelector('#menu[open],#help[open],#playlog[open],#endDialog[open],#adStandIn[open]'));
+// Build 46p: loading ends when Home is usable (home.ready), not when every picture is in.
+let home=null;
+initPlatform().then(on=>{if(!on)return;platform.loadingStart();const stop=()=>{platform.loadingStop();syncPlaying();};home?home.ready.then(stop):document.readyState==='complete'?stop():addEventListener('load',stop,{once:true});});
+const syncPlaying=()=>platform.setPlaying(!homeOpen&&!adBusy&&!document.hidden&&!document.querySelector('#menu[open],#help[open],#playlog[open],#endDialog[open],#adStandIn[open]'));
 document.addEventListener('visibilitychange',syncPlaying);
 // What the playtest log keeps of an action (Build 41 M6).
 function logResult(a,r,before){
@@ -756,5 +771,19 @@ $('#playlogButton').onclick=()=>{$('#menu').close();showPlaylog();};
 // an affordable upgrade, energy from an ad when low, the daily gift, parts waiting in the book.
 function calmBadges(){let n=0;for(const el of [$('#mapReady'),$('#adEnergyButton'),$('#dailyButton'),$('#bookCount')]){if(el.hidden)continue;if(n>=2){el.hidden=true;if(el.id==='bookCount')$('#bookButton').classList.remove('ready');}else n++;}}
 render();header();setInterval(()=>{header();if(state.energy<1)renderHint();offerGift();$('#dailyButton').hidden=!giftReady();calmBadges();syncPlaying();},1000);
-if(!state.moves)showIntro();
-else if(allDone(state)&&!state.seenEnd)setTimeout(showEnd,600);
+// What happens on arriving at the board: once at the start without Home, and each time from Home.
+function arrive(fromHome=true){
+ if(holdSave&&!damaged){holdSave=false;persist();}
+ syncPlaying();if(fromHome)$('#hint').focus({preventScroll:true});
+ if(!state.moves)showIntro();
+ else if(allDone(state)&&!state.seenEnd)setTimeout(showEnd,600);
+}
+// Home and Loading (Build 46p): the board above is set up once; Home only covers and uncovers it.
+if(document.getElementById('home')){
+ const stagesBuilt=()=>{const a=currentArea(state);return a.tasks.reduce((n,t)=>n+stageOf(state,t.id),0);};
+ home=createHome({boot:window.VWBoot??null,hasSave:!!rawSave&&!damaged,damaged,
+  chapter:()=>{const a=currentArea(state);return a?.tasks?.length?`${a.name} · ${stagesBuilt()} of ${a.tasks.length*STAGES} stages built`:a?.name??'';},
+  onEnter:arrive,onSettings:()=>$('#menuButton').onclick(),onBook:showBook,
+  onNewCamp:()=>{if(!confirm('Start a new camp? The save that could not be read stays in this browser as a backup.'))return false;newCamp();return true;},
+  onOpenChange:v=>{homeOpen=v;syncPlaying?.();}});
+}else{homeOpen=false;arrive(false);}

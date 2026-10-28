@@ -111,6 +111,7 @@ jobs:
           node tests/v5-next-playtest-browser.cjs
           node tests/v5-next-bright-browser.cjs
           node tests/v5-next-crazygames-browser.cjs
+          node tests/v5-next-home-browser.cjs
       # Preserve compact debugging evidence only. Playwright videos can be >100 MB
       # per run; keep them local to CI instead of uploading on every PR update.
       - name: Save compact V5 screenshots and traces

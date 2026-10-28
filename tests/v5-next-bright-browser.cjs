@@ -5,7 +5,7 @@
 // the next-place chip opens the coast on that place, a build shows before → after and then the
 // next objective, sound and vibration have their own settings, and reduced motion skips the
 // flights without changing any result. Presentation only: the rules are checked by node tests.
-const assert=require('node:assert/strict');const pw=require('playwright');
+const assert=require('node:assert/strict');const pw=require('playwright');const {throughHome}=require('./v5-next-home-helper.cjs');
 const URL='http://127.0.0.1:8080/v5/play.html';
 const KEY='vaultwake-v5-coast';
 const VIEWPORTS=[[360,780],[390,844],[430,932],[907,510]];
@@ -26,7 +26,7 @@ async function run(engine,W,H,motion){
  const browser=await pw[engine].launch();
  try{
   const context=await browser.newContext({viewport:{width:W,height:H},isMobile:W<700&&engine==='chromium',hasTouch:W<700,reducedMotion:motion});
-  const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  const page=await context.newPage(),errors=[];throughHome(page);page.on('pageerror',e=>errors.push(e.message));
   await page.goto(URL+'?new=1');await page.waitForSelector('#board .tile');await closeBeats(page);
   await setState(page,s=>{s.daily={day:9e6,count:1};});
   const tag=`${engine} ${W}×${H} ${motion}`;

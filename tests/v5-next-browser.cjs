@@ -3,7 +3,7 @@
 // the menu, and the Classic save left untouched.
 // Rivet Rover's camp sits in the middle; sealed cargo and tideglass cover the rest, and crates
 // touching open ground show the (well-merged) part that opens them.
-const assert=require('node:assert/strict');const {chromium,webkit}=require('playwright');
+const assert=require('node:assert/strict');const {chromium,webkit}=require('playwright');const {throughHome}=require('./v5-next-home-helper.cjs');
 // Developer mode (?dev=1): these tests also check the playtest log, the Classic link and the ad
 // stand-in, which players do not see (2026-10-26).
 const URL='http://127.0.0.1:8080/v5/play.html?dev=1';
@@ -33,7 +33,7 @@ async function perform(page,a){
   const browser=await type.launch();
   try{for(const width of [360,390,430]){
    const context=await browser.newContext({viewport:{width,height:844},isMobile:true,hasTouch:true,reducedMotion:'reduce'});
-   const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+   const page=await context.newPage(),errors=[];throughHome(page);page.on('pageerror',e=>errors.push(e.message));
    await page.goto(URL);
    // A Classic save in the same browser must never be touched.
    const classic=JSON.stringify({version:5,marker:'classic'});

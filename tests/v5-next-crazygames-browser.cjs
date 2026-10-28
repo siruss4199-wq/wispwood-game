@@ -4,7 +4,7 @@
 // and no link out of the game, fits 907 × 510 and phones, and plays with no error or missing file.
 // URL: the page to test (default the repo's v5/coast-crazygames.html; the packaged zip's
 // index.html can be passed to check the upload itself).
-const assert=require('node:assert/strict');const {chromium,webkit}=require('playwright');
+const assert=require('node:assert/strict');const {chromium,webkit}=require('playwright');const {throughHome}=require('./v5-next-home-helper.cjs');
 const URL=process.env.CG_URL||'http://127.0.0.1:8080/v5/coast-crazygames.html',KEY='vaultwake-v5-coast';
 const STUB=`window.__cg=[];window.CrazyGames={SDK:{environment:'crazygames',init:async()=>{__cg.push('init')},
  game:{loadingStart(){__cg.push('loadingStart')},loadingStop(){__cg.push('loadingStop')},gameplayStart(){__cg.push('gameplayStart')},gameplayStop(){__cg.push('gameplayStop')},happytime(){__cg.push('happytime')},settings:{muteAudio:false},addSettingsChangeListener(){}},
@@ -15,7 +15,7 @@ const STUB=`window.__cg=[];window.CrazyGames={SDK:{environment:'crazygames',init
   let browser;try{browser=await type.launch();}catch(e){if(engine!=='chromium'&&/Executable doesn't exist/.test(e.message)){console.log(`${engine}: not installed here, skipped`);continue;}throw e;}
   try{for(const [W,H] of [[907,510],[390,844],[360,780]]){
    const context=await browser.newContext({viewport:{width:W,height:H},isMobile:W<700&&engine==='chromium',hasTouch:W<700});
-   const page=await context.newPage(),errors=[],missing=[],outside=[];
+   const page=await context.newPage(),errors=[],missing=[],outside=[];throughHome(page);
    page.on('pageerror',e=>errors.push(e.message));
    page.on('response',r=>{if(r.status()>=400)missing.push(r.status()+' '+r.url());});
    await page.route('https://sdk.crazygames.com/**',r=>r.fulfill({contentType:'application/javascript',body:STUB}));

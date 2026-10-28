@@ -2,7 +2,7 @@
 // save that finished before it existed) and the local playtest log (a 20-minute session exported
 // as valid JSON, kept across reloads, never sent anywhere). Time is moved forward with a shifted
 // Date.now so 20 minutes do not take 20 minutes.
-const assert=require('node:assert/strict');const {chromium,webkit}=require('playwright');
+const assert=require('node:assert/strict');const {chromium,webkit}=require('playwright');const {throughHome}=require('./v5-next-home-helper.cjs');
 // Developer mode (?dev=1): these tests also check the playtest log, the Classic link and the ad
 // stand-in, which players do not see (2026-10-26).
 const URL='http://127.0.0.1:8080/v5/play.html?dev=1';
@@ -15,7 +15,7 @@ async function closeBeats(page){for(let n=0;n<8&&await page.locator('#beat[open]
   try{for(const width of [360,390]){
    const context=await browser.newContext({viewport:{width,height:844},isMobile:true,hasTouch:true,reducedMotion:'reduce'});
    await context.addInitScript(()=>{const real=Date.now;Date.now=()=>real()+(Number(sessionStorage.getItem('shift'))||0);});
-   const page=await context.newPage(),errors=[],requests=[];page.on('pageerror',e=>errors.push(e.message));
+   const page=await context.newPage(),errors=[],requests=[];throughHome(page);page.on('pageerror',e=>errors.push(e.message));
    page.on('request',r=>{if(!r.url().startsWith('http://127.0.0.1:8080/'))requests.push(r.url());});
    await page.goto(URL+'&new=1');await page.waitForSelector('#board .tile');await closeBeats(page);
    // The daily gift is opened elsewhere; here it is already open today.
