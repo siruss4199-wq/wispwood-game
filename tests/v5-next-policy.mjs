@@ -2,7 +2,7 @@
 // open sealed cargo with spare parts (generator cargo first), grow crates, merge toward
 // what orders and cargo need, otherwise tap the generator whose parts are wanted.
 import {bookReady,pageReady,BOOK_CHAINS,count,matches,orderItems,nextTask,sourceOpen,openFamilies,cargoKeys,generatorsMerge,GENERATOR_ORDER,nextKind,UNLOCK_LEVEL} from '../v5/next/game.mjs';
-import {CHAINS,maxTier} from '../v5/next/chains.mjs';
+import {CHAINS,maxTier,isSecondary} from '../v5/next/chains.mjs';
 import {kitsMerge,kitFull,MAX_KIT_SIZE} from '../v5/kits.mjs';
 
 // How many of each part the live orders still want, plus the key of one cargo to
@@ -39,6 +39,18 @@ export function nextAction(s){
  // finished page's Brass cog is taken when there is room for it.
  {const k=bookReady(s)[0];if(k)return {type:'book',key:k};const f=BOOK_CHAINS.find(f=>pageReady(s,f));if(f&&(b.includes(null)||s.shed.includes(null)))return {type:'bookPage',family:f};}
  if(t&&s.coins>=t.cost)return {type:'restore',id:t.id};
+ // Secondary parts (pilot, 2026-10-29) are tidied as a player would: one no order wants and with no
+ // twin on the board goes to the shed (one shed space stays free for a book page's cog), and comes
+ // back when an order wants its chain or a twin arrives; a chain's top part, once in the book, is
+ // cleared (it gives no energy). Without this the scripted player, which never moves parts, left a
+ // lone Bolt on a camp space for good, which its merges and the tideglass beside the Rover need.
+ {const wantFam=new Set(s.orders.flatMap(o=>o.needs).filter(r=>isSecondary(r.family)).map(r=>r.family));
+  const back=s.shed.findIndex(x=>x?.type==='item'&&isSecondary(x.family)&&(wantFam.has(x.family)||b.some(y=>matches(y,x))));
+  if(back>=0&&b.includes(null))return {type:'unstore',slot:back};
+  const top=b.findIndex(x=>x?.type==='item'&&isSecondary(x.family)&&x.tier===maxTier(x.family)&&s.book.claimed.includes(x.family+x.tier)&&!wantFam.has(x.family));
+  if(top>=0)return {type:'recycle',index:top};
+  const slot=s.shed.indexOf(null);
+  if(slot>=0&&s.shed.filter(x=>x===null).length>1){const i=b.findIndex((x,i)=>x?.type==='item'&&isSecondary(x.family)&&!wantFam.has(x.family)&&!b.some((y,j)=>j!==i&&matches(y,x)));if(i>=0)return {type:'store',index:i,slot};}}
  // Curious: the crate on the way to a glowing one opens first, even before deliveries.
  {const g=target(s),have=g?b.findIndex(x=>matches(x,g)):-1;if(have>=0)return {type:'unseal',from:have,index:g.index};}
  // After two orders, and while energy lasts (25+), the key on the way (with parts no order needs, unless energy is plentiful: 45+) to a new kind of generator is made first.
@@ -76,7 +88,10 @@ export function nextAction(s){
  const isOrder=r=>orderWant.has(r.family+r.tier);
  const goldKeys=new Set((s.orders.find(o=>o.story)?.needs??[]).map(r=>r.family+r.tier)),isGold=r=>goldKeys.has(r.family+r.tier);
  const needs=[...want.entries()].map(([k,n])=>({family:k.replace(/\d+$/,''),tier:+k.match(/\d+$/)[0],n})).filter(r=>count(s,r)<r.n).sort((x,y)=>Number(isGold(y))-Number(isGold(x))||Number(isOrder(y))-Number(isOrder(x))||y.tier-x.tier);
- const keep=(i)=>{const x=b[i];const n=want.get(x.family+x.tier)??0;return n>0&&count(s,x)<=n;};
+ // A rare secondary part (pilot, 2026-10-29) an order wants is kept, the first ones up to the number
+ // wanted, even when there are more: common parts are kept all-or-none (spares merge on), which costs a
+ // tap or two to remake, but merging away a wanted secondary costs a drop.
+ const keep=(i)=>{const x=b[i];const n=want.get(x.family+x.tier)??0;if(n>0&&isSecondary(x.family))return b.slice(0,i).filter(y=>matches(y,x)).length<n;return n>0&&count(s,x)<=n;};
  for(const r of needs)for(let tier=r.tier-1;tier>=0;tier--){
   const pair=b.flatMap((x,i)=>matches(x,{family:r.family,tier})&&!keep(i)?[i]:[]);
   if(pair.length>=2)return pairMerge(b,pair[0],pair[1]);

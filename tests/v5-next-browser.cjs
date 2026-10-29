@@ -25,6 +25,9 @@ async function perform(page,a){
  else if(a.type==='unseal')await dragTo(page,a.from,a.index);
  // The book (build 33): open it, tick the part off (or claim the page's cog), close it.
  else if(a.type==='book'||a.type==='bookPage'){await page.locator('#bookButton').tap();await page.locator(a.type==='book'?`#book [data-key="${a.key}"]`:`#book [data-page="${a.family}"]`).tap();await page.locator('#book .close').tap();}
+ // The shed (the secondary-chain pilot's scripted player tidies a rare extra into it and back).
+ else if(a.type==='store'){if(!await pressed(a.index))await tile(a.index).tap();await page.locator('#selection [data-action="store"]').tap();}
+ else if(a.type==='unstore'){const slot=page.locator(`#shed [data-slot="${a.slot}"]`);if(!await slot.isVisible())await page.locator('#shed [data-shed-toggle]').tap();await slot.tap();}
  else throw Error('Unexpected action '+JSON.stringify(a));
  await page.waitForFunction(n=>JSON.parse(localStorage.getItem('vaultwake-v5-coast')).moves>n,s.moves,{timeout:4000});
 }

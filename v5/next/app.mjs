@@ -1,6 +1,6 @@
 // Coast Camp: the new-loop page (v5/play.html). Same look as Classic V5, one loop:
 // generators → merge → crew orders → coins → upgrade the coast's places on the beach screen.
-import {blockedStage,isStuck,allDone,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,newestGenerator,cog,token,SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,nextTask,currentArea,areaDone,upgrades,stageOf,builtCount,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys,reachable,generatorsMerge,MAX_GENERATOR_LEVEL,GLASS_HITS,nextKind,UNLOCK_LEVEL,GENERATOR_ORDER,storyTarget,roleOf} from './game.mjs';
+import {blockedStage,isStuck,allDone,swapsLeft,adSwapsLeft,SHOP,shopLeft,BOOK_COINS,BOOK_CHAINS,bookKeys,bookReady,pageReady,SHED_SLOTS,DAILY,newestGenerator,cog,token,SAVE_KEY,fresh,load,act,tick,nameOf,item,matches,count,orderItems,nextTask,currentArea,areaDone,upgrades,stageOf,builtCount,sourceOpen,SOURCES,chainsOf,CRATES,cargoKeys,reachable,generatorsMerge,MAX_GENERATOR_LEVEL,GLASS_HITS,nextKind,UNLOCK_LEVEL,GENERATOR_ORDER,storyTarget,roleOf,SECONDARY_RULES} from './game.mjs';
 import {AREAS,STAGES,TASKS,LABELS} from './areas.mjs';
 import {primaryAction} from './guide.mjs';
 import {needsOf,missingOf,levelOf} from './needs.mjs';
@@ -184,7 +184,7 @@ function renderOrders(){
 // (build 36): free ones first, then after an ad. The gold order stays.
 function chainRoute(r){
  const gen=CHAINS[r.family].gen,open=sourceOpen(state,gen),steps=Array.from({length:r.tier+1},(_,k)=>k);
- const text=!has(gen)?`${SOURCES[gen].name} is still sealed in cargo on the board`:!open?`${SOURCES[gen].name} wakes in a later area`:`Tap ${SOURCES[gen].name}${r.tier?`, then merge up ${r.tier} time${r.tier>1?'s':''}`:''}`;
+ const text=!has(gen)?`${SOURCES[gen].name} is still sealed in cargo on the board`:!open?`${SOURCES[gen].name} wakes in a later area`:CHAINS[r.family].secondary?`A rare extra from ${SOURCES[gen].name} taps (one at the latest every ${SECONDARY_RULES[gen].pity})${r.tier?`, then merge up ${r.tier} time${r.tier>1?'s':''}`:''}`:`Tap ${SOURCES[gen].name}${r.tier?`, then merge up ${r.tier} time${r.tier>1?'s':''}`:''}`;
  return `<li class="route ${open?'':'sealed'}"><span class="routeGen">${draw({type:'source',id:gen})}</span>${steps.map(k=>`<i class="routeArrow" aria-hidden="true"></i><span class="routeStep ${k===r.tier?'goal':''}" title="${CHAINS[r.family].names[k]}">${draw(item(r.family,k))}</span>`).join('')}<small>${text}</small></li>`;
 }
 function renderOrderTools(){
@@ -286,13 +286,18 @@ function renderSelection(){
  title=nameOf(x);
  if(x.type==='item'){
   title+=` <span class="lvTag">Lv${x.tier+1}</span>`;
-  desc=x.tier<maxTier(x.family)?`Merge with a twin → ${CHAINS[x.family].names[x.tier+1]}. Made by ${SOURCES[CHAINS[x.family].gen].name}.`:'Top of its chain.';
+  // a secondary part says where it comes from first: the panel shows two lines until it is tapped
+  desc=CHAINS[x.family].secondary?sourceNote(x.family)+' '+(x.tier<maxTier(x.family)?`Merge with a twin → ${CHAINS[x.family].names[x.tier+1]}.`:'Top of its chain: a keepsake for the book.')
+   :x.tier<maxTier(x.family)?`Merge with a twin → ${CHAINS[x.family].names[x.tier+1]}. Made by ${SOURCES[CHAINS[x.family].gen].name}.`:'Top of its chain.';
   const wants=state.orders.filter(o=>o.needs.some(r=>matches(x,r)));
   const who=[...new Set(wants.map(o=>o.story?'The gold order':CREW[o.who].name))];
   if(who.length)desc=`★ ${who.join(' and ')} ${who.length>1?'need':'needs'} this. `+desc;
   // Clearing a part only appears when the board is nearly full (Build 41 M4): it is the way out of
   // a full board, not an everyday energy trick.
-  if(state.board.filter(y=>y===null).length<=2)buttons='<button data-action="recycle">Clear space · +1 ϟ</button>';
+  // A secondary part (pilot) cost no energy, so clearing it gives none: it is not an energy trick, and
+  // a finished keepsake can be cleared at any time.
+  if(CHAINS[x.family].secondary)buttons='<button data-action="recycle">Clear</button>';
+  else if(state.board.filter(y=>y===null).length<=2)buttons='<button data-action="recycle">Clear space · +1 ϟ</button>';
  }else if(x.type==='source'){
   const chain=CHAINS[GENERATOR_CHAINS[x.id][0][0]];
   const next=nextKind(x.id),waiting=next&&!state.board.some(y=>y?.type==='source'&&y.id===next);
@@ -390,6 +395,12 @@ function run(a){
    const need=Math.min(...weak.map(j=>iceNeed(state.board[j])??state.board[j].tier+1));
    $('#message').textContent=`${r.message} · too small for the tideglass: merge a level ${need} or better beside it`;}}
  if(r.event==='produce'||r.event==='kit')sfx('produce');
+ // Secondary chains (pilot): the rare extra lands beside the tap's part with the board's arrival
+ // pop (no new badge or panel), and the first one of a chain gets one short moment saying where it
+ // comes from. A tap's extra with no space waits with the other rewards (r.secondary.index -1).
+ if(r.event==='produce'&&r.secondary){const t2=r.secondary.index>=0?board.querySelector(`[data-index="${r.secondary.index}"]`):null;t2?.classList.add('unsealed');burst(t2?.getBoundingClientRect(),r.secondary.family,true);sfx('rare');
+  if(r.found?.includes(r.secondary.family+'0'))setTimeout(()=>moment('New: '+CHAINS[r.secondary.family].names[0],sourceNote(r.secondary.family)+` Crew orders ask for them · merge two for a ${CHAINS[r.secondary.family].names[1]}.`,item(r.secondary.family,0)),reduced()?0:500);
+  else if(r.secondary.index<0)$('#message').textContent+=' · no space: it waits for one';}
  if((r.event==='produce'||r.event==='kit')&&fromRect&&tile&&!reduced()){const to=tile.getBoundingClientRect(),el=document.createElement('div');el.className='flight';el.innerHTML=draw(state.board[r.index]);el.style.cssText=`left:${fromRect.x}px;top:${fromRect.y}px;--dx:${to.x-fromRect.x}px;--dy:${to.y-fromRect.y}px`;document.body.append(el);setTimeout(()=>el.remove(),460);}
  if(r.event==='deliver'){deliverSequence(r,taking,orderRect,before.coins,readyBefore);sfx('deliver');
   if(r.tool?.index!=null)board.querySelector(`[data-index="${r.tool.index}"]`)?.classList.add('unsealed');
@@ -405,7 +416,7 @@ function run(a){
  if(r.event==='shop'){const o=SHOP[r.id];if(r.energy)rewardFlight(($('#shop').open?$('#shopContent'):$('#adEnergyButton')).getBoundingClientRect(),$('#energyPill').getBoundingClientRect(),`+${r.energy} ϟ`);else moment(o.name+(r.ad?' · thanks for watching':''),r.slot!=null?'In the shed: the board is full.':'On the board next to Rivet Rover.',r.thing);tile?.classList.add('unsealed');sfx('rare');}
  if(r.event==='swapOrder'){const c=$(`[data-order="${r.id}"]`);c?.classList.add('merge-pop');sfx('tap');}
  if(r.event==='book'){sfx('rare');}
- if(r.event==='bookPage'){sfx('milestone');moment('Page complete!',`Every ${GENERATOR_NAMES_UI[r.family]} part found · a Brass cog`+(r.slot!=null?' (in the shed)':''),{type:'cog'});tile?.classList.add('unsealed');}
+ if(r.event==='bookPage'){sfx('milestone');moment('Page complete!',`Every ${pageName(r.family)} part found · a Brass cog`+(r.slot!=null?' (in the shed)':''),{type:'cog'});tile?.classList.add('unsealed');}
  if(r.event==='daily'){const g=r.gift;if(g.coins)rewardFlight($('#dailyButton').getBoundingClientRect(),$('#coinPill').getBoundingClientRect(),`+${g.coins} coins`);if(g.energy)rewardFlight($('#dailyButton').getBoundingClientRect(),$('#energyPill').getBoundingClientRect(),`+${g.energy} ϟ`);tile?.classList.add('unsealed');sfx('milestone');moment(`Daily gift · day ${g.day} of ${DAILY.length}`,giftText(DAILY[g.day-1])+(g.slot!=null?' · in the shed (the board is full)':''),g.thing??null);}
  // A generator reaching level 2 brings out the next kind beside it.
  for(const n of r.released??[]){const t=board.querySelector(`[data-index="${n.index}"]`);t?.classList.add('unsealed');burst(t?.getBoundingClientRect(),'gold',true);setTimeout(()=>{newGeneratorMoment(n.id);sfx('milestone');},r.event==='producerUp'?900:0);}
@@ -495,7 +506,7 @@ $('#selection').addEventListener('click',e=>{
  // The panel keeps its text to two lines (Build 45); a tap on it shows the rest.
  if(e.target.closest('.copy')){$('#selection').classList.toggle('open');return;}
  const b=e.target.closest('[data-action]');if(!b)return;if(b.dataset.action==='store')shedOpen=true;const x=state.board[selected];run({type:b.dataset.action,index:selected,id:x?.id});});
-$('#requests').addEventListener('click',e=>{const c=e.target.closest('[data-order]');if(!c)return;const o=state.orders.find(o=>o.id===c.dataset.order);if(!o)return;if(orderItems(state,o)){run({type:'deliver',id:o.id});return;}focusOrder=focusOrder===o.id?null:o.id;render();$('#message').textContent=`${CREW[o.who].name} needs ${needsOf(state,o).map(r=>r.count+' × '+nameOf(item(r.family,r.tier))+(r.sibling?` (level ${levelOf(r)})`:'')).join(' and ')}. Their parts are marked on the board.`;});
+$('#requests').addEventListener('click',e=>{const c=e.target.closest('[data-order]');if(!c)return;const o=state.orders.find(o=>o.id===c.dataset.order);if(!o)return;if(orderItems(state,o)){run({type:'deliver',id:o.id});return;}focusOrder=focusOrder===o.id?null:o.id;render();$('#message').textContent=`${CREW[o.who].name} needs ${needsOf(state,o).map(r=>r.count+' × '+nameOf(item(r.family,r.tier))+(r.sibling?` (level ${levelOf(r)})`:'')).join(' and ')}. Their parts are marked on the board.`+o.needs.filter(r=>CHAINS[r.family].secondary).map(r=>' '+sourceNote(r.family,r.tier)).join('');});
 // The upgrading happens on the beach screen (user: "tusdaa orchinruu ochij upgrade hiih").
 $('#mapButton').onclick=()=>{mapFocus=$('#mapButton').dataset.place||null;sfx('tap');showMap();};
 $('#rationButton').onclick=()=>run({type:'ration'});
@@ -518,9 +529,17 @@ $('#dailyButton').onclick=showDaily;
 // A page per generator chain: parts found (tick them off for coins), parts still to find
 // (a shadow), and a Brass cog for a whole page. Pages of generators not yet out are closed.
 const GENERATOR_NAMES_UI=Object.fromEntries(Object.entries(SOURCES).map(([k,v])=>[k,v.name]));
+// A book page's name: its generator's, or for a secondary chain (pilot) the generator's extras.
+const pageName=f=>CHAINS[f].secondary?`${SOURCES[CHAINS[f].gen].name} extras`:GENERATOR_NAMES_UI[f];
+// Where a secondary part comes from (pilot), for the selection panel, order hints and its first find.
+// With a tier (an order's part), it names that part and, past the first, the parts it is merged from.
+function sourceNote(f,tier=null){const r=SECONDARY_RULES[CHAINS[f].gen],gen=SOURCES[CHAINS[f].gen].name,n=CHAINS[f].names;
+ const what=tier===null?'A':tier>0?`${n[tier]}: merged from ${n[0]}s, a`:`${n[0]}: a`;
+ return `${what} rare ${gen} extra. A tap sometimes adds one, at no extra energy (one at least every ${r.pity} taps).`;}
 // Build 47e: the Lens Bench's page appears once the camp is inside the Vault (no Chapter 2 spoiler
 // in Chapter 1's book).
-const bookChains=()=>BOOK_CHAINS.filter(f=>f!=='optic'||state.area>=3||state.found.some(k=>k.startsWith('optic')));
+// A secondary chain's page (pilot) shows once its first part is found: it is a find, not a promise.
+const bookChains=()=>BOOK_CHAINS.filter(f=>CHAINS[f].secondary?state.found.some(k=>k.replace(/\d+$/,'')===f):f!=='optic'||state.area>=3||state.found.some(k=>k.startsWith('optic')));
 function showBook(){
  const chains=bookChains(),ready=new Set(bookReady(state)),claimed=new Set(state.book.claimed),total=chains.reduce((n,f)=>n+bookKeys(f).length,0);
  const pages=chains.map(f=>{
@@ -531,8 +550,8 @@ function showBook(){
    if(claimed.has(k))return `<div class="bookItem got">${draw(x)}<small>${name}</small></div>`;
    return `<div class="bookItem unknown" aria-label="Not found yet">${draw(x)}<small>?</small></div>`;}).join('');
   const done=state.book.pages.includes(f),can=pageReady(state,f);
-  return `<section class="bookPage"><div class="bookHead"><span class="bookGen">${draw({type:'source',id:f})}</span><span><b>${SOURCES[f].name}</b><small>${got} / ${keys.length} in the book</small></span>${done?'<em class="pageDone">✓ Cog</em>':can?`<button class="primary pageClaim" data-page="${f}">Claim the cog</button>`:`<em class="pagePrize">${draw({type:'cog'})}</em>`}</div><div class="bookGrid">${cells}</div></section>`;}).join('');
- $('#bookContent').innerHTML=`<h2 id="bookTitle">Collection book</h2><p class="bookIntro">${state.book.claimed.length} of ${total} parts · tick off new finds for coins; a full page gives a Brass cog.</p>${ready.size>1?`<button class="primary bookAll" data-all>Tick off all ${ready.size}</button>`:''}${pages}`;
+  return `<section class="bookPage"><div class="bookHead"><span class="bookGen">${draw({type:'source',id:CHAINS[f].gen})}</span><span><b>${pageName(f)}</b><small>${got} / ${keys.length} in the book</small></span>${CHAINS[f].secondary?(got===keys.length?'<em class="pageDone">✓ Complete</em>':''):done?'<em class="pageDone">✓ Cog</em>':can?`<button class="primary pageClaim" data-page="${f}">Claim the cog</button>`:`<em class="pagePrize">${draw({type:'cog'})}</em>`}</div><div class="bookGrid">${cells}</div></section>`;}).join('');
+ $('#bookContent').innerHTML=`<h2 id="bookTitle">Collection book</h2><p class="bookIntro">${state.book.claimed.length} of ${total} parts · tick off new finds for coins; a generator's full page gives a Brass cog.</p>${ready.size>1?`<button class="primary bookAll" data-all>Tick off all ${ready.size}</button>`:''}${pages}`;
  if(!$('#book').open)$('#book').showModal();
 }
 $('#bookContent').addEventListener('click',e=>{

@@ -10,7 +10,8 @@ import {kit,kitDrop,kitsMerge,producerLevel,levelLift,validProducerLevel,nearest
 import {xpToNext,validLevel,freshLevel} from '../levels.mjs';
 import {settleEnergy,REFILL_CAP,RATION_ENERGY,rationWait} from '../energy.mjs';
 import {AREAS,TASKS,STAGES} from './areas.mjs';
-import {CHAINS,GENERATOR_CHAINS,GENERATOR_NAMES,maxTier} from './chains.mjs';
+import {CHAINS,GENERATOR_CHAINS,GENERATOR_NAMES,maxTier,SECONDARY_OF,isSecondary} from './chains.mjs';
+export {SECONDARY_OF,isSecondary};
 
 export const SAVE_KEY='vaultwake-v5-coast';
 export const VERSION=4,MAX_TIER=7,MAX_ENERGY=120;// MAX_TIER: the longest chain
@@ -46,6 +47,46 @@ export const TOKEN_EVERY=8,FAVOUR_EVERY=6,TRIPLE_MIN_TIER=2;
 // Brass cog from the worksite on: cogs at the beach brought the Shell Trap out before the beach was
 // finished (measured, 4 s an action: 45 min against the beach's 54).
 export const BONUSES=['token','chest','cog'],BONUS_NAMES={token:'Tide token',chest:'Sea chest',cog:'Brass cog'};
+// Secondary chains (pilot, 2026-10-29; docs/V5_SECONDARY_PILOT_2026-10-29.md). The Rivet Rover and
+// the Survey Kite sometimes make a part of their secondary chain (chains.mjs SECONDARY_OF). Two output
+// models were measured (tests/v5-next-secondary-pilot-metrics.mjs): 'bonus' (the tap's own part AND,
+// sometimes, a secondary beside it) and 'replace' (sometimes a secondary INSTEAD of the tap's part,
+// compensated by what secondary orders pay); 'off' is the game before the pilot. The roll is the
+// tap's own number hashed (no re-roll by reloading), and a bounded bad-luck limit makes a drop
+// certain after `pity` taps of that generator without one (`first` for the very first one, so the
+// new part is met soon after it opens). s.secSince counts those taps and is saved.
+// It opens after the first lessons: once `orders` crew orders are delivered and the generator has
+// been tapped `taps` times (the Kite's comes a little after the Kite itself).
+// `salt` makes each generator's rolls its own. The rules are mutable only so the metrics script can
+// compare models (and vary the rolls); the game never changes them.
+export const SECONDARY_RULES={
+ rig:{model:'bonus',chance:.1,pity:14,first:3,orders:4,taps:0,hold:3,salt:101},
+ chart:{model:'bonus',chance:.1,pity:14,first:3,orders:4,taps:8,hold:3,salt:211}
+};
+// Secondary orders: how often an everyday order may ask a secondary part (every `every`-th, and never
+// while another order on the board asks one); the highest tier ever asked (tier 3, the chain's top, is
+// a collectible for the book); and `rarity`, what a secondary part is worth: the coins of a part that
+// many tiers higher. Two, because tiers 0 and 1 both pay 5 coins: at one a Bolt would pay exactly what
+// a Copper offcut pays. So a Bolt pays like a Split spanner (10), a Gear like a Pocket winch (25), a Gear
+// assembly like a Crawler jack (45). Measured, see the pilot doc. Mutable for the metrics script only.
+export const SECONDARY_ORDERS={every:3,top:2,rarity:2};
+export const secondaryOn=(s,gen)=>{const r=SECONDARY_RULES[gen];return !!r&&r.model!=='off'&&!!SECONDARY_OF[gen]&&sourceOpen(s,gen)&&s.ordersDone>=r.orders&&(s.taps[gen]??0)>=r.taps;};
+// Board space is the bonus model's cost: a generator pauses its secondary drops while `hold` (its rule)
+// or more of its secondary parts (below the chain's top, which is a keepsake) lie on the board and no
+// order is waiting for one. While paused nothing is rolled or counted; drops resume as parts are
+// merged, delivered or cleared, and never pause while an order wants that chain.
+export const secondaryPaused=(s,gen)=>{const f=SECONDARY_OF[gen];
+ return s.board.filter(x=>x?.type==='item'&&x.family===f&&x.tier<maxTier(f)).length>=SECONDARY_RULES[gen].hold&&!s.orders.some(o=>o?.needs?.some(r=>r.family===f));};
+// Whether tap number n of generator gen makes a secondary part (read-only: the caller moves the counter).
+export function secondaryRoll(s,gen,n){
+ if(!secondaryOn(s,gen)||secondaryPaused(s,gen))return null;
+ const r=SECONDARY_RULES[gen],fam=SECONDARY_OF[gen],met=s.found.some(k=>k.replace(/\d+$/,'')===fam),limit=met?r.pity:r.first,since=s.secSince?.[gen]??0;
+ return since+1>=limit||rand(n*7919+r.salt)<r.chance?fam:null;
+}
+// A tap's secondary part that finds no free space waits with the other rewards (s.pending) and
+// lands after the next action that frees one. Past this many waiting, a drop is counted as a miss
+// instead (the bad-luck limit then brings it on a later tap), so the waiting list never grows.
+export const SECONDARY_PENDING_MAX=4;
 export const levelOf=s=>Number.isInteger(s?.level?.level)?s.level.level:1;
 export const unlocked=(s,id)=>levelOf(s)>=LEVEL_PATH.find(u=>u.id===id).level;
 // The camp shed (build 32, user: "aguulah bolon udur tutmiin shagnaliig nem"): four spaces off
@@ -57,11 +98,14 @@ export const SHED_SLOTS=4,SHED_TYPES=['item','kit','cog','token'];
 // time pays a few coins once it is ticked off in the book, more for higher tiers; a chain's
 // whole page found and ticked gives a Brass cog.
 export const BOOK_COINS=[1,1,2,3,5,8,12,20];// kept small: bigger book coins undid build 31's energy tension (scripted player)
-export const BOOK_CHAINS=['rig','chart','rope','shell','lamp','optic'];// the chains of NEWEST_ORDER
+export const BOOK_CHAINS=['rig','chart','rope','shell','lamp','optic','mech','notes'];// the chains of NEWEST_ORDER, then the secondary chains
 export const bookKeys=family=>Array.from({length:maxTier(family)+1},(_,t)=>family+t);
 // Parts found but not yet ticked off in the book.
 export const bookReady=s=>s.found.filter(k=>!s.book.claimed.includes(k)&&BOOK_CHAINS.includes(k.replace(/\d+$/,'')));
-export const pageReady=(s,family)=>!s.book.pages.includes(family)&&bookKeys(family).every(k=>s.book.claimed.includes(k));
+// A secondary chain's page (pilot) pays no Brass cog: its parts pay their book coins, and the cog, a
+// generator level, stays with the generators' own pages (measured: two more cogs brought the Shell Trap
+// out during the beach for a quick player).
+export const pageReady=(s,family)=>!CHAINS[family]?.secondary&&!s.book.pages.includes(family)&&bookKeys(family).every(k=>s.book.claimed.includes(k));
 // The shop (build 34, user: "delguur bolon zar shurtchilgaanii shagnal nem"): coins buy
 // energy, crates, a Tide token or a Brass cog, a few of each per day, so the shop competes
 // with the coast's upgrades for coins. Energy costs more coins than orders pay for it (about
@@ -186,7 +230,8 @@ export function fresh(now=Date.now()){
  for(let i=0;i<BOARD_SIZE;i++)if(GLASS[i])board[i]=glass(...GLASS[i]);else if(!CAMP.includes(i))board[i]=cargoAt(i);
  const s={version:VERSION,board,energy:START_ENERGY,energyAt:now,coins:0,level:freshLevel(),taps:{},
   orders:[],slots:3,orderSeq:0,ordersDone:0,area:0,built:{},found:[],moves:0,merges:0,lastAt:now,
-  shed:Array(SHED_SLOTS).fill(null),pending:[],seen:{},daily:{day:-1,count:0},book:{claimed:[],pages:[]},shop:{day:-1,bought:{}},swaps:{day:-1,n:0,ads:0},materials:{}};
+  shed:Array(SHED_SLOTS).fill(null),pending:[],seen:{},daily:{day:-1,count:0},book:{claimed:[],pages:[]},shop:{day:-1,bought:{}},swaps:{day:-1,n:0,ads:0},materials:{},
+  secSince:Object.fromEntries(Object.keys(SECONDARY_OF).map(g=>[g,0]))};
  for(const g of Object.keys(GENERATOR_CHAINS))s.taps[g]=0;
  for(let i=0;i<s.slots;i++)s.orders.push(makeOrder(s));
  note(s);return s;
@@ -219,10 +264,12 @@ export const rolePrice=(needs,role)=>Math.max(5,Math.round(priceOf(needs)*ROLE_P
 // The kind of an order, also for saves made before Build 44 (which did not store one).
 export const roleOf=o=>o?.story?'gold':ROLES.includes(o?.role)?o.role:o?.needs?.length>1?'pair':'quick';
 function rand(n){let t=(n*2654435761+0x6D2B79F5)>>>0;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296;}
-const CREW_OF={rig:'ivo',rope:'ivo',chart:'neri',shell:'neri',flux:'tamsin',lamp:'tamsin',optic:'tamsin'};
+const CREW_OF={rig:'ivo',rope:'ivo',chart:'neri',shell:'neri',flux:'tamsin',lamp:'tamsin',optic:'tamsin',mech:'ivo',notes:'neri'};
 const crewFor=needs=>needs.length>1?'bram':CREW_OF[needs[0].family];
 // Coins an order pays: its parts' worth, half as much again for the story's (rounded to 5).
-export const priceOf=(needs,story=false)=>{const v=needs.reduce((v,r)=>v+r.count*COIN_VALUE[r.tier],0);return story?Math.round(v*1.5/5)*5:v;};
+// A secondary part is paid as a part SECONDARY_ORDERS.rarity tiers higher (the pilot's rarity price).
+export const partValue=r=>COIN_VALUE[Math.min(COIN_VALUE.length-1,r.tier+(isSecondary(r.family)?SECONDARY_ORDERS.rarity:0))];
+export const priceOf=(needs,story=false)=>{const v=needs.reduce((v,r)=>v+r.count*partValue(r),0);return story?Math.round(v*1.5/5)*5:v;};
 // The second part of an order comes from another open chain, chosen evenly by the order's own
 // seed (build 41: it was always the first open chain, so Rivet Rover filled most second parts).
 export function secondChain(families,main,tier,seed){const ok=families.filter(f=>f!==main&&tier<=maxTier(f));return ok.length?ok[Math.floor(rand(seed)*ok.length)]:null;}
@@ -243,7 +290,8 @@ const reach=(s,chain)=>bestTier(level(s,chain));
 // player stuck with no energy and nothing to merge; 40 % passes every economy guard.
 export const PAY_PER_LEVEL=.4;
 export function orderPrice(s,needs,role){
- const lift=needs.reduce((n,r)=>n+(r.tier>=reach(s,r.family)+1?level(s,r.family)-bestTier(level(s,r.family)):0),0);
+ // (a secondary part's price is its rarity, not its generator's level: no lift)
+ const lift=needs.reduce((n,r)=>n+(!isSecondary(r.family)&&r.tier>=reach(s,r.family)+1?level(s,r.family)-bestTier(level(s,r.family)):0),0);
  return Math.round(rolePrice(needs,role)*(1+PAY_PER_LEVEL*lift)/5)*5;
 }
 // The gold order is a stage's materials, so it is the biggest order on the board (Build 41h,
@@ -346,10 +394,36 @@ export function makeOrder(s){
   {const onBoard=new Set(others.map(o=>key(o.needs)));
    if(onBoard.has(key(needs))){const alt=pool.flatMap(f=>Array.from({length:hi(f)},(_,k)=>[1,2].map(c=>[{family:f,tier:k+1,count:c}])).flat()).find(v=>!onBoard.has(key(v)));
     if(alt){needs=alt;role='quick';}}}
+  // Secondary chains (pilot): every SECONDARY_ORDERS.every-th everyday order may ask one secondary
+  // part, while no other order on the board does (so the others never wait on a drop). A two-part job
+  // keeps its first part and asks the secondary as its second (a mixed order); every third such order
+  // is a quick job for the secondary alone (with ROLE_TURN's three turns, the turn alone would make
+  // them all two-part jobs). A crew favour or a token order keeps its first part and its bonus. Never a
+  // gold order (above), never more than one.
+  {const sec=bonus&&role==='quick'?null:secondaryNeed(s,n,k);if(sec){if(!bonus&&Math.floor(k/SECONDARY_ORDERS.every)%3===2)role='quick';needs=role==='quick'?[sec]:[{...needs[0],count:1},sec];}}
   recent.push(key(needs));if(recent.length>RECENT)recent.splice(0,recent.length-RECENT);
   return {id:'o'+n,who:crewFor(needs),needs,coins:orderPrice(s,needs,role),role,born:s.moves,...(bonus?{bonus}:{})};
  }
  return {id:'o'+n,who:crewFor(needs),needs,coins:priceOf(needs),born:s.moves};
+}
+// The secondary part an everyday order asks, if any (pilot). Demand follows supply, so a secondary
+// order never sends the player tapping for luck: it asks only a part that the secondary parts the
+// player already holds (board and shed) make by merging, never above `top`, and tier 2 only from the
+// third stage built (tier 1 from the first). So the first orders ask a Bolt or a Note fragment, and
+// bigger parts come as the player collects. Measured: asking one drop more than is held sent the
+// scripted player tapping the Rover for luck (5 % drops: +80 min over Chapters 1-2).
+// Drops held: each part counts as the drops merged into it (a Gear is two Bolts); the chain's top part
+// is a keepsake and does not count (it cannot be split back).
+export const secondaryHeld=(s,family)=>[...s.board,...s.shed].reduce((n,x)=>n+(x?.type==='item'&&x.family===family&&x.tier<maxTier(family)?2**x.tier:0),0);
+export const secondaryTier=(s,family)=>{const held=secondaryHeld(s,family),built=totalBuilt(s),cap=Math.min(SECONDARY_ORDERS.top,built>=3?2:built>=1?1:0);
+ if(held<1)return -1;let t=0;while(t<cap&&2**(t+1)<=held)t++;return t;};
+export function secondaryNeed(s,n,k){
+ const every=SECONDARY_ORDERS.every;
+ if(k%every!==every-1||s.orders.some(o=>o?.needs?.some(r=>isSecondary(r.family))))return null;
+ const fams=Object.keys(SECONDARY_OF).filter(g=>secondaryOn(s,g)).map(g=>SECONDARY_OF[g]).filter(f=>secondaryHeld(s,f)>0);if(!fams.length)return null;
+ // the chain with more parts held, else either by the order's own seed
+ const most=Math.max(...fams.map(f=>secondaryHeld(s,f))),pick=fams.filter(f=>secondaryHeld(s,f)===most),family=pick[Math.floor(rand(n*37+11)*pick.length)];
+ return {family,tier:secondaryTier(s,family),count:1};
 }
 // Board cells an order would take: exact matches, lowest index first.
 export function orderItems(s,o){
@@ -377,6 +451,7 @@ const put=(s,x,near=0)=>{const i=nearestFree(s.board,near,cellPos);if(i>=0)s.boa
 export const SEEN_ID=/^[a-z0-9-]{1,40}$/;
 export const PENDING_MAX=100,PENDING_TYPES=['source','kit','token','cog','item'];
 const give=(s,x)=>{const i=put(s,x);if(i<0)s.pending.push(x);return i;};
+const isSecondaryPart=x=>x?.type==='item'&&isSecondary(x.family);
 function placePending(s){
  const out=[];
  while(s.pending.length){const i=nearestFree(s.board,0,cellPos);if(i<0)break;const x=s.pending.shift();s.board[i]=x;out.push({index:i,thing:x});}
@@ -502,10 +577,17 @@ function step(s,a,now){
   if(i<0||!SOURCES[a.id])return fail('That generator is still sealed in cargo somewhere on the board.');
   if(!sourceOpen(s,a.id))return fail('Echo Crucible wakes at the Survey Worksite.');
   if(s.energy<1)return fail('Out of energy. It refills +1 every 2 minutes.');
-  const n=(s.taps[a.id]??0)+1,chain=GENERATOR_CHAINS[a.id][0][0],tier=Math.min(3,maxTier(chain),(n%4===0?1:0)+levelLift(producerLevel(s.board[i]),n)),x=item(chain,tier),j=put(s,x,i);
+  const n=(s.taps[a.id]??0)+1,chain=GENERATOR_CHAINS[a.id][0][0],tier=Math.min(3,maxTier(chain),(n%4===0?1:0)+levelLift(producerLevel(s.board[i]),n)),sec=secondaryRoll(s,a.id,n),on=secondaryOn(s,a.id)&&!secondaryPaused(s,a.id);
+  // Pilot: 'replace' makes the secondary part instead of the tap's own; 'bonus' makes it as well.
+  const replace=sec&&SECONDARY_RULES[a.id].model==='replace',x=item(replace?sec:chain,replace?0:tier),j=put(s,x,i);
+  // A full board refuses the tap before anything is spent or rolled: no energy, no part, no counter.
   if(j<0)return fail('The board is full. Merge, deliver or open cargo first.');
   s.energy--;s.taps[a.id]=n;
-  return {ok:true,event:'produce',index:j,message:nameOf(x)};
+  if(replace){s.secSince[a.id]=0;return {ok:true,event:'produce',index:j,secondary:{family:sec,index:j},message:nameOf(x)};}
+  let extra=null;
+  if(sec&&s.pending.filter(isSecondaryPart).length<SECONDARY_PENDING_MAX){const y=item(sec,0),k=put(s,y,i);if(k<0)s.pending.push(y);s.secSince[a.id]=0;extra={family:sec,index:k};}
+  else if(on)s.secSince[a.id]=Math.min(SECONDARY_RULES[a.id].pity,(s.secSince[a.id]??0)+1);
+  return {ok:true,event:'produce',index:j,...(extra?{secondary:extra}:{}),message:nameOf(x)+(extra?' · and a '+nameOf(item(extra.family,0)):'')};
  }
  if(a.type==='merge'||a.type==='move'||a.type==='unseal'){
   const from=a.from,to=a.to??a.index;
@@ -652,7 +734,7 @@ function step(s,a,now){
   return {ok:true,event:'book',key:k,coins,message:`In the book · +${coins} coins`};
  }
  if(a.type==='bookPage'){
-  if(!BOOK_CHAINS.includes(a.family)||!pageReady(s,a.family))return fail(s.book.pages?.includes(a.family)?'This page is already complete.':'Find every part on this page first.');
+  if(!BOOK_CHAINS.includes(a.family)||!pageReady(s,a.family))return fail(s.book.pages?.includes(a.family)?'This page is already complete.':CHAINS[a.family]?.secondary?'This page pays its coins as its parts are ticked off.':'Find every part on this page first.');
   const i=nearestFree(s.board,ROVER,cellPos),k=s.shed.indexOf(null);if(i<0&&k<0)return fail('Make space on the board or in the shed for the Brass cog.');
   if(i>=0)s.board[i]=cog();else s.shed[k]=cog();s.book.pages.push(a.family);
   return {ok:true,event:'bookPage',family:a.family,index:i>=0?i:null,slot:i>=0?null:k,message:`${CHAINS[a.family].names.at(-1)} page complete · a Brass cog`};
@@ -695,8 +777,9 @@ function step(s,a,now){
  if(a.type==='seenEnd'){if(!allDone(s)||s.seenEnd)return fail('Nothing to see yet.');s.seenEnd=true;return {ok:true,event:'seenEnd',message:'The coast so far is restored.'};}
  if(a.type==='recycle'){
   const x=valid(a.index)?s.board[a.index]:null;if(x?.type!=='item')return fail('Only loose parts can be recycled.');
-  s.board[a.index]=null;s.energy=Math.min(MAX_ENERGY,s.energy+1);
-  return {ok:true,event:'recycle',message:'Recycled · +1 energy'};
+  // A secondary part cost no energy (bonus model), so clearing it gives none back (pilot).
+  const gain=isSecondary(x.family)?0:1;s.board[a.index]=null;s.energy=Math.min(MAX_ENERGY,s.energy+gain);
+  return {ok:true,event:'recycle',energy:gain,message:'Recycled'+(gain?' · +1 energy':'')};
  }
  if(a.type==='ration'){
   if(s.energy>3)return fail('Field rations are for low energy.');
@@ -800,6 +883,12 @@ export function load(raw,now=Date.now()){
   // The level path (Build 46j): a Tide-token order level 5 promised, still to come. Saves before it
   // have none; a damaged value is dropped (it only means the next token order waits its turn).
   if(s.pathNext!==undefined&&s.pathNext!=='token')delete s.pathNext;
+  // The secondary-chain pilot's bad-luck counters (2026-10-29). Saves before it have none: they start
+  // at 0, so the first secondary part comes within its `first` taps once it opens. A damaged value only
+  // restarts that count (it never resets the camp).
+  if(!s.secSince||typeof s.secSince!=='object'||Array.isArray(s.secSince))s.secSince={};
+  for(const k of Object.keys(s.secSince))if(!SECONDARY_OF[k])delete s.secSince[k];
+  for(const g of Object.keys(SECONDARY_OF))if(!integer(s.secSince[g],0,SECONDARY_RULES[g].pity))s.secSince[g]=0;
   if(!s.swaps||!integer(s.swaps.day,-1,1e7)||!integer(s.swaps.n,0,FREE_SWAPS)||!integer(s.swaps.ads,0,AD_SWAPS))return fresh(now);
   if(!s.shop||!integer(s.shop.day,-1,1e7)||!s.shop.bought||typeof s.shop.bought!=='object'||Array.isArray(s.shop.bought)||!Object.entries(s.shop.bought).every(([id,n])=>SHOP[id]&&integer(n,0,SHOP[id].limit)))return fresh(now);
   const bookKey=k=>typeof k==='string'&&/^[a-z]+\d$/.test(k)&&BOOK_CHAINS.includes(k.slice(0,-1))&&+k.slice(-1)<=maxTier(k.slice(0,-1));

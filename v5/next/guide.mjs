@@ -27,9 +27,12 @@ export function primaryAction(s,focus=null){
  // Order by order, so the tapped (or first) order's pair comes first.
  for(const o of orders){const p=pairFor(s,missingOf(s,o));if(p)return merge(p);}
  const free=s.board.includes(null);
- const gen=needs.map(r=>CHAINS[r.family].gen).find(g=>sourceOpen(s,g))??GENERATOR_ORDER.find(g=>sourceOpen(s,g));
- if(gen&&free&&s.energy>=1){const index=s.board.findIndex(x=>x?.type==='source'&&x.id===gen);
-  return {kind:'tap',index,id:gen,label:`Tap ${SOURCES[gen].name} for a ${CHAINS[gen].names[0]}`};}
+ // A secondary part (pilot, 2026-10-29) is never the tap's own part: parts a tap makes come first, and
+ // a secondary one is named as the rare extra it is.
+ const own=needs.filter(r=>!CHAINS[r.family].secondary),extra=needs.find(r=>CHAINS[r.family].secondary&&sourceOpen(s,CHAINS[r.family].gen));
+ const gen=own.map(r=>CHAINS[r.family].gen).find(g=>sourceOpen(s,g))??(extra?CHAINS[extra.family].gen:null)??GENERATOR_ORDER.find(g=>sourceOpen(s,g));
+ if(gen&&free&&s.energy>=1){const index=s.board.findIndex(x=>x?.type==='source'&&x.id===gen),rare=extra&&!own.some(r=>CHAINS[r.family].gen===gen)&&CHAINS[extra.family].gen===gen;
+  return {kind:'tap',index,id:gen,label:rare?`Tap ${SOURCES[gen].name}: a ${CHAINS[extra.family].names[0]} comes now and then`:`Tap ${SOURCES[gen].name} for a ${CHAINS[gen].names[0]}`};}
  // A crate whose key is in hand.
  const key=cargoKeys(s).map(k=>[s.board.findIndex(x=>matches(x,k)),k.index]).find(([i])=>i>=0);
  if(key)return {kind:'unseal',cells:key,label:`Lay the ${nameOf(s.board[key[0]])} on its crate`};

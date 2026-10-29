@@ -506,7 +506,7 @@ test('saves from before the shed and the daily gift load with an empty shed and 
 
 // Build 33: the collection book.
 test('the book: each part found pays its coins once when ticked off; a whole page gives a Brass cog',()=>{
- assert.deepEqual(BOOK_CHAINS,[...GENERATOR_ORDER,'optic'],'one page per generator chain (Build 47e: and the Lens Bench\'s)');assert.equal(BOOK_COINS.length,8);
+ assert.deepEqual(BOOK_CHAINS,[...GENERATOR_ORDER,'optic','mech','notes'],'one page per generator chain (Build 47e: and the Lens Bench\'s; the secondary-chain pilot: the Rover\'s and the Kite\'s extras)');assert.equal(BOOK_COINS.length,8);
  assert.equal(bookKeys('lamp').length,5);assert.equal(bookKeys('rig').length,8);
  const s=fresh(0);assert.deepEqual(s.book,{claimed:[],pages:[]});assert.deepEqual(bookReady(s),[]);
  const a=ok(s,{type:'produce',id:'rig'}),b=ok(s,{type:'produce',id:'rig'});assert.deepEqual(bookReady(s),['rig0']);
