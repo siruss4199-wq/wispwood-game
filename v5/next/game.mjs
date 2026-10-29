@@ -53,8 +53,11 @@ export const BONUSES=['token','chest','cog'],BONUS_NAMES={token:'Tide token',che
 // sometimes, a secondary beside it) and 'replace' (sometimes a secondary INSTEAD of the tap's part,
 // compensated by what secondary orders pay); 'off' is the game before the pilot. The roll is the
 // tap's own number hashed (no re-roll by reloading), and a bounded bad-luck limit makes a drop
-// certain after `pity` taps of that generator without one (`first` for the very first one, so the
-// new part is met soon after it opens). s.secSince counts those taps and is saved.
+// certain on the `pity`-th ELIGIBLE tap without one (`first` for the very first one, so the new part
+// is met soon after it opens). An eligible tap is a tap of that kind of generator that succeeds
+// (energy spent, part made) while its drops are open (secondaryOn) and not paused (secondaryPaused);
+// any other tap is neither rolled nor counted. s.secSince counts eligible taps without a drop, one
+// count per kind (copies of a generator share it, and merging two copies keeps it), and is saved.
 // It opens after the first lessons: once `orders` crew orders are delivered and the generator has
 // been tapped `taps` times (the Kite's comes a little after the Kite itself).
 // `salt` makes each generator's rolls its own. The rules are mutable only so the metrics script can
@@ -69,23 +72,27 @@ export const SECONDARY_RULES={
 // many tiers higher. Two, because tiers 0 and 1 both pay 5 coins: at one a Bolt would pay exactly what
 // a Copper offcut pays. So a Bolt pays like a Split spanner (10), a Gear like a Pocket winch (25), a Gear
 // assembly like a Crawler jack (45). Measured, see the pilot doc. Mutable for the metrics script only.
-export const SECONDARY_ORDERS={every:3,top:2,rarity:2};
+// `goal` (round 2): how many drops beyond those held a near-term goal may ask (secondaryNeed).
+export const SECONDARY_ORDERS={every:3,top:2,rarity:2,goal:1};
 export const secondaryOn=(s,gen)=>{const r=SECONDARY_RULES[gen];return !!r&&r.model!=='off'&&!!SECONDARY_OF[gen]&&sourceOpen(s,gen)&&s.ordersDone>=r.orders&&(s.taps[gen]??0)>=r.taps;};
 // Board space is the bonus model's cost: a generator pauses its secondary drops while `hold` (its rule)
-// or more of its secondary parts (below the chain's top, which is a keepsake) lie on the board and no
-// order is waiting for one. While paused nothing is rolled or counted; drops resume as parts are
-// merged, delivered or cleared, and never pause while an order wants that chain.
+// or more of its secondary parts (below the chain's top, which is a keepsake) lie on the board or wait
+// for space, and no order is waiting for one; and always while SECONDARY_PENDING_MAX secondary parts
+// already wait for space (round 2: before, such a drop was rolled, lost and counted). While paused
+// nothing is rolled or counted; drops resume as parts are merged, delivered, cleared or land.
 export const secondaryPaused=(s,gen)=>{const f=SECONDARY_OF[gen];
- return s.board.filter(x=>x?.type==='item'&&x.family===f&&x.tier<maxTier(f)).length>=SECONDARY_RULES[gen].hold&&!s.orders.some(o=>o?.needs?.some(r=>r.family===f));};
+ if(s.pending.filter(isSecondaryPart).length>=SECONDARY_PENDING_MAX)return true;
+ return [...s.board,...s.pending].filter(x=>x?.type==='item'&&x.family===f&&x.tier<maxTier(f)).length>=SECONDARY_RULES[gen].hold&&!s.orders.some(o=>o?.needs?.some(r=>r.family===f));};
 // Whether tap number n of generator gen makes a secondary part (read-only: the caller moves the counter).
 export function secondaryRoll(s,gen,n){
  if(!secondaryOn(s,gen)||secondaryPaused(s,gen))return null;
- const r=SECONDARY_RULES[gen],fam=SECONDARY_OF[gen],met=s.found.some(k=>k.replace(/\d+$/,'')===fam),limit=met?r.pity:r.first,since=s.secSince?.[gen]??0;
+ // met: the chain has dropped before (found on the board, or its first part still waiting for space)
+ const r=SECONDARY_RULES[gen],fam=SECONDARY_OF[gen],limit=secondaryMet(s,fam)?r.pity:r.first,since=s.secSince?.[gen]??0;
  return since+1>=limit||rand(n*7919+r.salt)<r.chance?fam:null;
 }
 // A tap's secondary part that finds no free space waits with the other rewards (s.pending) and
-// lands after the next action that frees one. Past this many waiting, a drop is counted as a miss
-// instead (the bad-luck limit then brings it on a later tap), so the waiting list never grows.
+// lands after the next action that frees one. With this many secondary parts waiting, drops pause
+// (secondaryPaused), so the waiting list never grows past it and no drop is lost.
 export const SECONDARY_PENDING_MAX=4;
 export const levelOf=s=>Number.isInteger(s?.level?.level)?s.level.level:1;
 export const unlocked=(s,id)=>levelOf(s)>=LEVEL_PATH.find(u=>u.id===id).level;
@@ -406,24 +413,38 @@ export function makeOrder(s){
  }
  return {id:'o'+n,who:crewFor(needs),needs,coins:priceOf(needs),born:s.moves};
 }
-// The secondary part an everyday order asks, if any (pilot). Demand follows supply, so a secondary
-// order never sends the player tapping for luck: it asks only a part that the secondary parts the
-// player already holds (board and shed) make by merging, never above `top`, and tier 2 only from the
-// third stage built (tier 1 from the first). So the first orders ask a Bolt or a Note fragment, and
-// bigger parts come as the player collects. Measured: asking one drop more than is held sent the
-// scripted player tapping the Rover for luck (5 % drops: +80 min over Chapters 1-2).
+// The secondary part an everyday order asks, if any (pilot). Two kinds take turns (round 2,
+// 2026-10-29; the director: asking only what is held was too restrictive):
+// - a USE order asks a part that the secondary parts the player already holds (board, shed, or waiting
+//   for space) make by merging (secondaryTier): it gives the extras collected a purpose;
+// - a GOAL order asks a part at most SECONDARY_ORDERS.goal drops beyond what is held (secondaryGoal):
+//   a Bolt when none is held, a Gear with one Bolt, a Gear assembly with three. It is a near-term goal,
+//   never a wall: one drop comes at the latest on the `pity`-th eligible tap, and drops never pause
+//   while an order wants the chain. Goals come only from a generator whose drops are open and only once
+//   its chain has been met, so the first meeting is the drop itself, not an order for something unseen.
+// Either way never above `top`, tier 1 only from the first stage built and tier 2 from the third; a
+// turn that cannot give its kind gives the other. Measured (pilot doc): in round 1, at 5 % drops, asking
+// one drop beyond what was held on EVERY secondary turn sent the scripted player tapping for luck (+80
+// min over Chapters 1-2); at 10 % with goals on every other turn, round 2 measured no such cost (R2.2).
 // Drops held: each part counts as the drops merged into it (a Gear is two Bolts); the chain's top part
 // is a keepsake and does not count (it cannot be split back).
-export const secondaryHeld=(s,family)=>[...s.board,...s.shed].reduce((n,x)=>n+(x?.type==='item'&&x.family===family&&x.tier<maxTier(family)?2**x.tier:0),0);
-export const secondaryTier=(s,family)=>{const held=secondaryHeld(s,family),built=totalBuilt(s),cap=Math.min(SECONDARY_ORDERS.top,built>=3?2:built>=1?1:0);
+export const secondaryHeld=(s,family)=>[...s.board,...s.shed,...s.pending].reduce((n,x)=>n+(x?.type==='item'&&x.family===family&&x.tier<maxTier(family)?2**x.tier:0),0);
+const secondaryCap=s=>{const built=totalBuilt(s);return Math.min(SECONDARY_ORDERS.top,built>=3?2:built>=1?1:0);};
+export const secondaryTier=(s,family)=>{const held=secondaryHeld(s,family),cap=secondaryCap(s);
  if(held<1)return -1;let t=0;while(t<cap&&2**(t+1)<=held)t++;return t;};
+export const secondaryMet=(s,family)=>s.found.some(k=>k.replace(/\d+$/,'')===family)||s.pending.some(x=>x?.type==='item'&&x.family===family);
+export const secondaryGoal=(s,family)=>{if(!secondaryMet(s,family))return -1;const held=secondaryHeld(s,family);let best=-1;
+ for(let t=0;t<=secondaryCap(s);t++){const miss=2**t-held;if(miss>=1&&miss<=SECONDARY_ORDERS.goal)best=t;}return best;};
 export function secondaryNeed(s,n,k){
  const every=SECONDARY_ORDERS.every;
  if(k%every!==every-1||s.orders.some(o=>o?.needs?.some(r=>isSecondary(r.family))))return null;
- const fams=Object.keys(SECONDARY_OF).filter(g=>secondaryOn(s,g)).map(g=>SECONDARY_OF[g]).filter(f=>secondaryHeld(s,f)>0);if(!fams.length)return null;
- // the chain with more parts held, else either by the order's own seed
- const most=Math.max(...fams.map(f=>secondaryHeld(s,f))),pick=fams.filter(f=>secondaryHeld(s,f)===most),family=pick[Math.floor(rand(n*37+11)*pick.length)];
- return {family,tier:secondaryTier(s,family),count:1};
+ const open=Object.keys(SECONDARY_OF).filter(g=>secondaryOn(s,g)).map(g=>SECONDARY_OF[g]);
+ const use=open.filter(f=>secondaryTier(s,f)>=0),goal=open.filter(f=>secondaryGoal(s,f)>=0);
+ // goal turns are every other secondary turn
+ const kind=Math.floor(k/every)%2===1?(goal.length?'goal':'use'):(use.length?'use':'goal'),fams=kind==='use'?use:goal;if(!fams.length)return null;
+ // a use order: the chain with more parts held, else either by the order's own seed; a goal: either
+ const most=Math.max(...fams.map(f=>kind==='use'?secondaryHeld(s,f):0)),pick=fams.filter(f=>(kind==='use'?secondaryHeld(s,f):0)===most),family=pick[Math.floor(rand(n*37+11)*pick.length)];
+ return {family,tier:kind==='use'?secondaryTier(s,family):secondaryGoal(s,family),count:1};
 }
 // Board cells an order would take: exact matches, lowest index first.
 export function orderItems(s,o){
@@ -585,7 +606,7 @@ function step(s,a,now){
   s.energy--;s.taps[a.id]=n;
   if(replace){s.secSince[a.id]=0;return {ok:true,event:'produce',index:j,secondary:{family:sec,index:j},message:nameOf(x)};}
   let extra=null;
-  if(sec&&s.pending.filter(isSecondaryPart).length<SECONDARY_PENDING_MAX){const y=item(sec,0),k=put(s,y,i);if(k<0)s.pending.push(y);s.secSince[a.id]=0;extra={family:sec,index:k};}
+  if(sec){const y=item(sec,0),k=put(s,y,i);if(k<0)s.pending.push(y);s.secSince[a.id]=0;extra={family:sec,index:k};}
   else if(on)s.secSince[a.id]=Math.min(SECONDARY_RULES[a.id].pity,(s.secSince[a.id]??0)+1);
   return {ok:true,event:'produce',index:j,...(extra?{secondary:extra}:{}),message:nameOf(x)+(extra?' · and a '+nameOf(item(extra.family,0)):'')};
  }
