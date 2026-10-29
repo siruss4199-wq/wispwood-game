@@ -12,7 +12,8 @@
 // - primary parts on the board, and the share of primary order parts already on the board when the
 //   order came (availability); board occupancy (spaces holding anything but cargo or tideglass);
 // - secondary drops, the longest run of eligible taps without one, rewards waiting for space.
-//   node tests/v5-next-secondary-pilot-metrics.mjs [speeds=5,8] [seeds=1,...,10] [shop|noshop|both] [models=off,bonus,replace] [key=value ...]
+//   node tests/v5-next-secondary-pilot-metrics.mjs [speeds=5,8] [seeds=1,...,10] [shop|noshop|both] [models=off,bonus,replace] [--runs] [key=value ...]
+// --runs also prints each run (seed by seed) before its configuration's row.
 // key=value overrides SECONDARY_RULES (chance, pity, first, orders, taps, hold) or SECONDARY_ORDERS
 // (every, top, rarity), e.g. chance=0.07.
 import * as g from '../v5/next/game.mjs';
@@ -21,7 +22,7 @@ import {simulate} from './v5-next-economy-sim.mjs';
 const SPEEDS=(process.argv[2]??'5,8').split(',').map(Number),SEEDS=(process.argv[3]??'1,2,3,4,5,6,7,8,9,10').split(',').map(Number);
 const SHOPS={shop:[true],noshop:[false],both:[true,false]}[process.argv[4]??'both'];
 const MODELS=(process.argv[5]??'off,bonus,replace').split(',');
-const OVER=Object.fromEntries(process.argv.slice(6).map(a=>a.split('=')).map(([k,v])=>[k,+v]));
+const RUNS=process.argv.includes('--runs'),OVER=Object.fromEntries(process.argv.slice(6).filter(a=>a.includes('=')).map(a=>a.split('=')).map(([k,v])=>[k,+v]));
 const RULE_KEYS=['chance','pity','first','orders','taps','hold'],ORDER_KEYS=['every','top','rarity'];
 for(const k of ORDER_KEYS)if(k in OVER)g.SECONDARY_ORDERS[k]=OVER[k];
 const MIN=60000,r1=x=>Math.round(x*10)/10,r2=x=>Math.round(x*100)/100;
@@ -58,6 +59,7 @@ for(const shop of SHOPS)for(const speed of SPEEDS){
  let base=null;
  for(const model of MODELS){
   const R=SEEDS.map(seed=>run(model,speed,seed,shop)),vals=k=>R.map(r=>r[k]).filter(x=>x!==null);
+  if(RUNS)R.forEach((r,i)=>console.log(JSON.stringify({run:1,model,speed,shop,seed:SEEDS[i],...r})));
   const mean=k=>{const v=vals(k);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null;},med=k=>{const v=vals(k).sort((a,b)=>a-b);return v.length?v[Math.floor(v.length/2)]:null;};
   const row={model,speed,shop,...OVER,seeds:SEEDS.length,finished:R.filter(r=>r.finished).length,medTotalMin:r1(med('totalMin')),medWaitShare:r2(med('waitShare')),medCh1Min:r1(med('ch1Min'))};
   for(const k of MEAN){const v=mean(k);row[k]=v===null?null:k.endsWith('Share')||k.startsWith('energy')?r2(v):r1(v);}
