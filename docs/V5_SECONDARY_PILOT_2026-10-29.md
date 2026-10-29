@@ -286,6 +286,15 @@ All 240 runs finished both chapters.
     `-crazygames-` (907×510/390/360), `-home-`, `-story-`, `-rewards-` and `-chapter2-` all pass.
   - WebKit is not installed in this container, so its runs error at launch. That is an environment
     limit, not a regression; CI runs both engines.
+- **CI** (`test.yml`, run 40811310342 on `ab79a60`):
+  - Rules, V5 simulations, module checks and "Coast Camp CrazyGames page is made from play.html"
+    pass. That page was regenerated for build 47s in `ab79a60`.
+  - "Coast Camp browser tests (Chromium and WebKit)" passes: all eight suites in both engines. That
+    includes WebKit Chapter 2, which failed on `/Neri/` in the base run.
+  - Two failures, both pre-existing and outside Coast Camp. Each fails identically on base
+    `b34a2b9` (run 40739490746):
+    - "Verify mobile render…": `tests/v5-camp-browser.cjs:126` (Classic V5 camp), `true !== false`;
+    - "Fresh coastal journey (webkit)": the Classic coastal journey, the same assertion.
 
 ## 7. Remaining issues (for the director)
 
