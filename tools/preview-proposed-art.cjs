@@ -7,7 +7,7 @@
 // the cells' contents are swapped on screen only. Needs the repo served on :8080. Writes PNGs to OUT.
 // Existing art named 'draw:family-tier' is drawn by the game's own renderer (chains.mjs draw), for parts
 // that are not plain icon files (the Echo Crucible's).
-//   node tools/preview-proposed-art.cjs rover|kite|rope|shell [OUT] [WxH,...]
+//   node tools/preview-proposed-art.cjs rover|kite|rope|shell|lamp [OUT] [WxH,...]
 const {chromium}=require('playwright');const {throughHome}=require('../tests/v5-next-home-helper.cjs');
 const URL='http://127.0.0.1:8080/v5/play.html';
 const SET=process.argv[2]??'rover',OUT=process.argv[3]??'.',SIZES=(process.argv[4]??'360x780,390x844,430x932,907x510').split(',').map(s=>s.split('x').map(Number));
@@ -19,7 +19,10 @@ const PROPOSED={
  // the Finished Sail is a thin triangle: at the item target it covers 21.6 % of the cell, less than its
  // lower tiers (25.8-32.1 %); .845 brings it to about 29 % (proposed TARGET_OF, see the doc)
  rope:[['rope-canvas-offcut',.917,.869,.500,.497],['rope-stitched-sailcloth',.917,.875,.500,.500],['rope-rolled-sail',.917,.886,.500,.500],['rope-finished-sail',.917,.852,.500,.500,.845]],
- shell:[['shell-raw-pearl',.917,.864,.500,.500],['shell-pearl-cluster',.917,.909,.500,.500],['shell-pearl-bracelet',.896,.779,.490,.490],['shell-pearl-brooch',.917,.932,.500,.500]]};
+ shell:[['shell-raw-pearl',.917,.864,.500,.500],['shell-pearl-cluster',.917,.909,.500,.500],['shell-pearl-bracelet',.896,.779,.490,.490],['shell-pearl-brooch',.917,.932,.500,.500]],
+ // the Glass Mosaic is a diamond (half its box): at the item target it covers 25.3 % of the cell, less
+ // than tiers 1-2 (32.7-32.8 %); .807 brings it to about 31 % (proposed TARGET_OF, see the doc)
+ lamp:[['lamp-glass-shard',.917,.909,.500,.500],['lamp-joined-glass',.917,.943,.500,.500],['lamp-glass-mosaic',.917,.943,.500,.500,.807],['lamp-sunwave-window',.911,.714,.477,.497]]};
 // Existing art shown beside it: the chain's tiers 0-6 (row 1), then what each proposed set could be
 // confused with (rows 2 and 3). Board file names as chains.mjs draws them (KEEP and PILOT files).
 const KEEP={'rig-0':'copper-offcut','rig-1':'grip-tool-v2','rig-2':'split-spanner-v2','rig-3':'pocket-winch'};
@@ -28,7 +31,8 @@ const EXISTING={
  rover:{row1:[0,1,2,3,4,5,6].map(t=>KEEP['rig-'+t]??'rig-'+t),row2:['brass-cog','pocket-winch','gen-rig-pilot'],row3:['gen-rope','rig-7','tide-token']},
  kite:{row1:[0,1,2,3,4,5,6].map(t=>'chart-'+t),row2:['chart-0','chart-7','gen-chart'],row3:['chart-1','tide-token','cargo-bundle-pilot']},
  rope:{row1:[0,1,2,3,4,5].map(t=>'rope-'+t).concat('gen-rope'),row2:['rope-5','cargo-bundle-pilot','copper-offcut'],row3:['rope-2','sea-chest','driftwood-crate']},
- shell:{row1:[0,1,2,3,4,5].map(t=>'shell-'+t).concat('gen-shell'),row2:['draw:flux-0','shell-3','tide-token'],row3:['draw:flux-1','draw:flux-3','optic-0']}};
+ shell:{row1:[0,1,2,3,4,5].map(t=>'shell-'+t).concat('gen-shell'),row2:['draw:flux-0','shell-3','tide-token'],row3:['draw:flux-1','draw:flux-3','optic-0']},
+ lamp:{row1:[0,1,2,3,4].map(t=>'lamp-'+t).concat('gen-lamp','optic-0'),row2:['draw:flux-0','optic-2','tide-token'],row3:['optic-3','gen-optic','brass-cog']}};
 (async()=>{
  const {artFit}=await import('../v5/next/art-fit.mjs');
  const fitOf=f=>{const a=artFit(f);return a?{fit:a.fit,dx:a.dx,dy:a.dy}:{fit:.8,dx:0,dy:0};};
