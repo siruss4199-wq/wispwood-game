@@ -27,7 +27,9 @@ export function boardPictures(){
 // stands, or '' to show nothing. onEnter runs each time the player goes from Home to the board.
 // beforeEnter(reason) may return a promise to wait for before the board (the first-play story);
 // reason is 'play' (a new camp's Play), 'continue' or 'new' (a new camp chosen after a bad save).
-export function createHome({boot,hasSave,damaged,chapter,onEnter,onSettings,onBook,onNewCamp,onOpenChange,beforeEnter}){
+// newer: the save that could not be read was made by a newer build (round 2 of the secondary-chain
+// pilot: said so, never started over silently); kept() counts the kept camps onKept lists to restore.
+export function createHome({boot,hasSave,damaged,newer=false,kept=()=>0,onKept,chapter,onEnter,onSettings,onBook,onNewCamp,onOpenChange,beforeEnter}){
  const home=$('home'),main=document.querySelector('main.game'),play=$('homePlay'),label=play.querySelector('span');
  let open=true,usable=false,boardDone=false,boardBad=[],boardCount=[0,0],waiting=false,leaving=0,gating=false;
  const setOpen=v=>{open=v;document.body.classList.toggle('homeOpen',v);if(main)main.inert=v;onOpenChange?.(v);};
@@ -38,8 +40,8 @@ export function createHome({boot,hasSave,damaged,chapter,onEnter,onSettings,onBo
   play.setAttribute('aria-label',hasSave?'Continue your camp':'Play: start a new camp');
   const c=damaged||!hasSave?'':chapter();$('homeChapter').textContent=c;$('homeChapter').hidden=!c;
   $('homeBook').hidden=!hasSave||damaged||!onBook;
-  $('homeNote').hidden=!damaged;$('homeNew').hidden=!damaged;
-  if(damaged){$('homeNote').textContent='Your saved camp could not be read, so it has been left exactly as it is. Try again, or start a new camp (the old save is kept in this browser as a backup).';$('homeRetry').hidden=false;}
+  $('homeNote').hidden=!damaged;$('homeNew').hidden=!damaged;$('homeKept').hidden=!damaged||!onKept||!kept();
+  if(damaged){$('homeNote').textContent=newer?'This camp was saved by a newer version of Vaultwake, so this version cannot open it. It has been left exactly as it is: open it with the newer version, or start a new camp here (the newer camp stays in this browser and comes back with that version).':'Your saved camp could not be read, so it has been left exactly as it is. Try again, or start a new camp (the old save is kept in this browser as a backup).';$('homeRetry').hidden=false;}
  }
  // Home becomes usable once its own pictures are in (or the player chose to go on without them).
  function becomeUsable(){
@@ -65,6 +67,7 @@ export function createHome({boot,hasSave,damaged,chapter,onEnter,onSettings,onBo
  });
  $('homeSettings').addEventListener('click',()=>onSettings?.());
  $('homeBook').addEventListener('click',()=>onBook?.());
+ $('homeKept').addEventListener('click',()=>onKept?.());
  $('homeNew').addEventListener('click',()=>{if(onNewCamp?.()){damaged=false;hasSave=false;$('homeRetry').hidden=true;enter('new');}});
  // Home → board: a short fade of Home only (none with reduced motion); the board is already there.
  const why=()=>hasSave?'continue':'play';

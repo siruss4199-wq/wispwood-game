@@ -21,6 +21,7 @@ import {CREW} from '../crew.mjs';
 import {reduced,burst,rewardFlight,moment as sharedMoment} from '../feedback.mjs';
 import {sfx as sounds} from './sfx.mjs';
 import {createHome} from './home.mjs';
+import {readSave,keptCamps,freeKey,isKeptKey} from './saves.mjs';
 import {playIntro,preloadIntro,storySeen,playScenes} from './story-intro.mjs';
 import {haptics} from './haptics.mjs';
 // The shared moment draws its icon with the Classic art; new chains need draw().
@@ -32,7 +33,7 @@ function moment(title,detail='',x=null){sharedMoment(title,detail,null);const el
 let adPlaying=false;
 const sfx=(kind,tier=0)=>sounds.play(kind,tier,{muted:adPlaying||platform.muted()});
 // Shown in the footer so a playtester can tell which build is running.
-export const BUILD='Build 47s · secondary chains pilot';
+export const BUILD='Build 47t · secondary chains pilot, round 2';
 // The level path (docs/V5_LEVEL_PATH_2026-10-27.md): a crew order that pays a tool on top shows it
 // beside its coins (a Tide token; a favour's Sea chest or Brass cog).
 const bonusThing=o=>o.bonus==='cog'?cog():o.bonus==='chest'?kit(newestGenerator(state),2):o.bonus==='token'?token():null;
@@ -49,29 +50,50 @@ const storage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},
 const startNew=new URLSearchParams(location.search).has('new');
 if(startNew){const q=new URLSearchParams(location.search);q.delete('new');history.replaceState(null,'',location.pathname+(q.size?'?'+q:''));}
 // Home (Build 46p): the save is read once here. load() answers a save it cannot read with a new
-// camp (game.mjs); a fresh camp is the same for the same moment, so a save that loads as exactly
-// fresh(now) was not read, and is kept as it is: nothing is written over it until the player
-// chooses a new camp on Home (which first copies it to SAVE_KEY+'-damaged'). A new camp with no
-// save is not written either until the player presses Play.
-const bootNow=Date.now(),rawSave=startNew?null:storage.get(SAVE_KEY)||null;
-let state=startNew?fresh(bootNow):load(rawSave??'',bootNow),selected=null,focusOrder=null,drag=null,suppressClick=false;
-let damaged=!!rawSave&&JSON.stringify(state)===JSON.stringify(fresh(bootNow)),holdSave=!rawSave||damaged,homeOpen=!!document.getElementById('home');
-const persist=()=>{if(!holdSave)storage.set(SAVE_KEY,JSON.stringify(state));};
-// Keeps the save that could not be read before anything replaces it.
-// Build 47c (reconciling PR #80's vaultwake-v5-coast-backup with Build 46p's -damaged key): a
-// recovery copy is never overwritten. The save goes to the first free -damaged key (-damaged, then
-// -damaged-2 … -damaged-9, then one named by the time), unless an identical copy is already kept
-// under any of them or #80's -backup. It answers false when the copy could not be written (storage
-// full); then nothing replaces the save.
-const BACKUP_KEYS=[SAVE_KEY+'-damaged',...Array.from({length:8},(_,i)=>`${SAVE_KEY}-damaged-${i+2}`)];
-function keepDamaged(){
- if(damaged&&rawSave){
-  if(![...BACKUP_KEYS,SAVE_KEY+'-backup'].some(k=>storage.get(k)===rawSave)){
-   const k=BACKUP_KEYS.find(k=>storage.get(k)===null)??`${SAVE_KEY}-damaged-${Date.now()}`;storage.set(k,rawSave);
-   if(storage.get(k)!==rawSave)return false;}
-  playlog.event('saveDamaged');}
- damaged=false;return true;
+// camp (game.mjs); readSave (saves.mjs) tells which kind of unreadable save it is: one made by a NEWER
+// build (parts or generators this build does not know, round 2 of the secondary-chain pilot) or a
+// damaged one. Either way it is kept as it is: nothing is written over it until the player chooses a
+// new camp on Home (which first copies it to SAVE_KEY+'-damaged'). A new camp with no save is not
+// written either until the player presses Play.
+const bootNow=Date.now(),stored=storage.get(SAVE_KEY)||null,rawSave=startNew?null:stored,read=readSave(rawSave,bootNow);
+let state=startNew?fresh(bootNow):read.state,selected=null,focusOrder=null,drag=null,suppressClick=false;
+let damaged=read.status==='damaged'||read.status==='newer',newer=read.status==='newer',holdSave=!rawSave||damaged,homeOpen=!!document.getElementById('home');
+// Round 2: ?new=1 (the playtest page's "start from the beginning" link) no longer writes over the
+// camp it replaces: that camp is kept (SAVE_KEY-kept…) before the new one is first saved.
+let replaced=startNew?stored:null;
+const persist=()=>{if(holdSave)return;if(replaced){if(!keepCopy(replaced,'kept'))return;replaced=null;}storage.set(SAVE_KEY,JSON.stringify(state));};
+const storageKeys=()=>{try{return Array.from({length:localStorage.length},(_,i)=>localStorage.key(i)).filter(Boolean);}catch{return [];}};
+// Keeps a copy of a camp before anything replaces it. Build 47c (reconciling PR #80's
+// vaultwake-v5-coast-backup with Build 46p's -damaged key): a kept copy is never overwritten. The
+// save goes to the first free key of its kind (-damaged or -kept, then -2 … -9, then one named by the
+// time), unless an identical copy is already kept under any kept key. It answers false when the copy
+// could not be written (storage full); then nothing replaces the save.
+function keepCopy(raw,kind){
+ if(!raw||storageKeys().filter(isKeptKey).some(k=>storage.get(k)===raw))return true;
+ const k=freeKey(kind,storage.get,Date.now());storage.set(k,raw);return storage.get(k)===raw;
 }
+function keepDamaged(){
+ if(damaged&&rawSave){if(!keepCopy(rawSave,'damaged'))return false;playlog.event('saveDamaged',{newer});}
+ damaged=false;newer=false;return true;
+}
+// Kept camps (round 2): every camp kept in this browser that this build reads can be restored. The
+// camp it replaces is kept first, so a restore loses nothing either. This is the way back after a camp
+// went through an older build (which keeps it as -damaged when the player starts a new camp there),
+// after a new camp, or after ?new=1.
+const kept=()=>keptCamps(storageKeys(),storage.get,Date.now(),storage.get(SAVE_KEY));
+function restoreKept(key){
+ const raw=storage.get(key);if(!raw)return false;
+ persist();const cur=storage.get(SAVE_KEY);
+ if(cur&&cur!==raw&&!keepCopy(cur,damaged?'damaged':'kept')){alert('Your current camp could not be copied aside (this browser\'s storage is full), so nothing was replaced.');return false;}
+ storage.set(SAVE_KEY,raw);if(storage.get(SAVE_KEY)!==raw){alert('The kept camp could not be restored (this browser\'s storage is full).');return false;}
+ holdSave=true;playlog.event('restoreKept');location.reload();return true;
+}
+function showKept(){
+ const list=kept(),when=t=>new Date(t).toLocaleString(undefined,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+ $('#keptList').innerHTML=list.length?list.map(c=>`<li><span><b>${c.label}</b><small>last played ${when(c.when)}</small></span><button type="button" class="primary" data-restore="${c.key}">Restore</button></li>`).join(''):'<li><span>No other camp is kept in this browser.</span></li>';
+ $('#kept').showModal();
+}
+$('#keptList').addEventListener('click',e=>{const b=e.target.closest('[data-restore]');if(b)restoreKept(b.dataset.restore);});
 // The local playtest log (Build 41 M6): this browser only, copied out by the player.
 const playlog=createLog({storage:{get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>localStorage.setItem(k,v),remove:k=>localStorage.removeItem(k)},
  build:BUILD,viewport:`${innerWidth}x${innerHeight}`,touch:!!globalThis.matchMedia?.('(pointer:coarse)').matches});
@@ -184,7 +206,7 @@ function renderOrders(){
 // (build 36): free ones first, then after an ad. The gold order stays.
 function chainRoute(r){
  const gen=CHAINS[r.family].gen,open=sourceOpen(state,gen),steps=Array.from({length:r.tier+1},(_,k)=>k);
- const text=!has(gen)?`${SOURCES[gen].name} is still sealed in cargo on the board`:!open?`${SOURCES[gen].name} wakes in a later area`:CHAINS[r.family].secondary?`A rare extra from ${SOURCES[gen].name} taps (one at the latest every ${SECONDARY_RULES[gen].pity})${r.tier?`, then merge up ${r.tier} time${r.tier>1?'s':''}`:''}`:`Tap ${SOURCES[gen].name}${r.tier?`, then merge up ${r.tier} time${r.tier>1?'s':''}`:''}`;
+ const text=!has(gen)?`${SOURCES[gen].name} is still sealed in cargo on the board`:!open?`${SOURCES[gen].name} wakes in a later area`:CHAINS[r.family].secondary?`A rare extra from ${SOURCES[gen].name} taps (at the latest on the ${SECONDARY_RULES[gen].pity}th tap)${r.tier?`, then merge up ${r.tier} time${r.tier>1?'s':''}`:''}`:`Tap ${SOURCES[gen].name}${r.tier?`, then merge up ${r.tier} time${r.tier>1?'s':''}`:''}`;
  return `<li class="route ${open?'':'sealed'}"><span class="routeGen">${draw({type:'source',id:gen})}</span>${steps.map(k=>`<i class="routeArrow" aria-hidden="true"></i><span class="routeStep ${k===r.tier?'goal':''}" title="${CHAINS[r.family].names[k]}">${draw(item(r.family,k))}</span>`).join('')}<small>${text}</small></li>`;
 }
 function renderOrderTools(){
@@ -535,7 +557,8 @@ const pageName=f=>CHAINS[f].secondary?`${SOURCES[CHAINS[f].gen].name} extras`:GE
 // With a tier (an order's part), it names that part and, past the first, the parts it is merged from.
 function sourceNote(f,tier=null){const r=SECONDARY_RULES[CHAINS[f].gen],gen=SOURCES[CHAINS[f].gen].name,n=CHAINS[f].names;
  const what=tier===null?'A':tier>0?`${n[tier]}: merged from ${n[0]}s, a`:`${n[0]}: a`;
- return `${what} rare ${gen} extra. A tap sometimes adds one, at no extra energy (one at least every ${r.pity} taps).`;}
+ // round 2: the limit counts taps while extras are coming (they rest while three lie unused)
+ return `${what} rare ${gen} extra. A tap sometimes adds one, at no extra energy: at the latest on the ${r.pity}th tap, while fewer than three lie unused.`;}
 // Build 47e: the Lens Bench's page appears once the camp is inside the Vault (no Chapter 2 spoiler
 // in Chapter 1's book).
 // A secondary chain's page (pilot) shows once its first part is found: it is a find, not a promise.
@@ -603,10 +626,14 @@ function offerGift(){if(!homeOpen&&!adBusy&&giftReady()&&giftShown!==today()&&st
 $('#soundButton').onclick=()=>{sounds.toggle();render();sfx('tap');};
 $('#hapticsButton').onclick=()=>{haptics.toggle();render();haptics.pulse('merge');};
 $('#helpButton').onclick=()=>$('#help').showModal();
-$('#menuButton').onclick=()=>{$('#homeButton').hidden=homeOpen;$('#classicNote').textContent=storage.get('vaultwake-v5')?'Your Classic save is kept and continues where you left it.':'';$('#hapticsNote').textContent=haptics.method==='vibrate'?'Vibration on merges: use the button at the bottom of the board screen.':haptics.method==='ios-switch'?'Vibration on merges may work on this iPhone (iOS 18 and later); turn it off at the bottom of the board screen.':'Vibration is not available in this browser.';$('#menu').showModal();};
-$('#newGame').onclick=()=>{if(!confirm('Start the Coast Camp from the beginning? Your Classic save is not affected.'))return;if(!newCamp())return;$('#menu').close();if(homeOpen&&home)home.enter();else showIntro();};
+$('#keptButton').onclick=()=>{$('#menu').close();showKept();};
+$('#menuButton').onclick=()=>{$('#homeButton').hidden=homeOpen;{const n=kept().length;$('#keptButton').hidden=!n;$('#keptButton').textContent=`Kept camps (${n})`;}$('#classicNote').textContent=storage.get('vaultwake-v5')?'Your Classic save is kept and continues where you left it.':'';$('#hapticsNote').textContent=haptics.method==='vibrate'?'Vibration on merges: use the button at the bottom of the board screen.':haptics.method==='ios-switch'?'Vibration on merges may work on this iPhone (iOS 18 and later); turn it off at the bottom of the board screen.':'Vibration is not available in this browser.';$('#menu').showModal();};
+$('#newGame').onclick=()=>{if(!confirm('Start the Coast Camp from the beginning? This camp is kept in this browser (Kept camps in this menu brings it back), and your Classic save is not affected.'))return;if(!newCamp())return;$('#menu').close();if(homeOpen&&home)home.enter();else showIntro();};
 // A new camp, chosen by the player (the menu, or Home after a save could not be read).
-function newCamp(){if(!keepDamaged()){alert('Your old save could not be copied aside (this browser\'s storage is full), so nothing was replaced.');return false;}holdSave=false;state=fresh(Date.now());selected=null;focusOrder=null;persist();render();return true;}
+// Round 2: the camp a new camp replaces is kept (SAVE_KEY-kept…), so starting again loses nothing.
+function newCamp(){const wasDamaged=damaged;if(!keepDamaged()){alert('Your old save could not be copied aside (this browser\'s storage is full), so nothing was replaced.');return false;}
+ if(!wasDamaged){persist();if(!keepCopy(storage.get(SAVE_KEY),'kept')){alert('Your camp could not be copied aside (this browser\'s storage is full), so nothing was replaced.');return false;}}
+ holdSave=false;replaced=null;state=fresh(Date.now());selected=null;focusOrder=null;persist();render();return true;}
 $('#homeButton').onclick=()=>{$('#menu').close();persist();home?.show();};
 for(const d of document.querySelectorAll('dialog'))d.querySelector('.close')?.addEventListener('click',()=>d.close());
 
@@ -919,7 +946,7 @@ function arrive(fromHome=true){
 // Home and Loading (Build 46p): the board above is set up once; Home only covers and uncovers it.
 if(document.getElementById('home')){
  const stagesBuilt=()=>{const a=currentArea(state);return a.tasks.reduce((n,t)=>n+stageOf(state,t.id),0);};
- home=createHome({boot:window.VWBoot??null,hasSave:!!rawSave&&!damaged,damaged,
+ home=createHome({boot:window.VWBoot??null,hasSave:!!rawSave&&!damaged,damaged,newer,kept:()=>kept().length,onKept:showKept,
   chapter:()=>{const a=currentArea(state);return a?.tasks?.length?`${a.name} · ${stagesBuilt()} of ${a.tasks.length*STAGES} stages built`:a?.name??'';},
   onEnter:arrive,onSettings:()=>$('#menuButton').onclick(),onBook:showBook,
   onNewCamp:()=>{if(!confirm('Start a new camp? The save that could not be read stays in this browser as a backup.'))return false;return newCamp();},
