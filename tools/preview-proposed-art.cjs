@@ -5,25 +5,30 @@
 // target. Every sprite gets the board's own size fit (v5/next/art-fit.mjs: existing art from its
 // measurements, proposed art from tools/prepare-icon.py's). No game state, rule or save is touched:
 // the cells' contents are swapped on screen only. Needs the repo served on :8080. Writes PNGs to OUT.
-//   node tools/preview-proposed-art.cjs rover|kite [OUT] [WxH,...]
+//   node tools/preview-proposed-art.cjs rover|kite|rope [OUT] [WxH,...]
 const {chromium}=require('playwright');const {throughHome}=require('../tests/v5-next-home-helper.cjs');
 const URL='http://127.0.0.1:8080/v5/play.html';
 const SET=process.argv[2]??'rover',OUT=process.argv[3]??'.',SIZES=(process.argv[4]??'360x780,390x844,430x932,907x510').split(',').map(s=>s.split('x').map(Number));
-// Proposed art: [file, solid longest side, short/long, centre x, centre y] as tools/prepare-icon.py printed.
+// Proposed art: [file, solid longest side, short/long, centre x, centre y] as tools/prepare-icon.py printed,
+// and an optional board target (art-fit.mjs TARGET_OF) where measurement alone draws it too small.
 const PROPOSED={
  rover:[['rover-bolt',.917,.778,.500,.482],['rover-gear',.917,.926,.500,.487],['rover-gear-assembly',.885,.853,.495,.487],['rover-hand-crank',.911,.840,.503,.492]],
- kite:[['kite-note-fragment',.917,.920,.500,.500],['kite-expedition-note',.917,.943,.500,.500],['kite-travel-notebook',.917,.812,.500,.497],['kite-captains-logbook',.917,.972,.497,.500]]};
+ kite:[['kite-note-fragment',.917,.920,.500,.500],['kite-expedition-note',.917,.943,.500,.500],['kite-travel-notebook',.917,.812,.500,.497],['kite-captains-logbook',.917,.972,.497,.500]],
+ // the Finished Sail is a thin triangle: at the item target it covers 21.6 % of the cell, less than its
+ // lower tiers (25.8-32.1 %); .845 brings it to about 29 % (proposed TARGET_OF, see the doc)
+ rope:[['rope-canvas-offcut',.917,.869,.500,.497],['rope-stitched-sailcloth',.917,.875,.500,.500],['rope-rolled-sail',.917,.886,.500,.500],['rope-finished-sail',.917,.852,.500,.500,.845]]};
 // Existing art shown beside it: the chain's tiers 0-6 (row 1), then what each proposed set could be
 // confused with (rows 2 and 3). Board file names as chains.mjs draws them (KEEP and PILOT files).
 const KEEP={'rig-0':'copper-offcut','rig-1':'grip-tool-v2','rig-2':'split-spanner-v2','rig-3':'pocket-winch'};
 const src=f=>/^(copper-offcut|pocket-winch)$/.test(f)?`assets/premium/${f}-vibrant.webp`:`assets/premium/coast/icons/${f}.webp`;
 const EXISTING={
  rover:{row1:[0,1,2,3,4,5,6].map(t=>KEEP['rig-'+t]??'rig-'+t),row2:['brass-cog','pocket-winch','gen-rig-pilot'],row3:['gen-rope','rig-7','tide-token']},
- kite:{row1:[0,1,2,3,4,5,6].map(t=>'chart-'+t),row2:['chart-0','chart-7','gen-chart'],row3:['chart-1','tide-token','cargo-bundle-pilot']}};
+ kite:{row1:[0,1,2,3,4,5,6].map(t=>'chart-'+t),row2:['chart-0','chart-7','gen-chart'],row3:['chart-1','tide-token','cargo-bundle-pilot']},
+ rope:{row1:[0,1,2,3,4,5].map(t=>'rope-'+t).concat('gen-rope'),row2:['rope-5','cargo-bundle-pilot','copper-offcut'],row3:['rope-2','sea-chest','driftwood-crate']}};
 (async()=>{
  const {artFit}=await import('../v5/next/art-fit.mjs');
  const fitOf=f=>{const a=artFit(f);return a?{fit:a.fit,dx:a.dx,dy:a.dy}:{fit:.8,dx:0,dy:0};};
- const proposed=PROPOSED[SET].map(([f,long,ratio,cx,cy])=>{const target=.72+.08*Math.max(0,Math.min(1,(1-ratio)/.5));return {src:`assets/premium/coast/proposed/${f}.webp`,fit:+Math.min(1,target/long).toFixed(3),dx:+(.5-cx).toFixed(3),dy:+(.5-cy).toFixed(3)};});
+ const proposed=PROPOSED[SET].map(([f,long,ratio,cx,cy,tuned])=>{const target=tuned??.72+.08*Math.max(0,Math.min(1,(1-ratio)/.5));return {src:`assets/premium/coast/proposed/${f}.webp`,fit:+Math.min(1,target/long).toFixed(3),dx:+(.5-cx).toFixed(3),dy:+(.5-cy).toFixed(3)};});
  const ex=f=>({src:src(f),...fitOf(f)}),E=EXISTING[SET];
  const rows=[E.row1.map(ex),[...proposed,...E.row2.map(ex)],[...proposed.map((p,k)=>({...p,cls:k===1?'selected':k===2?'match':null})),...E.row3.map(ex)]];
  const browser=await chromium.launch();
