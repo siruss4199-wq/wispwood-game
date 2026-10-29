@@ -27,7 +27,7 @@ const CARGO_FILE={crate:'cargo-crate',bundle:'cargo-bundle',barrel:'cargo-barrel
 const KIT_FILE=['driftwood-crate','sea-chest','captains-trunk'];
 // Build 41l (user: "ed nariin visual tuvshinuur hii", with a painted sheet): every generator, part,
 // cargo, crate, token and cog is a painted icon cut from that sheet (assets/premium/coast/icons).
-const RENDERED=new Set(['rig','chart','rope','shell','lamp','optic']);
+const RENDERED=new Set(['rig','chart','rope','shell','lamp','optic','mech','notes']);
 // The first four Rover parts keep their original painted art (user: "ed nariig hevend ni uldee").
 const KEEP={'rig-0':'copper-offcut','rig-1':'grip-tool','rig-2':'split-spanner','rig-3':'pocket-winch'};
 const icon=(f,cls,art)=>PILOT[f]?img(f,cls,art):KEEP[f]?`<img class="art ${cls}" src="assets/premium/${KEEP[f]}-vibrant.webp" alt="" aria-hidden="true" draggable="false" data-art="${art}"${fitStyle(KEEP[f])}>`:`<img class="art ${cls}" src="assets/premium/coast/icons/${f}.webp" alt="" aria-hidden="true" draggable="false" data-art="${art}"${fitStyle(f)}>`;
@@ -41,8 +41,17 @@ export const CHAINS={
  // Chapter 2 (The Silent Observatory, from PR #80; Build 47e): the Lens Bench grinds sea glass into the
  // array's optics, named apart from the Kite's Sight lens / Survey scope and the Kiln's Beacon lens.
  optic:{gen:'optic',names:['Sea-glass chip','Polished blank','Ground lens','Brass-ringed lens','Focus barrel','Signal reader']},
- flux:{gen:'flux',names:FAMILIES.flux.names}
+ flux:{gen:'flux',names:FAMILIES.flux.names},
+ // Secondary chains (pilot, 2026-10-29; docs/V5_SECONDARY_PILOT_2026-10-29.md): a generator's rare
+ // extra output, merged like any chain but never made by a tap alone. Ids carry no digits (book keys
+ // are family + tier). Art: docs/V5_ROVER_/KITE_SECONDARY_ART_2026-10-29.md. The Rope Winch, Shell
+ // Trap and Lantern Kiln sets stay in assets/premium/coast/proposed/, not registered.
+ mech:{gen:'rig',secondary:true,names:['Bolt','Gear','Gear assembly','Hand-crank mechanism']},
+ notes:{gen:'chart',secondary:true,names:['Note fragment','Expedition note','Travel notebook','Captain\'s logbook']}
 };
+// Generator → its secondary chain (pilot: the Rivet Rover and the Survey Kite only).
+export const SECONDARY_OF={rig:'mech',chart:'notes'};
+export const isSecondary=family=>!!CHAINS[family]?.secondary;
 // Generator → its chain (the level column stays for saves and future use).
 export const GENERATOR_CHAINS={rig:[['rig',1]],chart:[['chart',1]],rope:[['rope',1]],shell:[['shell',1]],lamp:[['lamp',1]],flux:[['flux',1]],optic:[['optic',1]]};
 export const GENERATOR_NAMES={rig:'Rivet Rover',chart:'Survey Kite',rope:'Rope Winch',shell:'Shell Trap',lamp:'Lantern Kiln',flux:'Echo Crucible',optic:'Lens Bench'};
