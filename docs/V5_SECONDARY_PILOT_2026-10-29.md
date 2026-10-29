@@ -4,6 +4,12 @@
 holds the five art passes (`docs/V5_*_SECONDARY_ART_2026-10-29.md`) and the measurement plan
 (`docs/V5_SECONDARY_CHAINS_PLAN_2026-10-28.md`). Not merged anywhere.
 
+**Preview.** https://claude.ai/artifact/LDdJLFatkwsyykjnJ3Q9sr (private until shared; build 47s).
+- It is a launcher page with two buttons: "Start a new camp" (`v5/play.html?new=1`) and "Continue this camp".
+- The game files are published at their repo paths, byte-identical to this branch.
+- Use the launcher's "Start a new camp" there: the in-game menu's new-camp button asks `confirm()`, which
+  that viewer answers "no".
+
 **Scope.**
 - The Rivet Rover's and the Survey Kite's secondary chains are playable: drops, bad-luck limit, crew
   orders, pricing, collection book.
