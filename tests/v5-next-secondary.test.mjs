@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {fresh,act,load,item,source,nameOf,priceOf,orderPrice,COIN_VALUE,BOOK_CHAINS,bookKeys,bookReady,pageReady,SECONDARY_RULES,SECONDARY_ORDERS,SECONDARY_OF,isSecondary,secondaryOn,secondaryPaused,secondaryHeld,secondaryTier,secondaryNeed,allDone,ROVER,MAX_ENERGY} from '../v5/next/game.mjs';
+import {fresh,act,load,item,source,nameOf,priceOf,orderPrice,COIN_VALUE,BOOK_CHAINS,bookKeys,bookReady,pageReady,SECONDARY_RULES,SECONDARY_ORDERS,SECONDARY_OF,isSecondary,secondaryOn,secondaryPaused,secondaryHeld,secondaryTier,secondaryNeed,secondaryGoal,allDone,ROVER,MAX_ENERGY} from '../v5/next/game.mjs';
 import {CHAINS,maxTier} from '../v5/next/chains.mjs';
 import {artFit} from '../v5/next/art-fit.mjs';
 import {primaryAction} from '../v5/next/guide.mjs';
@@ -106,6 +106,63 @@ test('a full board: no tap, no energy, no counter; a drop with no space waits an
  assert.deepEqual(back.pending,[]);assert.equal(secondaries(back),1,'one Bolt: not lost, not doubled');
 });
 
+// Round 2 (2026-10-29): what the bad-luck limit promises, exactly. "Within 14 taps" means 14
+// ELIGIBLE taps: taps that succeed while the generator's drops are open and not paused. These cases
+// check every other kind of tap leaves the count alone, at the worst luck there is (chance 0).
+test('bad-luck limit counts eligible taps only: pauses, waiting drops, copies, merges and reloads',()=>{
+ const R=SECONDARY_RULES.rig,save={...R};
+ const clearTap=(s,now,index=ROVER)=>{s.energy=MAX_ENERGY;const r=ok(s,{type:'produce',id:'rig',index},now);s.board[r.index]=null;if(r.secondary?.index>=0)s.board[r.secondary.index]=null;return r;};
+ const noSecondaryOrders=s=>{s.orders=s.orders.map(o=>({...o,needs:o.needs.filter(r=>!isSecondary(r.family))}));};
+ try{
+  R.chance=0;
+  // 1. Paused (three unused extras on the board, no order wants one): no roll, no count.
+  {const s=opened();s.found.push('mech0');noSecondaryOrders(s);let now=1000;
+   for(let n=0;n<5;n++)assert.equal(clearTap(s,now+=1000).secondary,undefined);assert.equal(s.secSince.rig,5);
+   s.board[30]=item('mech',0);s.board[31]=item('mech',1);s.board[32]=item('mech',2);assert.equal(secondaryPaused(s,'rig'),true);
+   for(let n=0;n<30;n++)assert.equal(clearTap(s,now+=1000).secondary,undefined,'paused: no drop');
+   assert.equal(s.secSince.rig,5,'paused taps are not counted');
+   s.board[30]=s.board[31]=s.board[32]=null;
+   let n=0,r;do{r=clearTap(s,now+=1000);n++;}while(!r.secondary);
+   assert.equal(n,R.pity-5,'the count goes on where it stopped: 14 eligible taps in all');}
+  // 2. Extras waiting for space count toward the pause, and with SECONDARY_PENDING_MAX waiting, drops pause.
+  {const s=opened();s.found.push('mech0','notes0');noSecondaryOrders(s);let now=1000;
+   // (waiting parts land after any action that frees space, so the board is kept full but one space)
+   for(const i of cells(s))s.board[i]=item('rope',0);s.board[15]=null;s.secSince.rig=R.pity-1;// due
+   s.pending=[item('notes',0),item('notes',0),item('notes',0),item('notes',1)];assert.equal(secondaryPaused(s,'rig'),true,'four extras waiting: paused');
+   const r=tapRover(s,now+=1000);assert.equal(r.secondary,undefined,'the due drop is not rolled');assert.equal(s.secSince.rig,R.pity-1,'nor counted');assert.equal(s.pending.length,4,'nothing lost or added');
+   s.board[r.index]=null;
+   s.pending=[item('mech',0),item('mech',0),item('mech',1)];assert.equal(secondaryPaused(s,'rig'),true,'three Mechanisms waiting count like three on the board');
+   s.pending=[item('mech',0)];assert.equal(secondaryPaused(s,'rig'),false);}
+  // 3. The board has room for the tap's own part only: the due drop waits for space, is counted as a
+  //    drop (the count restarts), and a first drop waiting for space counts as met (the next comes
+  //    on the 14-tap limit, not the 3-tap first one).
+  {const s=opened();noSecondaryOrders(s);let now=1000;
+   for(const i of cells(s))s.board[i]=item('rope',0);s.board[15]=null;
+   let n=0,r;do{s.energy=MAX_ENERGY;r=tapRover(s,now+=1000);n++;if(!r.secondary)s.board[r.index]=null;}while(!r.secondary);
+   assert.equal(n,R.first);assert.equal(r.secondary.index,-1,'no space: it waits');assert.deepEqual(s.pending,[item('mech',0)]);assert.equal(s.secSince.rig,0);
+   assert.equal(s.found.includes('mech0'),false,'not on the board yet');
+   s.board[r.index]=null;n=0;do{r=clearTap(s,now+=1000);n++;}while(!r.secondary);
+   assert.equal(n,R.pity,'the second drop on the 14-tap limit: the waiting Bolt counts as met');}
+  // 4. Copies of the Rover share one count, and either copy's taps count.
+  {const s=opened();s.found.push('mech0');noSecondaryOrders(s);s.board[16]=source('rig');let now=1000,n=0,r;
+   do{r=clearTap(s,now+=1000,n%2?16:ROVER);n++;}while(!r.secondary);assert.equal(n,R.pity,'two copies, one count');
+   assert.equal(s.taps.rig,R.pity,'one tap count for the kind');}
+  // 5. Merging two copies (a level up) keeps the count and the tap number.
+  {const s=opened();s.found.push('mech0');noSecondaryOrders(s);s.board[16]=source('rig');let now=1000;
+   for(let n=0;n<7;n++)clearTap(s,now+=1000);const taps=s.taps.rig;
+   const m=ok(s,{type:'merge',from:16,to:ROVER},now+=1000);assert.equal(m.event,'producerUp');
+   assert.equal(s.secSince.rig,7);assert.equal(s.taps.rig,taps);
+   let n=0,r;do{r=clearTap(s,now+=1000);n++;}while(!r.secondary);assert.equal(n,R.pity-7);}
+  // 6. A reload while paused and with a drop waiting keeps the count, the pause and the waiting part.
+  {const s=opened();s.found.push('mech0');noSecondaryOrders(s);let now=1000;
+   for(let n=0;n<4;n++)clearTap(s,now+=1000);s.board[30]=item('mech',0);s.board[31]=item('mech',0);s.pending=[item('mech',1)];
+   const back=load(JSON.stringify(s),now+=1000);assert.equal(back.secSince.rig,4);assert.deepEqual(back.pending,[item('mech',1)]);assert.equal(secondaryPaused(back,'rig'),true);}
+  // 7. Before the drops open (fewer than four orders delivered, or the Kite before its eighth tap) nothing counts.
+  {const s=fresh(0);let now=1000;for(let n=0;n<20;n++)clearTap(s,now+=1000);assert.equal(s.secSince.rig,0);
+   const k=opened();k.ordersDone=10;k.board[16]=source('chart');assert.equal(secondaryOn(k,'chart'),false,'the Kite opens its extras after its own first taps');}
+ }finally{Object.assign(R,save);}
+});
+
 test('extras pause while three lie unused on the board, and never while an order wants one',()=>{
  const s=opened();s.found.push('mech0');s.board[15]=item('mech',0);s.board[20]=item('mech',1);s.board[22]=item('mech',2);
  s.orders=s.orders.map(o=>({...o,needs:o.needs.filter(r=>!isSecondary(r.family))}));
@@ -140,9 +197,9 @@ test('pricing: a secondary part pays as a rarer part, never like a common one of
  assert.equal(orderPrice(s,[{family:'mech',tier:2,count:1}],'quick'),priceOf([{family:'mech',tier:2,count:1}]));
 });
 
-test('demand: secondary orders come after the lessons, one at a time, never gold, asking what the drops can make',()=>{
+test('demand: secondary orders come after the lessons, one at a time, never gold, asking held parts or a near goal',()=>{
  // a long scripted run, checking every order as it appears
- const s=fresh(0);let now=0,seen=new Set(),firstSec=null,mixed=0,alone=0,offered=0,delivered=0;
+ const s=fresh(0);let now=0,seen=new Set(),firstSec=null,mixed=0,alone=0,offered=0,delivered=0,uses=0,goals=0;
  const secIds=new Set();
  while(!allDone(s)&&now<14*3600e3){
   for(const o of s.orders){if(!o||seen.has(o.id))continue;seen.add(o.id);const sec=o.needs.filter(r=>isSecondary(r.family));
@@ -151,8 +208,11 @@ test('demand: secondary orders come after the lessons, one at a time, never gold
    assert.equal(sec.length,1);assert.equal(sec[0].count,1);
    assert.ok(sec[0].tier<=SECONDARY_ORDERS.top,'never the chain\'s top part');
    const gen=CHAINS[sec[0].family].gen;assert.ok(secondaryOn(s,gen),`${sec[0].family} asked only once its generator drops it`);
-   // only what the parts already held make: never a drop the player does not have
-   assert.ok(2**sec[0].tier<=secondaryHeld(s,sec[0].family),`${JSON.stringify(sec[0])} with ${secondaryHeld(s,sec[0].family)} drops held`);
+   // what the parts held make (a use order), or a near-term goal: at most SECONDARY_ORDERS.goal drops
+   // beyond them, from a chain already met (round 2)
+   const held=secondaryHeld(s,sec[0].family),miss=2**sec[0].tier-held;
+   if(miss<=0)uses++;else{goals++;assert.ok(miss<=SECONDARY_ORDERS.goal,`${JSON.stringify(sec[0])} with ${held} drops held: ${miss} beyond`);
+    assert.ok(s.found.some(k=>k.startsWith(sec[0].family))||s.pending.some(x=>x.family===sec[0].family),'a goal only for a chain already met');}
    assert.equal(s.orders.filter(x=>x?.needs.some(r=>isSecondary(r.family))).length,1,'one secondary order on the board at a time');
    assert.ok(s.orders.some(x=>x&&!x.needs.some(r=>isSecondary(r.family))),'at least one order asks no rare drop');
    if(o.needs.length>1)mixed++;else alone++;
@@ -166,6 +226,7 @@ test('demand: secondary orders come after the lessons, one at a time, never gold
  assert.ok(firstSec>=SECONDARY_RULES.rig.orders,`the first secondary order after the lessons (${firstSec} orders delivered)`);
  assert.ok(offered>=6,`secondary orders are asked (${offered})`);assert.ok(mixed>=2&&alone>=1,`mixed (${mixed}) and single (${alone}) secondary orders`);
  assert.ok(delivered>=offered*.6,`most are delivered (${delivered} of ${offered})`);
+ assert.ok(uses>=3&&goals>=3,`both kinds are asked: ${uses} use, ${goals} goal`);
  for(const k of ['mech0','mech1','notes0'])assert.ok(s.found.includes(k),`${k} found`);
 });
 
@@ -178,6 +239,28 @@ test('tier ramp: a Bolt first, bigger parts as the camp grows and the player col
  s.board[22]=item('mech',0);assert.equal(secondaryTier(s,'mech'),2,'four drops held: a Gear assembly');
  s.shed[0]=item('mech',2);s.board[15]=s.board[20]=s.board[22]=null;assert.equal(secondaryTier(s,'mech'),2,'parts in the shed count');
  s.shed[0]=item('mech',3);assert.equal(secondaryTier(s,'mech'),-1,'the top part is a keepsake: it is not held for orders');
+});
+
+test('near-term goals: one drop beyond what is held, from an open, met chain, never the top part',()=>{
+ const s=opened();assert.equal(secondaryGoal(s,'mech'),-1,'not met yet: the first meeting is the drop itself');
+ s.found.push('mech0');assert.equal(secondaryGoal(s,'mech'),0,'none held: a Bolt (one drop away)');
+ s.board[15]=item('mech',0);assert.equal(secondaryGoal(s,'mech'),-1,'one held, nothing built: no Gear yet, and a Bolt is a use order');
+ assert.equal(secondaryTier(s,'mech'),0);
+ s.built={'beach-path':1};assert.equal(secondaryGoal(s,'mech'),1,'one Bolt held, a stage built: a Gear (one more drop)');
+ s.board[20]=item('mech',0);assert.equal(secondaryGoal(s,'mech'),-1,'two held: a Gear is a use order, a Gear assembly two drops away');
+ s.built={'beach-path':3};s.board[22]=item('mech',0);assert.equal(secondaryGoal(s,'mech'),2,'three held, three stages: a Gear assembly');
+ s.board[15]=s.board[20]=s.board[22]=null;s.pending=[item('mech',1),item('mech',0)];assert.equal(secondaryGoal(s,'mech'),2,'parts waiting for space count as held');
+ s.pending=[];s.board[15]=item('mech',2);s.board[20]=item('mech',1);s.board[22]=item('mech',0);assert.equal(secondaryGoal(s,'mech'),-1,'never tier 3, the keepsake');
+ // the Kite's chain has no goal before its extras open, even when met
+ s.found.push('notes0');assert.equal(secondaryOn(s,'chart'),false);
+ s.board[15]=s.board[20]=s.board[22]=null;s.orders=s.orders.map(o=>({...o,needs:o.needs.filter(r=>!isSecondary(r.family))}));
+ for(let k=0;k<12;k++){const r=secondaryNeed(s,100+k,k);if(r)assert.equal(r.family,'mech',`order ${k}: only the open chain`);}
+ // turns: use on the first secondary turn, goal on the next (each gives the other kind when it cannot)
+ s.board[15]=item('mech',0);s.built={'beach-path':1};
+ assert.deepEqual(secondaryNeed(s,7,2),{family:'mech',tier:0,count:1},'use turn: the Bolt held');
+ assert.deepEqual(secondaryNeed(s,8,5),{family:'mech',tier:1,count:1},'goal turn: a Gear, one drop away');
+ assert.equal(secondaryNeed(s,9,4),null,'not a secondary turn');
+ s.orders[0]={...s.orders[0],needs:[{family:'mech',tier:0,count:1}]};assert.equal(secondaryNeed(s,10,5),null,'one secondary order at a time');
 });
 
 test('the book: secondary finds stay found after delivery and pay their coins once; their pages pay no cog',()=>{
