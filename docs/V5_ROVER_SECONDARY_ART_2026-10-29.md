@@ -59,8 +59,9 @@ cargo crate used:
 
 ## Preview
 
-`tools/preview-proposed-art.cjs` opens the real page with a test camp. In the browser only, it puts
-the four into board cells with the board's own fit:
+`node tools/preview-proposed-art.cjs rover OUT` opens the real page. On screen only, it puts the
+four into board cells with the board's own fit, picking cells by where they stand once the board
+has settled (the first preview was off by one cell):
 - row 1: the Rover chain;
 - row 2: the proposed chain beside the Brass cog, the Pocket winch and the Rover;
 - row 3: the chain again, one selected and one marked as a merge target.
